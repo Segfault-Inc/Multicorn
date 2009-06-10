@@ -91,16 +91,21 @@ Accesseur
 Extracteur
   Classe python permettant d'extraire les propriétés d'un item à partir des
   données brutes stockées sur le support.
+
+Propriété
+  Couple (nom,objet) où « nom » est une chaine de caractères unicode et
+  « objet » est un objet python.
   
 Requête
   Chaîne de caractères donnée au moteur kalamar permettant de séléctionner des
-  items parmis ceux accéessibles. Une requête doit suivre la syntaxe suivante ::
+  items parmis ceux accessibles. Une requête doit suivre la syntaxe suivante ::
   
     TODO : Quelle est la syntaxe ?
+    access_point:
 
-Point d'accès (= « point d'entrée »)
-  Nom désignant un ensemble d'items ayant même support, même format et même url
-  de base.
+Point d'accès
+  Nom [a-zA-Z0-9[_-]] désignant un ensemble d'items ayant même support, même format et même url
+  de base. De plus, il a une option spécifiant l'encodage de caractère par défaut.
 
 ====================
 Description de l'API
@@ -115,26 +120,34 @@ Schéma ::
 
   Kalamar
    \_ KalamarSite
-   | \_ __init__(String: path_to_config)
-   | |_ open(String: request) -> returns one item or raise an exception if many
-   | |_ search(String: request) -> returns a list of items (0..*)
-   | |_ delete(Item: to_delete) -> returns nothing
-   | |_ save(Item: to_save) -> returns nothing
-   | |_ url_to_request(String: url) -> returns a request giving access to the object
+   | \_ __init__(path_to_config)
+   | |_ open(request) -> returns one item or raise an exception if many.
+   | |    Actually, it will never return an instance of Item but one of a
+   | |    descendant of Atom or Capsule.
+   | |_ search(request) -> returns a list of items (0..*)
+   | |_ delete(anItem) -> returns nothing
+   | |_ save(anItem) -> returns nothing
+   | |_ url_to_request(url) -> returns a request giving access to the object
    |
-   |_ Item
-   | \_ get_property(String: name) -> python object or None if the attirubute doesn't exist
-   | |_ set_property(String: name, object : value) -> nothing
-   | |_ has_property(String: name)
-   | |_ prop: properties (a property called properties that is a defaultdic)
+   |_ <abstract> Item
+   | \_ prop: properties (a property called properties that looks like a defaultdic)
+   | |_ access_point
+   | |_ extractor
+   | |_ accessor
+   | |_ _get_encoding() -> return the item's encoding, based on what the extractor
+   |      can know from the items's data or, if unable to do so, on what is specified
+   |      in the access_point.
    |
-   |_ Atom(Item)
+   |_ <abstract> Atom(Item)
    | \_ read()
    | |_ write(object
    |
-   |_ Capsule(Item)
+   |_ <abstract> Capsule(Item)
    | \_ list()
-   | |_ add_item(Item : )
+   | |_ add_item(anItem)
+   |
+   |_ AccessPoint
+   | \_ __init__(name, accessor, extractor, encoding="utf8")
 
 =======================================
 Description du fichier de configuration
