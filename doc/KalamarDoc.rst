@@ -97,7 +97,7 @@ Requête
   Chaîne de caractères donnée au moteur kalamar permettant de séléctionner des
   items parmis ceux accéessibles. Une requête doit suivre la syntaxe suivante ::
   
-  TODO : Quelle est la syntaxe ?
+    TODO : Quelle est la syntaxe ?
 
 Point d'accès (= « point d'entrée »)
   Nom désignant un ensemble d'items ayant même support, même format et même url
