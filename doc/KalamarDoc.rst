@@ -35,9 +35,8 @@ n'auront pas le même nom, p.ex. ImageAtom et ImageCapsule). En effet, l'atome
 donne accès aux données brutes de l'image (et vous vous débrouillez avec) alors
 que la capsule peut donner accès à chaque pixel.
 
-Les items sont accessibles via des requêtes sous forme de chaîne de caractères
-(**TODO** : spécifier de façon exacte la syntaxe). Une requête se compose de
-plusieurs parties :
+Les items sont accessibles via des requêtes sous forme de chaîne de caractères.
+Une requête se compose de plusieurs parties :
 
 - Premièrement, le point d'accès. À un point d'accès correspond un format, un
   support et des données (définies par une URL, p.ex. `sqlite://:memory:` ou
