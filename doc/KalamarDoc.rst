@@ -98,10 +98,19 @@ Propriété
   
 Requête
   Chaîne de caractères donnée au moteur kalamar permettant de séléctionner des
-  items parmis ceux accessibles. Une requête doit suivre la syntaxe suivante ::
+  items parmis ceux accessibles dans un point d'accès. Une requête doit suivre
+  la syntaxe suivante ::
   
     TODO : Quelle est la syntaxe ?
-    access_point:
+    contraintes :
+      filtre sur les propriétés des items, indépendamment du support et du format
+    opérateurs de comparaison: = < > <= >= ~= ! et leur négation
+    opérateurs logiques : "/" = "et", "|" = "ou"
+    priorité de gauche à droite.
+    Le "!" et prioritaire sur tous les autres.
+    on veut mettre du sucre et des alias
+      -> où les configurer ?
+    on veut pouvoir acceder à un fichier sous la forme "/path/to/file"
 
 Point d'accès
   Nom [a-zA-Z0-9[_-]] désignant un ensemble d'items ayant même support, même format et même url
@@ -135,8 +144,9 @@ Schéma ::
    | |_ extractor
    | |_ accessor
    | |_ _get_encoding() -> return the item's encoding, based on what the extractor
-   |      can know from the items's data or, if unable to do so, on what is specified
-   |      in the access_point.
+   | |    can know from the items's data or, if unable to do so, on what is specified
+   | |    in the access_point.
+   | |_ matches(propertie, operator, value) -> return boolean
    |
    |_ <abstract> Atom(Item)
    | \_ read()
