@@ -41,6 +41,9 @@ class Site(object):
     def open(self, entry_point, request):
         """
         Return the item in entry_point that match request
+        
+        If there is no result, raise Site.ObjectDoesNotExist
+        If there is more than one result, raise Site.MultipleObjectsReturned
         """
         it = iter(self.search(entry_point, request))
         try:

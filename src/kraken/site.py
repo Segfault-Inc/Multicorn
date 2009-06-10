@@ -20,9 +20,7 @@ Instances of the Site class are WSGI applications.  Create one for each
 independent site with it’s own configuration.
 """
 
-__all__ = ['Site']
 
-from pprint import pformat
 from werkzeug import Request, Response
 
 
