@@ -11,7 +11,7 @@ Kalamar se compose :
 - D'un répartisseur configurable qui répartit les requêtes entre les différents modules.
 - De plusieurs modules (« accesseurs ») propres à chaque support de données
   (p.ex. : MySQL, gestionnaire de fichier, annuaire LDAP, gestionnaire de
-  version…). Ces modules génèrent éventuellement des propriétés.
+  version…).
 - De plusieurs modules (« extracteurs ») propres à chaque format de données et
   permettant d'extraire des propriétés (p.ex. : image, MPEG, texte, ReST,
   HTML, RAW…). À un même « format » au sens usuel, on peut attribuer plusieurs
@@ -21,11 +21,12 @@ Kalamar se compose :
 
 Les formats donnés sont divisés conceptuellement en deux catégories : les
 « atomes » et les « capsules ». Atomes et capsules sont tous des « items ».
+Tous les items ont une liste de « propriétés » générées par leur extracteur et
+leur accesseur.
 
-- Les atomes sont des éléments indivisibles d'information. Ils possèdent des
-  propriétés et un contenu (qui est en fait une propriétés particulière) mais
-  ne contiennent pas d'autres atomes.
-- Les capsules sont des listes ordonnées d'items. Elles possèdent des
+- Les atomes sont des éléments indivisibles d'information. Ils ne possèdent que
+  des propriétés et un contenu (qui est en fait une propriété particulière).
+- Les capsules sont des listes ordonnées d'items (atomes ou capsules). Elles possèdent des
   propriétés mais pas de contenu (on peut tricher et leur en faire contenir si
   on veut programmer salement, c'est à vos risques et périls…).
 
@@ -34,18 +35,12 @@ n'auront pas le même nom, p.ex. ImageAtom et ImageCapsule). En effet, l'atome
 donne accès aux données brutes de l'image (et vous vous débrouillez avec) alors
 que la capsule peut donner accès à chaque pixel.
 
-Deux propriétés clés des items sont leur support et leur format. Un item aura
-toujours au moins ces deux propriétés. Le support est défini par l'accesseur
-utilisé pour cet item, le format par son extracteur. L'extracteur définit aussi
-si l'item est un atome ou une capsule. Ces trois points sont importants comme
-nous allons le voir tout de suite.
-
 Les items sont accessibles via des requêtes sous forme de chaîne de caractères
 (**TODO** : spécifier de façon exacte la syntaxe). Une requête se compose de
 plusieurs parties :
 
 - Premièrement, le point d'accès. À un point d'accès correspond un format, un
-  support et des données (défini par une URL, p.ex. `sqlite://:memory:` ou
+  support et des données (définies par une URL, p.ex. `sqlite://:memory:` ou
   `file:///var/local/dyko/`). Techniquement, deux points d'accès différents
   peuvent accéder aux même données, mais de façon différente. On pourra, par
   exemple, accéder à un dossier contenant des vidéos en les traitant comme de
@@ -81,7 +76,7 @@ Item
 Support
   Moyen physique de stockage des données. Ce peut être un SGBD, un système de
   fichiers, un annuaire LDAP etc… Un support stocke et organise des items. À
-  chaque Support correspond un accesseur (cf. définition).
+  chaque support correspond un accesseur (cf. définition).
 
 Format
   Organisation physique des données d'un item. Un format peut être atomique ou
@@ -97,21 +92,16 @@ Accesseur
 Extracteur
   Classe python permettant d'extraire les propriétés d'un item à partir des
   données brutes stockées sur le support.
-
-Atome
-  TODO
-  
-Capsule
-  TODO
-  
-Item
-  TODO
   
 Requête
-  TODO
+  Chaîne de caractères donnée au moteur kalamar permettant de séléctionner des
+  items parmis ceux accéessibles. Une requête doit suivre la syntaxe suivante ::
+  
+    TODO : Quelle est la syntaxe ?
 
 Point d'accès (= « point d'entrée »)
-  TODO
+  Nom désignant un ensemble d'items ayant même support, même format et même url
+  de base.
 
 ====================
 Description de l'API
@@ -127,8 +117,8 @@ Schéma ::
   Kalamar
    \_ KalamarSite
    | \_ __init__(String: path_to_config)
-   | |_ open(?String: request) -> returns one item or raise an exception if many
-   | |_ search(?String: request) -> returns a list of items (0..*)
+   | |_ open(String: request) -> returns one item or raise an exception if many
+   | |_ search(String: request) -> returns a list of items (0..*)
    | |_ delete(Item: to_delete) -> returns nothing
    | |_ save(Item: to_save) -> returns nothing
    | |_ url_to_request(String: url) -> returns a request giving access to the object
