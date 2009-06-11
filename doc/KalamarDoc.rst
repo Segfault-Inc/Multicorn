@@ -101,16 +101,16 @@ Requête
   items parmis ceux accessibles dans un point d'accès. Une requête doit suivre
   la syntaxe suivante ::
   
-    TODO : Quelle est la syntaxe ?
     contraintes :
       filtre sur les propriétés des items, indépendamment du support et du format
     opérateurs de comparaison: = < > <= >= ~= ! et leur négation
-    opérateurs logiques : "/" = "et", "|" = "ou"
+    opérateurs logiques : "/" est le "et", "|" est le "ou"
     priorité de gauche à droite.
     Le "!" et prioritaire sur tous les autres.
-    on veut mettre du sucre et des alias
-      -> où les configurer ?
-    on veut pouvoir acceder à un fichier sous la forme "/path/to/file"
+    Sucre syntaxique : on peut écrire une requête sous la forme "muse/showbiz/3".
+    C'est alors équivalent à "artist=muse/album=showbiz/track=3" où artist, album
+    et track sont définits dans la section "aliases" de la configuration.
+    
 
 Point d'accès
   Nom [a-zA-Z0-9[_-]] désignant un ensemble d'items ayant même support, même format et même url
@@ -163,7 +163,23 @@ Schéma ::
 Description du fichier de configuration
 =======================================
 
---------------
-TODO TODO TODO
---------------
+on a besoin d'une configuration :
+- du mapping des propriétés par module/site/point d'accès (passée en parametre
+  à l'instance de kalamar) ainsi que l'ordre par défaut.
+  p. ex. (dans monSite/kalamar.conf)::
+    
+    [aliases]
+    accesspt[accessor_map] : no=track/auteur=artist
+    accesspt[extractor_map] : album=album/blabla=bloblo
+    #l'ordre reflete l'ordre par défaut dans l'accesseur/extracteur
+    
+- de la priorité des propriétés générés par les accesseurs/exctracteurs
+- des point d'accès par site
+  p.ex. ::
+    
+    [access_points]
+    name[accessor] : accessor
+    name[extractor] : extractor
+    name[url] : url
+
 
