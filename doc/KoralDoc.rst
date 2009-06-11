@@ -20,9 +20,10 @@ Sort :
 ===
 API
 ===
-
-class site:
-  engines = {}
-  def __init__(…, path_to_root)
-
-appel : MonSite.engines["kid"](template_name, values, lang, modifiers)
+::
+  
+  class site:
+    engines = {}
+    def __init__(…, path_to_root)
+  
+  appel : MonSite.engines["kid"](template_name, values, lang, modifiers)

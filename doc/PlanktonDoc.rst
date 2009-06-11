@@ -18,8 +18,10 @@ Sort :
 API
 ===
 
-class site:
-  converters = {}
-  def __init__(…, path_to_root)
-
-appel : MonSite.converters[(mimetype_in, mimetype_out)](content_string, themes_dict)
+::
+  
+  class site:
+    converters = {}
+    def __init__(…, path_to_root)
+  
+  appel : MonSite.converters[(mimetype_in, mimetype_out)](content_string, themes_dict)
