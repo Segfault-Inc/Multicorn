@@ -128,7 +128,7 @@ servir plusieurs sites par un même processus.
 Schéma ::
 
   Kalamar
-   \_ KalamarSite
+   \_ Site
    | \_ __init__(path_to_config)
    | |_ open(request) -> returns one item or raise an exception if many.
    | |    Actually, it will never return an instance of Item but one of a
@@ -174,7 +174,7 @@ on a besoin d'une configuration :
     accesspt[extractor_map] : album=album/blabla=bloblo
     #l'ordre reflete l'ordre par défaut dans l'accesseur/extracteur
     
-- de la priorité des propriétés générés par les accesseurs/exctracteurs
+- de la priorité des propriétés générés par les accesseurs/extracteurs
 - des point d'accès par site
   p.ex. ::
     
