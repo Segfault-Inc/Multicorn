@@ -164,6 +164,7 @@ Description du fichier de configuration
 =======================================
 
 on a besoin d'une configuration :
+
 - du mapping des propriétés par module/site/point d'accès (passée en parametre
   à l'instance de kalamar) ainsi que l'ordre par défaut.
   p. ex. (dans monSite/kalamar.conf)::
