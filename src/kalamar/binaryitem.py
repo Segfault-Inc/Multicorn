@@ -15,11 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
 
-""" TODO : Put some doc here """
+"""TODO : put some doc here"""
 
-class AccessPoint:
-    __init__(self, name, accessor, extractor, url):
-        self.name = name
-        self.accessor = accessor
-        self.extractor = extractor
-        self.url = url
+from item import AtomItem
+
+class BinaryItem(AtomItem):
+    def _read_property(self, prop_name):
+        if prop_name == "_content":
+            self._open()
+            return self._stream.read()
+        else 
+            return None
+        
+    def serialize(self):
+        return self._stream

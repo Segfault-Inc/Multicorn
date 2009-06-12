@@ -37,17 +37,22 @@ class BaseItem:
     
     """
     
-    def __init__(self, access_point):
-        self.properties = {} # TODO : This should be an instance of a class
+    def __init__(self, access_point, accessor_properties, opener):
+        self._opener = opener
+        self._stream = None
+        self.properties = ItemProperties(self)
+        #TODO : this maynot have to be like that (priority of the properties
+        #from the accessor over the extractor ... or the contrary ?)
+        self.properties.update(accessor_properties)
         self.access_point = access_point
     
     def matches(self, prop_name, operator, value):
-        """matches(prop_name, operator, value) -> boolean
+        """Return boolean
         
         Check if the item's property <prop_name> matches <value> for the given
         operator.
         
-        Standards availables operators are :
+        Availables operators are :
         - "=" -> equal
         - "!=" -> different
         - ">" -> greater than (alphabetically)
@@ -86,29 +91,47 @@ class BaseItem:
             return prop_val <= value
           
         elif operator == "~=":
-            raise NotImplementedError # TODO
+            return re.match(value, prop_val)
           
         elif operator == "~!=" or operator == "!~=":
-            raise NotImplementedError # TODO
+            return re.match(value, prop_val)
           
         else
             raise OperatorNotAvailable(operator)
     
     class OperatorNotAvailable(Exception): pass
     
+    def serialize(self):
+        """Return the item serialized into a string"""
+        raise NotImplementedError("Abstract class")
+    
     def _convert_value_type(self, prop_name, value):
         """Do nothing by default"""
         return value
     
     def _get_encoding(self):
-        """_get_encoding() -> return a string
+        """Return a string
         
         Return the item's encoding, based on what the extractor can know from
         the items's data or, if unable to do so, on what is specified in the
         access_point.
         
         """
-        raise NotImplementedError # TODO
+        raise NotImplementedError("Abstract class")
+    
+    def _read_property(self, prop_name):
+        """Read a property form the item data and return a string
+        
+        If the property does not exist, returns None.
+        ***This method have to be overloaded***
+        
+        """
+        raise NotImplementedError("Abstract class")
+     
+     def _open(self):
+        """Open the stream when called for the first time."""
+        if not(self._stream):
+            self._stream = self._opener()
 
 class AtomItem(Item):
     """An indivisible block of data"""
@@ -121,22 +144,28 @@ class AtomItem(Item):
         """Alias for properties["_content"] = value"""
         self.properties["_content"] = value
 
-class CapsuleItem(Item):
+class CapsuleItem(Item, list):
     """An ordered list of Items (atoms or capsules)
     
     A capsule is a multiparts item
     
     """
+    pass
+
+class ItemProperties(dict):
+    """A class that acts like a defaultdict used as a properties storage.
     
-    def list(self):
-        """list() -> return list
-        
-        Returns a list of kalamar requests giving access to a single item.
-        
-        """
-        raise NotImplementedError # TODO
+    You have to give a reference to the item to the constructor.
     
-    def add_item(self, an_item):
-        """Add an item to the capsule"""
-        raise NotImplementedError # TODO
+    """
+    
+    def __init__(self, item):
+        self._item = item
+    
+    def __getitem__(self, key):
+        try:
+            res = super.__getitem__(key)
+        except KeyError:
+            res = _item._read_property(key)
+        return res
 

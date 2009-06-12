@@ -138,21 +138,19 @@ Schéma ::
    | |_ save(anItem) -> returns nothing
    | |_ url_to_request(url) -> returns a request giving access to the object
    |
-   |_ <abstract> Item
+   |_ <abstract> BaseItem
    | \_ prop: properties (a property called properties that looks like a defaultdic)
    | |_ access_point
-   | |_ extractor
-   | |_ accessor
    | |_ _get_encoding() -> return the item's encoding, based on what the extractor
    | |    can know from the items's data or, if unable to do so, on what is specified
    | |    in the access_point.
    | |_ matches(propertie, operator, value) -> return boolean
    |
-   |_ <abstract> Atom(Item)
+   |_ <abstract> AtomItem(Item)
    | \_ read()
-   | |_ write(object
+   | |_ write(object)
    |
-   |_ <abstract> Capsule(Item)
+   |_ <abstract> CapsuleItem(Item)
    | \_ list()
    | |_ add_item(anItem)
    |
@@ -179,7 +177,7 @@ on a besoin d'une configuration :
   p.ex. ::
     
     [access_points]
-    name[accessor] : accessor
+    #name[accessor] : accessor (déduit de l'url ?)
     name[extractor] : extractor
     name[url] : url
 
