@@ -21,6 +21,8 @@ Create one for each
 independent site with its own configuration.
 """
 
+from kalamar.storage import AccessPoint
+
 class Site(object):
     """Create a kalamar site from a configuration file."""
     
@@ -29,7 +31,11 @@ class Site(object):
     class ObjectDoesNotExist(NotOneObjectReturned): pass
     
     def __init__(self, config_filename=None):
-        pass
+        c = ConfigParser.RawConfigParser()
+        c.read(config_filename)
+        self.access_points = {}
+        for section in c.sections():
+            self.access_point[section] = AccessPoint(**dict(c.items(section)))
     
     def search(self, access_point, request):
         """List every item in access_point that match request"""

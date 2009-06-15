@@ -13,25 +13,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-TODO English doc
-"""
+from kalamar.storage.base import AccessPoint
 
-import re
-
-operators = {
-    '=':   lambda a, b: a == b,
-    '!=':  lambda a, b: a != b,
-    '>':   lambda a, b: a >  b,
-    '>=':  lambda a, b: a >= b,
-    '<':   lambda a, b: a <  b,
-    '<=':  lambda a, b: a <= b,
-    '~=':  lambda a, b: re.match(b, a),
-    '~!=': lambda a, b: not re.match(b, a),
-}
-
-class OperatorNotAvailable(object):
-    pass
 
