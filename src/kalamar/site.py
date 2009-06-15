@@ -21,6 +21,7 @@ Create one for each
 independent site with its own configuration.
 """
 
+import kalamar
 from kalamar.storage import AccessPoint
 
 class Site(object):
@@ -35,11 +36,38 @@ class Site(object):
         c.read(config_filename)
         self.access_points = {}
         for section in c.sections():
-            self.access_point[section] = AccessPoint(**dict(c.items(section)))
+            self.access_points[section] = AccessPoint(**dict(c.items(section)))
     
+    @staticmethod
+    def parse_request(request):
+        for part in request.split('/'):
+            if not part:
+                continue
+            for operator_str, operator_func in kalamar.operators.items():
+                try:
+                    pos = part.index(operator_str)
+                except ValueError:
+                    continue
+                else:
+                    yield (
+                        part[:pos], # property name
+                        operator_func,
+                        part[pos + len(operator_str)], # value
+                    )
+                    break
+            else:
+                # no operator found
+                yield (None, None, part)
+        
+                
     def search(self, access_point, request):
-        """List every item in access_point that match request"""
-        raise NotImplementedError # TODO
+        """List every item in ``access_point`` that match ``request``
+        
+        See (TODO: add a reference to the correct doc) for the syntax of the
+        ``request`` string
+        """
+        conditions = self.parse_request(request)
+        return self.access_points[access_point].search(conditions)
     
     def open(self, access_point, request):
         """Return the item in access_point that match request
