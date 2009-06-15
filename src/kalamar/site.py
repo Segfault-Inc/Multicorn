@@ -40,6 +40,15 @@ class Site(object):
     
     @staticmethod
     def parse_request(request):
+        """Convert a ``request`` string to (prop_name, operator, value) tuples
+        
+        >>> from kalamar import operators
+        >>> list(Site.parse_request('/1/b=2/c>=3/')) # doctest: +ELLIPSIS
+        ...                                  # doctest: +NORMALIZE_WHITESPACE
+        [(None, None,                               '1'), 
+         ('b', <function equals at 0x...>,            '2'), 
+         ('c', <function greater_or_equal at 0x...>,  '3')]
+        """
         for part in request.split('/'):
             if not part:
                 continue

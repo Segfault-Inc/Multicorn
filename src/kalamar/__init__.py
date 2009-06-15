@@ -21,15 +21,19 @@ TODO English doc
 
 import re
 
+def set_name(f, name):
+    f.__name__ = name
+    return f
+
 operators = {
-    '=':   lambda a, b: a == b,
-    '!=':  lambda a, b: a != b,
-    '>':   lambda a, b: a >  b,
-    '>=':  lambda a, b: a >= b,
-    '<':   lambda a, b: a <  b,
-    '<=':  lambda a, b: a <= b,
-    '~=':  lambda a, b: re.match(b, a),
-    '~!=': lambda a, b: not re.match(b, a),
+    '=':   set_name(lambda a, b: a == b, 'equals'),
+    '!=':  set_name(lambda a, b: a != b, 'not_equals'),
+    '>':   set_name(lambda a, b: a >  b, 'greater_than'),
+    '>=':  set_name(lambda a, b: a >= b, 'greater_or_equal'),
+    '<':   set_name(lambda a, b: a <  b, 'lesser_than'),
+    '<=':  set_name(lambda a, b: a <= b, 'lesser_or_equal'),
+    '~=':  set_name(lambda a, b: re.match(b, a), 're_match'),
+    '~!=': set_name(lambda a, b: not re.match(b, a), 're_not_match'),
 }
 
 class OperatorNotAvailable(object):
