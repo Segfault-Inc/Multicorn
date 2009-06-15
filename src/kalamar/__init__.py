@@ -18,3 +18,20 @@
 """
 TODO English doc
 """
+
+import re
+
+operators = {
+    '=':   lambda a, b: a == b,
+    '!=':  lambda a, b: a != b,
+    '>':   lambda a, b: a >  b,
+    '>=':  lambda a, b: a >= b,
+    '<':   lambda a, b: a <  b,
+    '<=':  lambda a, b: a <= b,
+    '~=':  lambda a, b: re.match(b, a),
+    '~!=': lambda a, b: not re.match(b, a),
+}
+
+class OperatorNotAvailable(object):
+    pass
+
