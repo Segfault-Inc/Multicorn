@@ -35,6 +35,7 @@ A parser class must implement the following methods :
 
 # This gotta change for a Storage class (undefined yet)
 #from accesspoint import AccessPoint
+import kalamar
 from kalamar import utils
 
 class Item(object):

@@ -169,18 +169,16 @@ Exemple (fichier `/etc/kalamar/MonSite.cfg`) ::
 
   [an_access_point]
   # alias=original/alias2=original2 ...
-  accessor_map : genre=path1/auteur=path2/album=path3/titre=path4
-  extractor_map : disque=diskno/no=bloblo
-  
+  accessor_aliases : genre=path1/auteur=path2/album=path3/titre=path4
+  parser_aliases : disque=diskno/no=bloblo
   # The * will be mapped to path1, path2 ...
-  path_pattern : */*/* - *.mp3
-  
+  filename_format : */*/* - *.mp3
   url : file:///var/local/music/
-  extractor : an_extractor_class
+  parser : a_format_name
   
   [another_access_point]
-  accessor_map : no=track/auteur=artist
-  extractor_map : album=album/blabla=bloblo
+  accessor_aliases : no=track/auteur=artist
+  parser_aliases : album=album/blabla=bloblo
   url : mysql://user:passwd@host:port/base/table
-  extractor : an_extractor_class
+  parser : another_format_name
 
