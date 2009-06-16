@@ -168,8 +168,13 @@ point d'accès. Pour chacun de ces point d'accès, on liste ses paramètres.
 Exemple (fichier `/etc/kalamar/MonSite.cfg`) ::
 
   [an_access_point]
-  accessor_map : no=track/auteur=artist
-  extractor_map : album=album/blabla=bloblo
+  # alias=original/alias2=original2 ...
+  accessor_map : genre=path1/auteur=path2/album=path3/titre=path4
+  extractor_map : disque=diskno/no=bloblo
+  
+  # The * will be mapped to path1, path2 ...
+  path_pattern : */*/* - *.mp3
+  
   url : file:///var/local/music/
   extractor : an_extractor_class
   

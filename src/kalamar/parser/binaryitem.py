@@ -13,23 +13,25 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Kalamar library. If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
 
 """TODO : put some doc here"""
 
-from item import AtomItem
+from kalamar.item import AtomItem
 
-class TextItem(AtomItem):
-    """A class to access the item's data as a unicode string."""
+class BinaryItem(AtomItem):
+    """A class giving the raw (binary) access to an item's data"""
+    
+    format = "binary"
     
     def _read_property_from_data(self, prop_name):
         if prop_name == "_content":
             self._open()
-            content =  self._stream.read()
-            return content.decode(self.encoding)
+            return self._stream.read()
         else:
             return None
         
     def serialize(self):
-        content = self.properties["_content"]
-        return content.encode(self.encoding)
+        return self.properties["_content"]
+
+del AtomItem

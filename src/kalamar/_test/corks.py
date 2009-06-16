@@ -17,6 +17,8 @@
 
 """Some corks used for testing."""
 
+import os
+
 class CorkItem:
     _properties_aliases = {"I am aliased" : "I am not aliased"}
     
@@ -37,6 +39,6 @@ class CorkAccessPoint:
     properties_aliases = {"I am aliased" : "I am not aliased"}
     default_encoding = "utf-8"
     
-    def CorkOpener():
-        return open("./toto")
-    
+def cork_opener():
+    return open(os.path.dirname(__file__) + "/toto")
+
