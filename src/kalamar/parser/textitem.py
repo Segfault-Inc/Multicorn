@@ -36,4 +36,3 @@ class TextItem(AtomItem):
         content = self.properties["_content"]
         return content.encode(self.encoding)
 
-del AtomItem

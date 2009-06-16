@@ -16,11 +16,7 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 
-def recursive_subclasses(class_):
-    yield class_
-    for sub in class_.__subclasses__():
-        for sub_sub in recursive_subclasses(sub):
-            yield sub_sub
+from kalamar import utils
 
 class AccessPoint(object):
     """
@@ -32,7 +28,7 @@ class AccessPoint(object):
             return super(AccessPoint, cls).__new__(cls)
         
         protocol = kwargs['url'].split(':')[0]
-        for subclass in recursive_subclasses(cls):
+        for subclass in utils.recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:
                 return subclass(**kwargs)
         raise ValueError('Unknown protocol: ' + protocol)

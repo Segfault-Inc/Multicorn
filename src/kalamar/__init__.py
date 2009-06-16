@@ -39,5 +39,4 @@ operators = {
 class OperatorNotAvailable(Exception):
     pass
 
-from kalamar.item import Item
-import kalamar.parser
+from item import Item
