@@ -45,7 +45,7 @@ def run_tests():
         with open(path) as f:
             todo = f.read().count('TODO')
         if todo:
-            print path, ':', todo, 'TODOs'
+            print path, ':', todo, 'TODO'+('s' if todo>1 else '')
     
     
 
