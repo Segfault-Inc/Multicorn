@@ -42,9 +42,11 @@ class AccessPoint(object):
         )
         
             
-    def search(self, test_func):
+    def search(self, conditions):
         """
-        List every item in entry_point that match test_func
+        List every item in that match ``conditions``
+        
+        ``conditions`` is a list as returned by kalamar.site.Site.parse_request
         """
         raise NotImplementedError # subclasses need to override this
 
