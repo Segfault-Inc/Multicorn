@@ -15,25 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-TODO English doc
-"""
-
-import re
-
-operators = {
-    '=':   lambda a, b: a == b,
-    '!=':  lambda a, b: a != b,
-    '>':   lambda a, b: a >  b,
-    '>=':  lambda a, b: a >= b,
-    '<':   lambda a, b: a <  b,
-    '<=':  lambda a, b: a <= b,
-    '~=':  lambda a, b: bool(re.match(b, a)),
-    '~!=': lambda a, b: not re.match(b, a),
-}
-
-class OperatorNotAvailable(Exception):
-    pass
-
-from kalamar.item import Item
-import kalamar.parser
+def recursive_subclasses(class_):
+    yield class_
+    for sub in class_.__subclasses__():
+        for sub_sub in recursive_subclasses(sub):
+            yield sub_sub

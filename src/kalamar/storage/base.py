@@ -28,13 +28,16 @@ class AccessPoint(object):
     """
     
     def __new__(cls, **kwargs):
+        if cls is not AccessPoint:
+            return super(AccessPoint, cls).__new__(cls)
+        
         protocol = kwargs['url'].split(':')[0]
         for subclass in recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:
                 return subclass(**kwargs)
         raise ValueError('Unknown protocol: ' + protocol)
     
-    def __init__(self, config):
+    def __init__(self, **config):
         self.config = config
         self.default_encoding = config.get('default_encoding', 'utf-8')
         self.properties_aliases = dict(

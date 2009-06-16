@@ -13,27 +13,27 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar library. If not, see <http://www.gnu.org/licenses/>.
 
-"""
-TODO English doc
-"""
+"""TODO : put some doc here"""
 
-import re
+from kalamar.item import AtomItem
 
-operators = {
-    '=':   lambda a, b: a == b,
-    '!=':  lambda a, b: a != b,
-    '>':   lambda a, b: a >  b,
-    '>=':  lambda a, b: a >= b,
-    '<':   lambda a, b: a <  b,
-    '<=':  lambda a, b: a <= b,
-    '~=':  lambda a, b: bool(re.match(b, a)),
-    '~!=': lambda a, b: not re.match(b, a),
-}
+class TextItem(AtomItem):
+    """A class to access the item's data as a unicode string."""
+    
+    format = "text"
+    
+    def _read_property_from_data(self, prop_name):
+        if prop_name == "_content":
+            self._open()
+            content =  self._stream.read()
+            return content.decode(self.encoding)
+        else:
+            return None
+        
+    def serialize(self):
+        content = self.properties["_content"]
+        return content.encode(self.encoding)
 
-class OperatorNotAvailable(Exception):
-    pass
-
-from kalamar.item import Item
-import kalamar.parser
+del AtomItem

@@ -15,25 +15,18 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-TODO English doc
-"""
+import os
 
-import re
+dir = os.path.dirname(__file__)
+ls = [ os.path.splitext(name)[0]
+    for name in os.listdir(dir)
+    if os.path.isfile(dir+os.path.sep+name)
+    and name[0] != "_"
+    and os.path.splitext(name)[1] == ".py"]
 
-operators = {
-    '=':   lambda a, b: a == b,
-    '!=':  lambda a, b: a != b,
-    '>':   lambda a, b: a >  b,
-    '>=':  lambda a, b: a >= b,
-    '<':   lambda a, b: a <  b,
-    '<=':  lambda a, b: a <= b,
-    '~=':  lambda a, b: bool(re.match(b, a)),
-    '~!=': lambda a, b: not re.match(b, a),
-}
+for name in ls:
+    __import__(name, globals(), locals())
 
-class OperatorNotAvailable(Exception):
-    pass
-
-from kalamar.item import Item
-import kalamar.parser
+del dir
+del os
+del ls
