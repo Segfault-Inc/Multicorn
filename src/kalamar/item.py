@@ -17,9 +17,19 @@
 
 """This module contains base classes to make kalamar items.
 
-You probably want to inherit from one of the followings :
+You probably want to use the Item.get_item_parser method to get the parser
+you need.
+You may also want to inherit from one of the followings so you can write your
+own parsers :
  - CapsuleItem
  - AtomItem
+
+Any item parser class has to have a static attribute "format" set to the
+format parsed. Else this class will be hidden to get_item_parser.
+
+A parser class must implement the following methods :
+ - _read_property_from_data(self, prop_name)
+ - serialize(self)
 
 """
 
@@ -41,14 +51,7 @@ class Item(object):
 
     """
     # This class is abstract and used by AtomItem and CapsuleItem, which are
-    #inherited by the parsers..
-    #
-    # Any item parser class has to have a static attribute "format" set to the
-    #format parsed. Else this class will be hidden to get_item_parser.
-    #
-    # A parser class must implement the following methods :
-    # - _read_property_from_data(self, prop_name)
-    # - serialize(self)
+    #inherited by the parsers.
     
     @staticmethod
     def get_item_parser(format, *args, **kwargs):
