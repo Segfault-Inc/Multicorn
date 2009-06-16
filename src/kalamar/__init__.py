@@ -21,19 +21,26 @@ TODO English doc
 
 import re
 
-def set_name(f, name):
-    f.__name__ = name
-    return f
+def           equals(a, b): return a == b
+def       not_equals(a, b): return a != b
+def     greater_than(a, b): return a >  b
+def greater_or_equal(a, b): return a >= b
+def      lesser_than(a, b): return a <  b
+def  lesser_or_equal(a, b): return a <= b
+def         re_match(a, b): return bool(re.match(b, a))
+def     re_not_match(a, b): return  not re.match(b, a)
+
+
 
 operators = {
-    '=':   set_name(lambda a, b: a == b, 'equals'),
-    '!=':  set_name(lambda a, b: a != b, 'not_equals'),
-    '>':   set_name(lambda a, b: a >  b, 'greater_than'),
-    '>=':  set_name(lambda a, b: a >= b, 'greater_or_equal'),
-    '<':   set_name(lambda a, b: a <  b, 'lesser_than'),
-    '<=':  set_name(lambda a, b: a <= b, 'lesser_or_equal'),
-    '~=':  set_name(lambda a, b: re.match(b, a), 're_match'),
-    '~!=': set_name(lambda a, b: not re.match(b, a), 're_not_match'),
+    '=':   equals,
+    '!=':  not_equals,
+    '>':   greater_than,
+    '>=':  greater_or_equal,
+    '<':   lesser_than,
+    '<=':  lesser_or_equal,
+    '~=':  re_match,
+    '~!=': re_not_match,
 }
 
 class OperatorNotAvailable(Exception):
