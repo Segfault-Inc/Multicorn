@@ -15,19 +15,28 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
 
-"""TODO : put some doc here"""
+"""Some corks used for testing."""
 
-from item import AtomItem
-
-class BinaryItem(AtomItem):
-    """A class giving the raw (binary) access to an item's data"""
+class CorkItem:
+    _properties_aliases = {"I am aliased" : "I am not aliased"}
     
-    def _read_property_from_data(self, prop_name):
-        if prop_name == "_content":
-            self._open()
-            return self._stream.read()
+    def _read_property_from_data(self, key):
+        if key == "I am not aliased":
+            return "I am not aliased"
+        elif key == "cork_prop":
+            return "I am a cork prop"
+        elif key == "a":
+            return "item's a"
+        elif key == "b":
+            return "item's b"
         else:
             return None
-        
-    def serialize(self):
-        return self.properties["_content"]
+
+class CorkAccessPoint:
+    
+    properties_aliases = {"I am aliased" : "I am not aliased"}
+    default_encoding = "utf-8"
+    
+    def CorkOpener():
+        return open("./toto")
+    

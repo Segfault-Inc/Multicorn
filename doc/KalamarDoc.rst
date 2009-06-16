@@ -47,8 +47,7 @@ Une requête se compose de plusieurs parties :
   (sait-on jamais).
 - Deuxièmement, la suite de propriétés sur lesquelles on applique un filtre. On
   veut par exemple les items dont la propriété `name` est « toto » et
-  l'attribut `parent_directory` est « tata ». Nous parlerons plus loin des
-  syntaxes raccourcies.
+  l'attribut `parent_directory` est « tata ».
 
 On voit facilement qu'une requête peut, selon les cas, renvoyer zéro, un ou
 plusieurs items. On peut cependant s'assurer qu'une requête renvoie un et un
@@ -94,7 +93,8 @@ Extracteur
 
 Propriété
   Couple (nom,objet) où « nom » est une chaine de caractères unicode et
-  « objet » est un objet python.
+  « objet » est un objet python.Les propriétés définies par l'accesseur sont
+  prioritaires sur celle définies par l'extracteur.
   
 Requête
   Chaîne de caractères donnée au moteur kalamar permettant de séléctionner des
@@ -113,8 +113,9 @@ Requête
     
 
 Point d'accès
-  Nom [a-zA-Z0-9[_-]] désignant un ensemble d'items ayant même support, même format et même url
-  de base. De plus, il a une option spécifiant l'encodage de caractère par défaut.
+  Nom [a-zA-Z0-9[_-]] désignant un ensemble d'items ayant même support, même
+  format et même url de base. De plus, il a une option spécifiant l'encodage de
+  caractère par défaut.
 
 ====================
 Description de l'API
@@ -161,24 +162,20 @@ Schéma ::
 Description du fichier de configuration
 =======================================
 
-on a besoin d'une configuration :
+Il y a un fichier de configuration par site. Ce fichier contient une section par
+point d'accès. Pour chacun de ces point d'accès, on liste ses paramètres.
 
-- du mapping des propriétés par module/site/point d'accès (passée en parametre
-  à l'instance de kalamar) ainsi que l'ordre par défaut.
-  p. ex. (dans monSite/kalamar.conf)::
-    
-    [aliases]
-    accesspt[accessor_map] : no=track/auteur=artist
-    accesspt[extractor_map] : album=album/blabla=bloblo
-    #l'ordre reflete l'ordre par défaut dans l'accesseur/extracteur
-    
-- de la priorité des propriétés générés par les accesseurs/extracteurs
-- des point d'accès par site
-  p.ex. ::
-    
-    [access_points]
-    #name[accessor] : accessor (déduit de l'url ?)
-    name[extractor] : extractor
-    name[url] : url
+Exemple (fichier `/etc/kalamar/MonSite.cfg`) ::
 
+  [an_access_point]
+  accessor_map : no=track/auteur=artist
+  extractor_map : album=album/blabla=bloblo
+  url : file:///var/local/music/
+  extractor : an_extractor_class
+  
+  [another_access_point]
+  accessor_map : no=track/auteur=artist
+  extractor_map : album=album/blabla=bloblo
+  url : mysql://user:passwd@host:port/base/table
+  extractor : an_extractor_class
 
