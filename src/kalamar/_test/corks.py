@@ -20,23 +20,20 @@
 import os
 
 class CorkItem:
-    _properties_aliases = {"I am aliased" : "I am not aliased"}
     
     def _read_property_from_data(self, key):
-        if key == "I am not aliased":
-            return "I am not aliased"
-        elif key == "cork_prop":
-            return "I am a cork prop"
-        elif key == "a":
-            return "item's a"
-        elif key == "b":
-            return "item's b"
+        dico = {"I am not aliased" : "I am not aliased",
+                "cork_prop" : "I am a cork prop",
+                "a" : "item's a",
+                "b" : "item's b"}
+        if key in dico.keys():
+            self.properties.update(dico)
         else:
-            return None
+            self.properties[key] = None
 
 class CorkAccessPoint:
     
-    properties_aliases = {"I am aliased" : "I am not aliased"}
+    parser_aliases = {"I am aliased" : "I am not aliased"}
     default_encoding = "utf-8"
     
 def cork_opener():

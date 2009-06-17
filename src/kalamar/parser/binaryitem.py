@@ -27,9 +27,9 @@ class BinaryItem(AtomItem):
     def _read_property_from_data(self, prop_name):
         if prop_name == "_content":
             self._open()
-            return self._stream.read()
+            properties["_content"] = self._stream.read()
         else:
-            return None
+            properties[prop_name] = None
         
     def serialize(self):
         return self.properties["_content"]

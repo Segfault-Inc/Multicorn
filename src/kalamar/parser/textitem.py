@@ -28,9 +28,9 @@ class TextItem(AtomItem):
         if prop_name == "_content":
             self._open()
             content =  self._stream.read()
-            return content.decode(self.encoding)
+            properties["_content"] = content.decode(self.encoding)
         else:
-            return None
+            properties[prop_name] = None
         
     def serialize(self):
         content = self.properties["_content"]

@@ -27,19 +27,21 @@ class TestItem(AtomItem):
     def __init__(self, access_point, opener, accessor_properties={}):
         super(TestItem, self).__init__(access_point, opener,
                                                         accessor_properties={})
-        self._props = None
     
     def _read_property_from_data(self, prop_name):
-        if self._props is None:
-            from collections import defaultdict
-            _props = defaultdict(lambda : None)
+        aliased = [self.aliases_rev.get(name, name)
+                   for name in ["album", "title"]]
+        if key in aliased + ["_content"]:
             self._open()
             data = self._stream.read()
-            self._props.update(dict(zip(["album", "title"],
-                                        data.split("\n",1))))
-        return self._props[prop_name]
+            self.properties["_content"] = data
+            self.properties.update(dict(zip(aliased, data.split("\n",1))))
+        else:
+            self.properties[key] = None
         
     def serialize(self):
-        return self.properties["_content"]
+        album = self.properties[self.aliases_rev["album"]]
+        title = self.properties[self.aliases_rev["title"]]
+        return album+"\n"+title
 
 del AtomItem

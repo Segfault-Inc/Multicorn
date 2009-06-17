@@ -68,6 +68,8 @@ class Item(object):
         self._stream = None
         self.properties = ItemProperties(self, accessor_properties)
         self._access_point = access_point
+        self.aliases = self._access_point.parser_aliases
+        self.aliases_rev = dict((b,a) for (a,b) in enumerate(self.aliases))
     
     @staticmethod
     def get_item_parser(format, *args, **kwargs):
@@ -96,6 +98,7 @@ class Item(object):
         
         raise ValueError('Unknown format: ' + format)
     
+    # TODO: TO BE DELETED ??????????
     def matches(self, prop_name, operator, value):
         """Return boolean
 
@@ -142,16 +145,11 @@ class Item(object):
     def serialize(self):
         """Return the item serialized into a string"""
         raise NotImplementedError("Abstract class")
-
+    
+    # TODO: TO BE DELETED ??????????
     def _convert_value_type(self, prop_name, value):
         """Do nothing by default"""
         return value
-    
-    @property
-    def properties_aliases():
-        """This is meant to hide the access_point to the ItemProperties class.
-        """
-        return access_point.properties_aliases
 
     @property
     def encoding(self):
@@ -165,10 +163,14 @@ class Item(object):
         return access_point.default_encoding
 
     def _read_property_from_data(self, prop_name):
-        """Read a property form the item data and return a string
-
-        If the property does not exist, returns None.
-        ***This method have to be overloaded***
+        """Update at least ``prop_name'' in the properties.
+        
+        ***This method have to be overidden***
+        
+        If the property does not exist, it must be set to None.
+        This method must manage aliases with self.aliases and self aliases_rev
+        dictionnaries when updating properties.
+        This method may update many properties at once for performance purpose.
 
         """
         raise NotImplementedError("Abstract class")
@@ -218,16 +220,18 @@ class CapsuleItem(Item, list):
     pass
 
 class ItemProperties(dict):
-    """A class that acts like a defaultdict used as a properties storage.
+    """Acts like a defaultdict. Used as a properties storage.
 
     You have to give a reference to the item to the constructor.
     You can force some properties to a value using the forced_values argument.
     
+    This is for testing
     >>> from _test.corks import CorkItem
     >>> item = CorkItem()
     >>> prop = ItemProperties(item, {"a" : "A", "b" : "B"})
+    >>> item.properties = prop
     
-    It works as a dictionnary :
+    ItemProperties works as a dictionnary :
     >>> prop["cork_prop"]
     'I am a cork prop'
     
@@ -235,14 +239,12 @@ class ItemProperties(dict):
     >>> prop["b"]
     'B'
     
+    But the original value is not changed
+    >>> super(ItemProperties, prop).__getitem__("b")
+    "item's b"
+    
     Return None if the key does not exist
     >>> prop["I do not exist"]
-    
-    If the item has aliases, they are resolved.
-    >>> prop["I am aliased"]
-    'I am not aliased'
-    >>> prop ["I am not aliased"]
-    'I am not aliased'
 
     """
 
@@ -252,16 +254,18 @@ class ItemProperties(dict):
 
     def __getitem__(self, key):
         try:
-            # forced_values are already aliased
             res = self.forced_values[key]
         except KeyError:
             try:
-                res = super(ItemProperties, self).__getitem__(self._alias(key))
+                res = super(ItemProperties, self).__getitem__(key)
             except KeyError:
-                self[self._alias(key)] = self._item._read_property_from_data(
-                                                            self._alias(key))
-                res = super(ItemProperties, self).__getitem__(self._alias(key))
+                self._item._read_property_from_data(key)
+                res = super(ItemProperties, self).__getitem__(key)
         return res
     
-    def _alias(self, prop_name):
-        return self._item._properties_aliases.get(prop_name, prop_name)
+    def __setitem__(self, key, value):
+        if key in self.forced_values.keys():
+            self.forced_values[key] = value
+        else:
+            super(ItemProperties, self).__setitem__(key, value)
+
