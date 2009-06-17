@@ -36,11 +36,13 @@ class AccessPoint(object):
     def __init__(self, **config):
         self.config = config
         self.default_encoding = config.get('default_encoding', 'utf-8')
-        self.properties_aliases = dict(
-            part.split('=', 1) for part in 
-            config.get('properties_aliases', '').split('/')
-        )
-        
+        for prop in 'accessor_aliases', 'parser_aliases':
+            setattr(self, prop, dict(
+                part.split('=', 1)
+                for part in config.get(prop, '').split('/') if part
+            ))
+        self.url = config['url']
+        self.basedir = config['basedir']
             
     def search(self, conditions):
         """
