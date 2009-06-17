@@ -23,14 +23,18 @@ class AccessPoint(object):
     Abstact class for every storage backend
     """
     
-    def __new__(cls, **kwargs):
+    @classmethod
+    def from_url(cls, **config):
+        """
+        Return the an instance of the correct class according to the URL
+        """
         if cls is not AccessPoint:
             return super(AccessPoint, cls).__new__(cls)
         
-        protocol = kwargs['url'].split(':')[0]
+        protocol = config['url'].split(':', 1)[0]
         for subclass in utils.recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:
-                return subclass(**kwargs)
+                return subclass(**config)
         raise ValueError('Unknown protocol: ' + protocol)
     
     def __init__(self, **config):

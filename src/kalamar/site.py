@@ -38,9 +38,8 @@ class Site(object):
         basedir = os.path.dirname(config_filename)
         self.access_points = {}
         for section in c.sections():
-            self.access_points[section] = AccessPoint(
-                basedir=basedir, **dict(c.items(section)
-            ))
+            kwargs = dict(c.items(section), basedir=basedir)
+            self.access_points[section] = AccessPoint.from_url(**kwargs)
     
     @staticmethod
     def parse_request(request):
