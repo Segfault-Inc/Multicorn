@@ -22,13 +22,16 @@ from ..item import ItemProperties
 
 class CorkItem:
     
+    aliases = {"I am aliased" : "I am not aliased"}
+    
     def __init__(self,accessor_properties={}):
         self.properties = ItemProperties(self, accessor_properties)
     def _parse_data(self):
-        self.properties.update({"I am not aliased" : "I am not aliased",
-                               "cork_prop" : "I am a cork prop",
-                               "a" : "item's a",
-                               "b" : "item's b"})
+        self.properties.update(
+            {"I am not aliased" : "value of: I am not aliased",
+            "cork_prop" : "I am a cork prop",
+            "a" : "item's a",
+            "b" : "item's b"})
 
 class CorkAccessPoint:
     
