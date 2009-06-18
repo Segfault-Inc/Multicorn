@@ -24,7 +24,6 @@ class VorbisItem(AtomItem):
     """The Ogg/Vorbis parser."""
     
     format = "audio_vorbis"
-    keys = ["artist", "album", "title", "length", "_content"]
     
     def _custom_parse_data(self):
         from ogg import vorbis
@@ -39,6 +38,5 @@ class VorbisItem(AtomItem):
     
     def _serialize(self, properties):
         return self.properties["_content"]
-        
     
 del AtomItem

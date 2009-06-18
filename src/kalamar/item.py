@@ -31,6 +31,8 @@ A parser class must implement the following methods :
  - _custom_parse_data(self)
  - _serialize(self, properties)
 
+and have a class attribute ``format'' which is name of the parsed format.
+
 """
 
 from kalamar import utils
@@ -42,13 +44,15 @@ class Item(object):
     parser you want.
     Useful attributes :
      - properties : acts like a defaultdict. The keys are strings and the values
-       are python objects. Default value is None.
+       are lists of python objects. Default value is [].
      - _access_point : where, in kalamar, is stored the item. It is an instance
        of AccessPoint.
 
     """
     # This class is abstract and used by AtomItem and CapsuleItem, which are
     #inherited by the parsers.
+    
+    format = None
 
     def __init__(self, access_point, opener, accessor_properties={}):
         """Return an instance of Item
@@ -183,10 +187,7 @@ class Item(object):
         """Call ``_custom_parse_data'' and do some stuff to the result."""
         self._open()
         props = self._custom_parse_data()
-        aliased = dict((self.aliases_rev.get(name,name), props[name])
-                       for name in props.keys())
-        print aliased
-        self.properties.update(aliased)
+        self.properties.update(props)
 
     def _open(self):
         """Open the stream when called for the first time.
@@ -257,6 +258,12 @@ class ItemProperties(dict):
     
     Return None if the key does not exist
     >>> prop["I do not exist"]
+    
+    CorkItem has an alias "I am aliased" -> "I am not aliased"
+    >>> prop["I am aliased"]
+    'value of: I am not aliased'
+    >>> prop["I am not aliased"]
+    'value of: I am not aliased'
 
     """
     
@@ -269,6 +276,8 @@ class ItemProperties(dict):
         if not self._loaded:
             self._item._parse_data()
             self._loaded = True
+        # aliasing
+        key = self._item.aliases.get(key,key)
         try:
             res = self.forced_values[key]
         except KeyError:
@@ -279,6 +288,8 @@ class ItemProperties(dict):
         return res
     
     def __setitem__(self, key, value):
+        # aliasing
+        key = self._item.aliases.get(key,key)
         if key in self.forced_values.keys():
             self.forced_values[key] = value
         else:

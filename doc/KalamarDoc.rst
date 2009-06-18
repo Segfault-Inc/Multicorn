@@ -26,9 +26,9 @@ leur accesseur.
 
 - Les atomes sont des éléments indivisibles d'information. Ils ne possèdent que
   des propriétés et un contenu (qui est en fait une propriété particulière).
-- Les capsules sont des listes ordonnées d'items (atomes ou capsules). Elles possèdent des
-  propriétés mais pas de contenu (on peut tricher et leur en faire contenir si
-  on veut programmer salement, c'est à vos risques et périls…).
+- Les capsules sont des listes ordonnées d'items (atomes ou capsules). Elles
+  possèdent des propriétés mais pas de contenu (on peut tricher et leur en faire
+  contenir si on veut programmer salement, c'est à vos risques et périls…).
 
 Ainsi, un atome image et une capsule image ne sont pas le même format (et
 n'auront pas le même nom, p.ex. ImageAtom et ImageCapsule). En effet, l'atome
@@ -46,8 +46,8 @@ Une requête se compose de plusieurs parties :
   atomes (un fichier vidéo), des capsules (composées d'images) ou du texte brut
   (sait-on jamais).
 - Deuxièmement, la suite de propriétés sur lesquelles on applique un filtre. On
-  veut par exemple les items dont la propriété `name` est « toto » et
-  l'attribut `parent_directory` est « tata ».
+  veut par exemple les items dont la première valeur de la propriété `name` est
+  « toto » et la première valeur de l'attribut `parent_directory` est « tata ».
 
 On voit facilement qu'une requête peut, selon les cas, renvoyer zéro, un ou
 plusieurs items. On peut cependant s'assurer qu'une requête renvoie un et un
@@ -92,24 +92,30 @@ Extracteur
   données brutes stockées sur le support.
 
 Propriété
-  Couple (nom,objet) où « nom » est une chaine de caractères unicode et
-  « objet » est un objet python.Les propriétés définies par l'accesseur sont
-  prioritaires sur celle définies par l'extracteur.
+  Couple (nom,liste) où « nom » est une chaine de caractères unicode et
+  « liste » est une liste d'objet python.Les propriétés définies par l'accesseur
+  sont prioritaires sur celle définies par l'extracteur.
   
 Requête
   Chaîne de caractères donnée au moteur kalamar permettant de séléctionner des
   items parmis ceux accessibles dans un point d'accès. Une requête doit suivre
-  la syntaxe suivante ::
+  la syntaxe suivante :
   
-    contraintes :
-      filtre sur les propriétés des items, indépendamment du support et du format
-    opérateurs de comparaison: = < > <= >= ~= ! et leur négation
-    opérateurs logiques : "/" est le "et", "|" est le "ou"
-    priorité de gauche à droite.
-    Le "!" et prioritaire sur tous les autres.
-    Sucre syntaxique : on peut écrire une requête sous la forme "muse/showbiz/3".
-    C'est alors équivalent à "artist=muse/album=showbiz/track=3" où artist, album
-    et track sont définits dans la section "aliases" de la configuration.
+  contraintes :
+    
+  - filtre sur les propriétés des items, indépendamment du support et du format
+  - opérateurs de comparaison: = < > <= >= ~= ! et leur négation : s'appliquent
+    sur la première valeur de la propriété.
+  - opérateurs logiques "et" noté "/" dans la requête. le "ou" se fait en
+    lançant plusieurs requetes.
+  - priorité de gauche à droite.
+  - Le "!" et prioritaire sur tous les autres.
+  - Sucre syntaxique : on peut écrire une requête sous la forme
+    "muse/showbiz/3". C'est alors équivalent à
+    "artist=muse/album=showbiz/track=3" où artist, album et track sont définits
+    dans la section "aliases" de la configuration.
+  - si les alias ne sont pas définit dans la config, l'ordre par défaut de
+    l'accesseur est pris (puis de l'extracteur).
     
 
 Point d'accès
