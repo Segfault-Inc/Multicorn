@@ -41,18 +41,49 @@ class AccessPoint(object):
         self.config = config
         self.default_encoding = config.get('default_encoding', 'utf-8')
         for prop in 'accessor_aliases', 'parser_aliases':
-            setattr(self, prop, dict(
-                part.split('=', 1)
-                for part in config.get(prop, '').split('/') if part
-            ))
+            setattr(self, prop, [
+                tuple(part.split('=', 1))
+                for part in config.get(prop, '').split('/') if '=' in part
+            ])
+        self.property_names = [name for name, alias in self.accessor_aliases]
         self.url = config['url']
-        self.basedir = config['basedir']
+        self.basedir = config.get('basedir', '')
             
+    def expand_syntaxic_sugar(self, conditions):
+        """Expand syntaxic sugar in requests
+        
+        ``conditions`` is a list of (property_name, operator, value) tuples
+        as returned by kalamar.site.Site.parse_request
+        
+        If ``operator`` is None, set it to ``kalamar.utils.equals``.
+        If ``property_name`` is None in the n-th condition, set it to 
+        the n-th property of this access point.
+        
+        >>> ap = AccessPoint(url='', accessor_aliases='a=p1/b=p2/c=p3')
+        >>> list(ap.expand_syntaxic_sugar([
+        ...     (None, None,                  1), 
+        ...     (None, utils.greater_than,    2), 
+        ...     ('c', None,                   3), 
+        ...     ('d', utils.greater_or_equal, 4)
+        ... ])) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+        [('a', <function equals at 0x...>,           1), 
+         ('b', <function greater_than at 0x...>,     2), 
+         ('c', <function equals at 0x...>,           3), 
+         ('d', <function greater_or_equal at 0x...>, 4)]
+        """
+        for n, (property_name, operator, value) in enumerate(conditions):
+            if operator is None:
+                operator = utils.equals
+            if property_name is None:
+                property_name = self.property_names[n]          
+            yield property_name, operator, value
+    
     def search(self, conditions):
         """
         List every item in that match ``conditions``
         
-        ``conditions`` is a list as returned by kalamar.site.Site.parse_request
+        ``conditions`` is a list of (property_name, operator, value) tuples
+        as returned by kalamar.site.Site.parse_request
         """
         raise NotImplementedError # subclasses need to override this
 
