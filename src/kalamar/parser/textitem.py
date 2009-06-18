@@ -27,10 +27,10 @@ class TextItem(AtomItem):
     def _custom_parse_data(self):
         content =  self._stream.read()
         props = {}
-        props["_content"] = content.decode(self.encoding)
+        props["_content"] = [content.decode(self.encoding)]
         return props
         
     def _serialize(self, properties):
-        content = properties["_content"]
+        content = properties["_content"][0]
         return content.encode(self.encoding)
 
