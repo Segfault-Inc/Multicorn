@@ -13,20 +13,11 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 
-dir = os.path.dirname(__file__)
-ls = [ os.path.splitext(name)[0]
-    for name in os.listdir(dir)
-    if os.path.isfile(dir+os.path.sep+name)
-    and name[0] != "_"
-    and os.path.splitext(name)[1] == ".py"]
+for filename in os.listdir(os.path.dirname(__file__)):
+    if filename.endswith('.py') and not filename.startswith('_'):
+        __import__(__name__ + '.' + filename[:-3])
 
-for name in ls:
-    __import__(name, globals(), locals())
-
-del dir
-del os
-del ls

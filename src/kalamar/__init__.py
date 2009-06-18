@@ -19,31 +19,4 @@
 TODO English doc
 """
 
-import re
-
-def           equals(a, b): return a == b
-def       not_equals(a, b): return a != b
-def     greater_than(a, b): return a >  b
-def greater_or_equal(a, b): return a >= b
-def      lesser_than(a, b): return a <  b
-def  lesser_or_equal(a, b): return a <= b
-def         re_match(a, b): return bool(re.match(b, a))
-def     re_not_match(a, b): return  not re.match(b, a)
-
-
-
-operators = {
-    '=':   equals,
-    '!=':  not_equals,
-    '>':   greater_than,
-    '>=':  greater_or_equal,
-    '<':   lesser_than,
-    '<=':  lesser_or_equal,
-    '~=':  re_match,
-    '~!=': re_not_match,
-}
-
-class OperatorNotAvailable(Exception):
-    pass
-
 from item import Item

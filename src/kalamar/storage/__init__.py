@@ -17,4 +17,8 @@
 
 from kalamar.storage.base import AccessPoint
 
+import os
 
+for filename in os.listdir(os.path.dirname(__file__)):
+    if filename.endswith('.py') and not filename.startswith('_'):
+        __import__(__name__ + '.' + filename[:-3])

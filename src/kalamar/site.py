@@ -21,7 +21,9 @@ Create one for each
 independent site with its own configuration.
 """
 
+import os
 import kalamar
+from kalamar import utils
 from kalamar.storage import AccessPoint
 
 class Site(object):
@@ -34,15 +36,16 @@ class Site(object):
     def __init__(self, config_filename=None):
         c = ConfigParser.RawConfigParser()
         c.read(config_filename)
+        basedir = os.path.dirname(config_filename)
         self.access_points = {}
         for section in c.sections():
-            self.access_points[section] = AccessPoint(**dict(c.items(section)))
+            kwargs = dict(c.items(section), basedir=basedir)
+            self.access_points[section] = AccessPoint.from_url(**kwargs)
     
     @staticmethod
     def parse_request(request):
         """Convert a ``request`` string to (prop_name, operator, value) tuples
         
-        >>> from kalamar import operators
         >>> list(Site.parse_request('/1/b=2/c>=3/')) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         [(None, None,                               '1'), 
@@ -52,7 +55,7 @@ class Site(object):
         for part in request.split('/'):
             if not part:
                 continue
-            for operator_str, operator_func in kalamar.operators.items():
+            for operator_str, operator_func in utils.operators.items():
                 try:
                     pos = part.index(operator_str)
                 except ValueError:

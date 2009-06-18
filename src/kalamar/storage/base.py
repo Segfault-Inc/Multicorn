@@ -23,28 +23,36 @@ class AccessPoint(object):
     Abstact class for every storage backend
     """
     
-    def __new__(cls, **kwargs):
+    @classmethod
+    def from_url(cls, **config):
+        """
+        Return the an instance of the correct class according to the URL
+        """
         if cls is not AccessPoint:
             return super(AccessPoint, cls).__new__(cls)
         
-        protocol = kwargs['url'].split(':')[0]
+        protocol = config['url'].split(':', 1)[0]
         for subclass in utils.recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:
-                return subclass(**kwargs)
+                return subclass(**config)
         raise ValueError('Unknown protocol: ' + protocol)
     
     def __init__(self, **config):
         self.config = config
         self.default_encoding = config.get('default_encoding', 'utf-8')
-        self.properties_aliases = dict(
-            part.split('=', 1) for part in 
-            config.get('properties_aliases', '').split('/')
-        )
-        
+        for prop in 'accessor_aliases', 'parser_aliases':
+            setattr(self, prop, dict(
+                part.split('=', 1)
+                for part in config.get(prop, '').split('/') if part
+            ))
+        self.url = config['url']
+        self.basedir = config['basedir']
             
-    def search(self, test_func):
+    def search(self, conditions):
         """
-        List every item in entry_point that match test_func
+        List every item in that match ``conditions``
+        
+        ``conditions`` is a list as returned by kalamar.site.Site.parse_request
         """
         raise NotImplementedError # subclasses need to override this
 

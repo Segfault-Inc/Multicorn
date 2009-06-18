@@ -18,38 +18,50 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import with_statement
+from itertools import chain, imap
 import os
 import doctest
 from werkzeug import script, import_string
 
 SRC_DIR = os.path.dirname(os.path.dirname(__file__))
+MODULES = 'kalamar', 'kraken', 'koral'
 
-def run_tests(base=SRC_DIR, module=()):
+def list_modules(module, base=SRC_DIR):
+    if isinstance(module, basestring):
+        module = (module,)
     dirname = os.path.join(base, *module)
     for basename in os.listdir(dirname):
         path = os.path.join(dirname, basename)
-        if os.path.isdir(path) and \
-           os.path.isfile(os.path.join(path, '__init__.py')):
-            submodule = module + (basename,)
-            path = os.path.join(path, '__init__.py')
-            run_tests(base, submodule)
-        elif basename.endswith('.py') and basename != '__init__.py':
-            submodule = module + (basename[:-3],)            
-        else:
-            continue
-        doctest.testmod(import_string('.'.join(submodule)))
-        with open(path) as f:
-            todo = f.read().count('TODO')
-        if todo:
-            print path, ':', todo, 'TODO'+('s' if todo>1 else '')
-    
-    
+        if os.path.isdir(path):
+            for i in list_modules(module + (basename,), base):
+                yield i
+        elif basename.endswith('.py'):
+            if basename == '__init__.py':
+                yield module, path
+            else:
+                yield module + (basename[:-3],), path
 
-def run(site):
-    action_runserver = script.make_runserver(site, use_reloader=True,
+def run_tests():
+    doctest_count = 0
+    for name, path in chain(*imap(list_modules, MODULES)):
+        fails, count = doctest.testmod(import_string('.'.join(name)))
+        doctest_count += count
+        # Write 'TO' 'DO' to prevent this script from finding itself
+        with open(path) as f:
+            todo = f.read().count('TO' 'DO')
+        if todo:
+            print path, ':', todo, 'TO' 'DO'+('s' if todo>1 else '')
+    print doctest_count, 'doctests run'
+    
+def run(site_):
+    def shell_variables():
+        import kalamar, kraken, koral
+        site = site_
+        return locals()
+    action_shell = script.make_shell(shell_variables)
+    action_test = run_tests
+    action_runserver = script.make_runserver(site_, use_reloader=True,
                                              use_debugger=True)
-    action_shell = script.make_shell(lambda: {'site': site})
-    action_test = lambda: run_tests()
     script.run()
 
 if __name__ == '__main__':
