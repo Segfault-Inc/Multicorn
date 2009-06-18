@@ -18,18 +18,17 @@
 """Some corks used for testing."""
 
 import os
+from ..item import ItemProperties
 
 class CorkItem:
     
-    def _read_property_from_data(self, key):
-        dico = {"I am not aliased" : "I am not aliased",
-                "cork_prop" : "I am a cork prop",
-                "a" : "item's a",
-                "b" : "item's b"}
-        if key in dico.keys():
-            self.properties.update(dico)
-        else:
-            self.properties[key] = None
+    def __init__(self,accessor_properties={}):
+        self.properties = ItemProperties(self, accessor_properties)
+    def _parse_data(self):
+        self.properties.update({"I am not aliased" : "I am not aliased",
+                               "cork_prop" : "I am a cork prop",
+                               "a" : "item's a",
+                               "b" : "item's b"})
 
 class CorkAccessPoint:
     

@@ -28,14 +28,11 @@ Any item parser class has to have a static attribute "format" set to the
 format parsed. Else this class will be hidden to get_item_parser.
 
 A parser class must implement the following methods :
- - _read_property_from_data(self, prop_name)
- - serialize(self)
+ - _custom_parse_data(self)
+ - _serialize(self, properties)
 
 """
 
-# This gotta change for a Storage class (undefined yet)
-#from accesspoint import AccessPoint
-import kalamar
 from kalamar import utils
 
 class Item(object):
@@ -99,57 +96,67 @@ class Item(object):
         raise ValueError('Unknown format: ' + format)
     
     # TODO: TO BE DELETED ??????????
-    def matches(self, prop_name, operator, value):
-        """Return boolean
-
-        Check if the item's property <prop_name> matches <value> for the given
-        operator.
-
-        Availables operators are (see kalamar doc for further info) :
-        - "=" -> equal
-        - "!=" -> different
-        - ">" -> greater than (alphabetically)
-        - "<" -> lower than (alphabetically)
-        - ">=" -> greater or equal (alphabetically)
-        - "<=" -> lower or equal (alphabetically)
-        - "~=" -> matches the given regexp
-        - "~!=" -> does not match the given regexp
-            availables regexp are python's re module's regexp
-        
-        >>> from _test.corks import CorkAccessPoint, cork_opener
-        >>> ap = CorkAccessPoint()
-        >>> item = Item(ap, cork_opener, {"toto" : "ToTo"})
-        
-        Example :
-        >>> item.matches("toto", "~=", "[a-zA-Z]*")
-        True
-        >>> item.matches("toto", "#", "")
-        Traceback (most recent call last):
-        ...
-        OperatorNotAvailable: #
-
-        Some descendants of Item class may overload _convert_value_type to get
-        the "greater than/lower than" operators working with a numerical
-        order (for instance).
-
-        """
-
-        prop_val = self.properties[prop_name]
-        value = self._convert_value_type(prop_name, value)
-        
-        try:
-            return kalamar.operators[operator](prop_val, value)
-        except KeyError:
-            raise kalamar.OperatorNotAvailable(operator)
+    # NO !! Items need to override operators functions
+    # See vorbis item for example : comments can be lists.
+    #
+    #def matches(self, prop_name, operator, value):
+    #    """Return boolean
+    #
+    #    Check if the item's property <prop_name> matches <value> for the given
+    #    operator.
+    #
+    #    Availables operators are (see kalamar doc for further info) :
+    #    - "=" -> equal
+    #    - "!=" -> different
+    #    - ">" -> greater than (alphabetically)
+    #    - "<" -> lower than (alphabetically)
+    #    - ">=" -> greater or equal (alphabetically)
+    #    - "<=" -> lower or equal (alphabetically)
+    #    - "~=" -> matches the given regexp
+    #    - "~!=" -> does not match the given regexp
+    #        availables regexp are python's re module's regexp
+    #    
+    #    >>> from _test.corks import CorkAccessPoint, cork_opener
+    #    >>> ap = CorkAccessPoint()
+    #    >>> item = Item(ap, cork_opener, {"toto" : "ToTo"})
+    #    
+    #    Example :
+    #    >>> item.matches("toto", "~=", "[a-zA-Z]*")
+    #    True
+    #    >>> item.matches("toto", "#", "")
+    #    Traceback (most recent call last):
+    #    ...
+    #    OperatorNotAvailable: #
+    #
+    #    Some descendants of Item class may overload _convert_value_type to get
+    #    the "greater than/lower than" operators working with a numerical
+    #    order (for instance).
+    #
+    #    """
+    #
+    #    prop_val = self.properties[prop_name]
+    #    value = self._convert_value_type(prop_name, value)
+    #    
+    #    try:
+    #        return utils.operators[operator](prop_val, value)
+    #    except KeyError:
+    #        raise kalamar.OperatorNotAvailable(operator)
 
     def serialize(self):
         """Return the item serialized into a string"""
+        # Remove aliases
+        props = dict((self.aliases.get(key,key), self.properties[key])
+                     for key in self.properties.keys())
+        return _serialize(self, props)
+    
+    def _serialize(self, properties):
+        """Called by ``self.serialize''. Must return a data string"""
         raise NotImplementedError("Abstract class")
     
     # TODO: TO BE DELETED ??????????
-    def _convert_value_type(self, prop_name, value):
-        """Do nothing by default"""
-        return value
+    #def _convert_value_type(self, prop_name, value):
+    #    """Do nothing by default"""
+    #    return value
 
     @property
     def encoding(self):
@@ -162,18 +169,24 @@ class Item(object):
         """
         return access_point.default_encoding
 
-    def _read_property_from_data(self, prop_name):
-        """Update at least ``prop_name'' in the properties.
+    def _custom_parse_data(self):
+        """Parse properties from data, return a dictionnary.
         
-        ***This method have to be overidden***
-        
-        If the property does not exist, it must be set to None.
-        This method must manage aliases with self.aliases and self aliases_rev
-        dictionnaries when updating properties.
-        This method may update many properties at once for performance purpose.
+        ***This method have to be overriden***
+        This method must not worry about aliases.
+        This method must not modify ``self.properties''. It just returns a dict.
 
         """
-        raise NotImplementedError("Abstract class")
+        raise NotImplementedError("Abstract method")
+    
+    def _parse_data(self):
+        """Call ``_custom_parse_data'' and do some stuff to the result."""
+        self._open()
+        props = self._custom_parse_data()
+        aliased = dict((self.aliases_rev.get(name,name), props[name])
+                       for name in props.keys())
+        print aliased
+        self.properties.update(aliased)
 
     def _open(self):
         """Open the stream when called for the first time.
@@ -227,9 +240,8 @@ class ItemProperties(dict):
     
     This is for testing
     >>> from _test.corks import CorkItem
-    >>> item = CorkItem()
-    >>> prop = ItemProperties(item, {"a" : "A", "b" : "B"})
-    >>> item.properties = prop
+    >>> item = CorkItem({"a" : "A", "b" : "B"})
+    >>> prop = item.properties
     
     ItemProperties works as a dictionnary :
     >>> prop["cork_prop"]
@@ -247,20 +259,23 @@ class ItemProperties(dict):
     >>> prop["I do not exist"]
 
     """
-
+    
     def __init__(self, item, forced_values={}):
         self._item = item
         self.forced_values = forced_values
+        self._loaded = False
 
     def __getitem__(self, key):
+        if not self._loaded:
+            self._item._parse_data()
+            self._loaded = True
         try:
             res = self.forced_values[key]
         except KeyError:
             try:
                 res = super(ItemProperties, self).__getitem__(key)
             except KeyError:
-                self._item._read_property_from_data(key)
-                res = super(ItemProperties, self).__getitem__(key)
+                res = None
         return res
     
     def __setitem__(self, key, value):

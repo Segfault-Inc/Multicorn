@@ -24,24 +24,15 @@ class TestItem(AtomItem):
     
     format = "test_format"
     
-    def __init__(self, access_point, opener, accessor_properties={}):
-        super(TestItem, self).__init__(access_point, opener,
-                                                        accessor_properties={})
-    
-    def _read_property_from_data(self, prop_name):
-        aliased = [self.aliases_rev.get(name, name)
-                   for name in ["album", "title"]]
-        if key in aliased + ["_content"]:
-            self._open()
-            data = self._stream.read()
-            self.properties["_content"] = data
-            self.properties.update(dict(zip(aliased, data.split("\n",1))))
-        else:
-            self.properties[key] = None
+    def _custom_parse_data(self):
+        data = self._stream.read()
+        props = dict(zip(["album", "title"], data.split("\n",1)))
+        props["_content"] = data
+        return props
         
-    def serialize(self):
-        album = self.properties[self.aliases_rev["album"]]
-        title = self.properties[self.aliases_rev["title"]]
+    def _serialize(self, properties):
+        album = properties["album"]
+        title = properties["title"]
         return album+"\n"+title
 
 del AtomItem

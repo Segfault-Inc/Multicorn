@@ -13,24 +13,32 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Kalamar library. If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
+
 
 """TODO : put some doc here"""
 
 from kalamar.item import AtomItem
 
-class TextItem(AtomItem):
-    """A class to access the item's data as a unicode string."""
+class VorbisItem(AtomItem):
+    """The Ogg/Vorbis parser."""
     
-    format = "text"
+    format = "audio_vorbis"
+    keys = ["artist", "album", "title", "length", "_content"]
     
     def _custom_parse_data(self):
-        content =  self._stream.read()
+        from ogg import vorbis
+        v = vorbis.VorbisFile(self._stream)
         props = {}
-        props["_content"] = content.decode(self.encoding)
+        oggdic = v.comment().as_dic()
+        for key in self.keys:
+            props[key] = oggdic.get(key,[None])[0]
+        self._stream.seek(0)
+        props["_content"] = self._stream.read()
         return props
-        
+    
     def _serialize(self, properties):
-        content = properties["_content"]
-        return content.encode(self.encoding)
-
+        return self.properties["_content"]
+        
+    
+del AtomItem

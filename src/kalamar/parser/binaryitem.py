@@ -24,14 +24,11 @@ class BinaryItem(AtomItem):
     
     format = "binary"
     
-    def _read_property_from_data(self, prop_name):
-        if prop_name == "_content":
-            self._open()
-            properties["_content"] = self._stream.read()
-        else:
-            properties[prop_name] = None
+    def _custom_parse_data(self, prop_name):
+        props = {}
+        props["_content"] = self._stream.read()
         
-    def serialize(self):
-        return self.properties["_content"]
+    def _serialize(self, properties):
+        return properties["_content"]
 
 del AtomItem
