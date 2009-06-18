@@ -34,7 +34,7 @@ class FileSystemStorage(AccessPoint):
     
     def __init__(self, **config):
         """
-        >>> ap = AccessPoint(basedir='/foo', url='file://bar')
+        >>> ap = AccessPoint.from_url(basedir='/foo', url='file://bar')
         >>> assert isinstance(ap, FileSystemStorage)
         >>> import os.path
         >>> assert ap.root_dir == os.path.normpath('/foo/bar')

@@ -23,6 +23,7 @@ independent site with its own configuration.
 
 import os
 import kalamar
+from kalamar import utils
 from kalamar.storage import AccessPoint
 
 class Site(object):
@@ -45,7 +46,6 @@ class Site(object):
     def parse_request(request):
         """Convert a ``request`` string to (prop_name, operator, value) tuples
         
-        >>> from kalamar import operators
         >>> list(Site.parse_request('/1/b=2/c>=3/')) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         [(None, None,                               '1'), 
@@ -55,7 +55,7 @@ class Site(object):
         for part in request.split('/'):
             if not part:
                 continue
-            for operator_str, operator_func in kalamar.operators.items():
+            for operator_str, operator_func in utils.operators.items():
                 try:
                     pos = part.index(operator_str)
                 except ValueError:
