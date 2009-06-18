@@ -21,22 +21,34 @@
 from kalamar.item import AtomItem
 
 class VorbisItem(AtomItem):
-    """The Ogg/Vorbis parser."""
+    """The Ogg/Vorbis parser.
+    
+    The vorbis format allows a lot of things for tagging. It is possible to
+    add any label you want and, for each label, to put several values.
+    Because of that, this module cannot guarantee a set of properties. Despite
+    this, these are some common tags you can use :
+      - time_length : duration in seconds
+      - _content : raw ogg/vorbis data
+      - artist
+      - genre
+      - track
+    
+    """
     
     format = "audio_vorbis"
     
     def _custom_parse_data(self):
         from ogg import vorbis
-        v = vorbis.VorbisFile(self._stream)
-        props = {}
-        oggdic = v.comment().as_dic()
-        for key in self.keys:
-            props[key] = oggdic.get(key,[None])[0]
+        
+        props["time_length"] = [v.time_total(0)]
+        props["_content"] = [self._stream.read()]
+        
         self._stream.seek(0)
-        props["_content"] = self._stream.read()
+        v = vorbis.VorbisFile(self._stream)
+        props.update(v.comment().as_dic())
         return props
     
     def _serialize(self, properties):
-        return self.properties["_content"]
+        return self.properties["_content"][0]
     
 del AtomItem

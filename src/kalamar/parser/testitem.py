@@ -26,13 +26,14 @@ class TestItem(AtomItem):
     
     def _custom_parse_data(self):
         data = self._stream.read()
-        props = dict(zip(["album", "title"], data.split("\n",1)))
-        props["_content"] = data
+        props = dict(zip(("album", "title"),
+                         ([value] for value in data.split("\n",1))))
+        props["_content"] = [data]
         return props
         
     def _serialize(self, properties):
-        album = properties["album"]
-        title = properties["title"]
+        album = properties["album"][0]
+        title = properties["title"][0]
         return album+"\n"+title
 
 del AtomItem

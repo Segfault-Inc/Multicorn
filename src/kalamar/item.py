@@ -166,7 +166,7 @@ class Item(object):
     def encoding(self):
         """Return a string
 
-        Return the item's encoding, based on what the extractor can know from
+        Return the item's encoding, based on what the parser can know from
         the items's data or, if unable to do so, on what is specified in the
         access_point.
 
