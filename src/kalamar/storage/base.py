@@ -107,8 +107,8 @@ class AccessPoint(object):
         items_ok = []
         for item in items:
             ok = True
-            for cond in conditions:
-                if not cond[1](item.properties[cond[0]], cond[2]):
+            for name, funct, value in conditions:
+                if not funct(item.properties[name], value):
                     ok = False
                     break
             if ok:

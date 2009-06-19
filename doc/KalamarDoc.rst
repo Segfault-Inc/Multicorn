@@ -173,7 +173,7 @@ point d'accès. Pour chacun de ces point d'accès, on liste ses paramètres.
 
 Exemple (fichier `/etc/kalamar/MonSite.cfg`) ::
 
-  [an_access_point]
+  [a_file_access_point]
   # alias=original/alias2=original2 ...
   accessor_aliases : genre=path1/auteur=path2/album=path3/titre=path4
   parser_aliases : disque=diskno/no=bloblo
@@ -182,9 +182,11 @@ Exemple (fichier `/etc/kalamar/MonSite.cfg`) ::
   url : file:///var/local/music/
   parser : a_format_name
   
-  [another_access_point]
+  [a_sql_access_point]
   accessor_aliases : no=track/auteur=artist
   parser_aliases : album=album/blabla=bloblo
   url : mysql://user:passwd@host:port/base/table
   parser : another_format_name
+  # We need to know which column contains the data to parse
+  content_column : a_column
 
