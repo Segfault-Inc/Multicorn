@@ -26,7 +26,7 @@ class VorbisItem(AtomItem):
     The vorbis format allows a lot of things for tagging. It is possible to
     add any label you want and, for each label, to put several values.
     Because of that, this module cannot guarantee a set of properties. Despite
-    this, these are some common tags you can use :
+    this, here are some common tags you can use :
       - time_length : duration in seconds
       - _content : raw ogg/vorbis data
       - artist

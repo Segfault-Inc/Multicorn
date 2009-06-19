@@ -290,8 +290,8 @@ class ItemProperties(dict):
     def __setitem__(self, key, value):
         # aliasing
         key = self._item.aliases.get(key,key)
-        if key in self.forced_values.keys():
+        try:
             self.forced_values[key] = value
-        else:
+        except KeyError:
             super(ItemProperties, self).__setitem__(key, value)
 

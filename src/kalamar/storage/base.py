@@ -28,8 +28,6 @@ class AccessPoint(object):
         """
         Return the an instance of the correct class according to the URL
         """
-        if cls is not AccessPoint:
-            return super(AccessPoint, cls).__new__(cls)
         
         protocol = config['url'].split(':', 1)[0]
         for subclass in utils.recursive_subclasses(cls):
@@ -40,12 +38,12 @@ class AccessPoint(object):
     def __init__(self, **config):
         self.config = config
         self.default_encoding = config.get('default_encoding', 'utf-8')
-        for prop in 'accessor_aliases', 'parser_aliases':
+        for prop in 'storage_aliases', 'parser_aliases':
             setattr(self, prop, [
                 tuple(part.split('=', 1))
                 for part in config.get(prop, '').split('/') if '=' in part
             ])
-        self.property_names = [name for name, alias in self.accessor_aliases]
+        self.property_names = [name for name, alias in self.storage_aliases]
         self.url = config['url']
         self.basedir = config.get('basedir', '')
             
@@ -59,16 +57,16 @@ class AccessPoint(object):
         If ``property_name`` is None in the n-th condition, set it to 
         the n-th property of this access point.
         
-        >>> ap = AccessPoint(url='', accessor_aliases='a=p1/b=p2/c=p3')
+        >>> ap = AccessPoint(url='', storage_aliases='a=p1/b=p2/c=p3')
         >>> list(ap.expand_syntaxic_sugar([
         ...     (None, None,                  1), 
         ...     (None, utils.greater_than,    2), 
         ...     ('c', None,                   3), 
         ...     ('d', utils.greater_or_equal, 4)
         ... ])) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-        [('a', <function equals at 0x...>,           1), 
-         ('b', <function greater_than at 0x...>,     2), 
-         ('c', <function equals at 0x...>,           3), 
+        [('a', <function equals at 0x...>,           1),
+         ('b', <function greater_than at 0x...>,     2),
+         ('c', <function equals at 0x...>,           3),
          ('d', <function greater_or_equal at 0x...>, 4)]
         """
         for n, (property_name, operator, value) in enumerate(conditions):
@@ -80,10 +78,56 @@ class AccessPoint(object):
     
     def search(self, conditions):
         """
-        List every item in that match ``conditions``
+        List every item in that matches ``conditions``
         
         ``conditions`` is a list of (property_name, operator, value) tuples
         as returned by kalamar.site.Site.parse_request
+        """
+        # Algorithm:
+        # 1. expand syntaxic sugar.
+        # 2. divide conditions into two categories : parser and storage
+        # 3. call _storage_search with storage conditions as parameters.
+        # 4. filter the items raised with conditions applying to the parser.
+        # 5. return filtered items
+        
+        conditions = list(self.expand_syntaxic_sugar(conditions))
+        
+        storage_conditions = []
+        parser_conditions = []
+        parser_aliases_values = [b for (a,b) in self.parser_aliases]
+        sto_props = self.get_storage_properties()
+        for cond in conditions:
+            if cond[0] in parser_aliases_values or cond[0] not in sto_props:
+                parser_conditions.append(cond)
+            else:
+                storage_conditions.append(cond)
+            
+        items = self._storage_search(storage_conditions)
+        
+        items_ok = []
+        for item in items:
+            ok = True
+            for cond in conditions:
+                if not cond[1](item.properties[cond[0]], cond[2]):
+                    ok = False
+                    break
+            if ok:
+                items_ok.append(item)
+        
+        return items_ok
+    
+    def get_storage_properties(self):
+        """Return the list of properties used by the storage (not aliased)"""
+        raise NotImplementedError # subclasses need to override this
+    
+    def _storage_search(self, conditions):
+        """Return a tuple (item_list, conditions_left).
+        
+        ``item_list`` is the list of items matching condition applying to the
+        storage.
+        ``conditions_left`` is a list of conditions not used by the storage to
+        filter items.
+        
         """
         raise NotImplementedError # subclasses need to override this
 
