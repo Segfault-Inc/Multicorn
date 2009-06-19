@@ -47,6 +47,43 @@ class FileSystemStorage(AccessPoint):
         ))
         self.filename_format = config.get('filename_format', '*')
     
+    def real_filename(self, filename):
+        """Return a filesystem filename from a slash-separated path relative 
+        to the access point root.
+
+        >>> dirname, basename = os.path.split(__file__)
+        >>> dirname, subdir = os.path.split(dirname)
+        >>> ap = AccessPoint.from_url(url='file://' + dirname)
+        >>> path = subdir + '/' + basename
+        >>> assert ap.real_filename(path) == os.path.normpath(__file__)
+        """
+        return self.root_dir + os.sep + os.path.normpath(filename.strip('/'))
+
+    def listdir(self, dirname):
+        """List files and directories in ``dirname``.
+        
+        ``dirname`` is a slash-separated path relative to the access point
+        root.
+        
+        >>> dirname, basename = os.path.split(__file__)
+        >>> ap = AccessPoint.from_url(url='file://' + dirname)
+        >>> assert basename in ap.listdir('/')
+        """
+        return os.listdir(self.real_filename(dirname))
+
+    def open_file(self, filename):
+        """Open a file for reading and return a stream.
+
+        ``filename`` is a slash-separated path relative to the access point
+        root.
+        
+        >>> dirname, basename = os.path.split(__file__)
+        >>> ap = AccessPoint.from_url(url='file://' + dirname)
+        >>> # This test searches for itself
+        >>> assert 'BdM6Zm62gpYFvGlHuNoS' in ap.open_file(basename).read()
+        """
+        return open(self.real_filename(filename), 'rb')
+        
     def search(self, conditions):
         raise NotImplementedError # TODO
             
