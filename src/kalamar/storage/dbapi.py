@@ -65,6 +65,12 @@ class DBAPIStorage(AccessPoint):
         return [prop[0] for prop in cur.description]
     
     def _storage_search(self, conditions):
+        """Return a list of items matching the ``conditions''.
+        
+        ``conditions'' must be a list of tuples (name, function, value), where
+        function is in kalamar.utils.operators' values.
+        
+        """
         
         connection, table = self.get_connection()
         
@@ -95,7 +101,6 @@ class DBAPIStorage(AccessPoint):
         
         res = cur.fetchmany()
         items_ok = []
-        format = self.config["parser"]
         while res:
             for line in res:
                 ok = True
@@ -125,7 +130,7 @@ class DBAPIStorage(AccessPoint):
         style = self._connection.paramstyle
         if style == 'qmark':
             # ... where a=? and b=?
-            pass
+            pass # Nothing to do :-)
         
         elif style =='numeric':
             # ... where a=:1 and b=:2
@@ -157,12 +162,12 @@ class DBAPIStorage(AccessPoint):
             # ... where name=%(name)s
             raise NotImplementedError # TODO
         else:
-            UnsupportedParamStyleError(style)
+            UnsupportedParameterStyleError(style)
             
         
         return (request, parameters)
         
-    class UnsupportedParamStyleError(Exception): pass
+    class UnsupportedParameterStyleError(Exception): pass
             
     def save(self, item):
         raise NotImplementedError # TODO

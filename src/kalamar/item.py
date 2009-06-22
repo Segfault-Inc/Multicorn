@@ -237,7 +237,8 @@ class ItemProperties(dict):
     """Acts like a defaultdict. Used as a properties storage.
 
     You have to give a reference to the item to the constructor.
-    You can force some properties to a value using the forced_values argument.
+    You can force some properties to a value using the ``storage_properties''
+    argument.
     
     This is for testing
     >>> from _test.corks import CorkItem
@@ -251,6 +252,10 @@ class ItemProperties(dict):
     This key has been forced
     >>> prop["b"]
     'B'
+    
+    Storage properties can be accessed separately by a dictionnary
+    >>> prop.storage_properties
+    {'a': 'A', 'b': 'B'}
     
     But the original value is not changed
     >>> super(ItemProperties, prop).__getitem__("b")
@@ -267,9 +272,9 @@ class ItemProperties(dict):
 
     """
     
-    def __init__(self, item, forced_values={}):
+    def __init__(self, item, storage_properties={}):
         self._item = item
-        self.forced_values = forced_values
+        self.storage_properties = storage_properties
         self._loaded = False
 
     def __getitem__(self, key):
@@ -279,7 +284,7 @@ class ItemProperties(dict):
         # aliasing
         key = self._item.aliases.get(key,key)
         try:
-            res = self.forced_values[key]
+            res = self.storage_properties[key]
         except KeyError:
             try:
                 res = super(ItemProperties, self).__getitem__(key)
@@ -291,7 +296,7 @@ class ItemProperties(dict):
         # aliasing
         key = self._item.aliases.get(key,key)
         try:
-            self.forced_values[key] = value
+            self.storage_properties[key] = value
         except KeyError:
             super(ItemProperties, self).__setitem__(key, value)
 
