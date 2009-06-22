@@ -21,6 +21,8 @@ import urlparse
 
 class SQLiteStorage(DBAPIStorage):
     
+    protocol = 'sqlite'
+    
     def get_connection(self):
         url = self.config['url']
         file = urlparse.urlsplit(url).path[2:]
