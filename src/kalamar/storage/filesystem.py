@@ -17,12 +17,18 @@
 
 import os
 import glob
+import re
 from kalamar.storage.base import AccessPoint
 
-def file_opener(filename):
-    def _opener():
+class FileOpener(object):
+    def __init__(self, filename):
+        self.filename = filename
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.filename)
+    def __eq__(self, other):
+        return self.filename == other.filename
+    def __call__(self):
         return open(filename, 'rb')
-    return _opener
         
 
 class FileSystemStorage(AccessPoint):
@@ -46,8 +52,23 @@ class FileSystemStorage(AccessPoint):
             self.url[len(self.__class__.protocol + '://'):]
         ))
         self.filename_format = config.get('filename_format', '*')
+        self.filename_parts_pattern = []
+        index = 1
+        for part in self.filename_format.split('/'):
+            pattern = self._pattern_to_regexp(part, index)
+            index += len(pattern.groupindex)
+            self.filename_parts_pattern.append(pattern)
     
-    def real_filename(self, filename):
+    def get_storage_properties(self):
+        """
+        >>> ap = FileSystemStorage(filename_format='*/* - *.mp3', url='file://')
+        >>> ap.get_storage_properties()
+        ['path1', 'path2', 'path3']
+        """
+        stars = self.filename_format.count('*')
+        return ['path%i' % (i+1) for i in xrange(stars)]
+    
+    def _real_filename(self, filename):
         """Return a filesystem filename from a slash-separated path relative 
         to the access point root.
 
@@ -55,7 +76,7 @@ class FileSystemStorage(AccessPoint):
         >>> dirname, subdir = os.path.split(dirname)
         >>> ap = AccessPoint.from_url(url='file://' + dirname)
         >>> path = subdir + '/' + basename
-        >>> assert ap.real_filename(path) == os.path.normpath(__file__)
+        >>> assert ap._real_filename(path) == os.path.normpath(__file__)
         """
         return self.root_dir + os.sep + os.path.normpath(filename.strip('/'))
 
@@ -69,7 +90,20 @@ class FileSystemStorage(AccessPoint):
         >>> ap = AccessPoint.from_url(url='file://' + dirname)
         >>> assert basename in ap.listdir('/')
         """
-        return os.listdir(self.real_filename(dirname))
+        return os.listdir(self._real_filename(dirname))
+
+    def isdir(self, dirname):
+        """Return true if ``dirname`` refers to an existing directory.
+        
+        ``dirname`` is a slash-separated path relative to the access point
+        root.
+        
+        >>> dirname, basename = os.path.split(__file__)
+        >>> dirname, basename = os.path.split(dirname) # .../kalamar, storage
+        >>> ap = AccessPoint.from_url(url='file://' + dirname)
+        >>> assert ap.isdir(basename)
+        """
+        return os.path.isdir(self._real_filename(dirname))
 
     def open_file(self, filename):
         """Open a file for reading and return a stream.
@@ -82,10 +116,84 @@ class FileSystemStorage(AccessPoint):
         >>> # This test searches for itself
         >>> assert 'BdM6Zm62gpYFvGlHuNoS' in ap.open_file(basename).read()
         """
-        return open(self.real_filename(filename), 'rb')
+        return open(self._real_filename(filename), 'rb')
         
-    def search(self, conditions):
-        raise NotImplementedError # TODO
+    @staticmethod
+    def _pattern_to_regexp(pattern, first_index):
+        r"""
+        >>> re_ = FileSystemStorage._pattern_to_regexp('[*] * - *.txt', 3)
+        >>> re_ # doctest: +ELLIPSIS
+        <_sre.SRE_Pattern object at 0x...>
+        >>> re_.match('[au!] ... - .txt').groups()
+        ('au!', '...', '')
+        >>> assert re_.match('[au!]... - Ô.txt') is None
+        >>> re_.pattern
+        '^\\[(?P<path3>.*)\\]\\ (?P<path4>.*)\\ \\-\\ (?P<path5>.*)\\.txt$'
+        """
+        def regexp_parts(pattern_parts):
+            yield '^'
+            yield re.escape(pattern_parts[0])
+            for num, part in enumerate(pattern_parts[1:]):
+                yield '(?P<path%i>.*)' % (first_index + num)
+                yield re.escape(part)
+            yield '$'
+        return re.compile(''.join(regexp_parts(pattern.split('*'))))
+    
+    def _storage_search(self, conditions):
+        """
+        >>> dirname, module = os.path.split(__file__)
+        >>> dirname, package = os.path.split(dirname) # .../kalamar, storage
+        >>> ap = AccessPoint.from_url(url='file://' + dirname,
+        ...                           filename_format='*/*.py')
+        >>> from kalamar.site import Site
+        >>> req = list(Site.parse_request('path1=storage/path2~!=^__'))
+        >>> [1 for props, opener in ap._storage_search(req)
+        ...    if props['path2'].startswith('__')]
+        []
+        >>> [1 for props, opener in ap._storage_search(req)
+        ...    if props['path1'] != 'storage']
+        []
+        >>> [1 for props, opener in ap._storage_search(req)
+        ...    if props == {'path1': 'storage', 'path2': 'filesystem'}]
+        [1]
+        """
+        conditions = list(conditions)
+        
+        def walk(subdir, pattern_parts, previous_properties):
+            pattern = pattern_parts[0]
+            pattern_parts = pattern_parts[1:]
+            
+            for name in self.listdir(subdir):
+                match = pattern.match(name)
+                if match:
+                    # the name matches the pattern, extract the values
+                    properties = match.groupdict()
+                    for prop_name, operator, value in conditions:
+                        if prop_name in properties:
+                            if not operator(properties[prop_name], value):
+                                break
+                    else:
+                        # all the conditions for the present properties are met
+                        
+                        path = subdir + '/' + name
+                        properties.update(previous_properties)
+                        if self.isdir(path):
+                            if pattern_parts:
+                                # this is a directory and the filename
+                                # pattern has more parts
+                                for result in walk(path, pattern_parts,
+                                                   properties):
+                                    yield result
+                        else:
+                            if not pattern_parts:
+                                # this is a file and the filename
+                                # pattern is completed
+                                yield properties, FileOpener(
+                                    self._real_filename(path)
+                                )
+        
+        return walk('', self.filename_parts_pattern, ())
+            
             
     def save(self, item):
         raise NotImplementedError # TODO

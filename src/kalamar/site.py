@@ -46,10 +46,10 @@ class Site(object):
     def parse_request(request):
         """Convert a ``request`` string to (prop_name, operator, value) tuples
         
-        >>> list(Site.parse_request('/1/b=2/c>=3/')) # doctest: +ELLIPSIS
+        >>> list(Site.parse_request('/1/b=42/c>=3/')) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         [(None, None,                               '1'), 
-         ('b', <function equals at 0x...>,            '2'), 
+         ('b', <function equals at 0x...>,            '42'), 
          ('c', <function greater_or_equal at 0x...>,  '3')]
         """
         for part in request.split('/'):
@@ -64,7 +64,7 @@ class Site(object):
                     yield (
                         part[:pos], # property name
                         operator_func,
-                        part[pos + len(operator_str)], # value
+                        part[pos + len(operator_str):], # value
                     )
                     break
             else:
