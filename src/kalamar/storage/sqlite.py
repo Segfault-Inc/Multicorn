@@ -25,4 +25,13 @@ class SQLiteStorage(DBAPIStorage):
         url = self.config['url']
         file = urlparse.urlsplit(url).path[2:]
         return sqlite3.connect(file)
+    
+    def _get_primary_keys(self):
+        connection, table = self.get_connection()
+        cursor.execute('PRAGMA table_info(%s)' % table)
+        # cid, name, type, notnull, dflt_value, pk
         
+        fields = (dict(zip(cursor.description, values))
+                  for values in cursor.fetchall())
+        pkeys = [field['name'] for field in fields if field[pk]]
+        return pkeys

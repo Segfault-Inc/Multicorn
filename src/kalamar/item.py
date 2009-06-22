@@ -36,6 +36,7 @@ and have a class attribute ``format'' which is name of the parsed format.
 """
 
 from kalamar import utils
+from copy import deepcopy
 
 class Item(object):
     """The base of any item parser. This is an abstract class.
@@ -257,6 +258,11 @@ class ItemProperties(dict):
     >>> prop.storage_properties
     {'a': 'A', 'b': 'B'}
     
+    If a storage property has been changed, the old value is still reachable
+    >>> prop['b'] = 'toto'
+    >>> prop.storage_properties_old
+    {'a': 'A', 'b': 'B'}
+    
     But the original value is not changed
     >>> super(ItemProperties, prop).__getitem__("b")
     "item's b"
@@ -275,6 +281,7 @@ class ItemProperties(dict):
     def __init__(self, item, storage_properties={}):
         self._item = item
         self.storage_properties = storage_properties
+        self.storage_properties_old = deepcopy(storage_properties)
         self._loaded = False
 
     def __getitem__(self, key):
@@ -299,4 +306,3 @@ class ItemProperties(dict):
             self.storage_properties[key] = value
         except KeyError:
             super(ItemProperties, self).__setitem__(key, value)
-

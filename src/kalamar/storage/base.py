@@ -82,6 +82,7 @@ class AccessPoint(object):
         
         ``conditions`` is a list of (property_name, operator, value) tuples
         as returned by kalamar.site.Site.parse_request
+        
         """
         # Algorithm:
         # 1. expand syntaxic sugar.
@@ -106,13 +107,11 @@ class AccessPoint(object):
         
         items_ok = []
         for item in items:
-            ok = True
-            for name, funct, value in conditions:
+            for name, funct, value in parser_conditions:
                 if not funct(item.properties[name], value):
-                    ok = False
                     break
-            if ok:
-                items_ok.append(item)
+        else:
+            items_ok.append(item)
         
         return items_ok
     
@@ -125,8 +124,6 @@ class AccessPoint(object):
         
         ``item_list`` is the list of items matching condition applying to the
         storage.
-        ``conditions_left`` is a list of conditions not used by the storage to
-        filter items.
         
         """
         raise NotImplementedError # subclasses need to override this

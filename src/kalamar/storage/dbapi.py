@@ -18,6 +18,7 @@
 from kalamar.storage.base import AccessPoint
 from kalamar import utils
 from kalamar import Item
+from array import array
 
 def _opener(content):
     def opener():
@@ -27,7 +28,7 @@ def _opener(content):
 class DBAPIStorage(AccessPoint):
     """Base class for SQL SGBD Storage.
     
-    Descendant class must override get_connection.
+    Descendant class must override ``get_connection'' and ``_get_primary_keys''.
     
     """
     
@@ -114,7 +115,63 @@ class DBAPIStorage(AccessPoint):
                     items_ok.append(Item.get_item_parser(format,opener,line))
             res = cur.fetchmany()
         
+        cur.close()
         return items_ok
+            
+    def save(self, item):
+        connection, table = self.get_connection()
+        req = array('u',u'UPDATE %s SET '%table)
+        pk = self._get_primary_keys()
+        keys = item.properties.storage_properties.keys()
+        
+        item.properties[self.config['content_column']] = item.serialize()
+        # There is no field '_content' in the DB.
+        del item.properties['_content']
+        
+        for key in keys[:-1]:
+            req.extend(u'%s = %s , ' % (key, item.properties[key]))
+        req.extend(u'%s = %s WHERE' % (keys[-1], item.properties[keys[-1]]))
+        
+        for key in pk[-1]:
+            req.extend(u' %s = %s' % (key, item.properties[key]))
+        req.extend(u' %s = %s;' % (pk[-1], item.properties[pk[-1]]))
+        
+        cursor = connection.cursor()
+        cursor.execute(req)
+        n = cursor.rowcount()
+        if n == 0:
+            # item does not exist. Let's do an insert.
+            req = array('u', u'INSERT INTO %s ( ' % table)
+            for key in keys[:-1]:
+                req.extend('%s , ' % key)
+            req.extend('%s ) VALUES ( ' % keys[-1])
+            
+            for key in keys[:-1]:
+                req.extend('%s , ' % item.properties[key])
+            req.extend('%s );' % item.properties[key[-1]])
+            
+            cursor.execute(req)
+        elif n > 1:
+            # problem ocurred
+            connection.rollback()
+            cursor.close()
+            raise ManyItemsUpdatedError()
+        # everythings fine
+        cursor.commit()
+        cursor.close()
+    
+    class ManyItemsUpdatedError(Exception): pass
+
+    def remove(self, item):
+        connection, table = self.get_connection()
+        req = array('u', 'REMOVE FROM %s WHERE ' % table)
+        pk = self._get_primary_keys()
+        for key in pk[:-1]:
+            req.extend('%s = %s AND ' % (key, item.properties[key]))
+        req.extend('%s = %s ;' % (pk[-1], item.properties[pk[-1]]))
+        
+        cursor = connection.cursor()
+        cursor.execute(req)
     
     def _format_request(self, request, parameters=tuple()):
         """Return a tuple (formated_request, typed_parameters).
@@ -127,7 +184,8 @@ class DBAPIStorage(AccessPoint):
         The returned ``typed_parameters'' is a list or a dictionnary.
         
         """
-        style = self._connection.paramstyle
+        connection, table = self.get_connection()
+        style = connection.paramstyle
         if style == 'qmark':
             # ... where a=? and b=?
             pass # Nothing to do :-)
@@ -168,9 +226,7 @@ class DBAPIStorage(AccessPoint):
         return (request, parameters)
         
     class UnsupportedParameterStyleError(Exception): pass
-            
-    def save(self, item):
-        raise NotImplementedError # TODO
-
-    def remove(self, item):
-        raise NotImplementedError # TODO
+    
+    def _get_primary_keys(self):
+        """Return a list of primary keys names."""
+        raise NotImplementedError('Abstract method')
