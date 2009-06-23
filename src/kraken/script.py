@@ -53,9 +53,10 @@ def run_tests():
             print path, ':', todo, 'TO' 'DO'+('s' if todo>1 else '')
         try:
             suite.addTests(doctest.DocTestSuite(name))
-        except ValueError:
+        except ValueError, e:
             # doctest throws ValueError when there is no test
-            pass
+            if e[1] != "has no tests":
+                raise
         suite.addTests(loader.loadTestsFromName(name))
     unittest.TextTestRunner().run(suite)
 
