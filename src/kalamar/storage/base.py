@@ -17,6 +17,7 @@
 
 
 from kalamar import utils
+from kalamar.item import Item
 
 class AccessPoint(object):
     """
@@ -102,28 +103,30 @@ class AccessPoint(object):
                 parser_conditions.append(cond)
             else:
                 storage_conditions.append(cond)
-            
-        items = self._storage_search(storage_conditions)
         
-        items_ok = []
-        for item in items:
+        ##### !!!AAAAAAAAAAAAAAAAAAAAAA!!!####
+        items = (opener
+                 for properties, opener
+                 in self._storage_search(storage_conditions))
+        
+        for properties, opener in self._storage_search(storage_conditions):
+            item = Item.get_item_parser(self, opener, properties)
             for name, funct, value in parser_conditions:
                 if not funct(item.properties[name], value):
                     break
-        else:
-            items_ok.append(item)
-        
-        return items_ok
+            else:
+                yield item
     
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased)"""
         raise NotImplementedError # subclasses need to override this
     
     def _storage_search(self, conditions):
-        """Return a tuple (item_list, conditions_left).
+        """Return a sequence of tuple (properties, file_opener).
         
-        ``item_list`` is the list of items matching condition applying to the
-        storage.
+        ``properties`` is a dictionnary.
+        ``file_opener`` is a function that takes no argument and returns a
+        file-like object.
         
         """
         raise NotImplementedError # subclasses need to override this

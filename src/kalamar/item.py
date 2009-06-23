@@ -37,6 +37,7 @@ and have a class attribute ``format'' which is name of the parsed format.
 
 from kalamar import utils
 from copy import deepcopy
+from werkzeug import MultiDict
 
 class Item(object):
     """The base of any item parser. This is an abstract class.
@@ -45,7 +46,7 @@ class Item(object):
     parser you want.
     Useful attributes :
      - properties : acts like a defaultdict. The keys are strings and the values
-       are lists of python objects. Default value is [].
+       are MultiDict of python objects with default value at None.
      - _access_point : where, in kalamar, is stored the item. It is an instance
        of AccessPoint.
 
@@ -234,8 +235,8 @@ class CapsuleItem(Item, list):
     """
     pass
 
-class ItemProperties(dict):
-    """Acts like a defaultdict. Used as a properties storage.
+class ItemProperties(MultiDict):
+    """Acts like a MultiDict with a default value. Used as a properties storage.
 
     You have to give a reference to the item to the constructor.
     You can force some properties to a value using the ``storage_properties''
@@ -249,6 +250,10 @@ class ItemProperties(dict):
     ItemProperties works as a dictionnary :
     >>> prop["cork_prop"]
     'I am a cork prop'
+    
+    But it can contais multiple values
+    >>> prop.getlist("cork_prop")
+    ['I am a cork prop', 'toto', 'tata']
     
     This key has been forced
     >>> prop["b"]
