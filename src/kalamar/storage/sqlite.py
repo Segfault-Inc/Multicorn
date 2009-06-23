@@ -24,9 +24,14 @@ class SQLiteStorage(DBAPIStorage):
     protocol = 'sqlite'
     
     def get_connection(self):
-        url = self.config['url']
-        file = urlparse.urlsplit(url).path[2:]
-        return sqlite3.connect(file)
+        if getattr(self, '_connection', None) is None:
+            url = self.config['url']
+            urldict = urlparse.urlsplit(url)
+            splitted_path = urldict.path.split('?')
+            file = splitted_path[0][2:]
+            self._table = splitted_path[1]
+            self._connection = sqlite3.connect(file)
+        return (self._connection, self._table)
     
     def _get_primary_keys(self):
         connection, table = self.get_connection()
