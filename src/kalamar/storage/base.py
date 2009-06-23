@@ -59,19 +59,19 @@ class AccessPoint(object):
         
         >>> ap = AccessPoint(url='', storage_aliases='a=p1/b=p2/c=p3')
         >>> list(ap.expand_syntaxic_sugar([
-        ...     (None, None,                  1), 
-        ...     (None, utils.greater_than,    2), 
-        ...     ('c', None,                   3), 
-        ...     ('d', utils.greater_or_equal, 4)
+        ...     (None, None,              1), 
+        ...     (None, utils.operator.gt, 2), 
+        ...     ('c', None,               3), 
+        ...     ('d', utils.operator.ge,  4)
         ... ])) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-        [('a', <function equals at 0x...>,           1),
-         ('b', <function greater_than at 0x...>,     2),
-         ('c', <function equals at 0x...>,           3),
-         ('d', <function greater_or_equal at 0x...>, 4)]
+        [('a', <built-in function eq>,           1),
+         ('b', <built-in function gt>,     2),
+         ('c', <built-in function eq>,           3),
+         ('d', <built-in function ge>, 4)]
         """
         for n, (property_name, operator, value) in enumerate(conditions):
             if operator is None:
-                operator = utils.equals
+                operator = utils.operator.eq
             if property_name is None:
                 property_name = self.property_names[n]          
             yield property_name, operator, value

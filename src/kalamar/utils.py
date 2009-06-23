@@ -15,24 +15,22 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+import operator
 import re
 
-def           equals(a, b): return a == b
-def       not_equals(a, b): return a != b
-def     greater_than(a, b): return a >  b
-def greater_or_equal(a, b): return a >= b
-def      lesser_than(a, b): return a <  b
-def  lesser_or_equal(a, b): return a <= b
-def         re_match(a, b): return bool(re.match(b, a))
-def     re_not_match(a, b): return  not re.match(b, a)
+def re_match(a, b):
+    return bool(re.match(b, a))
+
+def re_not_match(a, b):
+    return  not re.match(b, a)
 
 operators = {
-    '=':   equals,
-    '!=':  not_equals,
-    '>':   greater_than,
-    '>=':  greater_or_equal,
-    '<':   lesser_than,
-    '<=':  lesser_or_equal,
+    '=':   operator.eq,
+    '!=':  operator.ne,
+    '>':   operator.gt,
+    '>=':  operator.ge,
+    '<':   operator.lt,
+    '<=':  operator.le,
     '~=':  re_match,
     '~!=': re_not_match,
 }

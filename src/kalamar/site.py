@@ -48,9 +48,9 @@ class Site(object):
         
         >>> list(Site.parse_request('/1/b=42/c>=3/')) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [(None, None,                               '1'), 
-         ('b', <function equals at 0x...>,            '42'), 
-         ('c', <function greater_or_equal at 0x...>,  '3')]
+        [(None, None,                  '1'), 
+         ('b', <built-in function eq>, '42'), 
+         ('c', <built-in function ge>, '3')]
         """
         for part in request.split('/'):
             if not part:
