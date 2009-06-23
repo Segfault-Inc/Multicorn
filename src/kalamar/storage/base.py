@@ -103,13 +103,12 @@ class AccessPoint(object):
                 parser_conditions.append(cond)
             else:
                 storage_conditions.append(cond)
-        
-        ##### !!!AAAAAAAAAAAAAAAAAAAAAA!!!####
-        items = (opener
+                
+        items = (Item(self, opener, properties)
                  for properties, opener
                  in self._storage_search(storage_conditions))
         
-        for properties, opener in self._storage_search(storage_conditions):
+        for item in items:
             item = Item.get_item_parser(self, opener, properties)
             for name, funct, value in parser_conditions:
                 if not funct(item.properties[name], value):

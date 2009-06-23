@@ -31,8 +31,11 @@ class CorkItem:
             {"I am not aliased" : "value of: I am not aliased",
             "cork_prop" : "I am a cork prop",
             "a" : "item's a",
-            "b" : "item's b"})
+            "b" : "item's b",
+            "_content" : "item's raw data"})
         self.properties.setlistdefault("cork_prop").extend(["toto", "tata"])
+    def serialize(self):
+        return self.properties['_content']
 
 class CorkAccessPoint:
     

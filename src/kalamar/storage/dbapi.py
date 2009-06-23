@@ -19,6 +19,7 @@ from kalamar.storage.base import AccessPoint
 from kalamar import utils
 from kalamar import Item
 from array import array
+from copy import deepcopy
 from itertools import izip
 
 def _opener(content):
@@ -77,8 +78,8 @@ class DBAPIStorage(AccessPoint):
         # process conditions
         sql_cond, python_cond = self._process_conditions(conditions)
         # build request
-        request, parameters = self._build_request(sql_cond, table,
-                                                  connection.paramstyle)
+        request, parameters = self._build_select_request(sql_cond, table,
+                                                         connection.paramstyle)
         # execute request
         cur = connection.cursor()
         cur.execute(request, parameters)
@@ -86,9 +87,11 @@ class DBAPIStorage(AccessPoint):
                       for line in self._gen_lines_from_cursor(cur))
         
         # filter result and yield tuples (properties, value)
-        result = _filter_result(dict_lines, python_cond)
+        filtered = _filter_result(dict_lines, python_cond)
         cur.close()
-        return result
+        
+        return ((line, _opener(line[self.config['content_column']]))
+                for line in filtered)
     
     def _gen_lines_from_cursor(cursor):
         res = cursor.fetchmany()
@@ -154,11 +157,11 @@ class DBAPIStorage(AccessPoint):
         return (sql_cond, python_cond)
     
     @staticmethod
-    def _build_request(conditions, table, style='qmark'):
-        """Return a tuple (formated_request, typed_parameters).
+    def _build_select_request(conditions, table, style='qmark'):
+        """Return a tuple (request, typed_parameters).
         
         ``conditions'' must be a sequence of (name, operator, value).
-        ``table'' is the table used.
+        ``table'' is the name of the used table.
         ``style'' must be one of 'qmark', 'numeric', 'named', 'format',
                   'pyformat'.
         
@@ -171,46 +174,46 @@ class DBAPIStorage(AccessPoint):
         >>> conditions = (("toto", "=", "tata"), ("the_answer", ">=", 42))
         
         Qmark style
-        >>> req, params = DBAPIStorage._build_request(conditions,
-        ...                                           'table', 'qmark')
-        >>> print req
-        SELECT * FROM table WHERE toto=? and the_answer>=? ;
+        >>> req, params = DBAPIStorage._build_select_request(conditions,
+        ...                                                  'table', 'qmark')
+        >>> req
+        u"SELECT * FROM 'table' WHERE 'toto'=? and 'the_answer'>=? ;"
         >>> print params
         ['tata', 42]
         
         Numeric style
-        >>> req, params = DBAPIStorage._build_request(conditions,
-        ...                                           'table', 'numeric')
-        >>> print req
-        SELECT * FROM table WHERE toto=:1 and the_answer>=:2 ;
+        >>> req, params = DBAPIStorage._build_select_request(conditions,
+        ...                                                  'table', 'numeric')
+        >>> req
+        u"SELECT * FROM 'table' WHERE 'toto'=:1 and 'the_answer'>=:2 ;"
         
         Named style
-        >>> req, params = DBAPIStorage._build_request(conditions,
-        ...                                           'table', 'named')
-        >>> print req
-        SELECT * FROM table WHERE toto=:name0 and the_answer>=:name1 ;
+        >>> req, params = DBAPIStorage._build_select_request(conditions,
+        ...                                                  'table', 'named')
+        >>> req
+        u"SELECT * FROM 'table' WHERE 'toto'=:name0 and 'the_answer'>=:name1 ;"
         >>> print params
         {'name0': 'tata', 'name1': 42}
         
         TODO : test 'format' style and 'pyformat' style.
         """
         
-        named_cond = (name + oper for name, oper, value in conditions)
+        named_cond = ("'"+name+"'" + oper for name, oper, value in conditions)
         if style == 'qmark':
             # ... where a=? and b=?
-            request = '? and '.join(named_cond) + '?'
+            request = u'? and '.join(named_cond) + '?'
             parameters = [value for name, oper, value in conditions]
         
         elif style =='numeric':
             # ... where a=:1 and b=:2
             parts = (cond+':'+str(n+1) for n, cond in enumerate(named_cond))
-            request = ' and '.join(parts)
+            request = u' and '.join(parts)
             parameters = [value for name, oper, value in conditions]
             
         elif style == 'named':
             # ... where a=:name0 and b=:name1
             parts = (cond+':name'+str(n) for n, cond in enumerate(named_cond))
-            request = ' and '.join(parts)
+            request = u' and '.join(parts)
             parameters = (('name'+str(n),value) for n, (name, oper, value)
                           in enumerate(conditions))
             parameters = dict(parameters)
@@ -225,28 +228,62 @@ class DBAPIStorage(AccessPoint):
         else:
             raise UnsupportedParameterStyleError(style)
             
-        request = "SELECT * FROM " + table + " WHERE " + request + " ;"
+        request = u"SELECT * FROM '" + table + "' WHERE " + request + " ;"
         return (request, parameters)
         
     class UnsupportedParameterStyleError(Exception): pass
     
-    def save(self, item):
-        connection, table = self.get_connection()
-        req = array('u',u'UPDATE %s SET '%table)
+    def _build_update_request(self, table, item):
+        """Return update request as a string
+        
+        Fixture
+        >>> from kalamar._test.corks import CorkItem
+        >>> table = 'table'
+        >>> item = CorkItem({'sto_prop': 'sto_val',
+        ...                  'sto_prop2': 'sto_val2',
+        ...                  'pk1': 'pk_val1',
+        ...                  'pk2': 'pk_val2'})
+        >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
+        ...                        content_column = 'content_col')
+        >>> def monkeypatch(): return ['pk1', 'pk2']
+        >>> storage._get_primary_keys = monkeypatch
+        
+        Test
+        >>> storage._build_update_request(table, item)
+        ... #doctest:+NORMALIZE_WHITESPACE
+        u"UPDATE 'table' SET 'sto_prop' = 'sto_val' , 'pk2' = 'pk_val2' ,
+                             'pk1' = 'pk_val1' , 'sto_prop2' = 'sto_val2'
+        WHERE 'pk1' = 'pk_val1' 'pk2' = 'pk_val2' ;"
+        """
+        req = array('u',u"UPDATE '%s' SET "%table)
         pk = self._get_primary_keys()
         keys = item.properties.storage_properties.keys()
         
         item.properties[self.config['content_column']] = item.serialize()
+        
         # There is no field '_content' in the DB.
+        # save content (item may be used again after being saved)
+        content = deepcopy(item.properties['_content'])
         del item.properties['_content']
         
         for key in keys[:-1]:
-            req.extend(u'%s = %s , ' % (key, item.properties[key]))
-        req.extend(u'%s = %s WHERE' % (keys[-1], item.properties[keys[-1]]))
+            req.extend(u"'%s' = '%s' , " % (key, item.properties[key]))
+        req.extend(u"'%s' = '%s' WHERE" % (keys[-1], item.properties[keys[-1]]))
+        
+        # restore content
+        item.properties['_content'] = content
         
         for key in pk:
-            req.extend(u' %s = %s' % (key, item.properties[key]))
+            req.extend(u" '%s' = '%s'" % (key, item.properties[key]))
         req.extend(u' ;')
+        
+        return req.tounicode()
+    
+    def save(self, item):
+        
+        connection, table = self.get_connection()
+        
+        req = self._build_update_request(table, item)
         
         cursor = connection.cursor()
         cursor.execute(req)
