@@ -18,6 +18,7 @@
 import os
 import glob
 import re
+import itertools
 from kalamar.storage.base import AccessPoint
 
 class FileOpener(object):
@@ -118,6 +119,14 @@ class FileSystemStorage(AccessPoint):
         """
         return open(self._real_filename(filename), 'rb')
         
+    def remove_file(self, filename):
+        """Remove a file from the backend
+
+        ``filename`` is a slash-separated path relative to the access point
+        root.
+        """
+        return os.remove(self._real_filename(filename))
+        
     @staticmethod
     def _pattern_to_regexp(pattern, first_index):
         r"""
@@ -194,9 +203,31 @@ class FileSystemStorage(AccessPoint):
         
         return walk('', self.filename_parts_pattern, ())
             
-            
+    
+    def _path_from_properties(self, properties):
+        """
+        Rebuild a path from a dict of properties
+        The path is as accepted by AccessPoint.open_file etc.
+        
+        >>> ap = AccessPoint.from_url(url='file://', filename_format='*/*.py')
+        >>> ap._path_from_properties({'path1': 'storage', 'path2': 'fs'})
+        'storage/fs.py'
+        """
+        def path_parts(pattern_parts):
+            yield pattern_parts[0]
+            for num, part in enumerate(pattern_parts[1:]):
+                yield properties['path%i' % (num + 1)]
+                yield part
+        return ''.join(path_parts(self.filename_format.split('*')))
+
+        
     def save(self, item):
         raise NotImplementedError # TODO
 
     def remove(self, item):
-        raise NotImplementedError # TODO
+        """
+        Remove the given item from the backend storage
+        """
+        self.remove(self._path_from_properties(
+            item.properties.storage_properties_old
+        ))
