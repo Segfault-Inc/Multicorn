@@ -33,6 +33,7 @@ class VorbisItem(AtomItem):
       - genre
       - track
     
+    TODO write test
     """
     
     format = "audio_vorbis"
@@ -40,12 +41,13 @@ class VorbisItem(AtomItem):
     def _custom_parse_data(self):
         from ogg import vorbis
         
-        props["time_length"] = [v.time_total(0)]
-        props["_content"] = [self._stream.read()]
+        props["time_length"] = v.time_total(0)
+        props["_content"] = self._stream.read()
         
         self._stream.seek(0)
         v = vorbis.VorbisFile(self._stream)
-        props.update(v.comment().as_dic())
+        for name, list in v.comment().as_dic().items():
+            props.setlist(name,list)
         return props
     
     def _serialize(self, properties):

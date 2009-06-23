@@ -32,6 +32,7 @@ class CorkItem:
             "cork_prop" : "I am a cork prop",
             "a" : "item's a",
             "b" : "item's b"})
+        self.properties.setlistdefault("cork_prop").extend(["toto", "tata"])
 
 class CorkAccessPoint:
     
