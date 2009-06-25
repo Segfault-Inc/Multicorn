@@ -106,7 +106,7 @@ class FileSystemStorage(AccessPoint):
         """
         return os.path.isdir(self._real_filename(dirname))
 
-    def open_file(self, filename):
+    def open_file(self, filename, mode='rb'):
         """Open a file for reading and return a stream.
 
         ``filename`` is a slash-separated path relative to the access point
@@ -117,16 +117,25 @@ class FileSystemStorage(AccessPoint):
         >>> # This test searches for itself
         >>> assert 'BdM6Zm62gpYFvGlHuNoS' in ap.open_file(basename).read()
         """
-        return open(self._real_filename(filename), 'rb')
+        return open(self._real_filename(filename), mode)
         
+    def rename(self, source, dest):
+        """Rename/move a file.
+
+        ``filename`` is a slash-separated path relative to the access point
+        root.
+        """
+        os.renames(self._real_filename(source),
+                   self._real_filename(dest))
+
     def remove_file(self, filename):
         """Remove a file from the backend
 
         ``filename`` is a slash-separated path relative to the access point
         root.
         """
-        return os.remove(self._real_filename(filename))
-        
+        os.remove(self._real_filename(filename))
+
     @staticmethod
     def _pattern_to_regexp(pattern, first_index):
         r"""
@@ -222,12 +231,29 @@ class FileSystemStorage(AccessPoint):
 
         
     def save(self, item):
-        raise NotImplementedError # TODO
+        old_path = self._path_from_properties(
+            item.properties.storage_properties_old
+        )
+        new_path = self._path_from_properties(
+            item.properties.storage_properties
+        )
+        move = old_path != new_path
+        change = item.properties.content_modified
+        if change:
+            if move:
+                # remove old_path
+                self.remove(item)
+            f = self.open_file(new_path, mode='wb')
+            f.write(item.serialize())
+            f.close()
+        elif move:
+            self.rename(old_path, new_path)
 
     def remove(self, item):
         """
         Remove the given item from the backend storage
         """
-        self.remove(self._path_from_properties(
+        self.remove_file(self._path_from_properties(
             item.properties.storage_properties_old
         ))
+
