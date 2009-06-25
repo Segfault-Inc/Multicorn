@@ -26,7 +26,7 @@ class BinaryItem(AtomItem):
     
     def _custom_parse_data(self, prop_name):
         props = {}
-        props["_content"] = [self._stream.read()]
+        props["_content"] = self._stream.read()
         
     def _serialize(self, properties):
         return properties["_content"][0]

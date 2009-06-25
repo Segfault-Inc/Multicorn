@@ -79,7 +79,7 @@ class AccessPoint(object):
     
     def search(self, conditions):
         """
-        List every item in that matches ``conditions``
+        Generate a sequence of every item matching ``conditions''.
         
         ``conditions`` is a list of (property_name, operator, value) tuples
         as returned by kalamar.site.Site.parse_request
@@ -89,8 +89,8 @@ class AccessPoint(object):
         # 1. expand syntaxic sugar.
         # 2. divide conditions into two categories : parser and storage
         # 3. call _storage_search with storage conditions as parameters.
-        # 4. filter the items raised with conditions applying to the parser.
-        # 5. return filtered items
+        # 4. filter the items yielded with conditions applying to the parser.
+        # 5. yield filtered items
         
         conditions = list(self.expand_syntaxic_sugar(conditions))
         
@@ -128,18 +128,21 @@ class AccessPoint(object):
         file-like object.
         
         """
-        raise NotImplementedError # subclasses need to override this
+        # subclasses need to override this
+        raise NotImplementedError('Abstract method')
 
     def save(self, item):
         """
         Update or add the item
         """
-        raise NotImplementedError # subclasses need to override this
+        # subclasses need to override this
+        raise NotImplementedError('Abstract method')
 
     def remove(self, item):
         """
         Remove/delete the item from the backend storage
         """
-        raise NotImplementedError # subclasses need to override this
+        # subclasses need to override this
+        raise NotImplementedError('Abstract method')
 
 

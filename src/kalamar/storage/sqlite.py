@@ -44,7 +44,7 @@ class SQLiteStorage(DBAPIStorage):
         return (self._connection, self._table)
     
     def _get_primary_keys(self):
-        """
+        """Return the list of the table's primary keys' names.
         
         Fixture
         >>> from kalamar._test import fill_sqlite_db
@@ -60,8 +60,8 @@ class SQLiteStorage(DBAPIStorage):
         connection, table = self.get_connection()
         cursor = connection.cursor()
         cursor.execute('PRAGMA table_info(%s)' % table)
-        # cid, name, type, notnull, dflt_value, pk
         
+        # cid, name, type, notnull, dflt_value, pk
         fields = (dict(zip(['cid', 'name', 'type', 'notnull',
                             'dflt_value', 'pk'], values))
                   for values in cursor.fetchall())
