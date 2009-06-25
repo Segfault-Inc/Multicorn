@@ -24,21 +24,46 @@ class SQLiteStorage(DBAPIStorage):
     protocol = 'sqlite'
     
     def get_connection(self):
+        """Return (connection, table)
+        
+        Needs 'url' in the configuration in the following format:
+            sqlite:///path/to/file?table
+        or:
+            sqlite://./rel/path/to/file?table
+        or:
+            sqlite://:memory:?table
+        
+        """
         if getattr(self, '_connection', None) is None:
             url = self.config['url']
             urldict = urlparse.urlsplit(url)
-            splitted_path = urldict.path.split('?')
+            splitted_path = urldict.path.split('?',1)
             file = splitted_path[0][2:]
             self._table = splitted_path[1]
             self._connection = sqlite3.connect(file)
         return (self._connection, self._table)
     
     def _get_primary_keys(self):
+        """
+        
+        Fixture
+        >>> from kalamar._test import fill_sqlite_db
+        >>> storage = SQLiteStorage(url='sqlite://:memory:?test', basedir='')
+        >>> conn, table = storage.get_connection()
+        >>> fill_sqlite_db(conn)
+        
+        Test
+        >>> storage._get_primary_keys()
+        [u'key']
+        
+        """
         connection, table = self.get_connection()
+        cursor = connection.cursor()
         cursor.execute('PRAGMA table_info(%s)' % table)
         # cid, name, type, notnull, dflt_value, pk
         
-        fields = (dict(zip(cursor.description, values))
+        fields = (dict(zip(['cid', 'name', 'type', 'notnull',
+                            'dflt_value', 'pk'], values))
                   for values in cursor.fetchall())
-        pkeys = [field['name'] for field in fields if field[pk]]
+        pkeys = [f['name'] for f in fields if f['pk']]
         return pkeys

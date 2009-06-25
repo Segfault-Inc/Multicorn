@@ -255,9 +255,18 @@ class ItemProperties(MultiDict):
     >>> prop.getlist("cork_prop")
     ['I am a cork prop', 'toto', 'tata']
     
-    This key has been forced
+    This key has been forced with ``storage_properties''
     >>> prop["b"]
     'B'
+    
+    You can modifie content and know if the item's data has been modified
+    >>> prop.content_modified
+    False
+    >>> prop["cork_prop"] = "new value"
+    >>> prop["cork_prop"]
+    'new value'
+    >>> prop.content_modified
+    True
     
     Storage properties can be accessed separately by a dictionnary
     >>> prop.storage_properties
@@ -288,6 +297,7 @@ class ItemProperties(MultiDict):
         self.storage_properties = storage_properties
         self.storage_properties_old = deepcopy(storage_properties)
         self._loaded = False
+        self.content_modified = False
 
     def __getitem__(self, key):
         if not self._loaded:
@@ -307,7 +317,8 @@ class ItemProperties(MultiDict):
     def __setitem__(self, key, value):
         # aliasing
         key = self._item.aliases.get(key,key)
-        try:
+        if key in self.storage_properties.keys():
             self.storage_properties[key] = value
-        except KeyError:
+        else:
             super(ItemProperties, self).__setitem__(key, value)
+            self.content_modified = True
