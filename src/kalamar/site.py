@@ -23,6 +23,7 @@ independent site with its own configuration.
 
 import os
 import kalamar
+import ConfigParser
 from kalamar import utils
 from kalamar.storage import AccessPoint
 
