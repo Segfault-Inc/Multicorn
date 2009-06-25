@@ -75,8 +75,7 @@ class Site(object):
     def search(self, access_point, request):
         """List every item in ``access_point`` that match ``request``
         
-        See (TODO: add a reference to the correct doc) for the syntax of the
-        ``request`` string
+        See ``Site.parse_request`` for the syntax of the ``request`` string.
         """
         conditions = self.parse_request(request)
         return self.access_points[access_point].search(conditions)
@@ -103,11 +102,11 @@ class Site(object):
     
     def save(self, item):
         """Update or add the item"""
-        raise NotImplementedError # TODO
+        return item._access_point.save(item)
 
     def remove(self, item):
         """
         Remove/delete the item from the backend storage
         """
-        raise NotImplementedError # TODO
+        return item._access_point.remove(item)
 
