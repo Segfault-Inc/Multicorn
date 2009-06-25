@@ -19,4 +19,6 @@
 TODO English doc
 """
 
-from item import Item
+from kalamar.item import Item
+from kalamar.site import Site
+
