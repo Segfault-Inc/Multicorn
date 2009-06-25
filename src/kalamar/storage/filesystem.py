@@ -29,7 +29,7 @@ class FileOpener(object):
     def __eq__(self, other):
         return self.filename == other.filename
     def __call__(self):
-        return open(filename, 'rb')
+        return open(self.filename, 'rb')
         
 
 class FileSystemStorage(AccessPoint):
