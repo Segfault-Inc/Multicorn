@@ -231,6 +231,9 @@ class FileSystemStorage(AccessPoint):
 
         
     def save(self, item):
+        """
+        Add/update/move an item
+        """
         old_path = self._path_from_properties(
             item.properties.storage_properties_old
         )
