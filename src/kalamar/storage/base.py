@@ -93,23 +93,27 @@ class AccessPoint(object):
         # 5. yield filtered items
         
         conditions = list(self.expand_syntaxic_sugar(conditions))
-        
+
         storage_conditions = []
         parser_conditions = []
         parser_aliases_values = [b for (a,b) in self.parser_aliases]
-        sto_props = self.get_storage_properties()
-        for cond in conditions:
-            if cond[0] in parser_aliases_values or cond[0] not in sto_props:
-                parser_conditions.append(cond)
-            else:
-                storage_conditions.append(cond)
-                
-        items = (Item(self, opener, properties)
-                 for properties, opener
-                 in self._storage_search(storage_conditions))
         
-        for item in items:
-            item = Item.get_item_parser(self, opener, properties)
+        sto_props = self.get_storage_properties()
+        sto_aliases = dict(self.storage_aliases)
+        sto_aliases_rev = dict((b,a) for (a,b) in self.storage_aliases)
+        sto_props = [sto_aliases_rev[prop] for prop in sto_props]
+        for name, funct, value in conditions:
+            if name in parser_aliases_values:
+                parser_conditions.append((name, funct, value))
+            elif name in sto_props:
+                storage_conditions.append((sto_aliases[name], funct, value))
+            else:
+                # TODO change this
+                raise Exception('F-U-C-K !')
+        
+        for properties, opener in self._storage_search(storage_conditions):
+            item = Item.get_item_parser(self.config['parser'], self,
+                                        opener, properties)
             for name, funct, value in parser_conditions:
                 if not funct(item.properties[name], value):
                     break

@@ -71,7 +71,7 @@ class Item(object):
         self._stream = None
         self.properties = ItemProperties(self, accessor_properties)
         self._access_point = access_point
-        self.aliases = self._access_point.parser_aliases
+        self.aliases = dict(self._access_point.parser_aliases)
         self.aliases_rev = dict((b,a) for (a,b) in enumerate(self.aliases))
     
     @staticmethod
@@ -173,7 +173,7 @@ class Item(object):
         access_point.
 
         """
-        return access_point.default_encoding
+        return self._access_point.default_encoding
 
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
