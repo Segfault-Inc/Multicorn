@@ -17,23 +17,23 @@
 
 """TODO : put some doc here"""
 
-from kalamar.item import AtomItem
+from kalamar.parser.textitem import TextItem
 
-class TestItem(AtomItem):
+class TestItem(TextItem):
     """A class giving the raw (binary) access to an item's data"""
     
     format = "test_format"
     
     def _custom_parse_data(self):
-        data = self._stream.read()
-        props = dict(zip(("genre","artist","album", "title"),
-                         ([value] for value in data.split("\n",4))))
-        props["_content"] = data
+        props = super(TestItem, self)._custom_parse_data()
+        data = props["_content"]
+        props.update(dict(zip(("genre","artist","album", "title"),
+                         (value for value in data.split("\n",4)))))
         return props
         
     def _serialize(self, properties):
-        album = properties["album"][0]
-        title = properties["title"][0]
-        return album+"\n"+title
-
-del AtomItem
+        genre = properties["genre"]
+        artist = properties["artist"]
+        album = properties["album"]
+        title = properties["title"]
+        return '\n'.join([genre, artist, album, title])

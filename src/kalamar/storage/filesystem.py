@@ -193,8 +193,7 @@ class FileSystemStorage(AccessPoint):
                                 break
                     else:
                         # all the conditions for the present properties are met
-                        
-                        path = subdir + '/' + name
+                        path = subdir + u'/' + name
                         properties.update(previous_properties)
                         if self.isdir(path):
                             if pattern_parts:
@@ -211,7 +210,7 @@ class FileSystemStorage(AccessPoint):
                                     self._real_filename(path)
                                 )
         
-        return walk('', self.filename_parts_pattern, ())
+        return walk(u'', self.filename_parts_pattern, ())
             
     
     def _path_from_properties(self, properties):

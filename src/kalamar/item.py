@@ -72,6 +72,7 @@ class Item(object):
         self.properties = ItemProperties(self, accessor_properties)
         self._access_point = access_point
         self.aliases = dict(self._access_point.parser_aliases)
+        self.aliases.update(self._access_point.storage_aliases)
         self.aliases_rev = dict((b,a) for (a,b) in enumerate(self.aliases))
     
     @staticmethod

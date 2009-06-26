@@ -19,6 +19,7 @@
 """TODO : put some doc here"""
 
 from kalamar.item import AtomItem
+from werkzeug import MultiDict
 
 class VorbisItem(AtomItem):
     """The Ogg/Vorbis parser.
@@ -41,13 +42,17 @@ class VorbisItem(AtomItem):
     def _custom_parse_data(self):
         from ogg import vorbis
         
-        props["time_length"] = v.time_total(0)
+        props = MultiDict()
         props["_content"] = self._stream.read()
         
         self._stream.seek(0)
         v = vorbis.VorbisFile(self._stream)
-        for name, list in v.comment().as_dic().items():
+        props["time_length"] = v.time_total(0)
+        
+        comment = v.comment()
+        for name, list in comment.as_dict().items():
             props.setlist(name,list)
+        
         return props
     
     def _serialize(self, properties):
