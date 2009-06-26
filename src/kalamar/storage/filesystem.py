@@ -79,7 +79,7 @@ class FileSystemStorage(AccessPoint):
         >>> path = subdir + '/' + basename
         >>> assert ap._real_filename(path) == os.path.normpath(__file__)
         """
-        return self.root_dir + os.sep + os.path.normpath(filename.strip('/'))
+        return os.path.join(self.root_dir, *filename.split('/'))
 
     def listdir(self, dirname):
         """List files and directories in ``dirname``.
@@ -89,7 +89,8 @@ class FileSystemStorage(AccessPoint):
         
         >>> dirname, basename = os.path.split(__file__)
         >>> ap = AccessPoint.from_url(url='file://' + dirname)
-        >>> assert basename in ap.listdir('/')
+        >>> assert basename in ap.listdir(u'/')
+        >>> assert isinstance(ap.listdir(u'/')[0], unicode)
         """
         return os.listdir(self._real_filename(dirname))
 
