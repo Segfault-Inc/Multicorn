@@ -35,6 +35,6 @@ class Site(object):
     @Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
-        
+        import test
         return Response('Hello, World!')
 

@@ -68,7 +68,7 @@ def run(site_):
         return locals()
     action_shell = script.make_shell(shell_variables)
     action_test = run_tests
-    action_runserver = script.make_runserver(site_, use_reloader=True,
+    action_runserver = script.make_runserver(lambda: site_, use_reloader=True,
                                              use_debugger=True)
     script.run()
 

@@ -18,6 +18,7 @@
 
 from kalamar import utils
 from kalamar.item import Item
+from pprint import pprint
 
 class AccessPoint(object):
     """
@@ -44,7 +45,8 @@ class AccessPoint(object):
                 tuple(part.split('=', 1))
                 for part in config.get(prop, '').split('/') if '=' in part
             ])
-        self.property_names = [name for name, alias in self.storage_aliases]
+        self.property_names = [name for name, alias
+                               in self.storage_aliases + self.parser_aliases]
         self.url = config['url']
         self.basedir = config.get('basedir', '')
             
@@ -96,24 +98,24 @@ class AccessPoint(object):
 
         storage_conditions = []
         parser_conditions = []
-        parser_aliases_values = [b for (a,b) in self.parser_aliases]
+        parser_aliases_values = [a for (a,b) in self.parser_aliases]
         
-        sto_props = self.get_storage_properties()
+        sto_props_old = self.get_storage_properties()
         sto_aliases = dict(self.storage_aliases)
         sto_aliases_rev = dict((b,a) for (a,b) in self.storage_aliases)
-        sto_props = [sto_aliases_rev[prop] for prop in sto_props]
+        sto_props = set(sto_aliases_rev.get(prop, prop)
+                        for prop in sto_props_old)
+        sto_props.update(sto_props_old)
         for name, funct, value in conditions:
-            if name in parser_aliases_values:
-                parser_conditions.append((name, funct, value))
-            elif name in sto_props:
+            if name in sto_props:
                 storage_conditions.append((sto_aliases[name], funct, value))
             else:
-                # TODO change this
-                raise Exception('F-U-C-K !')
+                parser_conditions.append((name, funct, value))
         
         for properties, opener in self._storage_search(storage_conditions):
             item = Item.get_item_parser(self.config['parser'], self,
                                         opener, properties)
+            
             for name, funct, value in parser_conditions:
                 if not funct(item.properties[name], value):
                     break

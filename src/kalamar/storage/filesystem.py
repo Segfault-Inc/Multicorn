@@ -47,15 +47,16 @@ class FileSystemStorage(AccessPoint):
         >>> assert ap.root_dir == os.path.normpath('/foo/bar')
         """
         super(FileSystemStorage, self).__init__(**config)
-        assert self.url.startswith(self.__class__.protocol + '://')
+        assert self.url.startswith(self.__class__.protocol + u'://')
         self.root_dir = os.path.normpath(os.path.join(
             self.basedir,
-            self.url[len(self.__class__.protocol + '://'):]
+            self.url[len(self.__class__.protocol + u'://'):]
         ))
-        self.filename_format = config.get('filename_format', '*')
+        self.root_dir = self.root_dir.decode(self.default_encoding)
+        self.filename_format = config.get(u'filename_format', u'*')
         self.filename_parts_pattern = []
         index = 1
-        for part in self.filename_format.split('/'):
+        for part in self.filename_format.split(u'/'):
             pattern = self._pattern_to_regexp(part, index)
             index += len(pattern.groupindex)
             self.filename_parts_pattern.append(pattern)
@@ -79,7 +80,7 @@ class FileSystemStorage(AccessPoint):
         >>> path = subdir + '/' + basename
         >>> assert ap._real_filename(path) == os.path.normpath(__file__)
         """
-        return self.root_dir + os.sep + os.path.normpath(filename.strip('/'))
+        return self.root_dir + os.sep + os.path.normpath(filename.strip(u'/'))
 
     def listdir(self, dirname):
         """List files and directories in ``dirname``.
@@ -192,8 +193,7 @@ class FileSystemStorage(AccessPoint):
                                 break
                     else:
                         # all the conditions for the present properties are met
-                        
-                        path = subdir + '/' + name
+                        path = subdir + u'/' + name
                         properties.update(previous_properties)
                         if self.isdir(path):
                             if pattern_parts:
@@ -210,7 +210,7 @@ class FileSystemStorage(AccessPoint):
                                     self._real_filename(path)
                                 )
         
-        return walk('', self.filename_parts_pattern, ())
+        return walk(u'', self.filename_parts_pattern, ())
             
     
     def _path_from_properties(self, properties):
