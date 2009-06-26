@@ -42,10 +42,15 @@ def list_modules(module, base=SRC_DIR):
             else:
                 yield '.'.join(module) + '.' + basename[:-3], path
 
-def run_tests():
+def run_tests(modules='kalamar,kraken,koral', coverage=False):
+    """
+    Run doctests and unittests
+    """
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
-    for name, path in chain(*imap(list_modules, MODULES)):
+    modules_paths = []
+    for name, path in chain(*imap(list_modules, modules.split(','))):
+        modules_paths.append(path)
         # Write 'TO' 'DO' to prevent this script from finding itself
         with open(path) as f:
             todo = f.read().count('TO' 'DO')
@@ -58,7 +63,15 @@ def run_tests():
             if e[1] != "has no tests":
                 raise
         suite.addTests(loader.loadTestsFromName(name))
-    unittest.TextTestRunner().run(suite)
+    if coverage:
+        import coverage
+        c = coverage.coverage()
+        c.start()
+        unittest.TextTestRunner().run(suite)
+        c.stop()
+        c.report(modules_paths)
+    else:
+        unittest.TextTestRunner().run(suite)
 
     
 def run(site_):

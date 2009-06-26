@@ -47,16 +47,15 @@ class FileSystemStorage(AccessPoint):
         >>> assert ap.root_dir == os.path.normpath('/foo/bar')
         """
         super(FileSystemStorage, self).__init__(**config)
-        assert self.url.startswith(self.__class__.protocol + u'://')
+        assert self.url.startswith(self.__class__.protocol + '://')
         self.root_dir = os.path.normpath(os.path.join(
             self.basedir,
-            self.url[len(self.__class__.protocol + u'://'):]
+            self.url[len(self.__class__.protocol + '://'):]
         ))
-        self.root_dir = self.root_dir.decode(self.default_encoding)
-        self.filename_format = config.get(u'filename_format', u'*')
+        self.filename_format = config.get('filename_format', '*')
         self.filename_parts_pattern = []
         index = 1
-        for part in self.filename_format.split(u'/'):
+        for part in self.filename_format.split('/'):
             pattern = self._pattern_to_regexp(part, index)
             index += len(pattern.groupindex)
             self.filename_parts_pattern.append(pattern)
@@ -80,7 +79,7 @@ class FileSystemStorage(AccessPoint):
         >>> path = subdir + '/' + basename
         >>> assert ap._real_filename(path) == os.path.normpath(__file__)
         """
-        return self.root_dir + os.sep + os.path.normpath(filename.strip(u'/'))
+        return os.path.join(self.root_dir, *filename.split('/'))
 
     def listdir(self, dirname):
         """List files and directories in ``dirname``.
@@ -90,7 +89,8 @@ class FileSystemStorage(AccessPoint):
         
         >>> dirname, basename = os.path.split(__file__)
         >>> ap = AccessPoint.from_url(url='file://' + dirname)
-        >>> assert basename in ap.listdir('/')
+        >>> assert basename in ap.listdir(u'/')
+        >>> assert isinstance(ap.listdir(u'/')[0], unicode)
         """
         return os.listdir(self._real_filename(dirname))
 
