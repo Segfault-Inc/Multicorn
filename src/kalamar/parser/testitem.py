@@ -27,13 +27,14 @@ class TestItem(TextItem):
     def _custom_parse_data(self):
         props = super(TestItem, self)._custom_parse_data()
         data = props["_content"]
-        props.update(dict(zip(("genre","artist","album", "title"),
-                         (value for value in data.split("\n",4)))))
+        props.update(dict(zip(("genre","artist","album", "tracknumber", "title"),
+                         (value for value in data.split("\n")))))
         return props
         
     def _serialize(self, properties):
         genre = properties["genre"]
         artist = properties["artist"]
         album = properties["album"]
+        trackno = properties["tracknumber"]
         title = properties["title"]
-        return '\n'.join([genre, artist, album, title])
+        return '\n'.join([genre, artist, album, trackno, title])
