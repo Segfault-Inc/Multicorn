@@ -13,11 +13,12 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 
-for filename in os.listdir(os.path.dirname(__file__)):
-    if filename.endswith('.py') and not filename.startswith('_'):
-        __import__(__name__ + '.' + filename[:-3])
+def load():
+    for filename in os.listdir(os.path.dirname(__file__)):
+        if filename.endswith('.py') and not filename.startswith('_'):
+            __import__(__name__ + '.' + filename[:-3])
 

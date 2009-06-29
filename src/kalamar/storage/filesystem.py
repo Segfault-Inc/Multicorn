@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import glob
@@ -235,20 +235,19 @@ class FileSystemStorage(AccessPoint):
         Add/update/move an item
         """
         old_path = self._path_from_properties(
-            item.properties.storage_properties_old
-        )
+            item.properties.storage_properties_old)
         new_path = self._path_from_properties(
-            item.properties.storage_properties
-        )
+            item.properties.storage_properties)
+
         move = old_path != new_path
-        change = item.properties.content_modified
+        change = item.properties.parser_content_modified
         if change:
             if move:
-                # remove old_path
+                # Remove old_path
                 self.remove(item)
-            f = self.open_file(new_path, mode='wb')
-            f.write(item.serialize())
-            f.close()
+            fd = self.open_file(new_path, mode='wb')
+            fd.write(item.serialize())
+            fd.close()
         elif move:
             self.rename(old_path, new_path)
 
@@ -257,6 +256,6 @@ class FileSystemStorage(AccessPoint):
         Remove the given item from the backend storage
         """
         self.remove_file(self._path_from_properties(
-            item.properties.storage_properties_old
+            item.properties._storage_properties_old
         ))
 

@@ -13,10 +13,13 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-TODO English doc
+Kalamar - Content Management Library
+====================================
+
+# TODO: write module documentation
 """
 
 from kalamar.item import Item

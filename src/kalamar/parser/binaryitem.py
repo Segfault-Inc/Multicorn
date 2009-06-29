@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """TODO : put some doc here"""
 
@@ -28,7 +28,7 @@ class BinaryItem(AtomItem):
         props = {}
         props["_content"] = self._stream.read()
         
-    def _serialize(self, properties):
+    def _custom_serialize(self, properties):
         return properties["_content"][0]
 
 del AtomItem

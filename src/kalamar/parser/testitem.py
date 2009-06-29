@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Kalamar library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """TODO : put some doc here"""
 
@@ -31,7 +31,7 @@ class TestItem(TextItem):
                          (value for value in data.split("\n")))))
         return props
         
-    def _serialize(self, properties):
+    def _custom_serialize(self, properties):
         genre = properties["genre"]
         artist = properties["artist"]
         album = properties["album"]
