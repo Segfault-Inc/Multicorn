@@ -67,9 +67,9 @@ class AccessPoint(object):
         ...     ('c', None,               3), 
         ...     ('d', utils.operator.ge,  4)
         ... ])) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-        [('a', <built-in function eq>,           1),
-         ('b', <built-in function gt>,     2),
-         ('c', <built-in function eq>,           3),
+        [('a', <built-in function eq>, 1),
+         ('b', <built-in function gt>, 2),
+         ('c', <built-in function eq>, 3),
          ('d', <built-in function ge>, 4)]
         """
         for n, (property_name, operator, value) in enumerate(conditions):
