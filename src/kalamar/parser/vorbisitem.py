@@ -55,7 +55,7 @@ class VorbisItem(AtomItem):
         
         return props
     
-    def _serialize(self, properties):
+    def _custom_serialize(self, properties):
         return self.properties["_content"][0]
     
 del AtomItem

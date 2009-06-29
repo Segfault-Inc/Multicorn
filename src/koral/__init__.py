@@ -14,3 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Koral.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+Koral - Templates Management Library
+====================================
+
+# TODO: write module documentation
+"""
+

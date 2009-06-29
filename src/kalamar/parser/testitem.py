@@ -31,7 +31,7 @@ class TestItem(TextItem):
                          (value for value in data.split("\n",4)))))
         return props
         
-    def _serialize(self, properties):
+    def _custom_serialize(self, properties):
         genre = properties["genre"]
         artist = properties["artist"]
         album = properties["album"]

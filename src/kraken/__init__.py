@@ -15,4 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Kraken - HTTP Requests Dispatcher
+=================================
+
+# TODO: write module documentation
+"""
+
 from kraken.site import Site

@@ -16,7 +16,10 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-TODO English doc
+Kalamar - Content Management Library
+====================================
+
+# TODO: write module documentation
 """
 
 from kalamar.item import Item

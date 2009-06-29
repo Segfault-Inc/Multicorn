@@ -28,7 +28,7 @@ class BinaryItem(AtomItem):
         props = {}
         props["_content"] = self._stream.read()
         
-    def _serialize(self, properties):
+    def _custom_serialize(self, properties):
         return properties["_content"][0]
 
 del AtomItem

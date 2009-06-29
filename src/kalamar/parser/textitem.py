@@ -30,7 +30,7 @@ class TextItem(AtomItem):
         props["_content"] = content.decode(self.encoding)
         return props
         
-    def _serialize(self, properties):
+    def _custom_serialize(self, properties):
         content = properties["_content"][0]
         return content.encode(self.encoding)
 
