@@ -26,4 +26,5 @@ API
     engines = {}
     def __init__(…, path_to_root)
   
-  appel : MonSite.engines["kid"](template_name, values, lang, modifiers)
+  usage : engine = MySite.get_engine("kid")
+          result = engine(template_name, values, lang, modifiers)

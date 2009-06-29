@@ -8,8 +8,8 @@ from kalamar import Item
 class TestSite(TestCase):
     
     def setUp(self):
-        self.site = Site(os.path.normpath(os.path.realpath(__file__)
-                         + '/../data/kalamar.conf'))
+        self.site = Site(os.path.normpath(os.join(os.path.realpath(__file__),
+                                          '../data/kalamar.conf')))
 
 class TestSiteSearch(TestSite):
         

@@ -101,53 +101,6 @@ class Item(object):
                 return subclass(*args, **kwargs)
         
         raise ValueError('Unknown format: ' + format)
-    
-    # TODO: TO BE DELETED ??????????
-    # NO !! Items need to override operators functions
-    # See vorbis item for example : comments can be lists.
-    #
-    #def matches(self, prop_name, operator, value):
-    #    """Return boolean
-    #
-    #    Check if the item's property <prop_name> matches <value> for the given
-    #    operator.
-    #
-    #    Availables operators are (see kalamar doc for further info) :
-    #    - "=" -> equal
-    #    - "!=" -> different
-    #    - ">" -> greater than (alphabetically)
-    #    - "<" -> lower than (alphabetically)
-    #    - ">=" -> greater or equal (alphabetically)
-    #    - "<=" -> lower or equal (alphabetically)
-    #    - "~=" -> matches the given regexp
-    #    - "~!=" -> does not match the given regexp
-    #        availables regexp are python's re module's regexp
-    #    
-    #    >>> from _test.corks import CorkAccessPoint, cork_opener
-    #    >>> ap = CorkAccessPoint()
-    #    >>> item = Item(ap, cork_opener, {"toto" : "ToTo"})
-    #    
-    #    Example :
-    #    >>> item.matches("toto", "~=", "[a-zA-Z]*")
-    #    True
-    #    >>> item.matches("toto", "#", "")
-    #    Traceback (most recent call last):
-    #    ...
-    #    OperatorNotAvailable: #
-    #
-    #    Some descendants of Item class may overload _convert_value_type to get
-    #    the "greater than/lower than" operators working with a numerical
-    #    order (for instance).
-    #
-    #    """
-    #
-    #    prop_val = self.properties[prop_name]
-    #    value = self._convert_value_type(prop_name, value)
-    #    
-    #    try:
-    #        return utils.operators[operator](prop_val, value)
-    #    except KeyError:
-    #        raise kalamar.OperatorNotAvailable(operator)
 
     def serialize(self):
         """Return the item serialized into a string"""
@@ -159,11 +112,6 @@ class Item(object):
     def _serialize(self, properties):
         """Called by ``self.serialize''. Must return a data string"""
         raise NotImplementedError("Abstract class")
-    
-    # TODO: TO BE DELETED ??????????
-    #def _convert_value_type(self, prop_name, value):
-    #    """Do nothing by default"""
-    #    return value
 
     @property
     def encoding(self):

@@ -34,9 +34,13 @@ class Site(object):
     class MultipleObjectsReturned(NotOneObjectReturned): pass
     class ObjectDoesNotExist(NotOneObjectReturned): pass
     
+    class FileNotFoundError(Exception): pass
+    
     def __init__(self, config_filename=None):
         c = ConfigParser.RawConfigParser()
-        c.read(config_filename)
+        config_filename = os.path.realpath(config_filename)
+        if c.read(config_filename) == []:
+            raise self.FileNotFoundError(config_filename)
         basedir = os.path.dirname(config_filename)
         self.access_points = {}
         for section in c.sections():

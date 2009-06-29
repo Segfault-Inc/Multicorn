@@ -24,4 +24,5 @@ API
     converters = {}
     def __init__(…, path_to_root)
   
-  appel : MonSite.converters[(mimetype_in, mimetype_out)](content_string, themes_dict)
+  usage : converter = MySite.get_converter(mimetype_in, mimetype_out)
+          result = converter(content_string, themes_dict)
