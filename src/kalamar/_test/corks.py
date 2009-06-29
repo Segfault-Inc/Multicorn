@@ -40,6 +40,7 @@ class CorkItem:
 class CorkAccessPoint:
     
     parser_aliases = {"I am aliased" : "I am not aliased"}
+    storage_aliases = {}
     default_encoding = "utf-8"
     
 def cork_opener():
