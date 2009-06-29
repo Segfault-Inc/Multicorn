@@ -18,11 +18,15 @@
 class BaseEngine(object):
     """Base class for all template engine adaptators in Koral.
     
-    This method should be inherited and his descendant must define the following
+    This method should be inherited and his descendant must redefine these
     methods:
       - __call__(template_name, values, lang, modifiers)
         where:
           - ``template_name'' is the name of the template used to render the
             values (i.e.: "kid" or "jinja")
+          - ``values'' is a dictionnary 
     
     """
+    
+    def __call__(self):
+      pass

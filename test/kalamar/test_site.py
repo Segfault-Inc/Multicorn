@@ -1,3 +1,4 @@
+# coding: utf8
 
 import os
 import sys
@@ -39,7 +40,7 @@ class TestSiteOpen(TestSite):
             self.assertRaises(self.site.ObjectDoesNotExist,
                               self.site.open, access_point, request)
     
-    def test_one result(self):
+    def test_one_result(self):
         request = 'genre=rock/artiste=Jesus\'harlem/album=amen/title=mechanical blues'
         for access_point in self.site.access_points:
             item = self.site.open(access_point, request)
