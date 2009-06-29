@@ -6,15 +6,15 @@ import os
 os.chdir(os.path.dirname(__file__))
 
 from sqlalchemy import create_engine
-engine = create_engine('sqlite:///vorbis.sqlite3', echo=True)
+engine = create_engine('sqlite:///text.sqlite3', echo=True)
 
 from sqlalchemy import Column, Integer, String, Binary
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
-class Morceaux(Base):
-    __tablename__ = 'morceaux'
+class Textes(Base):
+    __tablename__ = 'textes'
     
     id = Column(Integer, primary_key=True)
     genre = Column(String)
@@ -44,7 +44,7 @@ from sqlalchemy.orm import sessionmaker
 Session = sessionmaker(bind=engine)
 session = Session()
 
-basedir = u'fs_vorbis_classified'
+basedir = u'fs_text_classified'
 attr = {}
 import os
 for attr['genre'] in os.listdir(basedir):
@@ -59,15 +59,15 @@ for attr['genre'] in os.listdir(basedir):
                 f = basedir + u'/%(genre)s/%(artist)s/%(album)s/' % attr + name
                 attr['data'] = open(f).read()
                 assert len(attr['data']) == os.stat(f).st_size
-                m = Morceaux(**attr)
+                m = Textes(**attr)
                 session.add(m)
 session.commit()
 
 import pprint
-pprint.pprint(session.query(Morceaux).all())
+pprint.pprint(session.query(Textes).all())
 
-format = '/%(genre)s/%(artist)s/%(album)s/%(no)02i - %(title)s.ogg'
-for morceau in session.query(Morceaux):
+format = '/%(genre)s/%(artist)s/%(album)s/%(no)02i - %(title)s.txt'
+for morceau in session.query(Textes):
     if open(basedir + (format % morceau.__dict__)).read() != str(morceau.data):
         print 'CONTENT DIFFERS', morceau
 
