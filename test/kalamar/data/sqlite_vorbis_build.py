@@ -1,5 +1,5 @@
 """
-A quick and dirty script to build the volbis/sqlite database
+A quick and dirty script to build the vorbis/sqlite database
 """
 
 import os
