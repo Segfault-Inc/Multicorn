@@ -2,7 +2,6 @@
 import os
 import sys
 from unittest import TestCase
-sys.path.append(os.path.normpath(os.path.realpath(__file__) + '/../../../src/'))
 from kalamar import Site
 from kalamar import Item
 
