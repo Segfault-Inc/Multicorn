@@ -27,6 +27,7 @@ s = kalamar.Site('../test/kalamar/data/kalamar.conf')
 #                     it.properties["album"], it.properties["titre"]))
 
 l = list(s.search('fs_text_messed_up', u'jazz'))
-for it in l:
-    print ', '.join((it.properties["genre"], it.properties["artiste"], \
-                     it.properties["album"], it.properties["titre"]))
+pprint(l)
+#for it in l:
+#    print ', '.join((it.properties["genre"], it.properties["artiste"], \
+#                     it.properties["album"], it.properties["titre"]))
