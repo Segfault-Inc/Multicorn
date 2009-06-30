@@ -15,18 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+
 class BaseEngine(object):
     """Base class for all template engine adaptators in Koral.
     
-    This method should be inherited and his descendant must redefine these
-    methods:
-      - __call__(template_name, values, lang, modifiers)
-        where:
-          - ``template_name'' is the name of the template used to render the
-            values (i.e.: "kid" or "jinja")
-          - ``values'' is a dictionnary 
-    
+    Subclasses must override the ``render`` method
     """
     
-    def __call__(self):
-      pass
+    def render(self, template_name, values, lang, modifiers):
+        """
+        Renders ``template_name'' with the ``values'' dict
+        and return an unicode string    
+        """
+        raise NotImplementedError # subclasses must override this
+
