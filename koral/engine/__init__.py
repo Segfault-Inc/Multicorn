@@ -17,6 +17,8 @@
 
 import os
 
+from koral.engine.base import BaseEngine
+
 def load_engines():
     for filename in os.listdir(os.path.dirname(__file__)):
         if filename.endswith('.py') and not filename.startswith('_'):
