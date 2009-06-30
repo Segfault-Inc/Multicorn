@@ -55,9 +55,9 @@ class Site(object):
         
         >>> list(Site.parse_request(u'/1/b=42/c>=3/')) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [(None, None, u'1'),
-         (u'b', <built-in function eq>, u'42'),
-         (u'c', <built-in function ge>, u'3')]
+        [Condition(None, None, u'1'),
+         Condition(u'b', <built-in function eq>, u'42'),
+         Condition(u'c', <built-in function ge>, u'3')]
 
         """
         request = unicode(request)
@@ -67,11 +67,11 @@ class Site(object):
             for operator_str, operator_func in utils.operators.items():
                 if operator_str in part:
                     name, value = part.split(operator_str, 1)
-                    yield (name, operator_func, value)
+                    yield utils.Condition(name, operator_func, value)
                     break
             else:
                 # No operator found
-                yield (None, None, part)
+                yield utils.Condition(None, None, part)
         
     def search(self, access_point, request):
         """List all items in "access_point" matching "request".

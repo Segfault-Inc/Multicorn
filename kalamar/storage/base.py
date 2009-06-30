@@ -62,22 +62,20 @@ class AccessPoint(object):
         
         >>> ap = AccessPoint(url='', storage_aliases='a=p1/b=p2/c=p3')
         >>> list(ap.expand_syntaxic_sugar([
-        ...     (None, None,              1), 
-        ...     (None, utils.operator.gt, 2), 
-        ...     ('c', None,               3), 
-        ...     ('d', utils.operator.ge,  4)
+        ...     utils.Condition(None, None,              1),
+        ...     utils.Condition(None, utils.operator.gt, 2),
+        ...     utils.Condition('c', None,               3),
+        ...     utils.Condition('d', utils.operator.ge,  4)
         ... ])) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-        [('a', <built-in function eq>, 1),
-         ('b', <built-in function gt>, 2),
-         ('c', <built-in function eq>, 3),
-         ('d', <built-in function ge>, 4)]
+        [Condition('a', <built-in function eq>, 1),
+         Condition('b', <built-in function gt>, 2),
+         Condition('c', <built-in function eq>, 3),
+         Condition('d', <built-in function ge>, 4)]
         """
-        for n, (property_name, operator, value) in enumerate(conditions):
-            if operator is None:
-                operator = utils.operator.eq
-            if property_name is None:
-                property_name = self.property_names[n]          
-            yield property_name, operator, value
+        for n, cond in enumerate(conditions):
+            yield utils.Condition(cond.property_name or self.property_names[n],
+                                  cond.operator or utils.operator.eq,
+                                  cond.value)
     
     def search(self, conditions):
         """
@@ -106,18 +104,20 @@ class AccessPoint(object):
         sto_props = set(sto_aliases_rev.get(prop, prop)
                         for prop in sto_props_old)
         sto_props.update(sto_props_old)
-        for name, funct, value in conditions:
-            if name in sto_props:
-                storage_conditions.append((sto_aliases[name], funct, value))
+        for cond in conditions:
+            if cond.property_name in sto_props:
+                storage_conditions.append(utils.Condition(
+                    sto_aliases[cond.property_name], cond.operator, cond.value
+                ))
             else:
-                parser_conditions.append((name, funct, value))
+                parser_conditions.append(cond)
         
         for properties, opener in self._storage_search(storage_conditions):
             item = Item.get_item_parser(self.config['parser'], self,
                                         opener, properties)
             
-            for name, funct, value in parser_conditions:
-                if not funct(item.properties[name], value):
+            for cond in parser_conditions:
+                if not cond(item.properties):
                     break
             else:
                 yield item

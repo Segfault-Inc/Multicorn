@@ -187,9 +187,10 @@ class FileSystemStorage(AccessPoint):
                 if match:
                     # the name matches the pattern, extract the values
                     properties = match.groupdict()
-                    for prop_name, operator, value in conditions:
-                        if prop_name in properties:
-                            if not operator(properties[prop_name], value):
+                    for cond in conditions:
+                        if cond.property_name in properties:
+                            if not cond.operator(properties[cond.property_name], 
+                                                 cond.value):
                                 break
                     else:
                         # all the conditions for the present properties are met
