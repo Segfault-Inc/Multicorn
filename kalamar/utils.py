@@ -50,3 +50,23 @@ def recursive_subclasses(class_):
         for sub_subclass in recursive_subclasses(subclass):
             yield sub_subclass
 
+class Condition(object):
+    """
+    A contener for property_name, operator, value
+    """
+    def __init__(self, property_name, operator, value):
+        self.property_name = property_name
+        self.operator = operator
+        self.value = value
+    
+    def __call__(self, properties):
+        """
+        Return True if this dict of properties matches this condition
+        """
+        return self.operator(properties[self.property_name], self.value)
+    
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (self.__class__.__name__, self.property_name,
+                                   self.operator, self.value)
+    
+
