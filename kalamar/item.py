@@ -128,7 +128,7 @@ class Item(object):
     def _custom_serialize(self, properties):
         """Serialize item from its properties, return a data string.
 
-        This method have to be overriden.
+        This method has to be overriden.
 
         This method must not worry about aliases, must not modify "properties",
         and must just return a string.
@@ -146,7 +146,7 @@ class Item(object):
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
         
-        This method have to be overriden.
+        This method has to be overriden.
 
         This method must not worry about aliases, must not modify "properties",
         and must just return a dict.
