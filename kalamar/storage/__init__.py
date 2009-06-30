@@ -15,10 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
-from kalamar.storage.base import AccessPoint
+"""
+Storage module listing all storage access points.
+
+"""
 
 import os
 
-for filename in os.listdir(os.path.dirname(__file__)):
-    if filename.endswith('.py') and not filename.startswith('_'):
-        __import__(__name__ + '.' + filename[:-3])
+def load():
+    """Import all python files in the "storage" folder"""
+    for filename in os.listdir(os.path.dirname(__file__)):
+        if filename.endswith('.py') and not filename.startswith('_'):
+            __import__(__name__ + '.' + filename[:-3])
