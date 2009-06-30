@@ -256,6 +256,6 @@ class FileSystemStorage(AccessPoint):
         Remove the given item from the backend storage
         """
         self.remove_file(self._path_from_properties(
-            item.properties._storage_properties_old
+            item.properties.storage_properties_old
         ))
 
