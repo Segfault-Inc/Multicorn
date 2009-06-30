@@ -37,6 +37,8 @@ class Site(object):
     
     def __init__(self, config_filename=None):
         """Create a kalamar site from a configuration file."""
+        storage.load()
+
         config = ConfigParser.RawConfigParser()
         config_filename = os.path.realpath(config_filename)
 
