@@ -15,32 +15,38 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Kalamar various utils.
+"""
+
 import operator
 import re
 
-def re_match(a, b):
-    return bool(re.match(b, a))
+def re_match(string, pattern):
+    """Return if "string" matches "pattern"."""
+    return bool(re.match(pattern, string))
 
-def re_not_match(a, b):
-    return  not re.match(b, a)
+def re_not_match(string, pattern):
+    """Return if "string" does not match "pattern"."""
+    return not re.match(pattern, string)
 
 operators = {
-    '=':   operator.eq,
-    '!=':  operator.ne,
-    '>':   operator.gt,
-    '>=':  operator.ge,
-    '<':   operator.lt,
-    '<=':  operator.le,
-    '~=':  re_match,
+    '=': operator.eq,
+    '!=': operator.ne,
+    '>': operator.gt,
+    '>=': operator.ge,
+    '<': operator.lt,
+    '<=': operator.le,
+    '~=': re_match,
     '~!=': re_not_match,
 }
 
-class OperatorNotAvailable(Exception):
-    pass
+class OperatorNotAvailable(Exception): pass
 
 def recursive_subclasses(class_):
+    """Return all "class_" subclasses recursively"""
     yield class_
-    for sub in class_.__subclasses__():
-        for sub_sub in recursive_subclasses(sub):
-            yield sub_sub
+    for subclass in class_.__subclasses__():
+        for sub_subclass in recursive_subclasses(subclass):
+            yield sub_subclass
 
