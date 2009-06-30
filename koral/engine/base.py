@@ -16,23 +16,19 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from koral import engine, utils
-
-
-class Site(object):
+class BaseEngine(object):
+    """Base class for all template engine adaptators in Koral.
     
+    Subclasses must override the ``render`` method
+    """
+
     def __init__(self, path_to_root):
         self.path_to_root = path_to_root
-        self._engines = {}
-        engine.load_engines()
     
-    def get_engine(self, name):
-        try:
-            return self._engines[name]
-        except KeyError:
-            for subclass in utils.recursive_subclasses(engine.BaseEngine):
-                if getattr(subclass, 'name', None) == name:
-                    self._engines[name] = subclass(self.path_to_root)
-                    return self._engines[name]
+    def render(self, template_name, values={}, lang=None, modifiers=None):
+        """
+        Renders ``template_name'' with the ``values'' dict
+        and return an unicode string    
+        """
+        raise NotImplementedError # subclasses must override this
 
-        raise ValueError('Unknown engine: ' + name)
