@@ -12,13 +12,18 @@ action_runserver = werkzeug.script.make_runserver(
     kraken.site.Site, use_reloader=True, use_debugger=True
 )
                                          
-def action_test(coverage=False, print_todos=False):
+def action_test(packages='kalamar,koral,test', coverage=False,
+                print_todos=False):
+    """
+    Run all doctests and unittests found in ``packages``
+    """
+    packages = packages.split(',')
     if coverage:
-        test.run_tests_with_coverage()
+        test.run_tests_with_coverage(packages)
     else:
-        test.run_tests()
+        test.run_tests(packages)
     if print_todos:
-        for module, todos in test.find_TODOs():
+        for module, todos in test.find_TODOs(packages):
                 print module, ':', todos, 'TO' 'DO'+('s' if todos>1 else '')
 
 if __name__ == '__main__':

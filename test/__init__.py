@@ -3,19 +3,19 @@ import unittest
 
 import werkzeug
 
-def find_all_modules():
-    for package in ('test', 'kalamar',):
+def find_all_modules(packages):
+    for package in packages:
         for module in werkzeug.find_modules(package, include_packages=True,
                                             recursive=True):
             yield module
 
-def get_tests():
+def get_tests(packages):
     """
     Return a TestSuite
     """
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
-    for module_name in find_all_modules():
+    for module_name in find_all_modules(packages):
         suite.addTests(loader.loadTestsFromName(module_name))
         try:
             tests = doctest.DocTestSuite(module_name)
@@ -27,8 +27,8 @@ def get_tests():
             suite.addTests(tests)
     return suite
 
-def find_TODOs():
-    for module_name in find_all_modules():
+def find_TODOs(packages):
+    for module_name in find_all_modules(packages):
         filename = werkzeug.import_string(module_name).__file__
         f = open(filename)
         # Write 'TO' 'DO' to prevent this script from finding itself
@@ -37,16 +37,16 @@ def find_TODOs():
         if todo:
             yield filename, todo
 
-def run_tests():
-    unittest.TextTestRunner().run(get_tests())
+def run_tests(packages):
+    unittest.TextTestRunner().run(get_tests(packages))
 
-def run_tests_with_coverage():
+def run_tests_with_coverage(packages):
     import coverage
     c = coverage.coverage()
     c.start()
-    run_tests()
+    run_tests(packages)
     c.stop()
     c.report([werkzeug.import_string(name).__file__ 
-              for name in find_all_modules()])
+              for name in find_all_modules(packages)])
 
 
