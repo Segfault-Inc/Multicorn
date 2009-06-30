@@ -35,9 +35,10 @@ It must have a class attribute "format" which is name of the parsed format.
 
 """
 
-from kalamar import parser, utils
 from copy import deepcopy
 from werkzeug import MultiDict
+
+from kalamar import parser, utils
 
 class Item(object):
     """Abstract class, base of any item parser.
