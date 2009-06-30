@@ -25,9 +25,7 @@ Create one for each independent site with its own configuration.
 import os
 import ConfigParser
 
-import kalamar
-from kalamar import utils
-from kalamar.storage import AccessPoint
+from kalamar import storage, utils
 
 class Site(object):
     """Kalamar site."""
@@ -49,7 +47,7 @@ class Site(object):
         self.access_points = {}
         for section in config.sections():
             kwargs = dict(config.items(section), basedir=basedir)
-            self.access_points[section] = AccessPoint.from_url(**kwargs)
+            self.access_points[section] = storage.AccessPoint.from_url(**kwargs)
     
     @staticmethod
     def parse_request(request):
