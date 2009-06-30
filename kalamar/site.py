@@ -16,103 +16,96 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-TODO : Change this docstring
-Create one for each
-independent site with its own configuration.
+Kalamar Site class.
+
+Create one for each independent site with its own configuration.
+
 """
 
 import os
-import kalamar
 import ConfigParser
-from kalamar import utils
-from kalamar.storage import AccessPoint
+
+from kalamar import storage, utils
 
 class Site(object):
-    """Create a kalamar site from a configuration file."""
+    """Kalamar site."""
     
     class NotOneObjectReturned(Exception): pass
     class MultipleObjectsReturned(NotOneObjectReturned): pass
     class ObjectDoesNotExist(NotOneObjectReturned): pass
-    
     class FileNotFoundError(Exception): pass
     
     def __init__(self, config_filename=None):
-        c = ConfigParser.RawConfigParser()
+        """Create a kalamar site from a configuration file."""
+        config = ConfigParser.RawConfigParser()
         config_filename = os.path.realpath(config_filename)
-        if c.read(config_filename) == []:
+
+        if not config.read(config_filename):
             raise self.FileNotFoundError(config_filename)
+
         basedir = os.path.dirname(config_filename)
         self.access_points = {}
-        for section in c.sections():
-            kwargs = dict(c.items(section), basedir=basedir)
-            self.access_points[section] = AccessPoint.from_url(**kwargs)
+        for section in config.sections():
+            kwargs = dict(config.items(section), basedir=basedir)
+            self.access_points[section] = storage.AccessPoint.from_url(**kwargs)
     
     @staticmethod
     def parse_request(request):
-        """Convert a ``request`` string to (prop_name, operator, value) tuples
+        """Convert a "request" string to (prop_name, operator, value) tuples.
         
         >>> list(Site.parse_request(u'/1/b=42/c>=3/')) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [(None, None,                   u'1'),
+        [(None, None, u'1'),
          (u'b', <built-in function eq>, u'42'),
          (u'c', <built-in function ge>, u'3')]
+
         """
         request = unicode(request)
         for part in request.split(u'/'):
             if not part:
                 continue
             for operator_str, operator_func in utils.operators.items():
-                try:
-                    pos = part.index(operator_str)
-                except ValueError:
-                    continue
-                else:
-                    yield (
-                        part[:pos], # property name
-                        operator_func,
-                        part[pos + len(operator_str):], # value
-                    )
+                if operator_str in part:
+                    name, value = part.split(operator_str, 1)
+                    yield (name, operator_func, value)
                     break
             else:
-                # no operator found
+                # No operator found
                 yield (None, None, part)
         
-                
     def search(self, access_point, request):
-        """List every item in ``access_point`` that match ``request``
+        """List all items in "access_point" matching "request".
         
-        See ``Site.parse_request`` for the syntax of the ``request`` string.
+        See "Site.parse_request" for the syntax of the "request" string.
+
         """
         conditions = self.parse_request(request)
         return self.access_points[access_point].search(conditions)
     
     def open(self, access_point, request):
-        """Return the item in access_point that match request
+        """Return the item in access_point matching request.
         
-        If there is no result, raise Site.ObjectDoesNotExist
-        If there is more than one result, raise Site.MultipleObjectsReturned
+        If there is no result, raise "Site.ObjectDoesNotExist".
+        If there is more than one result, raise "Site.MultipleObjectsReturned".
         
         """
-        it = iter(self.search(access_point, request))
+        search = iter(self.search(access_point, request))
         try:
-            obj = it.next()
+            item = search.next()
         except StopIteration:
             raise self.ObjectDoesNotExist
         
         try:
-            it.next()
+            search.next()
         except StopIteration:
-            return obj
+            return item
         else:
             raise self.MultipleObjectsReturned
     
     def save(self, item):
-        """Update or add the item"""
+        """Update or add the item."""
         return item._access_point.save(item)
 
     def remove(self, item):
-        """
-        Remove/delete the item from the backend storage
-        """
+        """Remove/delete the item from the backend storage."""
         return item._access_point.remove(item)
-

@@ -29,19 +29,19 @@ parsed, otherwise this class will be hidden to get_item_parser.
 
 A parser class must implement the following methods:
 - _custom_parse_data(self)
-- _serialize(self, properties)
+- _custom_serialize(self, properties)
 
 It must have a class attribute "format" which is name of the parsed format.
 
 """
 
-from kalamar import parser, utils
 from copy import deepcopy
 from werkzeug import MultiDict
 
+from kalamar import parser, utils
+
 class Item(object):
-    """
-    Abstract class, base of any item parser.
+    """Abstract class, base of any item parser.
     
     You can use the Item.get_item_parser static method to get automatically the
     parser you want.
@@ -109,10 +109,10 @@ class Item(object):
 
     @property
     def encoding(self):
-        """Return the item's encoding.
+        """Return the item encoding.
 
-        Return the item's encoding, based on what the parser can know from
-        the items's data or, if unable to do so, on what is specified in the
+        Return the item encoding, based on what the parser can know from
+        the item data or, if unable to do so, on what is specified in the
         access_point.
 
         """
@@ -128,7 +128,7 @@ class Item(object):
     def _custom_serialize(self, properties):
         """Serialize item from its properties, return a data string.
 
-        **This method have to be overriden.**
+        This method have to be overriden.
 
         This method must not worry about aliases, must not modify "properties",
         and must just return a string.
@@ -146,7 +146,7 @@ class Item(object):
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
         
-        **This method have to be overriden.**
+        This method have to be overriden.
 
         This method must not worry about aliases, must not modify "properties",
         and must just return a dict.
@@ -189,7 +189,7 @@ class AtomItem(Item):
         self.properties["_content"] = value
 
 class CapsuleItem(Item, list):
-    """An ordered list of Items (atoms or capsules)
+    """An ordered list of Items (atoms or capsules).
 
     This is an abstract class.
 
@@ -272,7 +272,7 @@ class ItemProperties(MultiDict):
         self._loaded = False
 
     def __getitem__(self, key):
-        """Return the item's "key" property."""
+        """Return the item "key" property."""
         # Lazy load: load item only if needed
         if not self._loaded:
             self._item._parse_data()
@@ -289,7 +289,7 @@ class ItemProperties(MultiDict):
                 return None
     
     def __setitem__(self, key, value):
-        """Set the item's "key" property to "value"."""
+        """Set the item "key" property to "value"."""
         # Aliasing
         key = self._item.aliases.get(key, key)
         if key in self.storage_properties.keys():
