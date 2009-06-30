@@ -15,16 +15,24 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
-import koral.engine
+
+from koral import engine, utils
+
 
 class Site(object):
     
-    def __init__(path_to_root):
+    def __init__(self, path_to_root):
+        self.path_to_root = path_to_root
+        self._engines = {}
         engine.load_engines()
     
-    def get_engine(name):
-        for subclass in utils.recursive_subclasses(engine.BaseEngine):
-            if getattr(subclass, 'name', None) == name:
-                return subclass(*args, **kwargs)
+    def get_engine(self, name):
+        try:
+            return self._engines[name]
+        except KeyError:
+            for subclass in utils.recursive_subclasses(engine.BaseEngine):
+                if getattr(subclass, 'name', None) == name:
+                    self._engines[name] = subclass(self.path_to_root)
+                    return self._engines[name]
 
         raise ValueError('Unknown engine: ' + name)

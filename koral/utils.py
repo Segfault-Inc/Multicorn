@@ -13,14 +13,12 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
+# along with Koral.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 
-from koral.engine.base import BaseEngine
+def recursive_subclasses(class_):
+    yield class_
+    for sub in class_.__subclasses__():
+        for sub_sub in recursive_subclasses(sub):
+            yield sub_sub
 
-def load_engines():
-    for filename in os.listdir(os.path.dirname(__file__)):
-        if filename.endswith('.py') and not filename.startswith('_'):
-            __import__(__name__ + '.' + filename[:-3])
-    
