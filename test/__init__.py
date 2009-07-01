@@ -43,6 +43,8 @@ def run_tests(packages):
 def run_tests_with_coverage(packages):
     import coverage
     c = coverage.coverage()
+    c.exclude('raise NotImplementedError')
+    c.exclude('except ImportError:')
     c.start()
     run_tests(packages)
     c.stop()

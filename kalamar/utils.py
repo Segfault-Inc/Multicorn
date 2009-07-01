@@ -24,11 +24,11 @@ import re
 
 def re_match(string, pattern):
     """Return if "string" matches "pattern"."""
-    return bool(re.match(pattern, string))
+    return bool(re.search(pattern, string))
 
 def re_not_match(string, pattern):
     """Return if "string" does not match "pattern"."""
-    return not re.match(pattern, string)
+    return not re.search(pattern, string)
 
 operators = {
     '=': operator.eq,

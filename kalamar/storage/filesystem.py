@@ -190,15 +190,20 @@ class FileSystemStorage(AccessPoint):
         ...                           filename_format='*/*.py')
         >>> from kalamar.site import Site
         >>> request = list(Site.parse_request('path1=storage/path2~!=^__'))
-        >>> [1 for properties, opener in ap._storage_search(request)
-        ...    if properties['path2'].startswith('__')]
-        []
-        >>> [1 for properties, opener in ap._storage_search(request)
-        ...    if properties['path1'] != 'storage']
-        []
-        >>> [1 for properties, opener in ap._storage_search(request)
-        ...    if properties == {'path1': 'storage', 'path2': 'filesystem'}]
-        [1]
+        >>> len([1 for properties, opener in ap._storage_search(request)
+        ...      if properties['path2'].startswith('__')])
+        0
+        >>> len([1 for properties, opener in ap._storage_search(request)
+        ...     if properties['path1'] != 'storage'])
+        0
+        >>> len([1 for properties, opener in ap._storage_search(request)
+        ...     if properties == {'path1': 'storage', 'path2': 'filesystem'}])
+        1
+        >>> request = Site.parse_request('path1=parser/path2~=item$')
+        >>> results = [properties['path2']
+        ...            for properties, opener in ap._storage_search(request)]
+        >>> assert u'textitem' in results
+        >>> assert u'__init__' not in results
 
         """
         conditions = list(conditions)
