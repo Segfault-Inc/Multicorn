@@ -24,12 +24,16 @@ This implementation depends on DBAPIStorage, the generic database acces point.
 
 import sqlite3
 import urlparse
+import os
 
 from dbapi import DBAPIStorage
 
 class SQLiteStorage(DBAPIStorage):
     """SQLite 3 access point"""
     protocol = 'sqlite'
+    
+    def get_db_module(self):
+        return sqlite3
     
     def get_connection(self):
         """Return (connection, table)
@@ -48,6 +52,7 @@ class SQLiteStorage(DBAPIStorage):
             splitted_path = url_dict.path.split('?', 1)
             file = splitted_path[0][2:]
             self._table = splitted_path[1]
+            file = os.path.join(self.config["basedir"], file)
             self._connection = sqlite3.connect(file)
 
         return (self._connection, self._table)

@@ -26,6 +26,7 @@ new access points for plain text based formats.
 import sys
 
 from kalamar.item import AtomItem
+from werkzeug import MultiDict
 
 class TextItem(AtomItem):
     """Access item data as a unicode string."""
@@ -34,8 +35,8 @@ class TextItem(AtomItem):
     def _custom_parse_data(self):
         """Parse and decode data according to encoding."""
         content =  self._stream.read()
-        properties = {}
-        properties['_content'] = content.decode(self.encoding)
+        properties = MultiDict()
+        properties["_content"] = content.decode(self.encoding)
         return properties
         
     def _custom_serialize(self, properties):

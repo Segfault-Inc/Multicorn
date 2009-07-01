@@ -26,7 +26,7 @@ s = kalamar.Site('./test/kalamar/data/kalamar.conf')
 #    print ', '.join((it.properties["genre"], it.properties["artiste"], \
 #                     it.properties["album"], it.properties["titre"]))
 
-l = s.open('fs_vorbis_messed_up', u"genre=rock/artiste=Jesus'harlem/album=amen/titre=cross")
+l = list(s.search(u'sqlite_text_parser', u'genre=rock'))
 pprint(l)
 #for it in l:
 #    print ', '.join((it.properties["genre"], it.properties["artiste"], \

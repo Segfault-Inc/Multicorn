@@ -32,7 +32,7 @@ class AccessPoint(object):
     @classmethod
     def from_url(cls, **config):
         """
-        Return the an instance of the class according to the URL.
+        Return an instance of the appropriate class according to the URL.
         
         >>> AccessPoint.from_url(url='nonexistent-protocol://…')
         Traceback (most recent call last):
@@ -88,40 +88,54 @@ class AccessPoint(object):
                                   cond.value)
     
     def search(self, conditions):
-        """Generate a sequence of every item matching "conditions".
+        """Generate a sequence of every item matching ``conditions''.
         
-        "conditions" is a list of (property_name, operator, value) tuples
+        "conditions" is a list of utils.Condition objects
         as returned by kalamar.site.Site.parse_request
         
         """
         # Algorithm:
-        # 1. expand syntaxic sugar
-        # 2. divide conditions into two categories: parser and storage
-        # 3. call _storage_search with storage conditions as parameters
-        # 4. filter the items yielded with conditions applying to the parser
-        # 5. yield filtered items
+        # 1. list the interesting storage properties.
+        # 2. expand syntaxic sugar.
+        # 3. divide conditions into two categories : parser and storage
+        # 4. call _storage_search with storage conditions as parameters.
+        # 5. filter the items yielded with conditions applying to the parser.
+        # 6. yield filtered items
         
-        conditions = list(self.expand_syntaxic_sugar(conditions))
 
+        #parser_aliases_values = [a for (a,b) in self.parser_aliases]
+        
+        #sto_aliases = dict(self.storage_aliases)
+        #sto_aliases_rev = dict((b,a) for (a,b) in self.storage_aliases)
+        
+        #sto_props_old = self.get_storage_properties()
+        #sto_props = set(sto_aliases_rev.get(prop, prop)
+        #                for prop in sto_props_old)
+        #sto_props.update(sto_props_old)
+        
+        #parser_aliases_val = [a for (a,b) in self.parser_aliases]
+        #sto_props.difference_update(parser_aliases_val)
+        
+        sto_aliases = dict(self.storage_aliases)
+        parser_aliases = dict(self.parser_aliases)
+        
+        sto_props_not_aliased = set(self.get_storage_properties())
+        # Parser aliased properties have priority over storage not aliased
+        # properties.
+        sto_props_not_aliased.difference_update(parser_aliases.keys())
+        
+        sto_props = set(sto_aliases.keys())
+        sto_props.update(sto_props_not_aliased)
+        
         storage_conditions = []
         parser_conditions = []
-        parser_aliases_values = [a for (a, b) in self.parser_aliases]
-        
-        storage_properties_old = self.get_storage_properties()
-        storage_aliases = dict(self.storage_aliases)
-        storage_aliases_reverse = dict((b, a)
-                                       for (a, b) in self.storage_aliases)
-        storage_properties = set(storage_aliases_reverse.get(prop, prop)
-                            for prop in storage_properties_old)
-        storage_properties.update(storage_properties_old)
-
-        for condition in conditions:
-            if condition.property_name in storage_properties:
-                storage_conditions.append(
-                    utils.Condition(storage_aliases[condition.property_name],
-                        condition.operator, condition.value))
+        conditions = list(self.expand_syntaxic_sugar(conditions))
+        for name, funct, value in conditions:
+            if name in sto_props:
+                storage_conditions.append((sto_aliases[name], funct, value))
             else:
-                parser_conditions.append(condition)
+                parser_conditions.append((name, funct, value))
+        
         
         for properties, opener in self._storage_search(storage_conditions):
             item = Item.get_item_parser(self.config['parser'], self,
@@ -139,7 +153,7 @@ class AccessPoint(object):
         This method has to be overriden.
 
         """
-        raise NotImplementedError
+        raise NotImplementedError('Abstract method')
     
     def _storage_search(self, conditions):
         """Return a sequence of tuple (properties, file_opener).
@@ -169,5 +183,4 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError('Abstract method')
-
 

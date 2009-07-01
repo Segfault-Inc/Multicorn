@@ -35,7 +35,7 @@ It must have a class attribute "format" which is name of the parsed format.
 
 """
 
-from copy import deepcopy
+from copy import copy
 from werkzeug import MultiDict
 
 from kalamar import parser, utils
@@ -264,7 +264,7 @@ class ItemProperties(MultiDict):
         # Up-to-date properties
         self.storage_properties = storage_properties
         # Properties set before last synchronizing on storage
-        self.storage_properties_old = deepcopy(storage_properties)
+        self.storage_properties_old = copy(storage_properties)
         self.parser_content_modified = False
 
         # Internal values set for lazy load
@@ -277,7 +277,6 @@ class ItemProperties(MultiDict):
         if not self._loaded:
             self._item._parse_data()
             self._loaded = True
-
         # Aliasing
         key = self._item.aliases.get(key, key)
         if key in self.storage_properties.keys():

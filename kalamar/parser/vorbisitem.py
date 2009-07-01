@@ -23,6 +23,7 @@ This parser is read-only.
 """
 
 from werkzeug import MultiDict
+from tempfile import TemporaryFile
 
 from kalamar.item import AtomItem
 
@@ -52,10 +53,13 @@ class VorbisItem(AtomItem):
         properties['_content'] = self._stream.read()
         
         self._stream.seek(0)
-        file = vorbis.VorbisFile(self._stream)
-        properties['time_length'] = file.time_total(0)
+        file = TemporaryFile()
+        file.write(self._stream.read())
+        file.seek(0)
+        vorbis_file = vorbis.VorbisFile(file)
+        properties["time_length"] = vorbis_file.time_total(0)
         
-        comment = file.comment()
+        comment = vorbis_file.comment()
         for name, list in comment.as_dict().items():
             properties.setlist(name, list)
         
