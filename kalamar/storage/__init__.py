@@ -25,7 +25,7 @@ import os
 from kalamar.storage.base import AccessPoint
 
 def load():
-    """Import all python files in the "storage" folder"""
+    """Import all python files in the "storage" folder."""
     for filename in os.listdir(os.path.dirname(__file__)):
         if filename.endswith('.py') and not filename.startswith('_'):
             __import__(__name__ + '.' + filename[:-3])

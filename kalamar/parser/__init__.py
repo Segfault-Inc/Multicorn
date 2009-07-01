@@ -15,9 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Parser module listing all parser access points.
+
+"""
+
 import os
 
 def load():
+    """Import all python files in the "parser" folder."""
     for filename in os.listdir(os.path.dirname(__file__)):
         if filename.endswith('.py') and not filename.startswith('_'):
             __import__(__name__ + '.' + filename[:-3])
