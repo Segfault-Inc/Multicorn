@@ -111,7 +111,7 @@ class AccessPoint(object):
         for condition in conditions:
             if condition.property_name in storage_properties:
                 storage_conditions.append(
-                    utils.Condition(sto_aliases[condition.property_name],
+                    utils.Condition(storage_aliases[condition.property_name],
                         condition.operator, condition.value))
             else:
                 parser_conditions.append(condition)
