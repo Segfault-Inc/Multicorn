@@ -15,26 +15,28 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
-"""TODO : put some doc here"""
+"""
+Test access point.
+
+This access point is internally used for testing purpose.
+
+"""
 
 from kalamar.parser.textitem import TextItem
 
 class TestItem(TextItem):
-    """A class giving the raw (binary) access to an item's data"""
-    
-    format = "test_format"
+    """Test access point item."""
+    format = 'test_format'
+    _keys = ('genre', 'artist', 'album', 'tracknumber', 'title')
     
     def _custom_parse_data(self):
-        props = super(TestItem, self)._custom_parse_data()
-        data = props["_content"]
-        props.update(dict(zip(("genre","artist","album", "tracknumber", "title"),
-                         (value for value in data.split("\n")))))
-        return props
+        """Parse known properties of the test item."""
+        properties = super(TestItem, self)._custom_parse_data()
+        data = properties['_content']
+        properties.update(dict(zip(self._keys,
+                    (value for value in data.split('\n')))))
+        return properties
         
     def _custom_serialize(self, properties):
-        genre = properties["genre"]
-        artist = properties["artist"]
-        album = properties["album"]
-        trackno = properties["tracknumber"]
-        title = properties["title"]
-        return '\n'.join([genre, artist, album, trackno, title])
+        """Return a string of properties representing the test item."""
+        return '\n'.join([properties[key] for key in self._keys])

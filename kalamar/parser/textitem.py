@@ -15,22 +15,30 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar. If not, see <http://www.gnu.org/licenses/>.
 
-"""TODO : put some doc here"""
+"""
+Text access point.
+
+This parser is useful to parse plain text files. It can also be used to create
+new access points for plain text based formats.
+
+"""
+
+import sys
 
 from kalamar.item import AtomItem
 
 class TextItem(AtomItem):
-    """A class to access the item's data as a unicode string."""
-    
-    format = "text"
+    """Access item data as a unicode string."""
+    format = 'text'
     
     def _custom_parse_data(self):
+        """Parse and decode data according to encoding."""
         content =  self._stream.read()
-        props = {}
-        props["_content"] = content.decode(self.encoding)
-        return props
+        properties = {}
+        properties['_content'] = content.decode(self.encoding)
+        return properties
         
     def _custom_serialize(self, properties):
-        content = properties["_content"][0]
+        """Return an encoded string representing the object."""
+        content = properties['_content'][0]
         return content.encode(self.encoding)
-

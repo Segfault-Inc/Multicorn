@@ -15,19 +15,24 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Ogg/Vorbis parser.
 
-"""TODO : put some doc here"""
+This parser is read-only.
 
-from kalamar.item import AtomItem
+"""
+
 from werkzeug import MultiDict
 
+from kalamar.item import AtomItem
+
 class VorbisItem(AtomItem):
-    """The Ogg/Vorbis parser.
+    """Ogg/Vorbis parser.
     
     The vorbis format allows a lot of things for tagging. It is possible to
     add any label you want and, for each label, to put several values.
     Because of that, this module cannot guarantee a set of properties. Despite
-    this, here are some common tags you can use :
+    this, here are some common tags you can use:
       - time_length : duration in seconds
       - _content : raw ogg/vorbis data
       - artist
@@ -35,27 +40,29 @@ class VorbisItem(AtomItem):
       - track
     
     TODO write test
+
     """
-    
-    format = "audio_vorbis"
+    format = 'audio_vorbis'
     
     def _custom_parse_data(self):
+        """Set Vorbis metadata and time_length as properties."""
         from ogg import vorbis
         
-        props = MultiDict()
-        props["_content"] = self._stream.read()
+        properties = MultiDict()
+        properties['_content'] = self._stream.read()
         
         self._stream.seek(0)
-        v = vorbis.VorbisFile(self._stream)
-        props["time_length"] = v.time_total(0)
+        file = vorbis.VorbisFile(self._stream)
+        properties['time_length'] = file.time_total(0)
         
-        comment = v.comment()
+        comment = file.comment()
         for name, list in comment.as_dict().items():
-            props.setlist(name,list)
+            properties.setlist(name, list)
         
-        return props
+        return properties
     
     def _custom_serialize(self, properties):
-        return self.properties["_content"][0]
+        """Return the whole file."""
+        return self.properties['_content'][0]
     
 del AtomItem

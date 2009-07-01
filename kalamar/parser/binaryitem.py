@@ -15,20 +15,26 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
-"""TODO : put some doc here"""
+"""
+RAW access point.
+
+This parser is mainly useful for binary files.
+
+"""
 
 from kalamar.item import AtomItem
 
 class BinaryItem(AtomItem):
-    """A class giving the raw (binary) access to an item's data"""
+    """RAW access to data."""
+    format = 'binary'
     
-    format = "binary"
-    
-    def _custom_parse_data(self, prop_name):
-        props = {}
-        props["_content"] = self._stream.read()
+    def _custom_parse_data(self, properties):
+        """Parse the whole item content."""
+        properties = {}
+        properties['_content'] = self._stream.read()
         
     def _custom_serialize(self, properties):
-        return properties["_content"][0]
+        """Return the item content."""
+        return properties['_content'][0]
 
 del AtomItem
