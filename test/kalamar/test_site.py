@@ -39,7 +39,11 @@ class TestSiteSearch(TestSite):
         albums = set(item.properties["album"] for item in all_objects)
         
         self.assertEqual(len(all_objects), 20)
-        self.assertEqual(genres, set(('jazz', 'rock')))
+        self.assertEqual(genres, set([u'jazz', u'rock']))
+        self.assertEqual(artistes, set([u"Jesus'harlem", u'Birelli Lagrène',
+                                        u'Water please']))
+        self.assertEqual(albums, set([u'manouche swing', u'S.O.B', u'alleluia',
+                                      u'amen']))
 
 class TestSiteOpen(TestSite):
     
