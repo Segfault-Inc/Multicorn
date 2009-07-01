@@ -207,6 +207,9 @@ class FileSystemStorage(AccessPoint):
             """Generate (properties, file_opener) for files in "subdir"
             matching "pattern_parts", and recursively call "walk" with subdirs
             in subdir."""
+            # We make a copy of pattern_parts here instead of using
+            # pattern_parts.pop(0) because the original list may be used
+            # for other calls to walk()
             pattern = pattern_parts[0]
             pattern_parts = pattern_parts[1:]
             
