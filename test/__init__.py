@@ -48,6 +48,9 @@ def run_tests_with_coverage(packages):
     except coverage.CoverageException:
         # Coverage v2 API
         c = coverage
+
+    c.exclude('raise NotImplementedError')
+    c.exclude('except ImportError:')
     c.start()
     run_tests(packages)
     c.stop()

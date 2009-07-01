@@ -31,7 +31,14 @@ class AccessPoint(object):
     
     @classmethod
     def from_url(cls, **config):
-        """Return the an instance of the class according to the URL."""
+        """
+        Return the an instance of the class according to the URL.
+        
+        >>> AccessPoint.from_url(url='nonexistent-protocol://…')
+        Traceback (most recent call last):
+            ...
+        ValueError: Unknown protocol: nonexistent-protocol
+        """
         protocol = config['url'].split(':', 1)[0]
         for subclass in utils.recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:

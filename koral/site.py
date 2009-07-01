@@ -27,6 +27,12 @@ class Site(object):
         engine.load_engines()
     
     def get_engine(self, name):
+        """
+        >>> Site('').get_engine('nonexistent')
+        Traceback (most recent call last):
+            ...
+        ValueError: Unknown engine: nonexistent
+        """
         try:
             return self._engines[name]
         except KeyError:
