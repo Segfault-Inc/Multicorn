@@ -207,7 +207,8 @@ class FileSystemStorage(AccessPoint):
             """Generate (properties, file_opener) for files in "subdir"
             matching "pattern_parts", and recursively call "walk" with subdirs
             in subdir."""
-            pattern = pattern_parts.pop(0)
+            pattern = pattern_parts[0]
+            pattern_parts = pattern_parts[1:]
             
             for name in self.listdir(subdir):
                 match = pattern.match(name)
@@ -238,8 +239,7 @@ class FileSystemStorage(AccessPoint):
                                 yield properties, FileOpener(
                                     self._real_filename(path))
         
-        parts_pattern = [part for part in self.filename_parts_pattern]
-        return walk(u'', parts_pattern, ())
+        return walk(u'', self.filename_parts_pattern, ())
             
     
     def _path_from_properties(self, properties):
