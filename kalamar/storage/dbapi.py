@@ -35,10 +35,10 @@ _opener = lambda content: lambda: StringIo(content)
 class DBAPIStorage(AccessPoint):
     """Base class for SQL SGBD Storage.
     
-    Descendant classes must override "get_connection" and "_get_primary_keys".
+    Descendant classes must override "protocol", "get_connection" and
+    "_get_primary_keys".
     
     """
-    
     protocol = None
     
     class UnsupportedParameterStyleError(Exception): pass
