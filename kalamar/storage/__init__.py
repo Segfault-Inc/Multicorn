@@ -22,6 +22,8 @@ Storage module listing all storage access points.
 
 import os
 
+from kalamar.storage.base import AccessPoint
+
 def load():
     """Import all python files in the "storage" folder"""
     for filename in os.listdir(os.path.dirname(__file__)):
