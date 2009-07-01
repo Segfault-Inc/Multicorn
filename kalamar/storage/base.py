@@ -130,11 +130,13 @@ class AccessPoint(object):
         storage_conditions = []
         parser_conditions = []
         conditions = list(self.expand_syntaxic_sugar(conditions))
-        for name, funct, value in conditions:
-            if name in sto_props:
-                storage_conditions.append((sto_aliases[name], funct, value))
+        for cond in conditions:
+            if cond.property_name in sto_props:
+                storage_conditions.append(utils.Condition(
+                    sto_aliases[cond.property_name], cond.operator, cond.value
+                ))
             else:
-                parser_conditions.append((name, funct, value))
+                parser_conditions.append(cond)
         
         
         for properties, opener in self._storage_search(storage_conditions):

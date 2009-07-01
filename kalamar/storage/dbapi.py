@@ -63,12 +63,6 @@ class DBAPIStorage(AccessPoint):
         '<=': '<=',
         }
     
-    def __init__(self, **config):
-        """Common database acces point initialisation."""
-        super(DBAPIStorage, self).__init__(**config)
-        self._operators_rev = dict(((b, a)
-                                    for (a, b) in utils.operators.items()))
-    
     def get_connection(self):
         """Return a DB-API connection object and the table name in a tuple.
         
@@ -157,41 +151,45 @@ class DBAPIStorage(AccessPoint):
                 yield line
     
     def _process_conditions(self, conditions):
-        """Return (sql_condition, python_condition).
+        """Return (sql_conditions, python_conditions).
         
         Fixture
-        >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata')
-        >>> conditions = (('name', utils.operators['='], 'toto'),
-        ...               ('number', utils.operators['<'], 42),
-        ...               ('number', utils.operators['~='], 42),
-        ...               ('number', utils.operators['~!='], 42))
+        >>> storage = DBAPIStorage(url='toto', basedir='tata')
+        >>> conditions = (
+        ...     utils.Condition(u'name', utils.operators[u'='], u'toto'),
+        ...     utils.Condition(u'number', utils.operators[u'<'], 42),
+        ...     utils.Condition(u'number', utils.operators[u'~='], 42),
+        ...     utils.Condition(u'number', utils.operators[u'~!='], 42)
+        ... )
         
         Test
-        >>> sql_condition, python_condition = storage._process_conditions(conditions)
+        >>> sql_condition, python_condition = \
+              storage._process_conditions(conditions)
         >>> for c in sql_condition: print c
-        ('name', '=', 'toto')
-        ('number', '<', 42)
+        Condition(u'name', <built-in function eq>, u'toto')
+        Condition(u'number', <built-in function lt>, 42)
         >>> for c in python_condition: print c # doctest:+ELLIPSIS
-        ('number', <function re_match at 0x...>, 42)
-        ('number', <function re_not_match at 0x...>, 42)
+        Condition(u'number', <function re_match at 0x...>, 42)
+        Condition(u'number', <function re_not_match at 0x...>, 42)
         
         """
-        condition_with_operator = [(name, self._operators_rev[function], value)
-                                   for name, function, value in conditions]
+        sql_conditions = []
+        python_conditions = []
         
-        sql_condition = ((name, self.sql_operators[operator], value)
-                        for name, operator, value in condition_with_operator
-                        if (operator in self.sql_operators.keys()))
-        python_condition = ((name, utils.operators[operator], value)
-                        for name, operator, value in condition_with_operator
-                        if (operator not in self.sql_operators.keys()))
+        for cond in conditions:
+            op_str = utils.operators_rev[cond.operator]
+            if op_str in self.sql_operators:
+                sql_conditions.append(utils.Condition(cond.property_name,
+                    utils.operators[self.sql_operators[op_str]], cond.value))
+            else:
+                python_conditions.append(cond)
 
-        return (sql_condition, python_condition)
+        return (sql_conditions, python_conditions)
     
     def _build_select_request(self, conditions, table, style):
         """Return a tuple (request, typed_parameters).
         
-        "conditions" must be a sequence of (name, operator, value).
+        "conditions" must be a sequence of Condition objects.
         "table" is the name of the used table.
         "style" must be one of 'qmark', 'numeric', 'named', 'format',
                   'pyformat'.
@@ -202,8 +200,11 @@ class DBAPIStorage(AccessPoint):
         to the style.
         
         Fixture
-        >>> conditions = (("toto", "=", "tata"), ("the_answer", ">=", 42))
-        >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata')
+        >>> conditions = (
+        ...     utils.Condition(u"toto", utils.operators[u"="], u"tata"),
+        ...     utils.Condition(u"the_answer", utils.operators[u">="], 42)
+        ... )
+        >>> storage = DBAPIStorage(url='toto', basedir='tata')
         
         Test
         >>> req, params = storage._build_select_request(conditions,
@@ -211,7 +212,7 @@ class DBAPIStorage(AccessPoint):
         >>> req
         u'SELECT * FROM "table" WHERE "toto"=? and "the_answer">=? ;'
         >>> params
-        ['tata', 42]
+        [u'tata', 42]
         
         If no condition specified, the 'WHERE' statement must not appear.
         >>> req, params = storage._build_select_request((),
@@ -225,15 +226,16 @@ class DBAPIStorage(AccessPoint):
         conditions = list(conditions)
         table = self._sql_escape_quotes(table)
         table = self._quote_name(table)
-        named_cond = (self._quote_name(name) + oper
-                      for name, oper, value in conditions)
+        named_cond = (self._quote_name(cond.property_name) + 
+                      self.sql_operators[utils.operators_rev[cond.operator]]
+                      for cond in conditions)
         
         
         
         # No need to worry about the final '?' when there is no condition since
         # this case is handled in the following 'if-else'.
         request = u'? and '.join(named_cond) + '?'
-        parameters = [value for name, oper, value in conditions]
+        parameters = [cond.value for cond in conditions]
         
         if len(parameters) == 0:
             request = u"SELECT * FROM " + table + " ;"

@@ -31,15 +31,17 @@ def re_not_match(string, pattern):
     return not re.search(pattern, string)
 
 operators = {
-    '=': operator.eq,
-    '!=': operator.ne,
-    '>': operator.gt,
-    '>=': operator.ge,
-    '<': operator.lt,
-    '<=': operator.le,
-    '~=': re_match,
-    '~!=': re_not_match,
+    u'=': operator.eq,
+    u'!=': operator.ne,
+    u'>': operator.gt,
+    u'>=': operator.ge,
+    u'<': operator.lt,
+    u'<=': operator.le,
+    u'~=': re_match,
+    u'~!=': re_not_match,
 }
+
+operators_rev = dict((v, k) for (k, v) in operators.items())
 
 class OperatorNotAvailable(Exception): pass
 
