@@ -30,6 +30,16 @@ class TestSiteSearch(TestSite):
         for item in self.site.search(self.access_point, request):
             self.assertEqual(item.properties["genre"], u'jazz')
             self.assertEqual(item.properties["artiste"], u'Birelli Lagrène')
+    
+    def test_all_data(self):
+        request = u''
+        all_objects = list(self.site.search(self.access_point, request))
+        genres = set(item.properties["genre"] for item in all_objects)
+        artistes = set(item.properties["artiste"] for item in all_objects)
+        albums = set(item.properties["album"] for item in all_objects)
+        
+        self.assertEqual(len(all_objects), 20)
+        self.assertEqual(genres, set(('jazz', 'rock')))
 
 class TestSiteOpen(TestSite):
     
