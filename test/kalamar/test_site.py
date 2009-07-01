@@ -9,13 +9,25 @@ from kalamar import Item
 
 # There is some magic at the end of this file :-P
 
-class TestSite():
+class TestSite(object):
     
     def setUp(self):
-        pass
-    #def tearDown(self):
-    #    shutil.rmtree(os.path.normpath(os.path.join(os.path.realpath(__file__),
-    #                                                '..','data_sandbox')))
+        src = os.path.normpath(os.path.join(os.path.realpath(__file__), '..',
+                                            'data'))
+        dst = os.path.join('/tmp', 'kalamar', 'data_sandbox')
+        shutil.copytree(src, dst)
+        
+        path = os.path.join(dst, 'kalamar.conf')
+        self.site = Site(path)
+    
+    def tearDown(self):
+        path = os.path.join('/tmp', 'kalamar', 'data_sandbox')
+        for dirpath, dirnames, filenames in os.walk(path, topdown=False):
+            for f in filenames:
+                os.remove(os.path.join(dirpath, f))
+            for d in dirnames:
+                os.rmdir(os.path.join(dirpath, d))
+        os.rmdir(path)
 
 class TestSiteSearch(TestSite):
         
@@ -58,18 +70,18 @@ class TestSiteSave(TestSite):
     pass # TODO
 
 class TestSiteRemove(TestSite):
-    pass
-    #def test_remove(self):
-        #request = u'genre=rock/artiste=Jesus\'harlem/album=amen/titre=cross'
-        #item = self.site.open(self.access_point, request)
-        #self.site.remove(item)
-        #self.assertEqual(self.site.search(self.access_point, request), [])
+    def test_remove(self):
+        request = u'genre=rock/artiste=Jesus\'harlem/album=amen/titre=cross'
+        item = self.site.open(self.access_point, request)
+        self.site.remove(item)
+        self.assertEqual(list(self.site.search(self.access_point, request)), [])
 
+# Magic tricks
 site = Site(os.path.normpath(os.path.join(os.path.realpath(__file__),
                                           '../data/kalamar.conf')))
 for access_point in site.access_points:
     for test in (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove):
         cls = type(test.__name__+'_'+access_point, (test, TestCase),
-                   {"access_point": access_point, "site": site})
+                   {"access_point": access_point})
         setattr(sys.modules[__name__], cls.__name__, cls)
 

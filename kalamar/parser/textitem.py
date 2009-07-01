@@ -18,6 +18,7 @@
 """TODO : put some doc here"""
 
 from kalamar.item import AtomItem
+from werkzeug import MultiDict
 
 class TextItem(AtomItem):
     """A class to access the item's data as a unicode string."""
@@ -26,7 +27,7 @@ class TextItem(AtomItem):
     
     def _custom_parse_data(self):
         content =  self._stream.read()
-        props = {}
+        props = MultiDict()
         props["_content"] = content.decode(self.encoding)
         return props
         

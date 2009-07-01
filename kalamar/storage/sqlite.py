@@ -18,10 +18,14 @@
 from dbapi import DBAPIStorage
 import sqlite3
 import urlparse
+import os
 
 class SQLiteStorage(DBAPIStorage):
     
     protocol = 'sqlite'
+    
+    def get_db_module(self):
+        return sqlite3
     
     def get_connection(self):
         """Return (connection, table)
@@ -40,6 +44,7 @@ class SQLiteStorage(DBAPIStorage):
             splitted_path = urldict.path.split('?',1)
             file = splitted_path[0][2:]
             self._table = splitted_path[1]
+            file = os.path.join(self.config["basedir"], file)
             self._connection = sqlite3.connect(file)
         return (self._connection, self._table)
     

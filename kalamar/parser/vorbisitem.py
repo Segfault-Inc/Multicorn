@@ -20,6 +20,7 @@
 
 from kalamar.item import AtomItem
 from werkzeug import MultiDict
+from tempfile import TemporaryFile
 
 class VorbisItem(AtomItem):
     """The Ogg/Vorbis parser.
@@ -46,7 +47,10 @@ class VorbisItem(AtomItem):
         props["_content"] = self._stream.read()
         
         self._stream.seek(0)
-        v = vorbis.VorbisFile(self._stream)
+        f = TemporaryFile()
+        f.write(self._stream.read())
+        f.seek(0)
+        v = vorbis.VorbisFile(f)
         props["time_length"] = v.time_total(0)
         
         comment = v.comment()

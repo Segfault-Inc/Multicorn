@@ -21,6 +21,7 @@ from kalamar import Item
 from array import array
 from copy import deepcopy
 from itertools import izip
+from StringIO import StringIO
 
 def _opener(content):
     def opener():
@@ -30,7 +31,12 @@ def _opener(content):
 class DBAPIStorage(AccessPoint):
     """Base class for SQL SGBD Storage.
     
-    Descendant class must override ``get_connection'' and ``_get_primary_keys''.
+    Descendant class must override ``get_connection'', ``_get_primary_keys'' and
+    ``get_db_module''.
+    It may be useful to also redefine the following methods or attributes:
+        - _quote_name
+        - _sql_escape_quotes
+        - sql_operators
     
     """
     
@@ -61,10 +67,18 @@ class DBAPIStorage(AccessPoint):
         """
         raise NotImplementedError('Abstract method')
     
+    def get_db_module(self):
+        """Return a DB-API implementation module.
+        
+        This method must be overriden.
+        
+        """
+        raise NotImplementedError('Abstract method')
+    
     def get_storage_properties(self):
         connection, table = self.get_connection()
         cur = connection.cursor()
-        cur.execute('select * from %s where 0'%self._table)
+        cur.execute('select * from %s where 0' % self._quote_name(self._table))
         return [prop[0] for prop in cur.description]
     
     def _storage_search(self, conditions):
@@ -79,22 +93,25 @@ class DBAPIStorage(AccessPoint):
         # process conditions
         sql_cond, python_cond = self._process_conditions(conditions)
         # build request
+        paramstyle = self.get_db_module().paramstyle
         request, parameters = self._build_select_request(sql_cond, table,
-                                                         connection.paramstyle)
+                                                         paramstyle)
         # execute request
         cur = connection.cursor()
         cur.execute(request, parameters)
-        dict_lines = (dict(zip(cur.description, line))
+        desc = [col_desc[0] for col_desc in cur.description]
+        dict_lines = (dict(zip(desc, line))
                       for line in self._gen_lines_from_cursor(cur))
         
         # filter result and yield tuples (properties, value)
-        filtered = _filter_result(dict_lines, python_cond)
-        cur.close()
+        filtered = list(self._filter_result(dict_lines, python_cond))
         
-        return ((line, _opener(line[self.config['content_column']]))
-                for line in filtered)
+        for line in filtered:
+            yield (line, _opener(line[self.config['content_column']]))
+        
+        cur.close()
     
-    def _gen_lines_from_cursor(cursor):
+    def _gen_lines_from_cursor(self, cursor):
         res = cursor.fetchmany()
         while res:
             for line in res:
@@ -178,21 +195,36 @@ class DBAPIStorage(AccessPoint):
         >>> req, params = storage._build_select_request(conditions,
         ...                                             'table', 'qmark')
         >>> req
-        u"SELECT * FROM 'table' WHERE 'toto'=? and 'the_answer'>=? ;"
+        u'SELECT * FROM "table" WHERE "toto"=? and "the_answer">=? ;'
         >>> params
         ['tata', 42]
         
+        If no condition specified, the 'WHERE' statement must not appear.
+        >>> req, params = storage._build_select_request((),
+        ...                                             'table', 'qmark')
+        >>> req
+        u'SELECT * FROM "table" ;'
+        >>> params
+        []
+        
         """
+        conditions = list(conditions)
         table = self._sql_escape_quotes(table)
-        named_cond = ("'"+self._sql_escape_quotes(name)+"'" + oper
+        table = self._quote_name(table)
+        named_cond = (self._quote_name(name) + oper
                       for name, oper, value in conditions)
         
         
         
+        # No need to worry about the final '?' when there is no condition since
+        # this case is handled in the following 'if-else'.
         request = u'? and '.join(named_cond) + '?'
         parameters = [value for name, oper, value in conditions]
-            
-        request = u"SELECT * FROM '" + table + "' WHERE " + request + " ;"
+        
+        if len(parameters) == 0:
+            request = u"SELECT * FROM " + table + " ;"
+        else:
+            request = u"SELECT * FROM " + table + " WHERE " + request + " ;"
         request, parameters = self._format_request(request, parameters,
                                                            style)
         return (request, parameters)
@@ -215,15 +247,15 @@ class DBAPIStorage(AccessPoint):
         Test
         >>> storage._build_update_request(table, item, 'qmark')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u"UPDATE 'table' SET 'sto_prop'=? , 'pk2'=? , 'pk1'=? , 'sto_prop2'=?
-           WHERE 'pk1'=? 'pk2'=? ;", ['sto_val', 'pk_val2', 'pk_val1',
+        (u'UPDATE "table" SET "sto_prop"=? , "pk2"=? , "pk1"=? , "sto_prop2"=?
+           WHERE "pk1"=? "pk2"=? ;', ['sto_val', 'pk_val2', 'pk_val1',
            'sto_val2', 'pk_val1', 'pk_val2'])
         
         """
         
         table = self._sql_escape_quotes(table)
         
-        req = array('u',u"UPDATE '%s' SET "%table)
+        req = array('u',u"UPDATE %s SET " % self._quote_name(table))
         pk = self._get_primary_keys()
         keys = item.properties.storage_properties.keys()
         
@@ -237,16 +269,19 @@ class DBAPIStorage(AccessPoint):
         parameters = []
         
         for key in keys[:-1]:
-            req.extend(u"'%s'=? , " % self._sql_escape_quotes(key))
+            req.extend(u"%s=? , "
+                       % self._quote_name(self._sql_escape_quotes(key)))
             parameters.append(item.properties[key])
-        req.extend(u"'%s'=? WHERE" % self._sql_escape_quotes(keys[-1]))
+        req.extend(u"%s=? WHERE"
+                   % self._quote_name(self._sql_escape_quotes(keys[-1])))
         parameters.append(item.properties[keys[-1]])
         
         # restore content
         item.properties['_content'] = content
         
         for key in pk:
-            req.extend(u" '%s'=?" % self._sql_escape_quotes(key))
+            req.extend(u" %s=?"
+                       % self._quote_name(self._sql_escape_quotes(key)))
             parameters.append(item.properties[key])
         req.extend(u' ;')
         
@@ -270,22 +305,24 @@ class DBAPIStorage(AccessPoint):
         Test
         >>> storage._build_insert_request(table, item, 'qmark')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u"INSERT INTO 'table' ( 'sto_prop' , 'pk2' , 'pk1' , 'sto_prop2' )
-           VALUES ( ? , ? , ? , ? );", ['sto_val', 'pk_val2', 'pk_val1',
+        (u'INSERT INTO "table" ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" )
+           VALUES ( ? , ? , ? , ? );', ['sto_val', 'pk_val2', 'pk_val1',
            'sto_val2'])
 
         """
         
         table = self._sql_escape_quotes(table)
         
-        req = array('u', u"INSERT INTO '%s' ( " % table)
+        req = array('u', u"INSERT INTO %s ( " % self._quote_name(table))
         keys = item.properties.storage_properties.keys()
         
         parameters = []
         
         for key in keys[:-1]:
-            req.extend(u"'%s' , " % self._sql_escape_quotes(key))
-        req.extend(u"'%s' ) VALUES ( " % self._sql_escape_quotes(keys[-1]))
+            req.extend(u"%s , "
+                       % self._quote_name(self._sql_escape_quotes(key)))
+        req.extend(u"%s ) VALUES ( "
+                   % self._quote_name(self._sql_escape_quotes(keys[-1])))
         
         for key in keys[:-1]:
             req.extend(u"? , ")
@@ -381,7 +418,7 @@ class DBAPIStorage(AccessPoint):
             cursor.close()
             raise ManyItemsUpdatedError()
         # everythings fine
-        cursor.commit()
+        connection.commit()
         cursor.close()
     
     class ManyItemsUpdatedError(Exception): pass
@@ -395,17 +432,41 @@ class DBAPIStorage(AccessPoint):
         
         """
         return message.replace("'","''")
+    
+    @staticmethod
+    def _quote_name(name):
+        """Quote an SQL name (e.g. table name, column name) with the appropriate
+        character.
+        
+        This method use the character " (double-quotes) by default. It should be
+        redefined for SGDBs usinf a different character.
+        
+        """
+        return '"'+name+'"'
 
     def remove(self, item):
+        
         connection, table = self.get_connection()
-        req = array('u', 'DELETE FROM %s WHERE ' % table)
+        table = self._sql_escape_quotes(table)
+        req = array('u', u"DELETE FROM %s WHERE " % self._quote_name(table))
+        
         pk = self._get_primary_keys()
+        parameters = []
+        
         for key in pk[:-1]:
-            req.extend('%s = %s AND ' % (key, item.properties[key]))
-        req.extend('%s = %s ;' % (pk[-1], item.properties[pk[-1]]))
+            req.extend("%s=? AND " % self._quote_name(key))
+            parameters.append(item.properties[key])
+        req.extend("%s=? ;" % self._quote_name(pk[-1]))
+        parameters.append(item.properties[pk[-1]])
+        
+        paramstyle = self.get_db_module().paramstyle
+        request, parameters = self._format_request(req.tounicode(), parameters,
+                                                   paramstyle)
         
         cursor = connection.cursor()
-        cursor.execute(req)
+        cursor.execute(request, parameters)
+        connection.commit()
+        cursor.close()
     
     def _get_primary_keys(self):
         """Return a list of primary keys names."""
