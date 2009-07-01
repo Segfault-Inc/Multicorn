@@ -42,7 +42,12 @@ def run_tests(packages):
 
 def run_tests_with_coverage(packages):
     import coverage
-    c = coverage.coverage()
+    try:
+        # Coverage v3 API
+        c = coverage.coverage()
+    except coverage.CoverageException:
+        # Coverage v2 API
+        c = coverage
     c.start()
     run_tests(packages)
     c.stop()
