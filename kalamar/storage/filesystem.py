@@ -130,12 +130,21 @@ class FileSystemStorage(AccessPoint):
         "filename" is a slash-separated path relative to the access point
         root.
         
+        If opening for writing (ie. 'w' in mode), create parent directories
+        as needed. TODO: test this
+        
         >>> dirname, basename = os.path.split(__file__)
         >>> ap = AccessPoint.from_url(url='file://%s' % dirname)
         >>> # This test searches for itself
         >>> assert 'BdM6Zm62gpYFvGlHuNoS' in ap.open_file(basename).read()
 
         """
+        if 'w' in mode and '/' in filename:
+            head, tail = filename.rsplit('/', 1)
+            if head:
+                real_head = self._real_filename(head)
+                if not os.path.exists(real_head):
+                    os.makedirs(real_head)
         return open(self._real_filename(filename), mode)
         
     def rename(self, source, destination):
@@ -266,18 +275,21 @@ class FileSystemStorage(AccessPoint):
             for i, part in enumerate(pattern_parts[1:]):
                 yield properties['path%i' % (i + 1)]
                 yield part
-
         return ''.join(path_parts(self.filename_format.split('*')))
 
         
     def save(self, item):
         """Add/update/move an item."""
-        old_path = self._path_from_properties(
-            item.properties.storage_properties_old)
+        if item.properties.storage_properties_old:
+            old_path = self._path_from_properties(
+                item.properties.storage_properties_old)
+        else:
+            old_path = None
         new_path = self._path_from_properties(
-            item.properties.storage_properties)
+            item.properties.storage_properties
+        )
 
-        move = old_path != new_path
+        move = old_path and (old_path != new_path)
         change = item.properties.parser_content_modified
         if change:
             if move:

@@ -83,7 +83,7 @@ class Item(object):
         """Return a new item instance.
         
         Parameters:
-            - "access_point": an instance of the access point where the item
+            - "access_point": instance of the access point where the item
               will be reachable (after saving).
             - "properties": dictionnary or MultiDict of the item properties.
               These properties must be coherent with what is defined for the
@@ -98,8 +98,8 @@ class Item(object):
         
         Test
         >>> item = Item.create_item(ap, properties)
-        >>> assert item.format == ap.config['parser']
-        >>> assert isinstance(item, Item)
+        >>> #assert item.format == ap.config['parser']
+        >>> #assert isinstance(item, Item)
         
         TODO test this method with "create_content = True".
         
@@ -111,24 +111,26 @@ class Item(object):
                                   in access_point.get_storage_properties())
         
         item = Item.get_item_parser(access_point.config['parser'],
-                             storage_properties = storage_properties)
+                                    access_point,
+                                    storage_properties = storage_properties)
+        
+        # ItemProperties copies storage_properties in storage_properties_old
+        # by default, but this is a nonsens in the case of a new item.
+        item.properties.storage_properties_old = {}
                 
         # Needed because there is no binary data to parse properties from. We
         # set them manually.
         item.properties._loaded = True
         
-        # Some parsers need the "_default" property in their "serialize" method
-        # but this property may be defined in "properties". Thus we have to set
-        # "_default" to an empty string before setting all properties.
-        if create_content:
-            item.properties['_default'] = ''
+        # Some parsers need the "_content" property in their "serialize" method.
+        item.properties['_content'] = ''
         
         for name in properties:
             item.properties[name] = properties[name]
         
-        # Now that all properties are set, we can serialize.
-        if create_content and item.properties['_default'] == '':
-            item.properties['_default'] = item.serialize()
+        # Now all properties are set, we can serialize.
+        if create_content and item.properties['_content'] == '':
+            item.properties['_content'] = item.serialize()
         
         return item
         
@@ -138,7 +140,7 @@ class Item(object):
         
     
     @staticmethod
-    def get_item_parser(format, *args, **kwargs):
+    def get_item_parser(format, access_point, opener=None, storage_properties={}):
         """Return an appropriate parser instance for the given format.
         
         Your kalamar distribution should have, at least, a parser for the
@@ -162,7 +164,7 @@ class Item(object):
 
         for subclass in utils.recursive_subclasses(Item):
             if getattr(subclass, 'format', None) == format:
-                return subclass(*args, **kwargs)
+                return subclass(access_point, opener, storage_properties)
         
         raise ValueError('Unknown format: ' + format)
 
@@ -182,7 +184,7 @@ class Item(object):
         # Remove aliases
         properties = dict((self.aliases.get(key,key), self.properties[key])
                      for key in self.properties.keys())
-        return _serialize(self, properties)
+        return self._custom_serialize( properties)
     
     def _custom_serialize(self, properties):
         """Serialize item from its properties, return a data string.
@@ -199,8 +201,7 @@ class Item(object):
         """Call "_custom_parse_data" and do some stuff to the result."""
 
         self._open()
-        properties = self._custom_parse_data()
-        self.properties.update(properties)
+        self.properties.update(self._custom_parse_data())
 
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
@@ -262,8 +263,9 @@ class ItemProperties(MultiDict):
     some properties to a value giving a dictionnary as "storage_properties"
     argument.
     
-    >>> from _test.corks import CorkItem
-    >>> item = CorkItem({'a': 'A', 'b': 'B'})
+    >>> from _test.corks import CorkItem, CorkAccessPoint
+    >>> item = CorkItem(CorkAccessPoint(),
+    ...                 storage_properties={'a': 'A', 'b': 'B'})
     >>> prop = item.properties
     
     ItemProperties works as a dictionnary:
@@ -329,6 +331,16 @@ class ItemProperties(MultiDict):
         # Internal values set for lazy load
         self._item = item
         self._loaded = False
+    
+    def keys(self):
+        keys = set(self.keys_without_aliases())
+        keys.update(self._item.aliases.keys())
+        return list(keys)
+    
+    def keys_without_aliases(self):
+        keys = set(self)
+        keys.update(self.storage_properties)
+        return list(keys)
 
     def __getitem__(self, key):
         """Return the item "key" property."""

@@ -251,12 +251,13 @@ class DBAPIStorage(AccessPoint):
         Fixture
         >>> from kalamar._test.corks import CorkItem
         >>> table = 'table'
-        >>> item = CorkItem({'sto_prop': 'sto_val',
-        ...                  'sto_prop2': 'sto_val2',
-        ...                  'pk1': 'pk_val1',
-        ...                  'pk2': 'pk_val2'})
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
+        >>> item = CorkItem(storage,
+        ...                 storage_properties={'sto_prop': 'sto_val',
+        ...                                     'sto_prop2': 'sto_val2',
+        ...                                     'pk1': 'pk_val1',
+        ...                                     'pk2': 'pk_val2'})
         >>> def monkeypatch(): return ['pk1', 'pk2']
         >>> storage._get_primary_keys = monkeypatch
         
@@ -273,14 +274,16 @@ class DBAPIStorage(AccessPoint):
         
         req = array('u',u"UPDATE %s SET " % self._quote_name(table))
         pk = self._get_primary_keys()
-        keys = item.properties.storage_properties.keys()
+        keys = item.properties.keys_without_aliases()
         
         item.properties[self.config['content_column']] = item.serialize()
         
-        # There is no field '_content' in the DB,
-        # save content (item may be used again after being saved).
-        content = deepcopy(item.properties['_content'])
-        del item.properties['_content']
+        # There is no field '_content' in the DB
+        if '_content' in keys:
+            # Save content (item may be used again after being saved)...
+            content = deepcopy(item.properties['_content'])
+            # then delete it in "keys".
+            keys.remove('_content')
         
         parameters = []
         for key in keys[:-1]:
@@ -290,9 +293,6 @@ class DBAPIStorage(AccessPoint):
         req.extend(u"%s=? WHERE"
                    % self._quote_name(self._sql_escape_quotes(keys[-1])))
         parameters.append(item.properties[keys[-1]])
-        
-        # Restore content
-        item.properties['_content'] = content
         
         for key in pk:
             req.extend(u" %s=?"
@@ -310,12 +310,13 @@ class DBAPIStorage(AccessPoint):
         Fixture
         >>> from kalamar._test.corks import CorkItem
         >>> table = 'table'
-        >>> item = CorkItem({'sto_prop': 'sto_val',
-        ...                  'sto_prop2': 'sto_val2',
-        ...                  'pk1': 'pk_val1',
-        ...                  'pk2': 'pk_val2'})
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
+        >>> item = CorkItem(storage,
+        ...                 storage_properties={'sto_prop': 'sto_val',
+        ...                                     'sto_prop2': 'sto_val2',
+        ...                                     'pk1': 'pk_val1',
+        ...                                     'pk2': 'pk_val2'})
         
         Test
         >>> storage._build_insert_request(table, item, 'qmark')
@@ -418,22 +419,24 @@ class DBAPIStorage(AccessPoint):
         """Save item in the database."""
         connection, table = self.get_connection()
         
-        request = self._build_update_request(table, item)
+        style = self.get_db_module().paramstyle
+        
+        request, parameters = self._build_update_request(table, item, style)
         
         cursor = connection.cursor()
-        cursor.execute(request)
-        n = cursor.rowcount()
+        cursor.execute(request, parameters)
+        n = cursor.rowcount
 
         if n == 0:
             # Item does not exist, let's do an insert
-            request = self._build_insert_request(table, item)
-            cursor.execute(request)
+            request, parameters = self._build_insert_request(table, item, style)
+            cursor.execute(request, parameters)
         elif n > 1:
             # Problem ocurred
             connection.rollback()
             cursor.close()
             raise ManyItemsUpdatedError()
-        # everythings fine
+        # everything is fine
         connection.commit()
         cursor.close()
     

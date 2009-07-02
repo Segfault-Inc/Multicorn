@@ -67,6 +67,6 @@ class VorbisItem(AtomItem):
     
     def _custom_serialize(self, properties):
         """Return the whole file."""
-        return self.properties['_content'][0]
+        return self.properties['_content']
     
 del AtomItem
