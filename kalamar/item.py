@@ -33,6 +33,9 @@ A parser class must implement the following methods:
 
 It must have a class attribute "format" which is name of the parsed format.
 
+Parser classes can define an atribute "_keys" listing the name of the properties
+they *need* to work well.
+
 """
 
 from copy import copy
@@ -58,6 +61,7 @@ class Item(object):
     """
     
     format = None
+    _keys = []
 
     def __init__(self, access_point, opener=None, storage_properties={}):
         """Return an instance of Item.
@@ -72,11 +76,13 @@ class Item(object):
         """
         self._opener = opener
         self._stream = None
-        self.properties = ItemProperties(self, storage_properties)
         self._access_point = access_point
+        
         self.aliases = dict(self._access_point.parser_aliases)
         self.aliases.update(self._access_point.storage_aliases)
         self.aliases_rev = dict((b,a) for (a,b) in enumerate(self.aliases))
+        
+        self.properties = ItemProperties(self, storage_properties)
        
     @staticmethod
     def create_item(access_point, properties, create_content=False):
@@ -182,9 +188,9 @@ class Item(object):
     def serialize(self):
         """Return the item serialized into a string."""
         # Remove aliases
-        properties = dict((self.aliases.get(key,key), self.properties[key])
-                     for key in self.properties.keys())
-        return self._custom_serialize( properties)
+        properties = dict((name, self.properties[name]) for name
+                          in self.properties.keys_without_aliases())
+        return self._custom_serialize(properties)
     
     def _custom_serialize(self, properties):
         """Serialize item from its properties, return a data string.
@@ -322,15 +328,16 @@ class ItemProperties(MultiDict):
         For performance purpose, note that the load is lazy: calling this
         function does not really load the item in memory.
         """
+        # Internal values set for lazy load
+        self._item = item
+        self._loaded = False
+        
         # Up-to-date properties
         self.storage_properties = storage_properties
         # Properties set before last synchronizing on storage
         self.storage_properties_old = copy(storage_properties)
+        self['_content'] = ''
         self.parser_content_modified = False
-
-        # Internal values set for lazy load
-        self._item = item
-        self._loaded = False
     
     def keys(self):
         keys = set(self.keys_without_aliases())
@@ -339,7 +346,7 @@ class ItemProperties(MultiDict):
     
     def keys_without_aliases(self):
         keys = set(self)
-        keys.update(self.storage_properties)
+        keys.update(self.storage_properties.keys())
         return list(keys)
 
     def __getitem__(self, key):

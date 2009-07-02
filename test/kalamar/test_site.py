@@ -83,7 +83,7 @@ class TestSiteSave(TestSite):
                       'artiste': 'loopzilla',
                       'album': 'demo',
                       'titre': 'many money',
-                      'piste': '2'}
+                      'piste': 2}
         item = Item.create_item(self.site.access_points[self.access_point_name],
                                 properties)
         self.site.save(item)
@@ -93,7 +93,7 @@ class TestSiteSave(TestSite):
         self.assertEqual(item2.properties['artiste'], 'loopzilla')
         self.assertEqual(item2.properties['album'], 'demo')
         self.assertEqual(item2.properties['titre'], 'many money')
-        self.assertEqual(item2.properties['piste'], '2')
+        self.assertEqual(item2.properties['piste'], 2)
         
     def test_new_incomplete_item(self):
         """Should raise an Exception ?"""
