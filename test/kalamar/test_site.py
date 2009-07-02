@@ -78,10 +78,15 @@ class TestSiteOpen(TestSite):
                           access_point, request)
 
 class TestSiteSave(TestSite):
-    #save new item
-    #save unmodified item
-    #save modified item
-    pass # TODO
+    
+    def test_new_item(self):
+        pass #TODO
+    
+    def test_unmodified_item(self):
+        pass #TODO
+    
+    def test_modified_item(self):
+        pass #TODO
 
 class TestSiteRemove(TestSite):
     def test_remove(self):

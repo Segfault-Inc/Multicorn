@@ -18,14 +18,16 @@
 """Some corks used for testing."""
 
 import os
-from ..item import ItemProperties
+from ..item import Item, ItemProperties
 
-class CorkItem:
+class CorkItem(Item):
     
     aliases = {"I am aliased" : "I am not aliased"}
+    format = "cork_item"
     
-    def __init__(self,accessor_properties={}):
-        self.properties = ItemProperties(self, accessor_properties)
+    def __init__(self,storage_properties={}):
+        self.properties = ItemProperties(self, storage_properties)
+        
     def _parse_data(self):
         self.properties.update(
             {"I am not aliased" : "value of: I am not aliased",
@@ -34,6 +36,7 @@ class CorkItem:
             "b" : "item's b",
             "_content" : "item's raw data"})
         self.properties.setlistdefault("cork_prop").extend(["toto", "tata"])
+        
     def serialize(self):
         return self.properties['_content']
 
@@ -42,6 +45,10 @@ class CorkAccessPoint:
     parser_aliases = {"I am aliased" : "I am not aliased"}
     storage_aliases = {}
     default_encoding = "utf-8"
+    config = { "parser": "cork_item" }
+    
+    def get_storage_properties(self):
+        return []
     
 def cork_opener():
     return open(os.path.dirname(__file__) + "/toto")

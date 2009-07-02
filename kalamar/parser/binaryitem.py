@@ -35,6 +35,6 @@ class BinaryItem(AtomItem):
         
     def _custom_serialize(self, properties):
         """Return the item content."""
-        return properties['_content'][0]
+        return properties['_content']
 
 del AtomItem
