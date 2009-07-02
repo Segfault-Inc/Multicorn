@@ -38,6 +38,7 @@ class AccessPoint(object):
         Traceback (most recent call last):
             ...
         ValueError: Unknown protocol: nonexistent-protocol
+
         """
         protocol = config['url'].split(':', 1)[0]
         for subclass in utils.recursive_subclasses(cls):
@@ -81,6 +82,7 @@ class AccessPoint(object):
          Condition('b', <built-in function gt>, 2),
          Condition('c', <built-in function eq>, 3),
          Condition('d', <built-in function ge>, 4)]
+
         """
         for n, cond in enumerate(conditions):
             yield utils.Condition(cond.property_name or self.property_names[n],
@@ -95,49 +97,35 @@ class AccessPoint(object):
         
         """
         # Algorithm:
-        # 1. list the interesting storage properties.
-        # 2. expand syntaxic sugar.
+        # 1. list the interesting storage properties
+        # 2. expand syntaxic sugar
         # 3. divide conditions into two categories : parser and storage
-        # 4. call _storage_search with storage conditions as parameters.
-        # 5. filter the items yielded with conditions applying to the parser.
+        # 4. call _storage_search with storage conditions as parameters
+        # 5. filter the items yielded with conditions applying to the parser
         # 6. yield filtered items
         
-
-        #parser_aliases_values = [a for (a,b) in self.parser_aliases]
-        
-        #sto_aliases = dict(self.storage_aliases)
-        #sto_aliases_rev = dict((b,a) for (a,b) in self.storage_aliases)
-        
-        #sto_props_old = self.get_storage_properties()
-        #sto_props = set(sto_aliases_rev.get(prop, prop)
-        #                for prop in sto_props_old)
-        #sto_props.update(sto_props_old)
-        
-        #parser_aliases_val = [a for (a,b) in self.parser_aliases]
-        #sto_props.difference_update(parser_aliases_val)
-        
-        sto_aliases = dict(self.storage_aliases)
+        storage_aliases = dict(self.storage_aliases)
         parser_aliases = dict(self.parser_aliases)
         
-        sto_props_not_aliased = set(self.get_storage_properties())
+        storage_properties_not_aliased = set(self.get_storage_properties())
         # Parser aliased properties have priority over storage not aliased
-        # properties.
-        sto_props_not_aliased.difference_update(parser_aliases.keys())
+        # properties
+        storage_properties_not_aliased.difference_update(parser_aliases.keys())
         
-        sto_props = set(sto_aliases.keys())
-        sto_props.update(sto_props_not_aliased)
+        storage_properties = set(storage_aliases.keys())
+        storage_properties.update(storage_properties_not_aliased)
         
         storage_conditions = []
         parser_conditions = []
+
         conditions = list(self.expand_syntaxic_sugar(conditions))
-        for cond in conditions:
-            if cond.property_name in sto_props:
+        for condition in conditions:
+            if condition.property_name in storage_properties:
                 storage_conditions.append(utils.Condition(
-                    sto_aliases[cond.property_name], cond.operator, cond.value
-                ))
+                    storage_aliases[condition.property_name],
+                    condition.operator, condition.value))
             else:
-                parser_conditions.append(cond)
-        
+                parser_conditions.append(condition)
         
         for properties, opener in self._storage_search(storage_conditions):
             item = Item.get_item_parser(self.config['parser'], self,

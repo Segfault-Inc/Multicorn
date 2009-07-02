@@ -29,7 +29,6 @@ from kalamar import storage, utils
 
 class Site(object):
     """Kalamar site."""
-    
     class NotOneObjectReturned(Exception): pass
     class MultipleObjectsReturned(NotOneObjectReturned): pass
     class ObjectDoesNotExist(NotOneObjectReturned): pass

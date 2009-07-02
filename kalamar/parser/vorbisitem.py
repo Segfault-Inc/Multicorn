@@ -34,11 +34,11 @@ class VorbisItem(AtomItem):
     add any label you want and, for each label, to put several values.
     Because of that, this module cannot guarantee a set of properties. Despite
     this, here are some common tags you can use:
-      - time_length : duration in seconds
-      - _content : raw ogg/vorbis data
-      - artist
-      - genre
-      - track
+    - time_length : duration in seconds
+    - _content : raw ogg/vorbis data
+    - artist
+    - genre
+    - track
     
     TODO write test
 
@@ -52,16 +52,17 @@ class VorbisItem(AtomItem):
         properties = MultiDict()
         properties['_content'] = self._stream.read()
         
+        # Create a real file descriptor, as VorbisFile does not accept a stream
         self._stream.seek(0)
-        file = TemporaryFile()
-        file.write(self._stream.read())
-        file.seek(0)
-        vorbis_file = vorbis.VorbisFile(file)
-        properties["time_length"] = vorbis_file.time_total(0)
+        temporary_file = TemporaryFile()
+        temporary_file.write(self._stream.read())
+        temporary_file.seek(0)
+        vorbis_file = vorbis.VorbisFile(temporary_file)
+        properties['time_length'] = vorbis_file.time_total(0)
         
         comment = vorbis_file.comment()
-        for name, list in comment.as_dict().items():
-            properties.setlist(name, list)
+        for key, values in comment.as_dict().items():
+            properties.setlist(key, values)
         
         return properties
     
