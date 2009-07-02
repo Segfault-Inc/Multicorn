@@ -3,7 +3,9 @@
 import os
 import sys
 import shutil
+import tempfile
 from unittest import TestCase
+
 from kalamar import Site
 from kalamar import Item
 
@@ -12,22 +14,19 @@ from kalamar import Item
 class TestSite(object):
     
     def setUp(self):
-        src = os.path.normpath(os.path.join(os.path.realpath(__file__), '..',
-                                            'data'))
-        dst = os.path.join('/tmp', 'kalamar', 'data_sandbox')
-        shutil.copytree(src, dst)
+        src = os.path.join(os.path.dirname(__file__), 'data')
+        self.temp_dir = tempfile.mkdtemp()
+        shutil.copytree(src, os.path.join(self.temp_dir, 'data'))
         
-        path = os.path.join(dst, 'kalamar.conf')
-        self.site = Site(path)
+        self.site = Site(os.path.join(self.temp_dir, 'data', 'kalamar.conf'))
     
     def tearDown(self):
-        path = os.path.join('/tmp', 'kalamar', 'data_sandbox')
-        for dirpath, dirnames, filenames in os.walk(path, topdown=False):
+        for dirpath, dirnames, filenames in os.walk(self.temp_dir, topdown=False):
             for f in filenames:
                 os.remove(os.path.join(dirpath, f))
             for d in dirnames:
                 os.rmdir(os.path.join(dirpath, d))
-        os.rmdir(path)
+        os.rmdir(self.temp_dir)
 
 class TestSiteSearch(TestSite):
         
@@ -96,8 +95,8 @@ class TestSiteRemove(TestSite):
         self.assertEqual(list(self.site.search(self.access_point, request)), [])
 
 # Magic tricks
-site = Site(os.path.normpath(os.path.join(os.path.realpath(__file__),
-                                          '../data/kalamar.conf')))
+site = Site(os.path.join(os.path.dirname(__file__), 'data', 'kalamar.conf'))
+
 for access_point in site.access_points:
     for test in (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove):
         cls = type(test.__name__+'_'+access_point, (test, TestCase),
