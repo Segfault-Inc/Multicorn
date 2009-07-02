@@ -4,6 +4,7 @@ import os
 import sys
 import shutil
 import tempfile
+import atexit
 from unittest import TestCase
 
 from kalamar import Site
@@ -11,22 +12,64 @@ from kalamar import Item
 
 # There is some magic at the end of this file :-P
 
+class TestData(object):
+    _original_data = os.path.join(os.path.dirname(__file__), 'data')
+    _dirname = None
+    
+    @classmethod
+    def get(cls):
+        if cls._dirname is None:
+            atexit.register(cls.cleanup)
+            cls._dirname = tempfile.mkdtemp()
+        cls.mini_rsync(cls._original_data, cls._dirname)
+        return cls._dirname
+    
+    @classmethod
+    def mini_rsync(cls, src, dst):
+        names = os.listdir(src)
+        
+        # remove files and dirs that aren’t in src
+        for name in os.listdir(dst):
+            dstname = os.path.join(dst, name)
+            if name not in names:
+                if os.path.isdir(dstname):
+                    shutil.rmtree(dstname)
+                else:
+                    os.remove(dstname)
+
+        for name in names:
+            srcname = os.path.join(src, name)
+            dstname = os.path.join(dst, name)
+            if os.path.isdir(srcname):
+                if not os.path.isdir(dstname):
+                    os.makedirs(dstname)
+                cls.mini_rsync(srcname, dstname)
+                shutil.copystat(srcname, dstname)
+            else:
+                try:
+                    dststat = os.stat(dstname)
+                except OSError:
+                    pass
+                else:
+                    srcstat = os.stat(srcname)
+                    if (srcstat.st_size, srcstat.st_mtime) == \
+                       (dststat.st_size, dststat.st_mtime):
+                        # the file is probably the same in src and dst: skip it
+                        continue
+                shutil.copy2(srcname, dstname)
+        
+    @classmethod
+    def cleanup(cls):
+        if cls._dirname is not None:
+           shutil.rmtree(cls._dirname)
+        
+
 class TestSite(object):
     
     def setUp(self):
-        src = os.path.join(os.path.dirname(__file__), 'data')
-        self.temp_dir = tempfile.mkdtemp()
-        shutil.copytree(src, os.path.join(self.temp_dir, 'data'))
-        
-        self.site = Site(os.path.join(self.temp_dir, 'data', 'kalamar.conf'))
+        self.temp_dir = TestData.get()
+        self.site = Site(os.path.join(self.temp_dir, 'kalamar.conf'))
     
-    def tearDown(self):
-        for dirpath, dirnames, filenames in os.walk(self.temp_dir, topdown=False):
-            for f in filenames:
-                os.remove(os.path.join(dirpath, f))
-            for d in dirnames:
-                os.rmdir(os.path.join(dirpath, d))
-        os.rmdir(self.temp_dir)
 
 class TestSiteSearch(TestSite):
         
