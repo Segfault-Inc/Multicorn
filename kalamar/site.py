@@ -35,8 +35,7 @@ class Site(object):
     class FileNotFoundError(Exception): pass
     
     def __init__(self, config_filename=None):
-        """
-        Create a kalamar site from a configuration file.
+        """Create a kalamar site from a configuration file.
         
         >>> Site(config_filename='nonexistent')
         Traceback (most recent call last):
