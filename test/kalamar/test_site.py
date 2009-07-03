@@ -79,16 +79,24 @@ class TestSiteOpen(TestSite):
 class TestSiteSave(TestSite):
     
     def test_new_complete_item(self):
+        access_point = self.site.access_points[self.access_point_name]
+        if access_point.config['parser'] == 'audio_vorbis':
+            vorbis_file = open(os.path.join(os.path.dirname(__file__),
+                                        'data', 'vorbis_sample.ogg'))
+            data = vorbis_file.read()
+        else:
+            data = ''
         properties = {'genre': 'funk',
                       'artiste': 'loopzilla',
                       'album': 'demo',
                       'titre': 'many money',
-                      'piste': '2'}
-        item = Item.create_item(self.site.access_points[self.access_point_name],
-                                properties)
+                      'piste': '2',
+                      '_content': data}
+        item = Item.create_item(access_point, properties)
         self.site.save(item)
         item2=self.site.open(self.access_point_name,
-                             u'genre=funk/artiste=loopzilla/album=demo/titre=many money/piste=2')
+            u'genre=funk/artiste=loopzilla/album=demo/titre=many money/piste=2'
+        )
         self.assertEqual(item2.properties['genre'], 'funk')
         self.assertEqual(item2.properties['artiste'], 'loopzilla')
         self.assertEqual(item2.properties['album'], 'demo')

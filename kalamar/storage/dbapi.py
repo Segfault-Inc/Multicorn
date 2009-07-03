@@ -86,7 +86,7 @@ class DBAPIStorage(AccessPoint):
         """Return the list of the storage properties."""
         connection, table = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute('SELECT * FROM %s WHERE 0' % self._quote_name(self._table))
+        cursor.execute('SELECT * FROM %s WHERE 0;' % self._quote_name(self._table))
         return [prop[0] for prop in cursor.description]
     
     def _storage_search(self, conditions):
@@ -320,6 +320,10 @@ class DBAPIStorage(AccessPoint):
         >>> table = 'table'
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
+        >>> class db_mod:
+        ...     def Binary(self, data):
+        ...         return data
+        >>> storage.get_db_module = lambda: db_mod()
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': 'sto_val2',
@@ -329,9 +333,10 @@ class DBAPIStorage(AccessPoint):
         Test
         >>> storage._build_insert_request(table, item, 'qmark')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'INSERT INTO "table" ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" )
-           VALUES ( ? , ? , ? , ? );', ['sto_val', 'pk_val2', 'pk_val1',
-           'sto_val2'])
+        (u'INSERT INTO "table"
+           ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" , "content_col" )
+           VALUES ( ? , ? , ? , ? , ? );', ['sto_val', 'pk_val2', 'pk_val1',
+           'sto_val2', ''])
 
         """
         
@@ -339,20 +344,30 @@ class DBAPIStorage(AccessPoint):
         
         req = array('u', u"INSERT INTO %s ( " % self._quote_name(table))
         keys = item.properties.storage_properties.keys()
+        if self.config['content_column'] in keys:
+            keys.remove(self.config['content_column'])
         
         parameters = []
         
-        for key in keys[:-1]:
+        for key in keys:
             req.extend(u"%s , "
                        % self._quote_name(self._sql_escape_quotes(key)))
         req.extend(u"%s ) VALUES ( "
-                   % self._quote_name(self._sql_escape_quotes(keys[-1])))
+                   % self._quote_name(self.config['content_column']))
         
-        for key in keys[:-1]:
+        for key in keys:
             req.extend(u"? , ")
             parameters.append(item.properties[key])
         req.extend(u"? );")
-        parameters.append(item.properties[keys[-1]])
+        if self.config['content_column'] \
+                                    in item.properties.keys_without_aliases():
+            parameters.append(self.get_db_module().Binary(
+                                item.properties[self.config['content_column']]))
+        elif '_content' in item.properties.keys_without_aliases():
+            parameters.append(self.get_db_module().Binary(
+                                                   item.properties['_content']))
+        else:
+            parameters.append(self.get_db_module().Binary(''))
         
         request, parameters = self._format_request(req.tounicode(), parameters,
                                                    style)

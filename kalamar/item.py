@@ -339,6 +339,9 @@ class ItemProperties(MultiDict):
         self['_content'] = ''
         self.parser_content_modified = False
     
+    def parser_keys(self):
+        return list(self)
+    
     def keys(self):
         keys = set(self.keys_without_aliases())
         keys.update(self._item.aliases.keys())
