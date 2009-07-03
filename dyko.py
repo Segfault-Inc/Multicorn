@@ -6,10 +6,10 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import werkzeug.script
 import kraken
-import test
+import test.kraken
 
 action_runserver = werkzeug.script.make_runserver(
-    kraken.site.Site, use_reloader=True, use_debugger=True
+    test.kraken.make_site, use_reloader=True, use_debugger=True
 )
                                          
 def action_test(packages='kalamar,koral,test', coverage=False, todo=False):

@@ -23,18 +23,20 @@ independent site with it’s own configuration.
 
 from werkzeug import Request, Response
 
+import kalamar
+
 
 class Site(object):
     """
     Create a WSGI application from a configuration file.
     """
     
-    def __init__(self, config_filename=None):
-        pass
+    def __init__(self, site_root, kalamar_conf=None):
+        self.site_root = site_root
+        self.kalamar_site = kalamar.Site(kalamar_conf)
     
     @Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
-        import test
-        return Response('Hello, World!')
+        return Response(u'Hello, World!')
 
