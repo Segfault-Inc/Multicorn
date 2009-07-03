@@ -57,11 +57,14 @@ class VorbisItem(AtomItem):
         file.write(self._stream.read())
         file.seek(0)
         vorbis_file = vorbis.VorbisFile(file)
-        properties["time_length"] = vorbis_file.time_total(0)
+        properties["TIME_LENGTH"] = vorbis_file.time_total(0)
         
         comment = vorbis_file.comment()
         for name, list in comment.as_dict().items():
             properties.setlist(name, list)
+        
+        if 'TRACKNUMBER' in properties:
+            properties['TRACKNUMBER'] = int(properties['TRACKNUMBER'])
         
         return properties
     

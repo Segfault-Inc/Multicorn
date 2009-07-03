@@ -35,6 +35,10 @@ class TestItem(TextItem):
         data = properties['_content']
         properties.update(dict(zip(self._keys,
                     (value for value in data.split('\n')))))
+        #if properties['tracknumber'] != '':
+        #    properties['tracknumber'] = int(properties['tracknumber'])
+        #else:
+        #    properties['tracknumber'] = None
         return properties
         
     def _custom_serialize(self, properties):

@@ -271,10 +271,10 @@ class FileSystemStorage(AccessPoint):
         """
         def path_parts(pattern_parts):
             """TODO: Document this"""
-            yield pattern_parts[0]
+            yield str(pattern_parts[0])
             for i, part in enumerate(pattern_parts[1:]):
-                yield properties['path%i' % (i + 1)]
-                yield part
+                yield str(properties['path%i' % (i + 1)])
+                yield str(part)
         return ''.join(path_parts(self.filename_format.split('*')))
 
         

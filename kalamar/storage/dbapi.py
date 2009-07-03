@@ -53,7 +53,7 @@ class DBAPIStorage(AccessPoint):
     class ManyItemsUpdatedError(Exception): pass
     
     # Provided to ensure compatibility with as many SGDB as possible.
-    # May be modified by a descendant.
+    # This may be modified by a descendant.
     sql_operators = {
         '=': '=',
         '!=': '!=',
@@ -114,7 +114,15 @@ class DBAPIStorage(AccessPoint):
         # filter result and yield tuples (properties, value)
         filtered = list(self._filter_result(dict_lines, python_cond))
         
-        for line in filtered:
+        def lines_to_string(lines):
+            for line in lines:
+                for key in line:
+                    if key != self.config['content_column'] \
+                    and not isinstance(line[key], unicode):
+                        line[key] = unicode(line[key])
+                yield line
+        
+        for line in lines_to_string(filtered):
             yield (line, _opener(line[self.config['content_column']]))
         
         cur.close()
@@ -274,7 +282,7 @@ class DBAPIStorage(AccessPoint):
         
         req = array('u',u"UPDATE %s SET " % self._quote_name(table))
         pk = self._get_primary_keys()
-        keys = item.properties.keys_without_aliases()
+        keys = item.properties.storage_properties.keys()
         
         item.properties[self.config['content_column']] = item.serialize()
         
