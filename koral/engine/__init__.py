@@ -15,12 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Parser module listing all engine access points.
+
+"""
+
 import os
 
 from koral.engine.base import BaseEngine
 
-def load_engines():
+def load():
+    """Import all python files in the "engine" folder."""
     for filename in os.listdir(os.path.dirname(__file__)):
         if filename.endswith('.py') and not filename.startswith('_'):
             __import__(__name__ + '.' + filename[:-3])
-    
