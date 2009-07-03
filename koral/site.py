@@ -26,34 +26,14 @@ from koral import engine, utils
 
 class Site(object):
     """Koral site."""
+
     def __init__(self, path_to_root):
         """Create a kalamar site."""
         self.path_to_root = path_to_root
-        self._engines = {}
+        self.engines = {}
+
         engine.load()
-    
-    def get_engine(self, name):
-        """Return engine "name".
-
-        >>> Site('').get_engine('nonexistent')
-        Traceback (most recent call last):
-            ...
-        ValueError: Unknown engine: nonexistent
-
-        """
-        try:
-            return self._engines[name]
-        except KeyError:
-            self.get_all_engines()
-            try:
-                return self._engines[name]
-            except KeyError:            
-                raise ValueError('Unknown engine: %s' % name)
-
-    def get_all_engines(self):
         for subclass in utils.recursive_subclasses(engine.BaseEngine):
             if getattr(subclass, 'name', None):
-                engine = subclass(self.path_to_root)
-                self._engines[subclass.name] = engine
-                yield engine
+                self.engines[subclass.name] = subclass(self.path_to_root)
 
