@@ -44,9 +44,16 @@ class Site(object):
         try:
             return self._engines[name]
         except KeyError:
-            for subclass in utils.recursive_subclasses(engine.BaseEngine):
-                if getattr(subclass, 'name', None) == name:
-                    self._engines[name] = subclass(self.path_to_root)
-                    return self._engines[name]
+            self.get_all_engines()
+            try:
+                return self._engines[name]
+            except KeyError:            
+                raise ValueError('Unknown engine: %s' % name)
 
-        raise ValueError('Unknown engine: %s' % name)
+    def get_all_engines(self):
+        for subclass in utils.recursive_subclasses(engine.BaseEngine):
+            if getattr(subclass, 'name', None):
+                engine = subclass(self.path_to_root)
+                self._engines[subclass.name] = engine
+                yield engine
+
