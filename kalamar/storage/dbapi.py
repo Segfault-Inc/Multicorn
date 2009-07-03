@@ -303,8 +303,8 @@ class DBAPIStorage(AccessPoint):
                        self._quote_name(self._sql_escape_quotes(keys[-1])))
         parameters.append(item.properties[keys[-1]])
         
-        for key in pk:
-            req.extend(u" %s=?"
+        for key in primary_keys:
+            request.extend(u" %s=?"
                        % self._quote_name(self._sql_escape_quotes(key)))
             parameters.append(item.properties[key])
         request.extend(u' ;')
@@ -351,15 +351,15 @@ class DBAPIStorage(AccessPoint):
         parameters = []
         
         for key in keys:
-            req.extend(u"%s , "
+            request.extend(u"%s , "
                        % self._quote_name(self._sql_escape_quotes(key)))
-        req.extend(u"%s ) VALUES ( "
+        request.extend(u"%s ) VALUES ( "
                    % self._quote_name(self.config['content_column']))
         
         for key in keys:
-            req.extend(u"? , ")
+            request.extend(u"? , ")
             parameters.append(item.properties[key])
-        req.extend(u"? );")
+        request.extend(u"? );")
         if self.config['content_column'] \
                                     in item.properties.keys_without_aliases():
             parameters.append(self.get_db_module().Binary(
@@ -370,8 +370,8 @@ class DBAPIStorage(AccessPoint):
         else:
             parameters.append(self.get_db_module().Binary(''))
         
-        request, parameters = self._format_request(req.tounicode(), parameters,
-                                                   style)
+        request, parameters = self._format_request(request.tounicode(),
+                                                   parameters, style)
         return (request, parameters)
     
     @staticmethod
@@ -447,7 +447,7 @@ class DBAPIStorage(AccessPoint):
         request, parameters = self._build_update_request(table, item, style)
         
         cursor = connection.cursor()
-        cursor.execute(request)
+        cursor.execute(request, parameters)
         rowcount = cursor.rowcount
 
         if rowcount == 0:
