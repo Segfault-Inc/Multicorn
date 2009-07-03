@@ -22,4 +22,7 @@ Kraken - HTTP Requests Dispatcher
 # TODO: write module documentation
 """
 
+from werkzeug import Response
+
 from kraken.site import Site
+

@@ -35,11 +35,11 @@ class VorbisItem(AtomItem):
     add any label you want and, for each label, to put several values.
     Because of that, this module cannot guarantee a set of properties. Despite
     this, here are some common tags you can use:
-      - time_length : duration in seconds
-      - _content : raw ogg/vorbis data
-      - artist
-      - genre
-      - track
+    - time_length : duration in seconds
+    - _content : raw ogg/vorbis data
+    - artist
+    - genre
+    - track
     
     TODO write test
 
@@ -52,35 +52,36 @@ class VorbisItem(AtomItem):
         properties = MultiDict()
         properties['_content'] = self._stream.read()
         
+        # Create a real file descriptor, as VorbisFile does not accept a stream
         self._stream.seek(0)
-        file = NamedTemporaryFile()
-        file.write(self._stream.read())
-        file.seek(0)
-        vorbis_tags = Open(file.name)
+        temporary_file = NamedTemporaryFile()
+        temporary_file.write(self._stream.read())
+        temporary_file.seek(0)
+        vorbis_tags = Open(temporary_file.name)
         
         for key in vorbis_tags:
             properties.setlist(key, vorbis_tags[key])
         
-        file.close()
+        temporary_file.close()
         
         return properties
     
     def _custom_serialize(self, properties):
         """Return the whole file into a bytes string."""
         
-        file = NamedTemporaryFile()
-        file.file.write(self.properties['_content'])
+        temporary_file = NamedTemporaryFile()
+        temporary_file.file.write(self.properties['_content'])
         
-        vorbis_tags = Open(file.name)
+        vorbis_tags = Open(temporary_file.name)
         keys = self.properties.parser_keys()
         keys.remove('_content')
         for key in keys:
             vorbis_tags[key] = self.properties.getlist(key)
         vorbis_tags.save()
         
-        file.file.flush()
-        file.seek(0)
-        self.properties['_content'] = file.read()
+        temporary_file.file.flush()
+        temporary_file.seek(0)
+        self.properties['_content'] = temporary_file.read()
         
         return self.properties['_content']
     

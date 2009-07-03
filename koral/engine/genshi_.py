@@ -26,8 +26,7 @@ except ImportError:
                   'GenshiEngine will not be available.')
 else:    
     class GenshiEngine(BaseEngine):
-        """
-        Koral engine for Genshi: http://genshi.edgewall.org/
+        """Koral engine for Genshi: http://genshi.edgewall.org/
         
         >>> import koral.site, test.koral, os.path
         >>> path = os.path.join(os.path.dirname(test.koral.__file__), 'templates')
@@ -47,11 +46,11 @@ else:
         name = 'genshi'
         
         def __init__(self, *args, **kwargs):
+            """Genshi engine initialisation."""
             super(GenshiEngine, self).__init__(*args, **kwargs)
             self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
             
         def render(self, template_name, values={}, lang=None, modifiers=None):
+            """Render genshi template."""
             template = self._loader.load(template_name)
             return template.generate(**values).render('html', doctype='html')
-
-

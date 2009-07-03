@@ -29,15 +29,13 @@ from kalamar import storage, utils
 
 class Site(object):
     """Kalamar site."""
-    
     class NotOneObjectReturned(Exception): pass
     class MultipleObjectsReturned(NotOneObjectReturned): pass
     class ObjectDoesNotExist(NotOneObjectReturned): pass
     class FileNotFoundError(Exception): pass
     
     def __init__(self, config_filename=None):
-        """
-        Create a kalamar site from a configuration file.
+        """Create a kalamar site from a configuration file.
         
         >>> Site(config_filename='nonexistent')
         Traceback (most recent call last):

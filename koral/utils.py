@@ -15,10 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral.  If not, see <http://www.gnu.org/licenses/>.
 
-
 def recursive_subclasses(class_):
+    """Return all "class_" subclasses recursively."""
     yield class_
-    for sub in class_.__subclasses__():
-        for sub_sub in recursive_subclasses(sub):
-            yield sub_sub
+    for subclass in class_.__subclasses__():
+        for sub_subclass in recursive_subclasses(subclass):
+            yield sub_subclass
 
