@@ -32,7 +32,7 @@ from kalamar.storage.base import AccessPoint
 from kalamar import utils
 from kalamar import Item
 
-_opener = lambda content: lambda: StringIO(content)
+_opener = lambda content: (lambda: StringIO(content))
 
 class DBAPIStorage(AccessPoint):
     """Base class for SQL SGBD Storage.
@@ -122,7 +122,9 @@ class DBAPIStorage(AccessPoint):
                 yield line
         
         for line in lines_to_string(filtered):
-            yield (line, _opener(line[self.config['content_column']]))
+            data = line[self.config['content_column']]
+            line.pop(self.config['content_column'])
+            yield (line, _opener(data))
         
         cursor.close()
     
@@ -360,11 +362,8 @@ class DBAPIStorage(AccessPoint):
             request.extend(u"? , ")
             parameters.append(item.properties[key])
         request.extend(u"? );")
-        if self.config['content_column'] \
-                                    in item.properties.keys_without_aliases():
-            parameters.append(self.get_db_module().Binary(
-                                item.properties[self.config['content_column']]))
-        elif '_content' in item.properties.keys_without_aliases():
+        
+        if '_content' in item.properties.keys_without_aliases():
             parameters.append(self.get_db_module().Binary(
                                                    item.properties['_content']))
         else:

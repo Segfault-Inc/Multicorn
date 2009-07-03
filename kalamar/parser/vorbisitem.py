@@ -70,7 +70,7 @@ class VorbisItem(AtomItem):
         """Return the whole file into a bytes string."""
         
         temporary_file = NamedTemporaryFile()
-        temporary_file.file.write(self.properties['_content'])
+        temporary_file.write(self.properties['_content'])
         
         vorbis_tags = Open(temporary_file.name)
         keys = self.properties.parser_keys()

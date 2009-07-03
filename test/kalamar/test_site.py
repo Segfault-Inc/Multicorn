@@ -94,9 +94,11 @@ class TestSiteSearch(TestSite):
         
         self.assertEqual(len(all_objects), 20)
         self.assertEqual(genres, set([u'jazz', u'rock']))
-        self.assertEqual(artistes, set([u"Jesus'harlem", u'Birelli Lagrène',
+        self.assertEqual(artistes, set([u"Jesus'harlem",
+                                        u'Birelli Lagrène',
                                         u'Water please']))
-        self.assertEqual(albums, set([u'manouche swing', u'S.O.B', u'alleluia',
+        self.assertEqual(albums, set([u'manouche swing',
+                                      u'S.O.B', u'alleluia',
                                       u'amen']))
 
 class TestSiteOpen(TestSite):
@@ -107,7 +109,8 @@ class TestSiteOpen(TestSite):
                           self.access_point_name, request)
     
     def test_one_result(self):
-        request = u'genre=rock/artiste=Jesus\'harlem/album=amen/titre=mechanical blues'
+        request = u'genre=rock/artiste=Jesus\'harlem' \
+                  u'/album=amen/titre=mechanical blues'
         item = self.site.open(self.access_point_name, request)
         self.assertEqual(item.properties['genre'], u'rock')
         self.assertEqual(item.properties['artiste'], u'Jesus\'harlem')
@@ -137,8 +140,10 @@ class TestSiteSave(TestSite):
                       '_content': data}
         item = Item.create_item(access_point, properties)
         self.site.save(item)
-        item2=self.site.open(self.access_point_name,
-            u'genre=funk/artiste=loopzilla/album=demo/titre=many money/piste=2'
+        item2=self.site.open(
+            self.access_point_name,
+            u'genre=funk/artiste=loopzilla/'
+            u'album=demo/titre=many money/piste=2'
         )
         self.assertEqual(item2.properties['genre'], 'funk')
         self.assertEqual(item2.properties['artiste'], 'loopzilla')
@@ -151,7 +156,17 @@ class TestSiteSave(TestSite):
         pass # TODO
     
     def test_unmodified_item(self):
-        pass # TODO
+        item = self.site.open(
+            self.access_point_name,
+            u'genre=rock/artiste=Jesus\'harlem/'
+            u'album=amen/titre=mechanical blues'
+        )
+        self.site.save(item)
+        item = self.site.open(
+            self.access_point_name,
+            u'genre=rock/artiste=Jesus\'harlem/'
+            u'album=amen/titre=mechanical blues'
+        )
     
     def test_modified_item(self):
         pass # TODO
