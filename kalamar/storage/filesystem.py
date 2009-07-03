@@ -159,19 +159,21 @@ class FileSystemStorage(AccessPoint):
 
     @staticmethod
     def _pattern_to_regexp(pattern, first_index):
-        r"""Transform the standard pattern with wildcards to a real regexp.
+        r"""Transform a standard pattern with wildcards into a regexp object.
 
-        >>> re_ = FileSystemStorage._pattern_to_regexp('[*] * - *.txt', 3)
+        >>> re_ = FileSystemStorage._pattern_to_regexp(u'[*] * - *.txt', 3)
         >>> re_ # doctest: +ELLIPSIS
         <_sre.SRE_Pattern object at 0x...>
-        >>> re_.match('[au!] ... - .txt').groups()
-        ('au!', '...', '')
-        >>> assert re_.match('[au!]... - Ô.txt') is None
-        >>> re_.pattern
-        '^\\[(?P<path3>.*)\\]\\ (?P<path4>.*)\\ \\-\\ (?P<path5>.*)\\.txt$'
+        >>> re_.match(u'[au!] ... - .txt').groups()
+        (u'au!', u'...', u'')
+        >>> # Missing ' ' after ']'
+        >>> assert re_.match(u'[au!]... - Ô.txt') is None
+        >>> print re_.pattern
+        ^\[(?P<path3>.*)\]\ (?P<path4>.*)\ \-\ (?P<path5>.*)\.txt$
 
         """
-        def regexp_parts(pattern_parts):
+        def regexp_parts():
+            pattern_parts = pattern.split('*')
             yield '^'
             yield re.escape(pattern_parts[0])
             for num, part in enumerate(pattern_parts[1:]):
@@ -179,7 +181,7 @@ class FileSystemStorage(AccessPoint):
                 yield re.escape(part)
             yield '$'
 
-        return re.compile(''.join(regexp_parts(pattern.split('*'))))
+        return re.compile(''.join(regexp_parts()))
     
     def _storage_search(self, conditions):
         """Generate (properties, file_opener) for all files matching conditions.
@@ -260,14 +262,14 @@ class FileSystemStorage(AccessPoint):
         'storage/fs.py'
 
         """
-        def path_parts(pattern_parts):
-            """TODO: Document this"""
+        def path_parts():
+            pattern_parts = self.filename_format.split('*')
             yield pattern_parts[0]
             for i, part in enumerate(pattern_parts[1:]):
                 yield properties['path%i' % (i + 1)]
                 yield part
 
-        return ''.join(path_parts(self.filename_format.split('*')))
+        return ''.join(path_parts())
 
         
     def save(self, item):
