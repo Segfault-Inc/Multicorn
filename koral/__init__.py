@@ -22,3 +22,5 @@ Koral - Templates Management Library
 # TODO: write module documentation
 """
 
+from koral.site import Site
+
