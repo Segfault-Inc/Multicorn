@@ -15,23 +15,31 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Koral Site class.
+
+Create one for each independent site.
+
+"""
 
 from koral import engine, utils
 
-
 class Site(object):
-    
+    """Koral site."""
     def __init__(self, path_to_root):
+        """Create a kalamar site."""
         self.path_to_root = path_to_root
         self._engines = {}
-        engine.load_engines()
+        engine.load()
     
     def get_engine(self, name):
-        """
+        """Return engine "name".
+
         >>> Site('').get_engine('nonexistent')
         Traceback (most recent call last):
             ...
         ValueError: Unknown engine: nonexistent
+
         """
         try:
             return self._engines[name]
@@ -41,4 +49,4 @@ class Site(object):
                     self._engines[name] = subclass(self.path_to_root)
                     return self._engines[name]
 
-        raise ValueError('Unknown engine: ' + name)
+        raise ValueError('Unknown engine: %s' % name)

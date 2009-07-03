@@ -31,8 +31,7 @@ class AccessPoint(object):
     
     @classmethod
     def from_url(cls, **config):
-        """
-        Return an instance of the appropriate class according to the URL.
+        """Return an instance of the appropriate class according to the URL.
         
         >>> AccessPoint.from_url(url='nonexistent-protocol://…')
         Traceback (most recent call last):
@@ -90,10 +89,10 @@ class AccessPoint(object):
                                   cond.value)
     
     def search(self, conditions):
-        """Generate a sequence of every item matching ``conditions''.
+        """Generate a sequence of every item matching "conditions".
         
-        "conditions" is a list of utils.Condition objects
-        as returned by kalamar.site.Site.parse_request
+        "conditions" is a list of utils.Condition objects as returned by
+        kalamar.site.Site.parse_request.
         
         """
         # Algorithm:

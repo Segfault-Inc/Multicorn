@@ -15,20 +15,26 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Base template engine.
+
+"""
 
 class BaseEngine(object):
-    """Base class for all template engine adaptators in Koral.
+    """Abstract class for all template engine adaptators in Koral.
     
-    Subclasses must override the ``render`` method
+    Subclasses must override the "render" method.
+
     """
 
     def __init__(self, path_to_root):
+        """Template engine initialisation."""
         self.path_to_root = path_to_root
     
     def render(self, template_name, values={}, lang=None, modifiers=None):
-        """
-        Renders ``template_name'' with the ``values'' dict
-        and return an unicode string    
-        """
-        raise NotImplementedError # subclasses must override this
+        """Render "template_name" with the "values" dict, return unicode.
 
+        This method has to be overriden.
+
+        """
+        raise NotImplementedError
