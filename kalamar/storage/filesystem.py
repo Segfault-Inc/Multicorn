@@ -266,16 +266,16 @@ class FileSystemStorage(AccessPoint):
 
         The path is as accepted by AccessPoint.open_file.
         
-        >>> ap = AccessPoint.from_url(url='file://', filename_format='*/*.py')
-        >>> ap._path_from_properties({'path1': 'storage', 'path2': 'fs'})
-        'storage/fs.py'
+        >>> ap = AccessPoint.from_url(url=u'file://', filename_format=u'*/*.py')
+        >>> ap._path_from_properties({u'path1': u'storage', u'path2': u'fs'})
+        u'storage/fs.py'
 
         """
         def path_parts():
             pattern_parts = self.filename_format.split('*')
             yield pattern_parts[0]
             for i, part in enumerate(pattern_parts[1:]):
-                yield unicode(properties['path%i' % (i + 1)])
+                yield unicode(properties[u'path%i' % (i + 1)])
                 yield part
 
         return ''.join(path_parts())
