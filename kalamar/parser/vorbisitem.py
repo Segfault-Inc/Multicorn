@@ -23,7 +23,8 @@ This parser is read-only.
 """
 
 from werkzeug import MultiDict
-from tempfile import TemporaryFile
+from tempfile import NamedTemporaryFile
+from mutagen.oggvorbis import Open
 
 from kalamar.item import AtomItem
 
@@ -47,26 +48,40 @@ class VorbisItem(AtomItem):
     
     def _custom_parse_data(self):
         """Set Vorbis metadata and time_length as properties."""
-        from ogg import vorbis
         
         properties = MultiDict()
         properties['_content'] = self._stream.read()
         
         self._stream.seek(0)
-        file = TemporaryFile()
+        file = NamedTemporaryFile()
         file.write(self._stream.read())
         file.seek(0)
-        vorbis_file = vorbis.VorbisFile(file)
-        properties["time_length"] = vorbis_file.time_total(0)
+        vorbis_tags = Open(file.name)
         
-        comment = vorbis_file.comment()
-        for name, list in comment.as_dict().items():
-            properties.setlist(name, list)
+        for key in vorbis_tags:
+            properties.setlist(key, vorbis_tags[key])
+        
+        file.close()
         
         return properties
     
     def _custom_serialize(self, properties):
-        """Return the whole file."""
-        return self.properties['_content'][0]
+        """Return the whole file into a bytes string."""
+        
+        file = NamedTemporaryFile()
+        file.file.write(self.properties['_content'])
+        
+        vorbis_tags = Open(file.name)
+        keys = self.properties.parser_keys()
+        keys.remove('_content')
+        for key in keys:
+            vorbis_tags[key] = self.properties.getlist(key)
+        vorbis_tags.save()
+        
+        file.file.flush()
+        file.seek(0)
+        self.properties['_content'] = file.read()
+        
+        return self.properties['_content']
     
 del AtomItem

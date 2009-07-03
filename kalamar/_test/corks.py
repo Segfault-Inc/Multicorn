@@ -25,7 +25,7 @@ class CorkItem(Item):
     aliases = {"I am aliased" : "I am not aliased"}
     format = "cork_item"
     
-    def __init__(self,storage_properties={}):
+    def __init__(self, access_point, opener=None, storage_properties={}):
         self.properties = ItemProperties(self, storage_properties)
         
     def _parse_data(self):

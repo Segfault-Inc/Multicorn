@@ -53,7 +53,7 @@ class DBAPIStorage(AccessPoint):
     class ManyItemsUpdatedError(Exception): pass
     
     # Provided to ensure compatibility with as many SGDB as possible.
-    # May be modified by a descendant.
+    # This may be modified by a descendant.
     sql_operators = {
         '=': '=',
         '!=': '!=',
@@ -86,7 +86,7 @@ class DBAPIStorage(AccessPoint):
         """Return the list of the storage properties."""
         connection, table = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute('SELECT * FROM %s WHERE 0' % self._quote_name(self._table))
+        cursor.execute('SELECT * FROM %s WHERE 0;' % self._quote_name(self._table))
         return [prop[0] for prop in cursor.description]
     
     def _storage_search(self, conditions):
@@ -114,7 +114,15 @@ class DBAPIStorage(AccessPoint):
         # filter result and yield tuples (properties, value)
         filtered = list(self._filter_result(dict_lines, python_cond))
         
-        for line in filtered:
+        def lines_to_string(lines):
+            for line in lines:
+                for key in line:
+                    if key != self.config['content_column'] \
+                    and not isinstance(line[key], unicode):
+                        line[key] = unicode(line[key])
+                yield line
+        
+        for line in lines_to_string(filtered):
             yield (line, _opener(line[self.config['content_column']]))
         
         cur.close()
@@ -251,12 +259,13 @@ class DBAPIStorage(AccessPoint):
         Fixture
         >>> from kalamar._test.corks import CorkItem
         >>> table = 'table'
-        >>> item = CorkItem({'sto_prop': 'sto_val',
-        ...                  'sto_prop2': 'sto_val2',
-        ...                  'pk1': 'pk_val1',
-        ...                  'pk2': 'pk_val2'})
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
+        >>> item = CorkItem(storage,
+        ...                 storage_properties={'sto_prop': 'sto_val',
+        ...                                     'sto_prop2': 'sto_val2',
+        ...                                     'pk1': 'pk_val1',
+        ...                                     'pk2': 'pk_val2'})
         >>> def monkeypatch(): return ['pk1', 'pk2']
         >>> storage._get_primary_keys = monkeypatch
         
@@ -277,10 +286,12 @@ class DBAPIStorage(AccessPoint):
         
         item.properties[self.config['content_column']] = item.serialize()
         
-        # There is no field '_content' in the DB,
-        # save content (item may be used again after being saved).
-        content = deepcopy(item.properties['_content'])
-        del item.properties['_content']
+        # There is no field '_content' in the DB
+        if '_content' in keys:
+            # Save content (item may be used again after being saved)...
+            content = deepcopy(item.properties['_content'])
+            # then delete it in "keys".
+            keys.remove('_content')
         
         parameters = []
         for key in keys[:-1]:
@@ -290,9 +301,6 @@ class DBAPIStorage(AccessPoint):
         req.extend(u"%s=? WHERE"
                    % self._quote_name(self._sql_escape_quotes(keys[-1])))
         parameters.append(item.properties[keys[-1]])
-        
-        # Restore content
-        item.properties['_content'] = content
         
         for key in pk:
             req.extend(u" %s=?"
@@ -310,19 +318,25 @@ class DBAPIStorage(AccessPoint):
         Fixture
         >>> from kalamar._test.corks import CorkItem
         >>> table = 'table'
-        >>> item = CorkItem({'sto_prop': 'sto_val',
-        ...                  'sto_prop2': 'sto_val2',
-        ...                  'pk1': 'pk_val1',
-        ...                  'pk2': 'pk_val2'})
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
+        >>> class db_mod:
+        ...     def Binary(self, data):
+        ...         return data
+        >>> storage.get_db_module = lambda: db_mod()
+        >>> item = CorkItem(storage,
+        ...                 storage_properties={'sto_prop': 'sto_val',
+        ...                                     'sto_prop2': 'sto_val2',
+        ...                                     'pk1': 'pk_val1',
+        ...                                     'pk2': 'pk_val2'})
         
         Test
         >>> storage._build_insert_request(table, item, 'qmark')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'INSERT INTO "table" ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" )
-           VALUES ( ? , ? , ? , ? );', ['sto_val', 'pk_val2', 'pk_val1',
-           'sto_val2'])
+        (u'INSERT INTO "table"
+           ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" , "content_col" )
+           VALUES ( ? , ? , ? , ? , ? );', ['sto_val', 'pk_val2', 'pk_val1',
+           'sto_val2', ''])
 
         """
         
@@ -330,20 +344,30 @@ class DBAPIStorage(AccessPoint):
         
         req = array('u', u"INSERT INTO %s ( " % self._quote_name(table))
         keys = item.properties.storage_properties.keys()
+        if self.config['content_column'] in keys:
+            keys.remove(self.config['content_column'])
         
         parameters = []
         
-        for key in keys[:-1]:
+        for key in keys:
             req.extend(u"%s , "
                        % self._quote_name(self._sql_escape_quotes(key)))
         req.extend(u"%s ) VALUES ( "
-                   % self._quote_name(self._sql_escape_quotes(keys[-1])))
+                   % self._quote_name(self.config['content_column']))
         
-        for key in keys[:-1]:
+        for key in keys:
             req.extend(u"? , ")
             parameters.append(item.properties[key])
         req.extend(u"? );")
-        parameters.append(item.properties[keys[-1]])
+        if self.config['content_column'] \
+                                    in item.properties.keys_without_aliases():
+            parameters.append(self.get_db_module().Binary(
+                                item.properties[self.config['content_column']]))
+        elif '_content' in item.properties.keys_without_aliases():
+            parameters.append(self.get_db_module().Binary(
+                                                   item.properties['_content']))
+        else:
+            parameters.append(self.get_db_module().Binary(''))
         
         request, parameters = self._format_request(req.tounicode(), parameters,
                                                    style)
@@ -418,22 +442,24 @@ class DBAPIStorage(AccessPoint):
         """Save item in the database."""
         connection, table = self.get_connection()
         
-        request = self._build_update_request(table, item)
+        style = self.get_db_module().paramstyle
+        
+        request, parameters = self._build_update_request(table, item, style)
         
         cursor = connection.cursor()
-        cursor.execute(request)
-        n = cursor.rowcount()
+        cursor.execute(request, parameters)
+        n = cursor.rowcount
 
         if n == 0:
             # Item does not exist, let's do an insert
-            request = self._build_insert_request(table, item)
-            cursor.execute(request)
+            request, parameters = self._build_insert_request(table, item, style)
+            cursor.execute(request, parameters)
         elif n > 1:
             # Problem ocurred
             connection.rollback()
             cursor.close()
             raise ManyItemsUpdatedError()
-        # everythings fine
+        # everything is fine
         connection.commit()
         cursor.close()
     
