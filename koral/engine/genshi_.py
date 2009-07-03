@@ -30,7 +30,7 @@ else:
         
         >>> import koral.site, test.koral, os.path
         >>> path = os.path.join(os.path.dirname(test.koral.__file__), 'templates')
-        >>> engine = koral.site.Site(path).get_engine('genshi')
+        >>> engine = koral.site.Site(path).engines['genshi']
         >>> print engine.render('hello.genshi.html')
         ...   # doctest: +NORMALIZE_WHITESPACE
         <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
