@@ -6,9 +6,13 @@ import werkzeug
 def find_all_modules(packages):
     for package in packages:
         yield package
-        for module in werkzeug.find_modules(package, include_packages=True,
-                                            recursive=True):
-            yield module
+        try:
+            for module in werkzeug.find_modules(package, include_packages=True,
+                                                recursive=True):
+                yield module
+        except ValueError, e:
+            if e.args != ("'%s' is not a package" % package,):
+                raise
 
 def get_tests(packages):
     """
@@ -16,7 +20,7 @@ def get_tests(packages):
     """
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
-    for module_name in find_all_modules(packages + ['test']):
+    for module_name in find_all_modules(packages):
         suite.addTests(loader.loadTestsFromName(module_name))
         try:
             tests = doctest.DocTestSuite(module_name)
@@ -29,7 +33,7 @@ def get_tests(packages):
     return suite
 
 def find_TODOs(packages):
-    for module_name in find_all_modules(packages + ['test']):
+    for module_name in find_all_modules(packages):
         filename = werkzeug.import_string(module_name).__file__
         if filename[-4:] in ('.pyc', '.pyo'):
             filename = filename[:-1]
@@ -58,6 +62,6 @@ def run_tests_with_coverage(packages):
     run_tests(packages)
     c.stop()
     c.report([werkzeug.import_string(name).__file__ 
-              for name in find_all_modules(packages)])
+              for name in find_all_modules(p for p in packages if p != 'test')])
 
 
