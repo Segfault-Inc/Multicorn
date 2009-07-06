@@ -22,6 +22,7 @@ independent site with it’s own configuration.
 
 import os.path
 import collections
+import mimetypes
 from werkzeug import Request, Response
 
 import kalamar
@@ -41,16 +42,16 @@ class Site(object):
     @Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
-        return Response(u'''
-            Hello, World!
-            %r
-            %r
-        ''' % (request.path, self.find_template(request.path)))
+        template, extension, engine, remaining_path = \
+            self.find_template(request.path)
+        mimetype, encoding = mimetypes.guess_type('_.' + extension)
+        values = {'request': request, 'remaining_path': remaining_path}
+        content = self.koral_site.engines[engine].render(template, values)
+        return Response(content, mimetype=mimetype)
     
     def template_extensions(self):
         """Return the list of file extensions for templates."""
-        return [u'py'] + [unicode(name) for name in 
-                          self.koral_site.engines.keys()]
+        return [unicode(name) for name in self.koral_site.engines.keys()]
 
     def find_template(self, path):
         """
@@ -76,23 +77,23 @@ class Site(object):
                 ipsum.svg.py
 
         >>> site.find_template(u'/')
-        (u'/index.html.genshi', u'html', u'genshi', u'')
+        (u'index.html.genshi', u'html', u'genshi', u'')
         >>> site.find_template(u'/nonexistent')
-        (u'/index.html.genshi', u'html', u'genshi', u'nonexistent')
+        (u'index.html.genshi', u'html', u'genshi', u'nonexistent')
         
         >>> site.find_template(u'/hello/')
-        (u'/hello.html.py', u'html', u'py', u'')
+        (u'hello.html.py', u'html', u'py', u'')
         >>> site.find_template(u'/hello/world')
-        (u'/hello.html.py', u'html', u'py', u'world')
+        (u'hello.html.py', u'html', u'py', u'world')
         
         >>> site.find_template(u'/lorem/')
-        (u'/lorem/index.txt.jinja2', u'txt', u'jinja2', u'')
+        (u'lorem/index.txt.jinja2', u'txt', u'jinja2', u'')
         >>> site.find_template(u'/lorem/ipsum-dolor-sit-amet')
-        (u'/lorem/index.txt.jinja2', u'txt', u'jinja2', u'ipsum-dolor-sit-amet')
+        (u'lorem/index.txt.jinja2', u'txt', u'jinja2', u'ipsum-dolor-sit-amet')
         >>> site.find_template(u'/lorem/ipsum')
-        (u'/lorem/ipsum.svg.py', u'svg', u'py', u'')
+        (u'lorem/ipsum.svg.py', u'svg', u'py', u'')
         >>> site.find_template(u'/lorem/ipsum/dolor/sit/amet')
-        (u'/lorem/ipsum.svg.py', u'svg', u'py', u'dolor/sit/amet')
+        (u'lorem/ipsum.svg.py', u'svg', u'py', u'dolor/sit/amet')
         
         TODO: test more corner cases?
         """
@@ -118,7 +119,7 @@ class Site(object):
                                 extension[:-(len(engine) + 1)],
                                 engine)
 
-        path_parts = path.rstrip('/').split('/')
+        path_parts = [part for part in path.split('/') if part]
         remaining_parts = collections.deque()
         
         while path_parts:        
@@ -133,7 +134,9 @@ class Site(object):
                 return result + (u'/'.join(remaining_parts),)
             
             remaining_parts.appendleft(basename)
-            
+        result = search_dir([], 'index')
+        if result:
+            return result + (u'/'.join(remaining_parts),)
         # TODO: this may be reached if there is no index.*  What should we do?
 
 
