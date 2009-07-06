@@ -34,12 +34,6 @@ class FileOpener(object):
     def __init__(self, filename):
         self.filename = filename
 
-    def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.filename)
-
-    def __eq__(self, other):
-        return self.filename == other.filename
-
     def __call__(self):
         return open(self.filename, 'rb')
         

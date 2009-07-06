@@ -85,7 +85,7 @@ class Item(object):
         self.properties = ItemProperties(self, storage_properties)
        
     @staticmethod
-    def create_item(access_point, properties, create_content=False):
+    def create_item(access_point, properties):
         """Return a new item instance.
         
         Parameters:
@@ -107,8 +107,6 @@ class Item(object):
         >>> #assert item.format == ap.config['parser']
         >>> #assert isinstance(item, Item)
         
-        TODO test this method with "create_content = True".
-        
         """
         
         parser.load()
@@ -128,16 +126,13 @@ class Item(object):
         # set them manually.
         item.properties._loaded = True
         
-        # Some parsers need the "_content" property in their "serialize" method.
+        # Some parsers may need the "_content" property in their "serialize"
+        # method.
         if '_content' not in properties:
             properties['_content'] = ''
         
         for name in properties:
             item.properties[name] = properties[name]
-        
-        # Now all properties are set, we can serialize if needed.
-        if create_content and item.properties['_content'] == '':
-            item.properties['_content'] = item.serialize()
         
         return item
         
@@ -157,7 +152,7 @@ class Item(object):
         >>> ap = CorkAccessPoint()
         >>> Item.get_item_parser("binary", ap, cork_opener, {"artist": "muse"})
         ...  # doctest: +ELLIPSIS
-        <kalamar.parser.binaryitem.BinaryItem object at ...>
+        <kalamar.item.AtomItem object at 0x...>
         
         An invalid format will raise a ValueError:
         >>> Item.get_item_parser("I do not exist", ap, cork_opener)
@@ -245,9 +240,12 @@ class Item(object):
 class AtomItem(Item):
     """An indivisible block of data.
     
-    This is an abstract class.
+    Give access to the binary data.
     
     """
+    
+    format = 'binary'
+    
     def read(self):
         """Alias for properties["_content"]."""
         return self.properties["_content"]
@@ -255,6 +253,14 @@ class AtomItem(Item):
     def write(self, value):
         """Alias for properties["_content"] = value."""
         self.properties["_content"] = value
+    
+    def _custom_parse_data(self):
+        """Parse the whole item content."""
+        return MultiDict({'_content': self._stream.read()})
+        
+    def _custom_serialize(self, properties):
+        """Return the item content."""
+        return properties['_content']
 
 class CapsuleItem(Item, list):
     """An ordered list of Items (atoms or capsules).
@@ -318,7 +324,15 @@ class ItemProperties(MultiDict):
     'value of: I am not aliased'
     >>> prop['I am not aliased']
     'value of: I am not aliased'
-
+    
+    Keys with aliases can be known with
+    >>> prop.keys()
+    ['a', 'b', '_content', 'cork_prop', 'I am not aliased', 'I am aliased']
+    
+    Or without aliases
+    >>> prop.keys_without_aliases()
+    ['cork_prop', 'I am not aliased', 'b', 'a', '_content']
+    
     """
     
     def __init__(self, item, storage_properties={}):

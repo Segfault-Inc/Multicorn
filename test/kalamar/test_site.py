@@ -151,7 +151,7 @@ class TestSiteSave(TestSite):
         
     def test_new_incomplete_item(self):
         """Should raise an Exception ?"""
-        pass # TODO
+        pass # TODO : wtf should kalamar do in this case ?
     
     def test_unmodified_item(self):
         request = u'genre=rock/artiste=Jesus\'harlem/' \

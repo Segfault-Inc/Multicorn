@@ -409,6 +409,12 @@ class DBAPIStorage(AccessPoint):
         ... #doctest:+NORMALIZE_WHITESPACE
         (u'DO STHG INTO TABLE :name0 WHERE toto=:name1 AND tata=:name2;',
         {'name2': 'tata', 'name0': 'table', 'name1': 'toto'})
+         
+        >>> DBAPIStorage._format_request(request, parameters, 'nonexistant')
+        Traceback (most recent call last):
+          ...
+        UnsupportedParameterStyleError: nonexistant
+
         
         TODO test 'format' and 'pyformat'
 
@@ -471,27 +477,6 @@ class DBAPIStorage(AccessPoint):
         # everything is fine
         connection.commit()
         cursor.close()
-    
-    @staticmethod
-    def _sql_escape_quotes(message):
-        """Return quote-escaped string.
-        
-        >>> DBAPIStorage._sql_escape_quotes("'aaaa 'b' jgfoi''")
-        "''aaaa ''b'' jgfoi''''"
-        
-        """
-        return message.replace("'", "''")
-    
-    @staticmethod
-    def _quote_name(name):
-        """Quote an SQL name (e.g. table name, column name) with the appropriate
-        character.
-        
-        This method use the character " (double-quotes) by default. It should be
-        redefined for SGDBs usinf a different character.
-        
-        """
-        return '"%s"' % name
 
     def remove(self, item):
         """Remove the item from the database."""
@@ -516,6 +501,27 @@ class DBAPIStorage(AccessPoint):
         cursor.execute(request, parameters)
         connection.commit()
         cursor.close()
+    
+    @staticmethod
+    def _sql_escape_quotes(message):
+        """Return quote-escaped string.
+        
+        >>> DBAPIStorage._sql_escape_quotes("'aaaa 'b' jgfoi''")
+        "''aaaa ''b'' jgfoi''''"
+        
+        """
+        return message.replace("'", "''")
+    
+    @staticmethod
+    def _quote_name(name):
+        """Quote an SQL name (e.g. table name, column name) with the appropriate
+        character.
+        
+        This method use the character " (double-quotes) by default. It should be
+        redefined for SGDBs usinf a different character.
+        
+        """
+        return '"%s"' % name
     
     def _get_primary_keys(self):
         """Return a list of primary keys names.

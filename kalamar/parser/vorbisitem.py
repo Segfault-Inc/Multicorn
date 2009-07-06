@@ -47,10 +47,9 @@ class VorbisItem(AtomItem):
     format = 'audio_vorbis'
     
     def _custom_parse_data(self):
-        """Set Vorbis metadata and time_length as properties."""
+        """Parse Ogg/Vorbis metadata as properties."""
         
-        properties = MultiDict()
-        properties['_content'] = self._stream.read()
+        properties = super(VorbisItem, self)._custom_parse_data()
         
         # Create a real file descriptor, as VorbisFile does not accept a stream
         self._stream.seek(0)
@@ -70,7 +69,7 @@ class VorbisItem(AtomItem):
         """Return the whole file into a bytes string."""
         
         temporary_file = NamedTemporaryFile()
-        temporary_file.write(self.properties['_content'])
+        temporary_file.write(self.read())
         
         vorbis_tags = Open(temporary_file.name)
         keys = self.properties.parser_keys()
@@ -81,8 +80,8 @@ class VorbisItem(AtomItem):
         
         temporary_file.file.flush()
         temporary_file.seek(0)
-        self.properties['_content'] = temporary_file.read()
+        self.write(temporary_file.read())
         
-        return self.properties['_content']
+        return self.read()
     
 del AtomItem

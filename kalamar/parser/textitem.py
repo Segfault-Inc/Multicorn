@@ -34,9 +34,8 @@ class TextItem(AtomItem):
     
     def _custom_parse_data(self):
         """Parse and decode data according to encoding."""
-        content =  self._stream.read()
-        properties = {}
-        properties["_content"] = content.decode(self.encoding)
+        properties = super(TextItem, self)._custom_parse_data()
+        properties["_content"] = properties["_content"].decode(self.encoding)
         return properties
         
     def _custom_serialize(self, properties):
