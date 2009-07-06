@@ -3,9 +3,10 @@ import os.path
 from unittest import TestCase
 import werkzeug
 
-import kraken
 
 def make_site():
+    # import kraken here so that coverage sees module-level statements
+    import kraken
     return kraken.Site(
         site_root=os.path.join(os.path.dirname(__file__), 'data'),
         kalamar_conf=os.path.join(os.path.dirname(__file__), '..',

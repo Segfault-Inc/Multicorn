@@ -5,6 +5,7 @@ import werkzeug
 
 def find_all_modules(packages):
     for package in packages:
+        yield package
         for module in werkzeug.find_modules(package, include_packages=True,
                                             recursive=True):
             yield module
@@ -15,7 +16,7 @@ def get_tests(packages):
     """
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
-    for module_name in find_all_modules(packages):
+    for module_name in find_all_modules(packages + ['test']):
         suite.addTests(loader.loadTestsFromName(module_name))
         try:
             tests = doctest.DocTestSuite(module_name)
@@ -28,8 +29,10 @@ def get_tests(packages):
     return suite
 
 def find_TODOs(packages):
-    for module_name in find_all_modules(packages):
+    for module_name in find_all_modules(packages + ['test']):
         filename = werkzeug.import_string(module_name).__file__
+        if filename[-4:] in ('.pyc', '.pyo'):
+            filename = filename[:-1]
         f = open(filename)
         # Write 'TO' 'DO' to prevent this script from finding itself
         todo = f.read().count('TO' 'DO')
