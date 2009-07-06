@@ -38,11 +38,17 @@ def find_TODOs(packages):
         if filename[-4:] in ('.pyc', '.pyo'):
             filename = filename[:-1]
         f = open(filename)
-        # Write 'TO' 'DO' to prevent this script from finding itself
-        todo = f.read().count('TO' 'DO')
+        todo_lines = []
+        todo_count = 0
+        for line_no, line in enumerate(f):
+            # Write 'TO' 'DO' to prevent this script from finding itself
+            count = line.count('TO' 'DO')
+            if count:
+                todo_count += count
+                todo_lines.append(line_no)
         f.close()
-        if todo:
-            yield filename, todo
+        if todo_count:
+            yield filename, todo_count, todo_lines
 
 def run_tests(packages):
     unittest.TextTestRunner().run(get_tests(packages))
