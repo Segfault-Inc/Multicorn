@@ -27,8 +27,10 @@ def action_test(packages='kalamar,koral,kraken,test', coverage=False, todo=False
                 print 'TODO  on line ',
             print ', '.join(str(line) for line in lines)
 
-def main():
-    werkzeug.script.run()
+def main(*args):
+    werkzeug.script.run(namespace=dict(action_test=action_test,
+                                       action_runserver=action_runserver),
+                        args=list(args))
 
 if __name__ == '__main__':
-    main()
+    main(*sys.argv[1:])
