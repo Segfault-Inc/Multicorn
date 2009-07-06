@@ -4,15 +4,14 @@ import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 import werkzeug.script
 
-import kraken
 import test.kraken
 
 action_runserver = werkzeug.script.make_runserver(
     test.kraken.make_site, use_reloader=True, use_debugger=True)
-                                         
-def action_test(packages='kalamar, koral, test', coverage=False, todo=False):
+
+def action_test(packages='kalamar,koral,kraken,test', coverage=False, todo=False):
     """Run all doctests and unittests found in "packages"."""
-    packages = packages.replace(' ', '').split(',')
+    packages = packages.split(',')
     if coverage:
         test.run_tests_with_coverage(packages)
     else:
