@@ -154,20 +154,25 @@ class TestSiteSave(TestSite):
         pass # TODO
     
     def test_unmodified_item(self):
-        item = self.site.open(
-            self.access_point_name,
-            u'genre=rock/artiste=Jesus\'harlem/'
-            u'album=amen/titre=mechanical blues'
-        )
+        request = u'genre=rock/artiste=Jesus\'harlem/' \
+                  u'album=amen/titre=mechanical blues'
+        item = self.site.open(self.access_point_name, request)
         self.site.save(item)
-        item = self.site.open(
-            self.access_point_name,
-            u'genre=rock/artiste=Jesus\'harlem/'
-            u'album=amen/titre=mechanical blues'
-        )
+        # Should not raise any exception
+        self.site.open(self.access_point_name, request)
     
     def test_modified_item(self):
-        pass # TODO
+        request = u'genre=rock/artiste=Jesus\'harlem/' \
+                  u'album=alleluia/titre=solomon'
+        item = self.site.open(self.access_point_name, request)
+        item.properties['genre'] = 'toto'
+        self.site.save(item)
+        self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
+                          self.access_point_name, request)
+        # Should not raise any exception
+        self.site.open(self.access_point_name,
+                       u'genre=toto/artiste=Jesus\'harlem/' \
+                       u'album=alleluia/titre=solomon')
 
 class TestSiteRemove(TestSite):
     def test_remove(self):
