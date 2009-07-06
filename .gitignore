@@ -1,3 +1,7 @@
 *.pyc
 *.pyo
+*.egg
 .coverage
+build
+dist
+Dyko_.egg-info

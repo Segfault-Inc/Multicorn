@@ -27,5 +27,8 @@ def action_test(packages='kalamar,koral,kraken,test', coverage=False, todo=False
                 print 'TODO  on line ',
             print ', '.join(str(line) for line in lines)
 
-if __name__ == '__main__':
+def main():
     werkzeug.script.run()
+
+if __name__ == '__main__':
+    main()
