@@ -129,12 +129,13 @@ class Item(object):
         item.properties._loaded = True
         
         # Some parsers need the "_content" property in their "serialize" method.
-        item.properties['_content'] = ''
+        if '_content' not in properties:
+            properties['_content'] = ''
         
         for name in properties:
             item.properties[name] = properties[name]
         
-        # Now all properties are set, we can serialize.
+        # Now all properties are set, we can serialize if needed.
         if create_content and item.properties['_content'] == '':
             item.properties['_content'] = item.serialize()
         
@@ -207,7 +208,8 @@ class Item(object):
         """Call "_custom_parse_data" and do some stuff to the result."""
 
         self._open()
-        self.properties.update(self._custom_parse_data())
+        prop = self._custom_parse_data()
+        self.properties.update_parser_properties(prop)
 
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
@@ -351,6 +353,10 @@ class ItemProperties(MultiDict):
         keys = set(self)
         keys.update(self.storage_properties.keys())
         return list(keys)
+    
+    def update_parser_properties(self, properties):
+        for key in properties:
+            super(ItemProperties, self).__setitem__(key, properties[key])
 
     def __getitem__(self, key):
         """Return the item "key" property."""

@@ -264,52 +264,64 @@ class DBAPIStorage(AccessPoint):
         >>> table = 'table'
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
+        >>> storage._get_primary_keys = lambda: ['pk1', 'pk2']
+        >>> class db_mod:
+        ...     def Binary(self, data):
+        ...         return data
+        >>> storage.get_db_module = lambda: db_mod()
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': 'sto_val2',
         ...                                     'pk1': 'pk_val1',
         ...                                     'pk2': 'pk_val2'})
-        >>> def monkeypatch(): return ['pk1', 'pk2']
-        >>> storage._get_primary_keys = monkeypatch
         
         Test
         >>> storage._build_update_request(table, item, 'qmark')
         ... #doctest: +NORMALIZE_WHITESPACE
-        (u'UPDATE "table" SET "sto_prop"=? , "pk2"=? , "pk1"=? , "sto_prop2"=?
-           WHERE "pk1"=? "pk2"=? ;', ['sto_val', 'pk_val2', 'pk_val1',
-           'sto_val2', 'pk_val1', 'pk_val2'])
+        (u'UPDATE "table" SET
+           "sto_prop"=? , "pk2"=? , "pk1"=? , "sto_prop2"=? , "content_col"=?
+           WHERE "pk1"=? AND "pk2"=?;',
+           ['sto_val', 'pk_val2', 'pk_val1', 'sto_val2', '', 'pk_val1', 'pk_val2'])
         
         """
         
         table = self._sql_escape_quotes(table)
         
-        request = array('u',u"UPDATE %s SET " % self._quote_name(table))
         primary_keys = self._get_primary_keys()
         keys = item.properties.storage_properties.keys()
         
-        item.properties[self.config['content_column']] = item.serialize()
+        item.properties['_content'] = item.serialize()
         
-        # There is no field '_content' in the DB
-        if '_content' in keys:
-            # Save content (item may be used again after being saved)...
-            content = deepcopy(item.properties['_content'])
-            # then delete it in "keys".
-            keys.remove('_content')
+        if self.config['content_column'] in keys:
+            keys.remove(self.config['content_column'])
+        
+        request = array('u',u"UPDATE %s SET " % self._quote_name(table))
         
         parameters = []
-        for key in keys[:-1]:
+        for key in keys:
             request.extend(u"%s=? , " %
                            self._quote_name(self._sql_escape_quotes(key)))
             parameters.append(item.properties[key])
-        request.extend(u"%s=? WHERE" %
-                       self._quote_name(self._sql_escape_quotes(keys[-1])))
-        parameters.append(item.properties[keys[-1]])
+        data_col = self._quote_name(
+                       self._sql_escape_quotes(self.config['content_column'])
+                   )
+        request.extend(u"%s=? WHERE" % data_col)
+                       
+        parameters.append(
+            self.get_db_module().Binary( item.properties['_content'])
+        )
         
-        for key in primary_keys:
-            request.extend(u" %s=?"
-                       % self._quote_name(self._sql_escape_quotes(key)))
+        for key in primary_keys[:-1]:
+            request.extend(
+                u" %s=? AND" % self._quote_name(self._sql_escape_quotes(key))
+            )
             parameters.append(item.properties[key])
-        request.extend(u' ;')
+        request.extend(
+            u' %s=?;' % self._quote_name(
+                            self._sql_escape_quotes(primary_keys[-1])
+                        )
+        )
+        parameters.append(item.properties[primary_keys[-1]])
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -344,6 +356,7 @@ class DBAPIStorage(AccessPoint):
         """
         
         table = self._sql_escape_quotes(table)
+        item.properties['_content'] = item.serialize()
         
         request = array('u', u"INSERT INTO %s ( " % self._quote_name(table))
         keys = item.properties.storage_properties.keys()
@@ -363,11 +376,9 @@ class DBAPIStorage(AccessPoint):
             parameters.append(item.properties[key])
         request.extend(u"? );")
         
-        if '_content' in item.properties.keys_without_aliases():
-            parameters.append(self.get_db_module().Binary(
-                                                   item.properties['_content']))
-        else:
-            parameters.append(self.get_db_module().Binary(''))
+        parameters.append(
+            self.get_db_module().Binary(item.properties['_content'])
+        )
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -447,13 +458,12 @@ class DBAPIStorage(AccessPoint):
         
         cursor = connection.cursor()
         cursor.execute(request, parameters)
-        rowcount = cursor.rowcount
 
-        if rowcount == 0:
+        if cursor.rowcount == 0:
             # Item does not exist, let's do an insert
             request, parameters = self._build_insert_request(table, item, style)
             cursor.execute(request, parameters)
-        elif rowcount > 1:
+        elif cursor.rowcount > 1:
             # Problem ocurred
             connection.rollback()
             cursor.close()

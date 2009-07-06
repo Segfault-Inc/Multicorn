@@ -35,11 +35,11 @@ class TextItem(AtomItem):
     def _custom_parse_data(self):
         """Parse and decode data according to encoding."""
         content =  self._stream.read()
-        properties = MultiDict()
+        properties = {}
         properties["_content"] = content.decode(self.encoding)
         return properties
         
     def _custom_serialize(self, properties):
         """Return an encoded string representing the object."""
-        content = properties['_content'][0]
+        content = properties['_content']
         return content.encode(self.encoding)
