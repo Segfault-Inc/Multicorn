@@ -24,6 +24,7 @@ import os.path
 import collections
 import mimetypes
 from werkzeug import Request, Response
+from werkzeug.exceptions import HTTPException, NotFound
 
 import kalamar
 import koral
@@ -42,23 +43,35 @@ class Site(object):
     @Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
-        template, extension, engine, remaining_path = \
-            self.find_template(request.path)
+        try:
+            template = self.find_template(request.path)
+            if not template:
+                raise NotFound
+            template_name, extension, engine, remaining_path = template
+        
+            # Handle a simple template
+            mimetype, encoding = mimetypes.guess_type('_.' + extension)
+            values = {'request': request, 'remaining_path': remaining_path}
+            content = self.koral_site.engines[engine].render(template_name,
+                                                             values)
+            return Response(content, mimetype=mimetype)
+        except HTTPException, e:
+            # e is also a WSGI application
+            return e
+    
+    def handle_template(self, ):
         mimetype, encoding = mimetypes.guess_type('_.' + extension)
         values = {'request': request, 'remaining_path': remaining_path}
         content = self.koral_site.engines[engine].render(template, values)
-        return Response(content, mimetype=mimetype)
+        return Response(content, mimetype=mimetype)       
     
-    def template_extensions(self):
-        """Return the list of file extensions for templates."""
-        return [unicode(name) for name in self.koral_site.engines.keys()]
-
     def find_template(self, path):
         """
         Find the template for a given path (URL)
         
         Return (template_name, type_extension, engine, remaining_path)
-        template_name is like path/to/template.<type_extension>.<engine>
+        template_name is like <dirname>/<basename>.<type_extension>.<engine>
+        with a path like <dirname>/<basename>/<remaining_path>
         
         If several templates could match the given path (try not to do that…),
         one of them is chosen arbitrarily.
@@ -98,45 +111,54 @@ class Site(object):
         TODO: test more corner cases?
         """
         
-        def search_dir(path_parts, basename):
+        engines = [unicode(name) for name in self.koral_site.engines.keys()]
+        
+        def search_dir(dirname_parts, basename, remaining_parts):
             """
             Return (template_name, type_extension, engine) if a match is found
             or None
+            
+            Search for basename.*.* with the second * being a known koral engine
             """
-            # TODO: comment this
-            dirname = os.path.join(self.site_root, *path_parts)
+            dirname = os.path.join(self.site_root, *dirname_parts)
             if not os.path.isdir(dirname):
-                return
+                # dirname doesn’t exist or is a file
+                return None
 
+            basename += '.'
             for filename in os.listdir(dirname):
-                if not filename.startswith(basename + '.'):
+                if not filename.startswith(basename):
                     continue
 
-                extension = filename[len(basename) + 1:]
-                for engine in self.template_extensions():
-                    if extension.endswith('.' + engine):
-                        return (u'/'.join(path_parts + [filename]), 
-                                extension[:-(len(engine) + 1)],
-                                engine)
+                # what’s left after basename and the dot
+                extension = filename[len(basename):]
+                
+                if '.' in extension:
+                    type_extension, engine = extension.rsplit('.', 1)
+                    if engine in engines:
+                        # found a match
+                        return (u'/'.join(dirname_parts + [filename]), 
+                                type_extension,
+                                engine,
+                                u'/'.join(remaining_parts))
 
         path_parts = [part for part in path.split('/') if part]
         remaining_parts = collections.deque()
         
         while path_parts:        
-            # TODO: comment this
-            result = search_dir(path_parts, 'index')
-            if result:
-                return result + (u'/'.join(remaining_parts),)
+            # Try the whole path as a directory and search for index.*
+            result = search_dir(path_parts, 'index', remaining_parts)
+            if result: return result
             
-            basename = path_parts.pop()
-            result = search_dir(path_parts, basename)
-            if result:
-                return result + (u'/'.join(remaining_parts),)
+            # Try with the last part as a basename
+            last_part = path_parts.pop()
+            result = search_dir(path_parts, last_part, remaining_parts)
+            if result: return result
             
-            remaining_parts.appendleft(basename)
-        result = search_dir([], 'index')
-        if result:
-            return result + (u'/'.join(remaining_parts),)
-        # TODO: this may be reached if there is no index.*  What should we do?
+            remaining_parts.appendleft(last_part)
+
+        # Nothing matched, try index.* at the root of the site
+        # Return None if there is no index.*
+        return search_dir([], 'index', remaining_parts)
 
 
