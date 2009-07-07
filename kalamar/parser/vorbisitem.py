@@ -22,66 +22,70 @@ This parser is read-only.
 
 """
 
-from werkzeug import MultiDict
-from tempfile import NamedTemporaryFile
-from mutagen.oggvorbis import Open
+try:
+    from mutagen.oggvorbis import Open
+except ImportError:
+    warnings.warn('Can not import mutagen. '
+                  'VorbisItem will not be available.')
+else:
+    from werkzeug import MultiDict
+    from tempfile import NamedTemporaryFile
+    from kalamar.item import AtomItem
 
-from kalamar.item import AtomItem
+    class VorbisItem(AtomItem):
+        """Ogg/Vorbis parser.
+        
+        The vorbis format allows a lot of things for tagging. It is possible to
+        add any label you want and, for each label, to put several values.
+        Because of that, this module cannot guarantee a set of properties. Despite
+        this, here are some common tags you can use:
+        - time_length : duration in seconds
+        - _content : raw ogg/vorbis data
+        - artist
+        - genre
+        - track
+        
+        TODO write test
 
-class VorbisItem(AtomItem):
-    """Ogg/Vorbis parser.
-    
-    The vorbis format allows a lot of things for tagging. It is possible to
-    add any label you want and, for each label, to put several values.
-    Because of that, this module cannot guarantee a set of properties. Despite
-    this, here are some common tags you can use:
-    - time_length : duration in seconds
-    - _content : raw ogg/vorbis data
-    - artist
-    - genre
-    - track
-    
-    TODO write test
-
-    """
-    format = 'audio_vorbis'
-    
-    def _custom_parse_data(self):
-        """Parse Ogg/Vorbis metadata as properties."""
+        """
+        format = 'audio_vorbis'
         
-        properties = super(VorbisItem, self)._custom_parse_data()
+        def _custom_parse_data(self):
+            """Parse Ogg/Vorbis metadata as properties."""
+            
+            properties = super(VorbisItem, self)._custom_parse_data()
+            
+            # Create a real file descriptor, as VorbisFile does not accept a stream
+            self._stream.seek(0)
+            temporary_file = NamedTemporaryFile()
+            temporary_file.write(self._stream.read())
+            temporary_file.seek(0)
+            vorbis_tags = Open(temporary_file.name)
+            
+            for key in vorbis_tags:
+                properties.setlist(key, vorbis_tags[key])
+            
+            temporary_file.close()
+            
+            return properties
         
-        # Create a real file descriptor, as VorbisFile does not accept a stream
-        self._stream.seek(0)
-        temporary_file = NamedTemporaryFile()
-        temporary_file.write(self._stream.read())
-        temporary_file.seek(0)
-        vorbis_tags = Open(temporary_file.name)
+        def _custom_serialize(self, properties):
+            """Return the whole file into a bytes string."""
+            
+            temporary_file = NamedTemporaryFile()
+            temporary_file.write(self.read())
+            
+            vorbis_tags = Open(temporary_file.name)
+            keys = self.properties.parser_keys()
+            keys.remove('_content')
+            for key in keys:
+                vorbis_tags[key] = self.properties.getlist(key)
+            vorbis_tags.save()
+            
+            temporary_file.file.flush()
+            temporary_file.seek(0)
+            self.write(temporary_file.read())
+            
+            return self.read()
         
-        for key in vorbis_tags:
-            properties.setlist(key, vorbis_tags[key])
-        
-        temporary_file.close()
-        
-        return properties
-    
-    def _custom_serialize(self, properties):
-        """Return the whole file into a bytes string."""
-        
-        temporary_file = NamedTemporaryFile()
-        temporary_file.write(self.read())
-        
-        vorbis_tags = Open(temporary_file.name)
-        keys = self.properties.parser_keys()
-        keys.remove('_content')
-        for key in keys:
-            vorbis_tags[key] = self.properties.getlist(key)
-        vorbis_tags.save()
-        
-        temporary_file.file.flush()
-        temporary_file.seek(0)
-        self.write(temporary_file.read())
-        
-        return self.read()
-    
-del AtomItem
+    del AtomItem

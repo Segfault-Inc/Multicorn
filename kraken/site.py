@@ -16,7 +16,7 @@
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Instances of thcollectionse Site class are WSGI applications.  Create one for each
+Instances of the Site class are WSGI applications.  Create one for each
 independent site with it’s own configuration.
 """
 
