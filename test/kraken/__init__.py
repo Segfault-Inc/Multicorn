@@ -24,8 +24,17 @@ class KrakenSiteMixin(object):
         self.client = werkzeug.Client(self.test_app, werkzeug.BaseResponse)
 
 class TestHello(KrakenSiteMixin, TestCase):
+    def test_index(self):
+        r = self.client.get('/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
+        self.assertEqual(r.data, '<!DOCTYPE html PUBLIC '
+                         '"-//W3C//DTD HTML 4.01//EN" '
+                         '"http://www.w3.org/TR/html4/strict.dtd">\n'
+                         '<html><body>Dyko root</body></html>')
     def test_hello(self):
-        resp = self.client.get('/hello')
-        self.assertEqual(resp.status_code, 200)
-        self.assert_('Hello, World!' in resp.data)
+        r = self.client.get('/hello')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
+        self.assertEqual(r.data, 'Hello, World!')
 
