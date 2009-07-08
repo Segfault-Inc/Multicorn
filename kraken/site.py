@@ -23,10 +23,12 @@ independent site with it’s own configuration.
 import os.path
 import collections
 import mimetypes
-from werkzeug import Request, Response
+import re
+from werkzeug.exceptions import HTTPException, NotFound
 
 import kalamar
 import koral
+from kraken import utils
 
 
 class Site(object):
@@ -39,33 +41,45 @@ class Site(object):
         self.koral_site = koral.Site(site_root)
         self.kalamar_site = kalamar.Site(kalamar_conf)
     
-    @Request.application
+    @utils.Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
-        template, extension, engine, remaining_path = \
-            self.find_template(request.path)
-        mimetype, encoding = mimetypes.guess_type('_.' + extension)
-        values = {'request': request, 'remaining_path': remaining_path}
-        content = self.koral_site.engines[engine].render(template, values)
-        return Response(content, mimetype=mimetype)
+        try:
+            if u'/__' in request.path:
+                return self.handle_static_file(request)
+            return self.handle_simple_template(request)
+        except HTTPException, e:
+            # e is also a WSGI application
+            return e
     
-    def template_extensions(self):
-        """Return the list of file extensions for templates."""
-        return [unicode(name) for name in self.koral_site.engines.keys()]
-
+    def handle_static_file(self, request):
+        pass
+        
+    def handle_simple_template(self, request):
+        """
+        Try handling a request with only a template
+        Return a Response object or raise NotFound
+        """
+        template = self.find_template(request.path)
+        if not template:
+            raise NotFound
+        template_name, extension, engine = template
+    
+        # Handle a simple template
+        mimetype, encoding = mimetypes.guess_type('_.' + extension)
+        values = {'request': request}
+        content = self.koral_site.engines[engine].render(template_name, values)
+        return utils.Response(content, mimetype=mimetype)
+            
     def find_template(self, path):
         """
-        Find the template for a given path (URL)
-        
-        Return (template_name, type_extension, engine, remaining_path)
-        template_name is like path/to/template.<type_extension>.<engine>
-        
-        If several templates could match the given path (try not to do that…),
-        one of them is chosen arbitrarily.
-        
+        Search for an existing template named <path>/index.<type>.<engine>
+        or <path>.<type>.<engine> where <engine> is a koral engine name.
+        Return (template_name, type, engine) for the first one found or None.
+
         >>> import test.kraken
         >>> site = test.kraken.make_site()
-        
+
         Directory stucture of site.site_root:
             index.html.genshi
             hello.html.py
@@ -74,69 +88,39 @@ class Site(object):
                 index.html.foo # Non-existent <engine>
             lorem/
                 index.txt.jinja2
-                ipsum.svg.py
 
         >>> site.find_template(u'/')
-        (u'index.html.genshi', u'html', u'genshi', u'')
+        (u'index.html.genshi', u'html', u'genshi')
         >>> site.find_template(u'/nonexistent')
-        (u'index.html.genshi', u'html', u'genshi', u'nonexistent')
         
         >>> site.find_template(u'/hello/')
-        (u'hello.html.py', u'html', u'py', u'')
+        (u'hello.html.jinja2', u'html', u'jinja2')
         >>> site.find_template(u'/hello/world')
-        (u'hello.html.py', u'html', u'py', u'world')
         
         >>> site.find_template(u'/lorem/')
-        (u'lorem/index.txt.jinja2', u'txt', u'jinja2', u'')
-        >>> site.find_template(u'/lorem/ipsum-dolor-sit-amet')
-        (u'lorem/index.txt.jinja2', u'txt', u'jinja2', u'ipsum-dolor-sit-amet')
+        (u'lorem/index.txt.jinja2', u'txt', u'jinja2')
         >>> site.find_template(u'/lorem/ipsum')
-        (u'lorem/ipsum.svg.py', u'svg', u'py', u'')
-        >>> site.find_template(u'/lorem/ipsum/dolor/sit/amet')
-        (u'lorem/ipsum.svg.py', u'svg', u'py', u'dolor/sit/amet')
-        
-        TODO: test more corner cases?
         """
-        
-        def search_dir(path_parts, basename):
-            """
-            Return (template_name, type_extension, engine) if a match is found
-            or None
-            """
-            # TODO: comment this
-            dirname = os.path.join(self.site_root, *path_parts)
-            if not os.path.isdir(dirname):
-                return
-
-            for filename in os.listdir(dirname):
-                if not filename.startswith(basename + '.'):
-                    continue
-
-                extension = filename[len(basename) + 1:]
-                for engine in self.template_extensions():
-                    if extension.endswith('.' + engine):
-                        return (u'/'.join(path_parts + [filename]), 
-                                extension[:-(len(engine) + 1)],
-                                engine)
-
         path_parts = [part for part in path.split('/') if part]
-        remaining_parts = collections.deque()
         
-        while path_parts:        
-            # TODO: comment this
-            result = search_dir(path_parts, 'index')
-            if result:
-                return result + (u'/'.join(remaining_parts),)
-            
-            basename = path_parts.pop()
-            result = search_dir(path_parts, basename)
-            if result:
-                return result + (u'/'.join(remaining_parts),)
-            
-            remaining_parts.appendleft(basename)
-        result = search_dir([], 'index')
-        if result:
-            return result + (u'/'.join(remaining_parts),)
-        # TODO: this may be reached if there is no index.*  What should we do?
+        # Regular expression for .<type>.<engine> 
+        # where <engine> is a koral engine name
+        suffix_re = ur'\.(.+)\.(' + u'|'.join(re.escape(e) for e in
+                                              self.koral_site.engines) + u')$'
 
+        searches = [(path_parts, u'index' + suffix_re)]
+        # if path_parts is empty (ie. path is u'' or u'/')
+        # there is no path_parts[-1]
+        if path_parts:
+            searches.append((path_parts[:-1],
+                             re.escape(path_parts[-1]) + suffix_re))
+
+        for dir_parts, basename_re in searches:
+            dirname = os.path.join(self.site_root, *dir_parts)
+            if os.path.isdir(dirname):
+                for name in os.listdir(dirname):
+                    match = re.match(basename_re, name)
+                    if match:
+                        template = u'/'.join(dir_parts + [name])
+                        return template, match.group(1), match.group(2)
 

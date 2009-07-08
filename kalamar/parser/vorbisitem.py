@@ -25,6 +25,7 @@ This parser is read-only.
 try:
     from mutagen.oggvorbis import Open
 except ImportError:
+    import warnings
     warnings.warn('Can not import mutagen. '
                   'VorbisItem will not be available.')
 else:
