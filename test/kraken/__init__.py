@@ -10,7 +10,8 @@ def make_site():
     return kraken.Site(
         site_root=os.path.join(os.path.dirname(__file__), 'site'),
         kalamar_conf=os.path.join(os.path.dirname(__file__), '..',
-                                  'kalamar', 'data', 'kalamar.conf'),
+                                  'kalamar', 'data',
+                                  'kalamar_fs_and_sqlite.conf'),
     )
 
 class KrakenSiteMixin(object):

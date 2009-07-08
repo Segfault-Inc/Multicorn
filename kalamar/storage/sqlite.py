@@ -18,7 +18,8 @@
 """
 SQLite 3 access point.
 
-This implementation depends on DBAPIStorage, the generic database acces point.
+This implementation depends on DBAPIStorage, the generic SQL database access
+point.
 
 """
 

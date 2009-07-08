@@ -62,6 +62,54 @@ class DBAPIStorage(AccessPoint):
         '<=': '<=',
         }
     
+    def save(self, item):
+        """Save item in the database."""
+        connection, table = self.get_connection()
+        
+        style = self.get_db_module().paramstyle
+        
+        request, parameters = self._build_update_request(table, item, style)
+        
+        cursor = connection.cursor()
+        cursor.execute(request, parameters)
+
+        if cursor.rowcount == 0:
+            # Item does not exist, let's do an insert
+            request, parameters = self._build_insert_request(table, item, style)
+            cursor.execute(request, parameters)
+        elif cursor.rowcount > 1:
+            # Problem ocurred
+            connection.rollback()
+            cursor.close()
+            raise ManyItemsUpdatedError()
+        # everything is fine
+        connection.commit()
+        cursor.close()
+
+    def remove(self, item):
+        """Remove the item from the database."""
+        connection, table = self.get_connection()
+        table = self._sql_escape_quotes(table)
+        request = array('u', u"DELETE FROM %s WHERE " % self._quote_name(table))
+        
+        primary_keys = self._get_primary_keys()
+        parameters = []
+        
+        for key in primary_keys[:-1]:
+            request.extend("%s=? AND " % self._quote_name(key))
+            parameters.append((key, item.properties[key]))
+        request.extend("%s=? ;" % self._quote_name(primary_keys[-1]))
+        parameters.append((primary_keys[-1], item.properties[primary_keys[-1]]))
+        
+        paramstyle = self.get_db_module().paramstyle
+        request, parameters = self._format_request(request.tounicode(),
+                                                   parameters, paramstyle)
+        
+        cursor = connection.cursor()
+        cursor.execute(request, parameters)
+        connection.commit()
+        cursor.close()
+    
     def get_connection(self):
         """Return a DB-API connection object and the table name in a tuple.
         
@@ -85,8 +133,26 @@ class DBAPIStorage(AccessPoint):
         """Return the list of the storage properties."""
         connection, table = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute('SELECT * FROM %s WHERE 0;' % self._quote_name(self._table))
+        cursor.execute('SELECT * FROM %s WHERE 0;'
+                       % self._quote_name(self._table))
         return [prop[0] for prop in cursor.description]
+    
+    def get_table_description(self):
+        """Return field description as a dictionnary."""
+        connection, table = self.get_connection()
+        cursor = connection.cursor()
+        cursor.execute('SELECT * FROM %s WHERE 0;'
+                       % self._quote_name(self._table))
+        fields_names = (desc_values[0] for desc_values in cursor.description)
+        desc_names = ('type_code', 
+                      'display_size',
+                      'internal_size', 
+                      'precision', 
+                      'scale', 
+                      'null_ok')
+        desc_dicts = [dict(zip(desc_names, desc_values[1:]))
+                      for desc_values in cursor.description]
+        return dict(zip(fields_names, desc_dicts))
     
     def _storage_search(self, conditions):
         """Return a list of items matching the "conditions".
@@ -100,13 +166,24 @@ class DBAPIStorage(AccessPoint):
         # Process conditions
         sql_condition, python_condition = self._process_conditions(conditions)
         # Build request
-        request, parameters = \
-            self._build_select_request(sql_condition, table,
-                                       self.get_db_module().paramstyle)
+        request, parameters = self._build_select_request(
+                                  sql_condition,
+                                  table,
+                                  self.get_db_module().paramstyle
+                              )
         # Execute request
         cursor = connection.cursor()
-        cursor.execute(request, parameters)
-        descriptions = [descriptions[0] for descriptions in cursor.description]
+        if parameters:
+            try:
+                cursor.execute(request, parameters)
+            except:
+                from pprint import pprint
+                pprint(request)
+                pprint(parameters)
+                raise
+        else:
+            cursor.execute(request)
+        descriptions = [description[0] for description in cursor.description]
         dict_lines = (dict(zip(descriptions, line))
                       for line in self._generate_lines_from_cursor(cursor))
         
@@ -118,7 +195,7 @@ class DBAPIStorage(AccessPoint):
                 for key in line:
                     if key != self.config['content_column'] \
                     and not isinstance(line[key], unicode):
-                        line[key] = unicode(line[key])
+                        line[key] = str(line[key]).decode(self.default_encoding)
                 yield line
         
         for line in lines_to_string(filtered):
@@ -209,7 +286,7 @@ class DBAPIStorage(AccessPoint):
         paramstyle (see DB-API spec.).
 
         The returned "typed_parameters" is a list or a dictionnary, according
-        to the style.
+        to the database parameters style.
         
         Fixture
         >>> conditions = (
@@ -217,14 +294,24 @@ class DBAPIStorage(AccessPoint):
         ...     utils.Condition(u"the_answer", utils.operators[u">="], 42)
         ... )
         >>> storage = DBAPIStorage(url='toto', basedir='tata')
+        >>> class db_mod:
+        ...     BINARY = 1
+        ...     DATETIME = 1
+        ...     def Binary(self, data):
+        ...         return data
+        >>> storage.get_db_module = lambda: db_mod()
+        >>> storage.get_table_description = lambda: {
+        ...     'toto': {'type_code': 1},
+        ...     'the_answer': {'type_code': 1}
+        ... }
         
         Test
         >>> req, params = storage._build_select_request(conditions,
         ...                                             'table', 'qmark')
         >>> req
-        u'SELECT * FROM "table" WHERE "toto"=? and "the_answer">=? ;'
+        u'SELECT * FROM "table" WHERE "toto"=? AND "the_answer">=? ;'
         >>> params
-        [u'tata', 42]
+        (u'tata', 42)
         
         If no condition specified, the 'WHERE' statement must not appear.
         >>> req, params = storage._build_select_request((),
@@ -232,7 +319,7 @@ class DBAPIStorage(AccessPoint):
         >>> req
         u'SELECT * FROM "table" ;'
         >>> params
-        []
+        ()
         
         """
         conditions = list(conditions)
@@ -245,8 +332,9 @@ class DBAPIStorage(AccessPoint):
         
         # No need to worry about the final '?' when there is no condition since
         # this case is handled in the following 'if-else'.
-        request = u'? and '.join(named_condition) + '?'
-        parameters = [condition.value for condition in conditions]
+        request = u'? AND '.join(named_condition) + '?'
+        parameters = [(condition.property_name, condition.value)
+                      for condition in conditions]
         
         if parameters:
             request = u"SELECT * FROM %s WHERE %s ;" % (table, request)
@@ -257,18 +345,27 @@ class DBAPIStorage(AccessPoint):
         return (request, parameters)
     
     def _build_update_request(self, table, item, style):
-        """Return update request as a string.
+        """Return update request as a string and parameters as a list.
         
         Fixture
         >>> from kalamar._test.corks import CorkItem
-        >>> table = 'table'
+        >>> table = u'table'
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
         >>> storage._get_primary_keys = lambda: ['pk1', 'pk2']
         >>> class db_mod:
+        ...     BINARY = 1
+        ...     DATETIME = 1
         ...     def Binary(self, data):
         ...         return data
         >>> storage.get_db_module = lambda: db_mod()
+        >>> storage.get_table_description = lambda: {
+        ...     'sto_prop': {'type_code': 1},
+        ...     'sto_prop2': {'type_code': 1},
+        ...     'pk1': {'type_code': 1},
+        ...     'pk2': {'type_code': 1},
+        ...     'content_col': {'type_code': 1}
+        ... }
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': 'sto_val2',
@@ -276,12 +373,14 @@ class DBAPIStorage(AccessPoint):
         ...                                     'pk2': 'pk_val2'})
         
         Test
-        >>> storage._build_update_request(table, item, 'qmark')
-        ... #doctest: +NORMALIZE_WHITESPACE
-        (u'UPDATE "table" SET
-           "sto_prop"=? , "pk2"=? , "pk1"=? , "sto_prop2"=? , "content_col"=?
-           WHERE "pk1"=? AND "pk2"=?;',
-           ['sto_val', 'pk_val2', 'pk_val1', 'sto_val2', '', 'pk_val1', 'pk_val2'])
+        >>> request, param = storage._build_update_request(table, item, 'qmark')
+        >>> request #doctest: +NORMALIZE_WHITESPACE
+        u'UPDATE "table" SET
+          "sto_prop"=? , "pk2"=? , "pk1"=? , "sto_prop2"=? , "content_col"=?
+          WHERE "pk1"=? AND "pk2"=?;'
+        >>> param #doctest: +NORMALIZE_WHITESPACE
+           ('sto_val', 'pk_val2', 'pk_val1', 'sto_val2', '',
+            'pk_val1', 'pk_val2')
         
         """
         
@@ -301,27 +400,28 @@ class DBAPIStorage(AccessPoint):
         for key in keys:
             request.extend(u"%s=? , " %
                            self._quote_name(self._sql_escape_quotes(key)))
-            parameters.append(item.properties[key])
+            parameters.append((key, item.properties[key]))
         data_col = self._quote_name(
                        self._sql_escape_quotes(self.config['content_column'])
                    )
         request.extend(u"%s=? WHERE" % data_col)
                        
-        parameters.append(
+        parameters.append((
+            self.config['content_column'],
             self.get_db_module().Binary( item.properties['_content'])
-        )
+        ))
         
         for key in primary_keys[:-1]:
             request.extend(
                 u" %s=? AND" % self._quote_name(self._sql_escape_quotes(key))
             )
-            parameters.append(item.properties[key])
+            parameters.append((key, item.properties[key]))
         request.extend(
             u' %s=?;' % self._quote_name(
                             self._sql_escape_quotes(primary_keys[-1])
                         )
         )
-        parameters.append(item.properties[primary_keys[-1]])
+        parameters.append((primary_keys[-1], item.properties[primary_keys[-1]]))
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -336,9 +436,18 @@ class DBAPIStorage(AccessPoint):
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
         >>> class db_mod:
+        ...     BINARY = 1
+        ...     DATETIME = 1
         ...     def Binary(self, data):
         ...         return data
         >>> storage.get_db_module = lambda: db_mod()
+        >>> storage.get_table_description = lambda: {
+        ...     'sto_prop': {'type_code': 1},
+        ...     'sto_prop2': {'type_code': 1},
+        ...     'pk1': {'type_code': 1},
+        ...     'pk2': {'type_code': 1},
+        ...     'content_col': {'type_code': 1}
+        ... }
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': 'sto_val2',
@@ -346,12 +455,13 @@ class DBAPIStorage(AccessPoint):
         ...                                     'pk2': 'pk_val2'})
         
         Test
-        >>> storage._build_insert_request(table, item, 'qmark')
-        ... #doctest:+NORMALIZE_WHITESPACE
-        (u'INSERT INTO "table"
-           ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" , "content_col" )
-           VALUES ( ? , ? , ? , ? , ? );', ['sto_val', 'pk_val2', 'pk_val1',
-           'sto_val2', ''])
+        >>> request, param = storage._build_insert_request(table, item, 'qmark')
+        >>> request #doctest:+NORMALIZE_WHITESPACE
+        u'INSERT INTO "table"
+          ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" , "content_col" )
+          VALUES ( ? , ? , ? , ? , ? );'
+        >>> param #doctest:+NORMALIZE_WHITESPACE
+            ('sto_val', 'pk_val2', 'pk_val1', 'sto_val2', '')
 
         """
         
@@ -373,57 +483,98 @@ class DBAPIStorage(AccessPoint):
         
         for key in keys:
             request.extend(u"? , ")
-            parameters.append(item.properties[key])
+            parameters.append((key, item.properties[key]))
         request.extend(u"? );")
         
-        parameters.append(
+        parameters.append((
+            self.config['content_column'],
             self.get_db_module().Binary(item.properties['_content'])
-        )
+        ))
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
         return (request, parameters)
     
-    @staticmethod
-    def _format_request(request, parameters, style):
+    def _convert_parameters(self, parameters):
+        """Generate converted parameters.
+        
+        Dummy method meant to be overriden.
+        
+        """
+        return parameters
+    
+    def _format_request(self, request, parameters, style):
         """Format request and parameters according to "style" and return them.
         
         "parameters" must be ordered according to the request.
         
         Fixture
         >>> request = "DO STHG INTO TABLE ? WHERE toto=? AND tata=?;"
-        >>> parameters = ['table', 'toto', 'tata']
+        >>> parameters = [
+        ...                  ('toto', 'table'),
+        ...                  ('toto', 'toto'),
+        ...                  ('toto', 'tata')
+        ...              ]
+        >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
+        ...                        content_column = 'content_col')
+        >>> class db_mod:
+        ...     BINARY = 1
+        ...     DATETIME = 1
+        ...     def Binary(self, data):
+        ...         return data
+        >>> storage.get_db_module = lambda: db_mod()
+        >>> storage.get_table_description = lambda: {
+        ...     'toto': {'type_code': 1}
+        ... }
         
         Test
-        >>> DBAPIStorage._format_request(request, parameters, 'qmark')
+        >>> storage._format_request(request, parameters, 'qmark')
         ... #doctest:+NORMALIZE_WHITESPACE
         (u'DO STHG INTO TABLE ? WHERE toto=? AND tata=?;',
-         ['table', 'toto', 'tata'])
+         ('table', 'toto', 'tata'))
          
-        >>> DBAPIStorage._format_request(request, parameters, 'numeric')
+        >>> storage._format_request(request, parameters, 'numeric')
         ... #doctest:+NORMALIZE_WHITESPACE
         (u'DO STHG INTO TABLE :1 WHERE toto=:2 AND tata=:3;',
-         ['table', 'toto', 'tata'])
+         ('table', 'toto', 'tata'))
          
-        >>> DBAPIStorage._format_request(request, parameters, 'named')
+        >>> storage._format_request(request, parameters, 'named')
         ... #doctest:+NORMALIZE_WHITESPACE
         (u'DO STHG INTO TABLE :name0 WHERE toto=:name1 AND tata=:name2;',
-        {'name2': 'tata', 'name0': 'table', 'name1': 'toto'})
+        {'toto1': 'toto', 'toto0': 'table', 'toto2': 'tata'})
+        
+        >>> storage._format_request(request, parameters, 'format')
+        ... #doctest:+NORMALIZE_WHITESPACE
+        (u'DO STHG INTO TABLE %s WHERE toto=%s AND tata=%s;',
+         ('table', 'toto', 'tata'))
          
-        >>> DBAPIStorage._format_request(request, parameters, 'nonexistant')
+        >>> storage._format_request(request, parameters, 'nonexistant')
         Traceback (most recent call last):
           ...
         UnsupportedParameterStyleError: nonexistant
 
         
-        TODO test 'format' and 'pyformat'
+        TODO test 'pyformat'
 
         """
+        
+        parameters = list(self._convert_parameters(parameters))
+        description = self.get_table_description()
+        
+        #used with 'format' and 'pyformat'
+        format_codes = {
+            int: 'i',
+            long: 'i',
+            str: 's',
+            float: 'f',
+        }
+        
         parts = request.split('?')
         
         if style == 'qmark':
             # ... WHERE a=? AND b=?
             request = u'?'.join(parts)
+            parameters = tuple(value for field_name, value in parameters)
         
         elif style == 'numeric':
             # ... WHERE a=:1 AND b=:2
@@ -431,6 +582,7 @@ class DBAPIStorage(AccessPoint):
                         for i, part in enumerate(parts[:-1])]
             numbered.append(parts[-1])
             request = u''.join(numbered)
+            parameters = tuple(value for field_name, value in parameters)
             
         elif style == 'named':
             # ... WHERE a=:name0 AND b=:name1
@@ -438,12 +590,21 @@ class DBAPIStorage(AccessPoint):
                      for i, part in enumerate(parts[:-1])]
             named.append(parts[-1])
             request = u''.join(named)
-            parameters = dict(('name%i' % i, parameter)
-                              for i, parameter in enumerate(parameters))
+            parameters = dict(
+                             ('%s%i' % (field_name, i), value)
+                             for i, (field_name, value)
+                             in enumerate(parameters)
+                         )
             
         elif style == 'format':
             # ... WHERE a=%s AND b=%d
-            raise NotImplementedError # TODO
+            request = parts[0]
+            for i, part in enumerate(parts[1:]):
+                name, value = parameters[i]
+                code = format_codes.get(type(value), u's')
+                request += u'%%%c%s' % (code, part)
+            parameters = tuple(value for field_name, value in parameters)
+                
             
         elif style == 'pyformat':
             # ... WHERE name=%(name)s
@@ -453,54 +614,6 @@ class DBAPIStorage(AccessPoint):
             raise DBAPIStorage.UnsupportedParameterStyleError(style)
         
         return (request, parameters)
-    
-    def save(self, item):
-        """Save item in the database."""
-        connection, table = self.get_connection()
-        
-        style = self.get_db_module().paramstyle
-        
-        request, parameters = self._build_update_request(table, item, style)
-        
-        cursor = connection.cursor()
-        cursor.execute(request, parameters)
-
-        if cursor.rowcount == 0:
-            # Item does not exist, let's do an insert
-            request, parameters = self._build_insert_request(table, item, style)
-            cursor.execute(request, parameters)
-        elif cursor.rowcount > 1:
-            # Problem ocurred
-            connection.rollback()
-            cursor.close()
-            raise ManyItemsUpdatedError()
-        # everything is fine
-        connection.commit()
-        cursor.close()
-
-    def remove(self, item):
-        """Remove the item from the database."""
-        connection, table = self.get_connection()
-        table = self._sql_escape_quotes(table)
-        request = array('u', u"DELETE FROM %s WHERE " % self._quote_name(table))
-        
-        primary_keys = self._get_primary_keys()
-        parameters = []
-        
-        for key in primary_keys[:-1]:
-            request.extend("%s=? AND " % self._quote_name(key))
-            parameters.append(item.properties[key])
-        request.extend("%s=? ;" % self._quote_name(primary_keys[-1]))
-        parameters.append(item.properties[primary_keys[-1]])
-        
-        paramstyle = self.get_db_module().paramstyle
-        request, parameters = self._format_request(request.tounicode(),
-                                                   parameters, paramstyle)
-        
-        cursor = connection.cursor()
-        cursor.execute(request, parameters)
-        connection.commit()
-        cursor.close()
     
     @staticmethod
     def _sql_escape_quotes(message):
