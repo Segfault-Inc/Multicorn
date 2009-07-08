@@ -24,11 +24,11 @@ import os.path
 import collections
 import mimetypes
 import re
-from werkzeug import Request, Response
 from werkzeug.exceptions import HTTPException, NotFound
 
 import kalamar
 import koral
+from kraken import utils
 
 
 class Site(object):
@@ -41,15 +41,20 @@ class Site(object):
         self.koral_site = koral.Site(site_root)
         self.kalamar_site = kalamar.Site(kalamar_conf)
     
-    @Request.application
+    @utils.Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
         try:
+            if u'/__' in request.path:
+                return self.handle_static_file(request)
             return self.handle_simple_template(request)
         except HTTPException, e:
             # e is also a WSGI application
             return e
     
+    def handle_static_file(self, request):
+        pass
+        
     def handle_simple_template(self, request):
         """
         Try handling a request with only a template
@@ -63,9 +68,8 @@ class Site(object):
         # Handle a simple template
         mimetype, encoding = mimetypes.guess_type('_.' + extension)
         values = {'request': request}
-        content = self.koral_site.engines[engine].render(template_name,
-                                                         values)
-        return Response(content, mimetype=mimetype)
+        content = self.koral_site.engines[engine].render(template_name, values)
+        return utils.Response(content, mimetype=mimetype)
             
     def find_template(self, path):
         """

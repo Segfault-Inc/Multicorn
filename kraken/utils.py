@@ -16,11 +16,14 @@
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Kraken - HTTP Requests Dispatcher
-=================================
-
-# TODO: write module documentation
+Various utilities for Kraken
 """
 
-from kraken.site import Site
+import werkzeug
+
+class Request(werkzeug.Request):
+    pass
+
+class Response(werkzeug.Response):
+    pass
 
