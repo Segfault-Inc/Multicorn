@@ -36,5 +36,5 @@ class TestHello(KrakenSiteMixin, TestCase):
         r = self.client.get('/hello')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, 'Hello, World!')
+        self.assertEqual(r.data, '<html><body>Hello, World!</body></html>')
 
