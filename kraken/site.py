@@ -104,7 +104,7 @@ class Site(object):
         namespace = {}
         execfile(filename, namespace)
         self._module_cache[filename] = (namespace, mtime)
-        return locals_
+        return namespace
         
     def find_template(self, path):
         """
