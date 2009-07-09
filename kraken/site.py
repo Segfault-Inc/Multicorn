@@ -40,6 +40,7 @@ class Site(object):
         self.site_root = unicode(site_root)
         self.koral_site = koral.Site(site_root)
         self.kalamar_site = kalamar.Site(kalamar_conf)
+        self._module_cache = {}
     
     @utils.Request.application
     def __call__(self, request):
@@ -47,13 +48,22 @@ class Site(object):
         try:
             if u'/__' in request.path:
                 return self.handle_static_file(request)
-            return self.handle_simple_template(request)
+            try:
+                return self.handle_simple_template(request)
+            except NotFound:
+                return self.handle_python(request)
         except HTTPException, e:
             # e is also a WSGI application
             return e
     
     def handle_static_file(self, request):
-        print request
+        pass # TODO
+        
+    def handle_python(self, request):
+        name = self.find_python(request.path)
+        module = self.load_python_module(name)
+        # What if the module has no handle_request function?
+        return module['handle_request'](request)
         
     def handle_simple_template(self, request):
         """
@@ -70,7 +80,32 @@ class Site(object):
         values = {'request': request}
         content = self.koral_site.engines[engine].render(template_name, values)
         return utils.Response(content, mimetype=mimetype)
-            
+
+    def find_python(self, path):
+        """
+        Find a python module for the given path
+        """
+        # TODO
+        filename = os.path.join(self.site_root, *path.split('/')) + u'.py'
+        if not os.path.isfile(filename):
+            raise NotFound
+        return path + u'.py'
+
+    def load_python_module(self, name):
+        filename = os.path.join(self.site_root, *name.split('/'))
+        mtime = os.stat(filename).st_mtime
+        try:
+            module, old_mtime = self._module_cache[filename]
+            if mtime == old_mtime:
+                return module
+        except KeyError:
+            pass
+
+        namespace = {}
+        execfile(filename, namespace)
+        self._module_cache[filename] = (namespace, mtime)
+        return locals_
+        
     def find_template(self, path):
         """
         Search for an existing template named <path>/index.<type>.<engine>
