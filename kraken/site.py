@@ -53,7 +53,7 @@ class Site(object):
             return e
     
     def handle_static_file(self, request):
-        pass
+        print request
         
     def handle_simple_template(self, request):
         """
