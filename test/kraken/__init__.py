@@ -25,6 +25,10 @@ class KrakenSiteMixin(object):
         self.client = werkzeug.Client(self.test_app, werkzeug.BaseResponse)
 
 class TestHello(KrakenSiteMixin, TestCase):
+    def test_notfound(self):
+        r = self.client.get('/nonexistent')
+        self.assertEqual(r.status_code, 404)
+
     def test_index(self):
         r = self.client.get('/')
         self.assertEqual(r.status_code, 200)
@@ -33,9 +37,17 @@ class TestHello(KrakenSiteMixin, TestCase):
                          '"-//W3C//DTD HTML 4.01//EN" '
                          '"http://www.w3.org/TR/html4/strict.dtd">\n'
                          '<html><body>Dyko root</body></html>')
+
     def test_hello(self):
         r = self.client.get('/hello')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
         self.assertEqual(r.data, '<html><body>Hello, World!</body></html>')
+
+    def test_lipsum(self):
+        r = self.client.get('/lorem/ipsum')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
+        self.assert_('Lorem ipsum dolor sit amet' in r.data)
+
 
