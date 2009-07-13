@@ -57,7 +57,13 @@ class Site(object):
             return e
     
     def handle_static_file(self, request):
-        pass # TODO
+        filename = os.path.join(self.site_root, *(
+            part for part in request.path.split(u'/')
+            if part and not part.startswith(u'.')
+        ))
+        if not os.path.isfile(filename):
+            raise NotFound
+        return utils.StaticFileResponse(filename)
         
     def handle_python(self, request):
         name = self.find_python(request.path)
@@ -76,7 +82,7 @@ class Site(object):
         template_name, extension, engine = template
     
         # Handle a simple template
-        mimetype, encoding = mimetypes.guess_type('_.' + extension)
+        mimetype, encoding = mimetypes.guess_type(u'_.' + extension)
         values = {'request': request}
         content = self.koral_site.engines[engine].render(template_name, values)
         return utils.Response(content, mimetype=mimetype)
@@ -86,13 +92,13 @@ class Site(object):
         Find a python module for the given path
         """
         # TODO
-        filename = os.path.join(self.site_root, *path.split('/')) + u'.py'
+        filename = os.path.join(self.site_root, *path.split(u'/')) + u'.py'
         if not os.path.isfile(filename):
             raise NotFound
         return path + u'.py'
 
     def load_python_module(self, name):
-        filename = os.path.join(self.site_root, *name.split('/'))
+        filename = os.path.join(self.site_root, *name.split(u'/'))
         mtime = os.stat(filename).st_mtime
         try:
             module, old_mtime = self._module_cache[filename]
@@ -136,7 +142,7 @@ class Site(object):
         (u'lorem/index.txt.jinja2', u'txt', u'jinja2')
         >>> site.find_template(u'/lorem/ipsum')
         """
-        path_parts = [part for part in path.split('/') if part]
+        path_parts = [part for part in path.split(u'/') if part]
         
         # Regular expression for .<type>.<engine> 
         # where <engine> is a koral engine name

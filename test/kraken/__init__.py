@@ -24,7 +24,7 @@ class KrakenSiteMixin(object):
         
         self.client = werkzeug.Client(self.test_app, werkzeug.BaseResponse)
 
-class TestHello(KrakenSiteMixin, TestCase):
+class TestRequests(KrakenSiteMixin, TestCase):
     def test_notfound(self):
         r = self.client.get('/nonexistent')
         self.assertEqual(r.status_code, 404)
@@ -49,5 +49,16 @@ class TestHello(KrakenSiteMixin, TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
         self.assert_('Lorem ipsum dolor sit amet' in r.data)
+
+    def test_logo(self):
+        r = self.client.get('/__logo/dyko.png')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers['Content-Type'], 'image/png')
+        # Maybe check the actual content here instead of just the length ?
+        self.assertEqual(len(r.data), 12677)
+
+    def test_static_notfound(self):
+        r = self.client.get('/__logo/inexistent.png')
+        self.assertEqual(r.status_code, 404)
 
 

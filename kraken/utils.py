@@ -19,6 +19,7 @@
 Various utilities for Kraken
 """
 
+import mimetypes
 import werkzeug
 
 class Request(werkzeug.Request):
@@ -26,4 +27,21 @@ class Request(werkzeug.Request):
 
 class Response(werkzeug.Response):
     pass
+
+class StaticFileResponse(Response):
+    """
+    Respond with a static file, guessing the mimitype from the filename,
+    and using WSGI’s ``file_wrapper`` when available.
+    """
+    
+    def __init__(self, filename):
+        self.filename = filename
+        mimetype, encoding = mimetypes.guess_type(filename)
+        super(StaticFileResponse, self).__init__(mimetype=mimetype)
+    
+    def __call__(self, environ, start_response):
+        # Wrap here so that __init__ doesn’t need a reference to environ
+        self.response = werkzeug.wrap_file(environ, open(self.filename, 'rb'))
+        self.direct_passthrough = True
+        return super(StaticFileResponse, self).__call__(environ, start_response)
 
