@@ -57,6 +57,37 @@ class TestRequests(KrakenSiteMixin, TestCase):
         # Maybe check the actual content here instead of just the length ?
         self.assertEqual(len(r.data), 12677)
 
+    def test_logo_etag(self):
+        # assume that self.test_logo() passed
+        initial_response = self.client.get('/__logo/dyko.png')
+        
+        response = self.client.get('/__logo/dyko.png', headers=[
+            ('If-None-Match', initial_response.headers['ETag']),
+        ])
+        self.assertEqual(response.status_code, 304)
+        self.assertEqual(response.data, '')
+
+    def test_logo_last_modified(self):
+        # assume that self.test_logo() passed
+        initial_response = self.client.get('/__logo/dyko.png')
+        
+        response = self.client.get('/__logo/dyko.png', headers=[
+            ('If-Modified-Since', initial_response.headers['Last-Modified']),
+        ])
+        self.assertEqual(response.status_code, 304)
+        self.assertEqual(response.data, '')
+
+    def test_logo_etag_and_last_modified(self):
+        # assume that self.test_logo() passed
+        initial_response = self.client.get('/__logo/dyko.png')
+        
+        response = self.client.get('/__logo/dyko.png', headers=[
+            ('If-None-Match', initial_response.headers['ETag']),
+            ('If-Modified-Since', initial_response.headers['Last-Modified']),
+        ])
+        self.assertEqual(response.status_code, 304)
+        self.assertEqual(response.data, '')
+
     def test_static_notfound(self):
         r = self.client.get('/__logo/inexistent.png')
         self.assertEqual(r.status_code, 404)
