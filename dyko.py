@@ -18,14 +18,15 @@ def action_test(packages='kalamar,koral,kraken,test', coverage=False, todo=False
         test.run_tests(packages)
     if todo:
         todos = list(test.find_TODOs(packages))
-        width = max(len(module) for module, count, lines in todos)
-        for module, count, lines in todos:
-            print '%-*s' % (width, module), ':', count,
-            if count > 1:
-                print 'TODOs on lines',
-            else:
-                print 'TODO  on line ',
-            print ', '.join(str(line) for line in lines)
+        if todos:
+            width = max(len(module) for module, count, lines in todos)
+            for module, count, lines in todos:
+                print '%-*s' % (width, module), ':', count,
+                if count > 1:
+                    print 'TODOs on lines',
+                else:
+                    print 'TODO  on line ',
+                print ', '.join(str(line) for line in lines)
 
 def main(*args):
     werkzeug.script.run(namespace=dict(action_test=action_test,
