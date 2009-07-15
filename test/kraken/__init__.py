@@ -29,6 +29,14 @@ class TestRequests(KrakenSiteMixin, TestCase):
         r = self.client.get('/nonexistent')
         self.assertEqual(r.status_code, 404)
 
+    def test_static_notfound(self):
+        r = self.client.get('/__logo/inexistent.png')
+        self.assertEqual(r.status_code, 404)
+
+    def test_lipsum_notfound(self):
+        r = self.client.get('/lorem/ipsum/dolor')
+        self.assertEqual(r.status_code, 404)
+
     def test_index(self):
         r = self.client.get('/')
         self.assertEqual(r.status_code, 200)
@@ -87,9 +95,5 @@ class TestRequests(KrakenSiteMixin, TestCase):
         ])
         self.assertEqual(response.status_code, 304)
         self.assertEqual(response.data, '')
-
-    def test_static_notfound(self):
-        r = self.client.get('/__logo/inexistent.png')
-        self.assertEqual(r.status_code, 404)
 
 

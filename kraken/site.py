@@ -66,10 +66,38 @@ class Site(object):
         return utils.StaticFileResponse(filename)
         
     def handle_python(self, request):
-        name = self.find_python(request.path)
-        module = self.load_python_module(name)
-        # What if the module has no handle_request function?
-        return module['handle_request'](request)
+        # special case: root of the site (ie. request.path == u'/')
+        if not request.path.strip(u'/'):
+            module = self.load_python_module(u'index.py')
+            if 'handle_request' in module:
+                handler = module['handle_request']
+                if utils.arg_count(handler) > 1:
+                    return handler(request, u'')
+                else:
+                    return handler(request)
+        
+        for suffix in (u'/index.py', u'.py'):
+            module = self.load_python_module(request.path + suffix)
+            if 'handle_request' in module:
+                handler = module['handle_request']
+                if utils.arg_count(handler) == 1:
+                    return handler(request)
+        
+        # TODO: comment this mess
+        script_name = [part for part in request.path.split(u'/')
+                       if part and part != u'..']
+        path_info = collections.deque()
+        while script_name:
+            for suffix in (u'/index.py', u'.py'):
+                module = self.load_python_module(u'/'.join(script_name) + 
+                                                 suffix)
+                if 'handle_request' in module:
+                    handler = module['handle_request']
+                    if utils.arg_count(handler) > 1:
+                        return handler(request, u'/'.join(path_info))
+            path_info.appendleft(script_name.pop())
+
+        raise NotFound
         
     def handle_simple_template(self, request):
         """
@@ -87,18 +115,16 @@ class Site(object):
         content = self.koral_site.engines[engine].render(template_name, values)
         return utils.Response(content, mimetype=mimetype)
 
-    def find_python(self, path):
-        """
-        Find a python module for the given path
-        """
-        # TODO
-        filename = os.path.join(self.site_root, *path.split(u'/')) + u'.py'
-        if not os.path.isfile(filename):
-            raise NotFound
-        return path + u'.py'
-
     def load_python_module(self, name):
-        filename = os.path.join(self.site_root, *name.split(u'/'))
+        """
+        Return a dictionnary of everything defined in the module `name`
+        (slash-separated path relative to the site root).
+        Return an empy dictionnary if the module does not exist.
+        """
+        parts = [part for part in name.split(u'/') if part and part != u'..']
+        filename = os.path.join(self.site_root, *parts)
+        if not os.path.isfile(filename):
+            return {}
         mtime = os.stat(filename).st_mtime
         try:
             module, old_mtime = self._module_cache[filename]
@@ -123,8 +149,9 @@ class Site(object):
 
         Directory stucture of site.site_root:
             index.html.genshi
-            hello.html.py
+            hello.html.jinja2
             hello/
+                index.genshi # No <type>
                 index.html # No <engine>
                 index.html.foo # Non-existent <engine>
             lorem/
@@ -142,7 +169,8 @@ class Site(object):
         (u'lorem/index.txt.jinja2', u'txt', u'jinja2')
         >>> site.find_template(u'/lorem/ipsum')
         """
-        path_parts = [part for part in path.split(u'/') if part]
+        path_parts = [part for part in path.split(u'/')
+                      if part and part != u'..']
         
         # Regular expression for .<type>.<engine> 
         # where <engine> is a koral engine name

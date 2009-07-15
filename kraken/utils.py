@@ -22,6 +22,7 @@ Various utilities for Kraken
 import os
 import hashlib
 import datetime
+import inspect
 import mimetypes
 import werkzeug
 
@@ -62,4 +63,10 @@ class StaticFileResponse(object):
         ))
         start_response('200 OK', headers)
         return werkzeug.wrap_file(environ, open(self.filename, 'rb'))
+
+def arg_count(function):
+    args, varargs, varkw, defaults = inspect.getargspec(function)
+    if varargs or varkw:
+        raise ValueError(u'Argument count is variable.')
+    return len(args)
 
