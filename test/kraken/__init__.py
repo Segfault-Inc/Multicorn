@@ -14,12 +14,14 @@ def make_site():
     )
 
 class KrakenSiteMixin(object):
+    test_app = None
     def setUp(self):
         """
         Create a ``Client`` that simulates HTTP requests
         See http://werkzeug.pocoo.org/documentation/0.5/test.html
         """
-        self.test_app = make_site()
+        if KrakenSiteMixin.test_app is None:
+            KrakenSiteMixin.test_app = make_site()
         
         self.client = werkzeug.Client(self.test_app, werkzeug.BaseResponse)
 
