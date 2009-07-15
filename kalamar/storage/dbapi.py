@@ -174,8 +174,7 @@ class DBAPIStorage(AccessPoint):
         # Execute request
         cursor = connection.cursor()
         if parameters:
-            try:
-                cursor.execute(request, parameters)
+            cursor.execute(request, parameters)
         else:
             cursor.execute(request)
         descriptions = [description[0] for description in cursor.description]
