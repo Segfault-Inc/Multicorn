@@ -45,6 +45,8 @@ class Site(object):
     @utils.Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
+        request.koral_site = self.koral_site
+        request.kalamar_site = self.kalamar_site
         try:
             if u'/__' in request.path:
                 return self.handle_static_file(request)
