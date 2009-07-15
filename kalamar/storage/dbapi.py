@@ -176,11 +176,6 @@ class DBAPIStorage(AccessPoint):
         if parameters:
             try:
                 cursor.execute(request, parameters)
-            except:
-                from pprint import pprint
-                pprint(request)
-                pprint(parameters)
-                raise
         else:
             cursor.execute(request)
         descriptions = [description[0] for description in cursor.description]
@@ -328,7 +323,8 @@ class DBAPIStorage(AccessPoint):
         named_condition = (
             self._quote_name(condition.property_name) + 
             self.sql_operators[utils.operators_rev[condition.operator]]
-            for condition in conditions)
+            for condition in conditions
+        )
         
         # No need to worry about the final '?' when there is no condition since
         # this case is handled in the following 'if-else'.
