@@ -95,11 +95,12 @@ class DBAPIStorage(AccessPoint):
         primary_keys = self._get_primary_keys()
         parameters = []
         
-        for key in primary_keys[:-1]:
+        for key in primary_keys:
             request.extend("%s=? AND " % self._quote_name(key))
             parameters.append((key, item.properties[key]))
-        request.extend("%s=? ;" % self._quote_name(primary_keys[-1]))
-        parameters.append((primary_keys[-1], item.properties[primary_keys[-1]]))
+        # remove the last AND
+        for char in 'AND ':
+            request.pop()
         
         paramstyle = self.get_db_module().paramstyle
         request, parameters = self._format_request(request.tounicode(),

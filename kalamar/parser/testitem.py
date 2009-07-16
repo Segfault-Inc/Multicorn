@@ -43,4 +43,6 @@ class TestItem(TextItem):
         
     def _custom_serialize(self, properties):
         """Return a string of properties representing the test item."""
-        return '\n'.join(properties.get(key, '') for key in self._keys)
+        properties['_content'] = u'\n'.join(properties.get(key, u'') 
+                                            for key in self._keys)
+        return super(TestItem, self)._custom_serialize(properties)
