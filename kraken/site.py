@@ -88,14 +88,16 @@ class Site(object):
                 - handle_request(request, u'bar') in foo/index.py
                 - handle_request(request, u'foo/bar') in index.py
         """
+        # search for foo/bar.py or foo/bar/index.py
         for suffix in (u'', u'/index'):
             module = self.load_python_module(request.path.strip(u'/') + suffix)
             if 'handle_request' in module:
                 handler = module['handle_request']
+                # the 2 parameters case is handled later
                 if utils.arg_count(handler) == 1:
                     return handler(request)
         
-        # TODO: comment this mess
+        # slash-separated parts of the URL
         script_name = [part for part in request.path.split(u'/')
                        if part and part != u'..']
         path_info = collections.deque()
@@ -107,6 +109,8 @@ class Site(object):
                     handler = module['handle_request']
                     if utils.arg_count(handler) > 1:
                         return handler(request, u'/'.join(path_info))
+            # take the right-most part of script_name and push it to the
+            # left of path_info
             path_info.appendleft(script_name.pop())
 
         raise NotFound
