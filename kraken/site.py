@@ -80,26 +80,16 @@ class Site(object):
         Exemple:
             If request.path is u'/foo/bar', this method tries the following,
             in the given order:
-                - handle_request(request) in foo/bar/index.py
                 - handle_request(request) in foo/bar.py
-                - handle_request(request, u'') in foo/bar/index.py
+                - handle_request(request) in foo/bar/index.py
                 - handle_request(request, u'') in foo/bar.py
-                - handle_request(request, u'bar') in foo/index.py
+                - handle_request(request, u'') in foo/bar/index.py
                 - handle_request(request, u'bar') in foo.py
+                - handle_request(request, u'bar') in foo/index.py
                 - handle_request(request, u'foo/bar') in index.py
         """
-        # special case: root of the site (ie. request.path == u'/')
-        if not request.path.strip(u'/'):
-            module = self.load_python_module(u'index')
-            if 'handle_request' in module:
-                handler = module['handle_request']
-                if utils.arg_count(handler) > 1:
-                    return handler(request, u'')
-                else:
-                    return handler(request)
-        
-        for suffix in (u'/index', u''):
-            module = self.load_python_module(request.path + suffix)
+        for suffix in (u'', u'/index'):
+            module = self.load_python_module(request.path.strip(u'/') + suffix)
             if 'handle_request' in module:
                 handler = module['handle_request']
                 if utils.arg_count(handler) == 1:
@@ -110,7 +100,7 @@ class Site(object):
                        if part and part != u'..']
         path_info = collections.deque()
         while script_name:
-            for suffix in (u'/index', u''):
+            for suffix in (u'', u'/index'):
                 module = self.load_python_module(u'/'.join(script_name) + 
                                                  suffix)
                 if 'handle_request' in module:
