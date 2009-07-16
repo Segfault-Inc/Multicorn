@@ -9,13 +9,15 @@ import test.kraken
 action_runserver = werkzeug.script.make_runserver(
     test.kraken.make_site, use_reloader=True, use_debugger=True)
 
-def action_test(packages='kalamar,koral,kraken,test', coverage=False, todo=False):
+def action_test(packages='kalamar,koral,kraken,test', verbose=('v', False),
+                coverage=('c', False), todo=('t', False)):
     """Run all doctests and unittests found in "packages"."""
     packages = packages.split(',')
+    verbosity = 2 if verbose else 1
     if coverage:
-        test.run_tests_with_coverage(packages)
+        test.run_tests_with_coverage(packages, verbosity)
     else:
-        test.run_tests(packages)
+        test.run_tests(packages, verbosity)
     if todo:
         todos = list(test.find_TODOs(packages))
         if todos:
