@@ -34,6 +34,9 @@ def get_tests(packages):
 
 def find_TODOs(packages):
     for module_name in find_all_modules(packages):
+        if module_name == __name__:
+            # prevent this script from finding itself
+            continue
         filename = werkzeug.import_string(module_name).__file__
         if filename[-4:] in ('.pyc', '.pyo'):
             filename = filename[:-1]
@@ -41,11 +44,10 @@ def find_TODOs(packages):
         todo_lines = []
         todo_count = 0
         for line_no, line in enumerate(f):
-            # Write 'TO' 'DO' to prevent this script from finding itself
-            count = line.count('TO' 'DO')
+            count = line.count('TODO')
             if count:
                 todo_count += count
-                todo_lines.append(line_no)
+                todo_lines.append(line_no + 1) # enumerate starts at 0
         f.close()
         if todo_count:
             yield filename, todo_count, todo_lines
