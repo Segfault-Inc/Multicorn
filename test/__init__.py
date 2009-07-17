@@ -51,7 +51,7 @@ def find_TODOs(packages):
             yield filename, todo_count, todo_lines
 
 def run_tests(packages):
-    unittest.TextTestRunner().run(get_tests(packages))
+    unittest.TextTestRunner(verbosity=2).run(get_tests(packages))
 
 def run_tests_with_coverage(packages):
     import coverage

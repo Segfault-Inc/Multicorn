@@ -133,15 +133,15 @@ class DBAPIStorage(AccessPoint):
         """Return the list of the storage properties."""
         connection, table = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute('SELECT * FROM %s WHERE 0;'
-                       % self._quote_name(self._table))
+        request = 'SELECT * FROM %s WHERE 1=2;' % self._quote_name(self._table)
+        cursor.execute(request)
         return [prop[0] for prop in cursor.description]
     
     def get_table_description(self):
         """Return field description as a dictionnary."""
         connection, table = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute('SELECT * FROM %s WHERE 0;'
+        cursor.execute('SELECT * FROM %s WHERE 1=2;'
                        % self._quote_name(self._table))
         fields_names = (desc_values[0] for desc_values in cursor.description)
         desc_names = ('type_code', 
@@ -173,13 +173,16 @@ class DBAPIStorage(AccessPoint):
                               )
         # Execute request
         cursor = connection.cursor()
-        if parameters:
-            cursor.execute(request, parameters)
-        else:
-            cursor.execute(request)
-        descriptions = [description[0] for description in cursor.description]
-        dict_lines = (dict(zip(descriptions, line))
-                      for line in self._generate_lines_from_cursor(cursor))
+        try:
+            if parameters:
+                cursor.execute(request, parameters)
+            else:
+                cursor.execute(request)
+            descriptions = [description[0] for description in cursor.description]
+            dict_lines = (dict(zip(descriptions, line))
+                          for line in self._generate_lines_from_cursor(cursor))
+        finally:
+            cursor.close()
         
         # Filter result and yield tuples (properties, value)
         filtered = list(self._filter_result(dict_lines, python_condition))
@@ -626,7 +629,7 @@ class DBAPIStorage(AccessPoint):
         character.
         
         This method use the character " (double-quotes) by default. It should be
-        redefined for SGDBs usinf a different character.
+        redefined for SGDBs using a different character.
         
         """
         return '"%s"' % name

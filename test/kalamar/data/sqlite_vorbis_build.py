@@ -1,9 +1,11 @@
+# coding: utf8
 """
 A quick and dirty script to build the vorbis/sqlite database
 """
 
 import os
-os.chdir(os.path.dirname(__file__))
+if os.path.dirname(__file__):
+    os.chdir(os.path.dirname(__file__))
 
 from sqlalchemy import create_engine
 engine = create_engine('sqlite:///vorbis.sqlite3', echo=True)

@@ -39,8 +39,10 @@ class TestSiteOpen(object):
     
     def test_no_result(self):
         request = u'genre=doesnt_exist'
+        print 'toto'
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
+        print 'toto'
     
     def test_one_result(self):
         request = u'genre=rock/artiste=Jesus\'harlem' \
@@ -84,7 +86,6 @@ class TestSiteSave(object):
         )
         
     def test_new_incomplete_item(self):
-        """Should raise an Exception ?"""
         pass # TODO : wtf should kalamar do in this case ?
     
     def test_unmodified_item(self):

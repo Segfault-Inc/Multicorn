@@ -109,15 +109,7 @@ else:
         def _get_primary_keys(self):
             """Return the list of the table primary keys.
             
-            Fixture
-            #>>> from kalamar._test import fill_sqlite_db
-            #>>> storage = SQLiteStorage(url='sqlite://:memory:?test', basedir='')
-            #>>> connection, table = storage.get_connection()
-            #>>> fill_sqlite_db(connection)
-            
-            Test
-            #>>> storage._get_primary_keys()
-            [u'key']
+            TODO test (possible ?)
             
             """
             connection, table = self.get_connection()

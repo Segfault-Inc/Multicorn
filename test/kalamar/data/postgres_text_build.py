@@ -1,5 +1,6 @@
+# coding: utf8
 """
-A quick and dirty script to build the vorbis/sqlite database
+A quick and dirty script to build the vorbis/postgres database
 """
 
 import os
@@ -7,7 +8,7 @@ if os.path.dirname(__file__):
     os.chdir(os.path.dirname(__file__))
 
 from sqlalchemy import create_engine
-engine = create_engine('sqlite:///text.sqlite3', echo=True)
+engine = create_engine('postgres://kalamar:kalamar@localhost/kalamar', echo=True)
 
 from sqlalchemy import Column, Integer, String, Binary
 from sqlalchemy.ext.declarative import declarative_base
@@ -15,7 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 class Textes(Base):
-    __tablename__ = 'textes'
+    __tablename__ = 'textes_bak'
     
     id = Column(Integer, primary_key=True)
     genre = Column(String)
@@ -67,9 +68,15 @@ session.commit()
 import pprint
 pprint.pprint(session.query(Textes).all())
 
-format = '/%(genre)s/%(artist)s/%(album)s/%(no)02i - %(title)s.txt'
+format = u'/%(genre)s/%(artist)s/%(album)s/%(no)02i - %(title)s.txt'
 for morceau in session.query(Textes):
-    if open(basedir + (format % morceau.__dict__)).read() != str(morceau.data):
+    dico = {}
+    for key in morceau.__dict__:
+        if type(morceau.__dict__[key]) is str:
+            dico[key] = unicode(morceau.__dict__[key], 'utf-8')
+        else:
+            dico[key] = morceau.__dict__[key]
+    if open(basedir + (format % dico)).read() != str(morceau.data):
         print 'CONTENT DIFFERS', morceau
 
 
