@@ -60,7 +60,7 @@ else:
                 host_and_port = host_part.split(':')
                 kwargs['host'] = host_and_port[0]
                 if len(host_and_port) == 2:
-                    kwargs['port'] = host_and_port[1]
+                    kwargs['port'] = int(host_and_port[1])
                 
                 kwargs['database'], self._table = parts[3].split('?')
                 
