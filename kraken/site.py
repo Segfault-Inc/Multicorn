@@ -59,44 +59,58 @@ class Site(object):
             return e
     
     def handle_static_file(self, request):
+        """
+        Try handling a request with a static file.
+        The request path is interpreted as a filename relative to the site root.
+        Return a Response object or raise NotFound.
+        """
         filename = os.path.join(self.site_root, *(
             part for part in request.path.split(u'/')
-            if part and not part.startswith(u'.')
+            if part and part != u'..'
         ))
         if not os.path.isfile(filename):
             raise NotFound
         return utils.StaticFileResponse(filename)
         
     def handle_python(self, request):
-        # special case: root of the site (ie. request.path == u'/')
-        if not request.path.strip(u'/'):
-            module = self.load_python_module(u'index.py')
-            if 'handle_request' in module:
-                handler = module['handle_request']
-                if utils.arg_count(handler) > 1:
-                    return handler(request, u'')
-                else:
-                    return handler(request)
+        """
+        Try handling a request with a python controller
+        Return a Response object or raise NotFound
         
-        for suffix in (u'/index.py', u'.py'):
-            module = self.load_python_module(request.path + suffix)
+        Exemple:
+            If request.path is u'/foo/bar', this method tries the following,
+            in the given order:
+                - handle_request(request) in foo/bar.py
+                - handle_request(request) in foo/bar/index.py
+                - handle_request(request, u'') in foo/bar.py
+                - handle_request(request, u'') in foo/bar/index.py
+                - handle_request(request, u'bar') in foo.py
+                - handle_request(request, u'bar') in foo/index.py
+                - handle_request(request, u'foo/bar') in index.py
+        """
+        # search for foo/bar.py or foo/bar/index.py
+        for suffix in (u'', u'/index'):
+            module = self.load_python_module(request.path.strip(u'/') + suffix)
             if 'handle_request' in module:
                 handler = module['handle_request']
+                # the 2 parameters case is handled later
                 if utils.arg_count(handler) == 1:
                     return handler(request)
         
-        # TODO: comment this mess
+        # slash-separated parts of the URL
         script_name = [part for part in request.path.split(u'/')
                        if part and part != u'..']
         path_info = collections.deque()
         while script_name:
-            for suffix in (u'/index.py', u'.py'):
+            for suffix in (u'', u'/index'):
                 module = self.load_python_module(u'/'.join(script_name) + 
                                                  suffix)
                 if 'handle_request' in module:
                     handler = module['handle_request']
                     if utils.arg_count(handler) > 1:
                         return handler(request, u'/'.join(path_info))
+            # take the right-most part of script_name and push it to the
+            # left of path_info
             path_info.appendleft(script_name.pop())
 
         raise NotFound
@@ -120,11 +134,11 @@ class Site(object):
     def load_python_module(self, name):
         """
         Return a dictionnary of everything defined in the module `name`
-        (slash-separated path relative to the site root).
+        (slash-separated path relative to the site root, without the extension).
         Return an empy dictionnary if the module does not exist.
         """
         parts = [part for part in name.split(u'/') if part and part != u'..']
-        filename = os.path.join(self.site_root, *parts)
+        filename = os.path.join(self.site_root, *parts) + u'.py'
         if not os.path.isfile(filename):
             return {}
         mtime = os.stat(filename).st_mtime
@@ -135,7 +149,7 @@ class Site(object):
         except KeyError:
             pass
 
-        namespace = {}
+        namespace = {'__name__': 'kraken.site.' + '.'.join(parts)}
         execfile(filename, namespace)
         self._module_cache[filename] = (namespace, mtime)
         return namespace

@@ -71,20 +71,20 @@ class DBAPIStorage(AccessPoint):
         request, parameters = self._build_update_request(table, item, style)
         
         cursor = connection.cursor()
-        cursor.execute(request, parameters)
-
-        if cursor.rowcount == 0:
-            # Item does not exist, let's do an insert
-            request, parameters = self._build_insert_request(table, item, style)
+        try:
             cursor.execute(request, parameters)
-        elif cursor.rowcount > 1:
-            # Problem ocurred
-            connection.rollback()
+    
+            if cursor.rowcount == 0:
+                # Item does not exist, let's do an insert
+                request, parameters = self._build_insert_request(table, item,
+                                                                 style)
+                cursor.execute(request, parameters)
+            else:
+                assert cursor.rowcount == 1
+
+            connection.commit()
+        finally:
             cursor.close()
-            raise ManyItemsUpdatedError()
-        # everything is fine
-        connection.commit()
-        cursor.close()
 
     def remove(self, item):
         """Remove the item from the database."""
@@ -95,11 +95,12 @@ class DBAPIStorage(AccessPoint):
         primary_keys = self._get_primary_keys()
         parameters = []
         
-        for key in primary_keys[:-1]:
+        for key in primary_keys:
             request.extend("%s=? AND " % self._quote_name(key))
             parameters.append((key, item.properties[key]))
-        request.extend("%s=? ;" % self._quote_name(primary_keys[-1]))
-        parameters.append((primary_keys[-1], item.properties[primary_keys[-1]]))
+        # remove the last AND
+        for char in 'AND ':
+            request.pop()
         
         paramstyle = self.get_db_module().paramstyle
         request, parameters = self._format_request(request.tounicode(),

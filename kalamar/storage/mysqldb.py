@@ -95,7 +95,7 @@ else:
                 host_port = host_part.split(':')
                 kwargs['host'] = host_port[0]
                 if len(host_port) == 2:
-                    kwargs['port'] = host_port[1]
+                    kwargs['port'] = int(host_port[1])
                 
                 kwargs['db'], self._table = parts[3].split('?')
                 

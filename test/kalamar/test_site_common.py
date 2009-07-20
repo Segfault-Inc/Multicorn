@@ -1,6 +1,7 @@
 # coding: utf8
 
 import os
+import time
 from kalamar import Item
 
 # There is some magic at the end of this file :-P        
@@ -99,13 +100,14 @@ class TestSiteSave(object):
                   u'album=alleluia/titre=solomon'
         item = self.site.open(self.access_point_name, request)
         item.properties['genre'] = 'toto'
+        item.properties['titre'] = 'tata'
         self.site.save(item)
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
         # Should not raise any exception
         self.site.open(self.access_point_name,
                        u'genre=toto/artiste=Jesus\'harlem/' \
-                       u'album=alleluia/titre=solomon')
+                       u'album=alleluia/titre=tata')
 
 class TestSiteRemove(object):
     def test_remove(self):

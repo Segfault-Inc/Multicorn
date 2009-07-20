@@ -40,5 +40,5 @@ class TextItem(AtomItem):
         
     def _custom_serialize(self, properties):
         """Return an encoded string representing the object."""
-        content = properties['_content']
+        content = super(TextItem, self)._custom_serialize(properties)
         return content.encode(self.encoding)

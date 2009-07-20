@@ -65,8 +65,17 @@ class StaticFileResponse(object):
         return werkzeug.wrap_file(environ, open(self.filename, 'rb'))
 
 def arg_count(function):
+    """
+    Return the nubmer of explicit arguments the function takes
+    ie. without *args and **kwargs.
+    
+    >>> arg_count(lambda: 1)
+    0
+    >>> arg_count(lambda x, y: 1)
+    2
+    >>> arg_count(lambda x, y, *args: 1)
+    2
+    """
     args, varargs, varkw, defaults = inspect.getargspec(function)
-    if varargs or varkw:
-        raise ValueError(u'Argument count is variable.')
     return len(args)
 
