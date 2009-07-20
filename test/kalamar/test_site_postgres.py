@@ -25,6 +25,11 @@ else:
         
         def setUp(self):
             self.site = site
+            
+            #get an exclusive connection to drop tables
+            for ap in site.access_points.values():
+                ap.close_connection()
+                
             connection = PgSQL.connect(
                 user='kalamar',
                 password='kalamar',

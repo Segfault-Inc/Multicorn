@@ -121,6 +121,10 @@ class DBAPIStorage(AccessPoint):
         """
         raise NotImplementedError('Abstract method')
     
+    def close_connection(self):
+        """TODO documentation"""
+        raise NotImplementedError('Abstract method')
+    
     def get_db_module(self):
         """Return a DB-API implementation module.
         
@@ -173,20 +177,18 @@ class DBAPIStorage(AccessPoint):
                               )
         # Execute request
         cursor = connection.cursor()
-        try:
-            if parameters:
-                cursor.execute(request, parameters)
-            else:
-                cursor.execute(request)
-            descriptions = [description[0] for description in cursor.description]
-            dict_lines = (dict(zip(descriptions, line))
-                          for line in self._generate_lines_from_cursor(cursor))
-        finally:
-            cursor.close()
+        if parameters:
+            cursor.execute(request, parameters)
+        else:
+            cursor.execute(request)
+        descriptions = [description[0] for description in cursor.description]
+        dict_lines = (dict(zip(descriptions, line))
+                       for line in self._generate_lines_from_cursor(cursor))
         
         # Filter result and yield tuples (properties, value)
         filtered = list(self._filter_result(dict_lines, python_condition))
         
+        # Convert all properties to strings TODO v1.0 do sth about this
         def lines_to_string(lines):
             for line in lines:
                 for key in line:
@@ -290,7 +292,8 @@ class DBAPIStorage(AccessPoint):
         ...     utils.Condition(u"toto", utils.operators[u"="], u"tata"),
         ...     utils.Condition(u"the_answer", utils.operators[u">="], 42)
         ... )
-        >>> storage = DBAPIStorage(url='toto', basedir='tata')
+        >>> storage = DBAPIStorage(url='toto', basedir='tata',
+        ...                        content_column = 'content_col')
         >>> class db_mod:
         ...     BINARY = 1
         ...     DATETIME = 1
@@ -331,6 +334,8 @@ class DBAPIStorage(AccessPoint):
         # No need to worry about the final '?' when there is no condition since
         # this case is handled in the following 'if-else'.
         request = u'? AND '.join(named_condition) + '?'
+        
+        #TODO use directly conditions instead of parameters
         parameters = [(condition.property_name, condition.value)
                       for condition in conditions]
         
@@ -386,6 +391,10 @@ class DBAPIStorage(AccessPoint):
         
         primary_keys = self._get_primary_keys()
         keys = item.properties.storage_properties.keys()
+        keys = [
+            key for key in keys if 
+            key not in primary_keys or item.properties[key] is not None
+        ]
         
         item.properties['_content'] = item.serialize()
         
@@ -406,7 +415,7 @@ class DBAPIStorage(AccessPoint):
                        
         parameters.append((
             self.config['content_column'],
-            self.get_db_module().Binary( item.properties['_content'])
+            item.properties['_content']
         ))
         
         for key in primary_keys[:-1]:
@@ -423,6 +432,7 @@ class DBAPIStorage(AccessPoint):
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
+        
         return (request, parameters)
     
     def _build_insert_request(self, table, item, style):
@@ -439,6 +449,7 @@ class DBAPIStorage(AccessPoint):
         ...     def Binary(self, data):
         ...         return data
         >>> storage.get_db_module = lambda: db_mod()
+        >>> storage._get_primary_keys = lambda: ['pk1', 'pk2']
         >>> storage.get_table_description = lambda: {
         ...     'sto_prop': {'type_code': 1},
         ...     'sto_prop2': {'type_code': 1},
@@ -467,7 +478,13 @@ class DBAPIStorage(AccessPoint):
         item.properties['_content'] = item.serialize()
         
         request = array('u', u"INSERT INTO %s ( " % self._quote_name(table))
+        
+        primary_keys = self._get_primary_keys()
         keys = item.properties.storage_properties.keys()
+        keys = [
+            key for key in keys if 
+            key not in primary_keys or item.properties[key] is not None
+        ]
         if self.config['content_column'] in keys:
             keys.remove(self.config['content_column'])
         
@@ -486,7 +503,7 @@ class DBAPIStorage(AccessPoint):
         
         parameters.append((
             self.config['content_column'],
-            self.get_db_module().Binary(item.properties['_content'])
+            item.properties['_content']
         ))
         
         request, parameters = self._format_request(request.tounicode(),
@@ -494,12 +511,17 @@ class DBAPIStorage(AccessPoint):
         return (request, parameters)
     
     def _convert_parameters(self, parameters):
-        """Generate converted parameters.
+        """Converts parameters into corresponding field's type.
         
         Dummy method meant to be overriden.
         
         """
-        return parameters
+        new_parameters = []
+        for prop_name, value in parameters:
+            if prop_name == self.config['content_column']:
+                value = self.get_db_module().Binary(value)
+            new_parameters.append((prop_name, value))
+        return new_parameters
     
     def _format_request(self, request, parameters, style):
         """Format request and parameters according to "style" and return them.
@@ -539,12 +561,17 @@ class DBAPIStorage(AccessPoint):
         >>> storage._format_request(request, parameters, 'named')
         ... #doctest:+NORMALIZE_WHITESPACE
         (u'DO STHG INTO TABLE :name0 WHERE toto=:name1 AND tata=:name2;',
-        {'toto1': 'toto', 'toto0': 'table', 'toto2': 'tata'})
+        {u'name2': 'tata', u'name0': 'table', u'name1': 'toto'})
         
         >>> storage._format_request(request, parameters, 'format')
         ... #doctest:+NORMALIZE_WHITESPACE
         (u'DO STHG INTO TABLE %s WHERE toto=%s AND tata=%s;',
          ('table', 'toto', 'tata'))
+         
+        >>> storage._format_request(request, parameters, 'pyformat')
+        ... #doctest:+NORMALIZE_WHITESPACE
+        (u'DO STHG INTO TABLE %(name0)s WHERE toto=%(name1)s AND tata=%(name2)s;',
+        {u'name2': 'tata', u'name0': 'table', u'name1': 'toto'})
          
         >>> storage._format_request(request, parameters, 'nonexistant')
         Traceback (most recent call last):
@@ -561,10 +588,11 @@ class DBAPIStorage(AccessPoint):
         
         #used with 'format' and 'pyformat'
         format_codes = {
-            int: 'i',
-            long: 'i',
-            str: 's',
-            float: 'f',
+           # int: 'i',
+           # long: 'i',
+            str: u's',
+            unicode: u's'
+           # float: 'f',
         }
         
         parts = request.split('?')
@@ -589,7 +617,7 @@ class DBAPIStorage(AccessPoint):
             named.append(parts[-1])
             request = u''.join(named)
             parameters = dict(
-                             ('%s%i' % (field_name, i), value)
+                             (u'name%i' % i, value)
                              for i, (field_name, value)
                              in enumerate(parameters)
                          )
@@ -605,8 +633,17 @@ class DBAPIStorage(AccessPoint):
                 
             
         elif style == 'pyformat':
-            # ... WHERE name=%(name)s
-            raise NotImplementedError # TODO
+            # ... WHERE a=%(name0)s AND a=%(name1)s
+            request = parts[0]
+            for i, part in enumerate(parts[1:]):
+                name, value = parameters[i]
+                code = format_codes.get(type(value), u's')
+                request += u'%%(name%i)%c%s' % (i, code, part)
+            parameters = dict(
+                             (u'name%i' % i, value)
+                             for i, (field_name, value)
+                             in enumerate(parameters)
+                         )
 
         else:
             raise DBAPIStorage.UnsupportedParameterStyleError(style)
