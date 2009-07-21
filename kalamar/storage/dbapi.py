@@ -33,6 +33,11 @@ from kalamar import utils
 from kalamar import Item
 
 _opener = lambda content: (lambda: StringIO(content))
+    
+class Parameter:
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
 class DBAPIStorage(AccessPoint):
     """Base class for SQL SGBD Storage.
@@ -50,7 +55,7 @@ class DBAPIStorage(AccessPoint):
     
     class UnsupportedParameterStyleError(Exception): pass
     class ManyItemsUpdatedError(Exception): pass
-    
+        
     # Provided to ensure compatibility with as many SGDB as possible.
     # This may be modified by a descendant.
     sql_operators = {
@@ -97,7 +102,7 @@ class DBAPIStorage(AccessPoint):
         
         for key in primary_keys:
             request.extend("%s=? AND " % self._quote_name(key))
-            parameters.append((key, item.properties[key]))
+            parameters.append(Parameter(key, item.properties[key]))
         # remove the last AND
         for char in 'AND ':
             request.pop()
@@ -189,7 +194,7 @@ class DBAPIStorage(AccessPoint):
         # Filter result and yield tuples (properties, value)
         filtered = list(self._filter_result(dict_lines, python_condition))
         
-        # Convert all properties to strings TODO v1.0 do sth about this
+        # Convert all properties to strings
         def lines_to_string(lines):
             for line in lines:
                 for key in line:
@@ -336,8 +341,9 @@ class DBAPIStorage(AccessPoint):
         # this case is handled in the following 'if-else'.
         request = u'? AND '.join(named_condition) + '?'
         
-        #TODO use directly conditions instead of parameters
-        parameters = [(condition.property_name, condition.value)
+        # We don't use conditions because others _build_***_request don't have
+        # access to them.
+        parameters = [Parameter(condition.property_name,condition.value)
                       for condition in conditions]
         
         if parameters:
@@ -408,28 +414,32 @@ class DBAPIStorage(AccessPoint):
         for key in keys:
             request.extend(u"%s=? , " %
                            self._quote_name(self._sql_escape_quotes(key)))
-            parameters.append((key, item.properties[key]))
+            parameters.append(Parameter(key, item.properties[key]))
         data_col = self._quote_name(
                        self._sql_escape_quotes(self.config['content_column'])
                    )
         request.extend(u"%s=? WHERE" % data_col)
                        
-        parameters.append((
-            self.config['content_column'],
-            item.properties['_content']
-        ))
+        parameters.append(
+            Parameter(
+                self.config['content_column'],
+                item.properties['_content']
+            )
+        )
         
         for key in primary_keys[:-1]:
             request.extend(
                 u" %s=? AND" % self._quote_name(self._sql_escape_quotes(key))
             )
-            parameters.append((key, item.properties[key]))
+            parameters.append(Parameter(key, item.properties[key]))
         request.extend(
             u' %s=?;' % self._quote_name(
                             self._sql_escape_quotes(primary_keys[-1])
                         )
         )
-        parameters.append((primary_keys[-1], item.properties[primary_keys[-1]]))
+        parameters.append(
+            Parameter(primary_keys[-1], item.properties[primary_keys[-1]])
+        )
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -499,13 +509,15 @@ class DBAPIStorage(AccessPoint):
         
         for key in keys:
             request.extend(u"? , ")
-            parameters.append((key, item.properties[key]))
+            parameters.append(Parameter(key, item.properties[key]))
         request.extend(u"? );")
         
-        parameters.append((
-            self.config['content_column'],
-            item.properties['_content']
-        ))
+        parameters.append(
+            Parameter(
+                self.config['content_column'],
+                item.properties['_content']
+            )
+        )
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -517,12 +529,10 @@ class DBAPIStorage(AccessPoint):
         Dummy method meant to be overriden.
         
         """
-        new_parameters = []
-        for prop_name, value in parameters:
-            if prop_name == self.config['content_column']:
-                value = self.get_db_module().Binary(value)
-            new_parameters.append((prop_name, value))
-        return new_parameters
+        for parameter in parameters:
+            if parameter.name == self.config['content_column']:
+                parameter.value = self.get_db_module().Binary(parameter.value)
+            yield parameter
     
     def _format_request(self, request, parameters, style):
         """Format request and parameters according to "style" and return them.
@@ -532,9 +542,9 @@ class DBAPIStorage(AccessPoint):
         Fixture
         >>> request = "DO STHG INTO TABLE ? WHERE toto=? AND tata=?;"
         >>> parameters = [
-        ...                  ('toto', 'table'),
-        ...                  ('toto', 'toto'),
-        ...                  ('toto', 'tata')
+        ...                  Parameter('name', 'table'),
+        ...                  Parameter('other_name', 'toto'),
+        ...                  Parameter('yet_a_name', 'tata')
         ...              ]
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
@@ -561,8 +571,8 @@ class DBAPIStorage(AccessPoint):
          
         >>> storage._format_request(request, parameters, 'named')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'DO STHG INTO TABLE :name0 WHERE toto=:name1 AND tata=:name2;',
-        {u'name2': 'tata', u'name0': 'table', u'name1': 'toto'})
+        (u'DO STHG INTO TABLE :name0 WHERE toto=:other_name1 AND tata=:yet_a_name2;',
+        {u'other_name1': 'toto', u'name0': 'table', u'yet_a_name2': 'tata'})
         
         >>> storage._format_request(request, parameters, 'format')
         ... #doctest:+NORMALIZE_WHITESPACE
@@ -571,16 +581,13 @@ class DBAPIStorage(AccessPoint):
          
         >>> storage._format_request(request, parameters, 'pyformat')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'DO STHG INTO TABLE %(name0)s WHERE toto=%(name1)s AND tata=%(name2)s;',
-        {u'name2': 'tata', u'name0': 'table', u'name1': 'toto'})
+        (u'DO STHG INTO TABLE %(name0)s WHERE toto=%(other_name1)s AND tata=%(yet_a_name2)s;',
+        {u'other_name1': 'toto', u'name0': 'table', u'yet_a_name2': 'tata'})
          
         >>> storage._format_request(request, parameters, 'nonexistant')
         Traceback (most recent call last):
           ...
         UnsupportedParameterStyleError: nonexistant
-
-        
-        TODO test 'pyformat'
 
         """
         
@@ -588,20 +595,20 @@ class DBAPIStorage(AccessPoint):
         description = self.get_table_description()
         
         #used with 'format' and 'pyformat'
-        format_codes = {
-           # int: 'i',
-           # long: 'i',
-            str: u's',
-            unicode: u's'
-           # float: 'f',
-        }
+#        format_codes = {
+#           # int: 'i',
+#           # long: 'i',
+#            str: u's', #
+#            unicode: u's'
+#           # float: 'f',
+#        }
         
         parts = request.split('?')
         
         if style == 'qmark':
             # ... WHERE a=? AND b=?
             request = u'?'.join(parts)
-            parameters = tuple(value for field_name, value in parameters)
+            parameters = tuple(p.value for p in parameters)
         
         elif style == 'numeric':
             # ... WHERE a=:1 AND b=:2
@@ -609,17 +616,20 @@ class DBAPIStorage(AccessPoint):
                         for i, part in enumerate(parts[:-1])]
             numbered.append(parts[-1])
             request = u''.join(numbered)
-            parameters = tuple(value for field_name, value in parameters)
+            parameters = tuple(p.value for p in parameters)
             
         elif style == 'named':
             # ... WHERE a=:name0 AND b=:name1
-            named = ['%s:name%i' % (part, i)
-                     for i, part in enumerate(parts[:-1])]
+            named = [
+                '%s:%s%i' % (part, param.name, i)
+                for i, (part, param)
+                in enumerate(zip(parts[:-1], parameters))
+            ]
             named.append(parts[-1])
             request = u''.join(named)
             parameters = dict(
-                             (u'name%i' % i, value)
-                             for i, (field_name, value)
+                             (u'%s%i' % (p.name, i), p.value)
+                             for i, p
                              in enumerate(parameters)
                          )
             
@@ -627,22 +637,20 @@ class DBAPIStorage(AccessPoint):
             # ... WHERE a=%s AND b=%d
             request = parts[0]
             for i, part in enumerate(parts[1:]):
-                name, value = parameters[i]
-                code = format_codes.get(type(value), u's')
+                code = u's'
                 request += u'%%%c%s' % (code, part)
-            parameters = tuple(value for field_name, value in parameters)
+            parameters = tuple(p.value for p in parameters)
                 
             
         elif style == 'pyformat':
             # ... WHERE a=%(name0)s AND a=%(name1)s
             request = parts[0]
-            for i, part in enumerate(parts[1:]):
-                name, value = parameters[i]
-                code = format_codes.get(type(value), u's')
-                request += u'%%(name%i)%c%s' % (i, code, part)
+            for i, (part, param) in enumerate(zip(parts[1:], parameters)):
+                code = u's'
+                request += u'%%(%s%i)%c%s' % (param.name, i, code, part)
             parameters = dict(
-                             (u'name%i' % i, value)
-                             for i, (field_name, value)
+                             (u'%s%i' % (p.name, i), p.value)
+                             for i, p
                              in enumerate(parameters)
                          )
 

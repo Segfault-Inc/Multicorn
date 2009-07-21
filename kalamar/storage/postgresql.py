@@ -137,10 +137,12 @@ else:
             }
             new_parameters = []
             #prop_name is the same as the column name
-            for prop_name, value in parameters:
-                if value is not None:
-                    column_type_code = int(description[prop_name]['type_code'])
+            for parameter in parameters:
+                if parameter.value is not None:
+                    column_type_code = int(
+                        description[parameter.name]['type_code']
+                    )
                     converter = conv_dict[column_type_code]
-                    value = converter(value)
-                new_parameters.append((prop_name, value))
+                    parameter.value = converter(parameter.value)
+                new_parameters.append(parameter)
             return new_parameters
