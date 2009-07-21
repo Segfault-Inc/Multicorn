@@ -2,9 +2,9 @@
 
 import warnings
 try:
-    from pyPgSQL import PgSQL
+    from pg8000 import dbapi
 except ImportError:
-    warnings.warn('PostgresSQL access not tested.')
+    warnings.warn('Can not import pg8000: PostgresSQL access not tested.')
 else:
     import os
     import sys
@@ -26,46 +26,21 @@ else:
         def setUp(self):
             self.site = site
             
-            #get an exclusive connection to drop tables
-            for ap in site.access_points.values():
-                ap.close_connection()
-                
-            connection = PgSQL.connect(
-                user='kalamar',
-                password='kalamar',
-                host='localhost',
-                database='kalamar'
-            )
+            # assume that all access points connect to the same base
+            connection = site.access_points.values()[0].get_connection()[0]
+            cursor = connection.cursor()
             try:
-                cursor = connection.cursor()
-                try:
-                    cursor.execute('DROP TABLE IF EXISTS textes;')
-                    cursor.execute('DROP TABLE IF EXISTS morceaux;')
-                    cursor.execute("""
-                        CREATE TABLE TEXTES (
-                            LIKE textes_bak
-                            INCLUDING DEFAULTS
-                            INCLUDING CONSTRAINTS
-                            INCLUDING INDEXES );"""
-                    )
-                    cursor.execute(
-                        'insert into textes select * from textes_bak;'
-                    )
-                    cursor.execute("""
-                        create table morceaux (
-                            like textes_bak
-                            INCLUDING DEFAULTS
-                            INCLUDING CONSTRAINTS
-                            INCLUDING INDEXES );"""
-                    )
-                    cursor.execute(
-                        'insert into morceaux select * from morceaux_bak;'
-                    )
-                    connection.commit()
-                finally:
-                    cursor.close()
+                cursor.execute('DELETE FROM textes;')
+                cursor.execute(
+                    'insert into textes select * from textes_bak;'
+                )
+                cursor.execute('DELETE FROM morceaux;')
+                cursor.execute(
+                    'insert into morceaux select * from morceaux_bak;'
+                )
+                connection.commit()
             finally:
-                connection.close()
+                cursor.close()
             
         def tearDown(self):
             pass
