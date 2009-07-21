@@ -594,15 +594,6 @@ class DBAPIStorage(AccessPoint):
         parameters = list(self._convert_parameters(parameters))
         description = self.get_table_description()
         
-        #used with 'format' and 'pyformat'
-#        format_codes = {
-#           # int: 'i',
-#           # long: 'i',
-#            str: u's', #
-#            unicode: u's'
-#           # float: 'f',
-#        }
-        
         parts = request.split('?')
         
         if style == 'qmark':
