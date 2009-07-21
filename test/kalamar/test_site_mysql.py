@@ -4,7 +4,8 @@ import warnings
 try:
     import MySQLdb
 except ImportError:
-    warnings.warn('MySQL access not tested.')
+    warnings.warn('MySQL access not tested. (Could not import MySQLdb)',
+                  stacklevel=2)
 else:
     import os
     import sys
@@ -18,6 +19,7 @@ else:
                                  TestSiteRemove
     from kalamar import Site
 
+    
     site = Site(os.path.join(os.path.dirname(__file__), 'data',
                 'kalamar_mysql.conf'))
 
@@ -26,21 +28,34 @@ else:
         def setUp(self):
             self.site = site
             
-        def tearDown(self):
-            connection = MySQLdb.connect(user='root', passwd='test',
-                                         host='localhost', db='test')
+            # assume that all access points connect to the same base
+            connection = site.access_points.values()[0].get_connection()[0]
             cursor = connection.cursor()
-            cursor.execute('drop table if exists textes;')
-            cursor.execute('drop table if exists morceaux;')
-
-            cursor.execute('create table textes like textes_bak;')
-            cursor.execute('insert textes select * from textes_bak;')
-            cursor.execute('create table morceaux like morceaux_bak;')
-            cursor.execute('insert morceaux select * from morceaux_bak;')
+            try:
+                cursor.execute('DELETE FROM textes;')
+                cursor.execute(
+                    'insert into textes select * from textes_bak;'
+                )
+                cursor.execute('DELETE FROM morceaux;')
+                cursor.execute(
+                    'insert into morceaux select * from morceaux_bak;'
+                )
+                connection.commit()
+            finally:
+                cursor.close()
     
-    # Magic tricks
-    for access_point in site.access_points:
-        for test in (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove):
-            cls = type(test.__name__+'_'+access_point, (TestSite, test, TestCase),
-                       {"access_point_name": access_point})
-            setattr(sys.modules[__name__], cls.__name__, cls)
+    try:
+        site.access_points.values()[0].get_connection()
+    except Exception:
+        warnings.warn('MySQL access not tested. '
+                      '(Could not connect to the database)', stacklevel=2)
+    else:
+        # Magic tricks
+        for access_point in site.access_points:
+            for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
+                         TestSiteRemove):
+                cls = type(test.__name__+'_'+access_point, 
+                           (TestSite, test, TestCase),
+                           {"access_point_name": access_point})
+                setattr(sys.modules[__name__], cls.__name__, cls)
+

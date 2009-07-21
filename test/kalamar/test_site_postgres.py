@@ -4,7 +4,8 @@ import warnings
 try:
     from pg8000 import dbapi
 except ImportError:
-    warnings.warn('Can not import pg8000: PostgresSQL access not tested.')
+    warnings.warn('PostgresSQL access not tested. (Could not import pg8000)',
+                  stacklevel=2)
 else:
     import os
     import sys
@@ -41,14 +42,19 @@ else:
                 connection.commit()
             finally:
                 cursor.close()
-            
-        def tearDown(self):
-            pass
-    
-    # Magic tricks
-    for access_point in site.access_points:
-        for test in (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove):
-            cls = type(test.__name__+'_'+access_point, (TestSite, test, TestCase),
-                       {"access_point_name": access_point})
-            setattr(sys.modules[__name__], cls.__name__, cls)
+
+    try:
+        site.access_points.values()[0].get_connection()
+    except Exception:
+        warnings.warn('PostgresSQL access not tested. '
+                      '(Could not connect to the database)', stacklevel=2)
+    else:
+        # Magic tricks
+        for access_point in site.access_points:
+            for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
+                         TestSiteRemove):
+                cls = type(test.__name__+'_'+access_point, 
+                           (TestSite, test, TestCase),
+                           {"access_point_name": access_point})
+                setattr(sys.modules[__name__], cls.__name__, cls)
 
