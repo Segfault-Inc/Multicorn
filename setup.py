@@ -6,7 +6,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(
-    name = 'Dyko"',
+    name = 'Dyko',
     version = '0.1',
     packages = find_packages(
         exclude=['*._test', '*._test.*', 'test.*', 'test']

@@ -45,15 +45,17 @@ class Site(object):
         storage.load()
 
         config = ConfigParser.RawConfigParser()
-
-        if not config.read(config_filename):
-            raise self.FileNotFoundError(config_filename)
-
-        basedir = os.path.dirname(config_filename)
+        
         self.access_points = {}
-        for section in config.sections():
-            kwargs = dict(config.items(section), basedir=basedir)
-            self.access_points[section] = storage.AccessPoint.from_url(**kwargs)
+        
+        # If no configuration file, no access_point !
+        if config_filename:
+            if not config.read(config_filename):
+                raise self.FileNotFoundError(config_filename)
+            basedir = os.path.dirname(config_filename)
+            for section in config.sections():
+                kwargs = dict(config.items(section), basedir=basedir)
+                self.access_points[section] = storage.AccessPoint.from_url(**kwargs)
     
     @staticmethod
     def parse_request(request):
