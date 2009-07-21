@@ -68,11 +68,6 @@ else:
                 
             return (self._connection, self._table)
         
-        def close_connection(self):
-            if hasattr(self, '_connection'):
-                self._connection.close()
-                del self._connection
-        
         def _get_primary_keys(self):
             """Return the list of the table primary keys.
             
