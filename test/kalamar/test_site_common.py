@@ -4,9 +4,28 @@ import os
 import time
 from kalamar import Item
 
-# There is some magic at the end of this file :-P
+class MyTest(object):
+    """This class is meant to work if co-inherited with unittest.TestCase
+    
+    When inheriting, this class must be declared before unittest.TestCase in the
+    parents list (i.e. sth like ChildClass(..., MyTest,...,TestCase, ...) )
+    
+    """
+    
+    def shortDescription(self):
+        """Override unittest.TestCase.shortDescription
+        
+        Return a custom one-line description of the test in the format
+        '(access_point_name) docstring' or None if no docstring.
+        
+        """
+        doc = super(MyTest, self).shortDescription()
+        if doc:
+            return '(%s) %s' % (self.access_point_name, doc)
+        else:
+            return None
 
-class TestSiteSearch(object):
+class TestSiteSearch(MyTest):
     
     def test_non_ascii(self):
         """Request with non ascii characters must be handled correctly."""
@@ -46,7 +65,7 @@ configuration."""
                                       u'S.O.B', u'alleluia',
                                       u'amen']))
 
-class TestSiteOpen(object):
+class TestSiteOpen(MyTest):
     
     def test_no_result(self):
         """Trying to open an item that does not exist must raise the exception \
@@ -71,7 +90,7 @@ class TestSiteOpen(object):
         self.assertRaises(self.site.MultipleObjectsReturned, self.site.open,
                           self.access_point_name, request)
 
-class TestSiteSave(object):
+class TestSiteSave(MyTest):
     
     def test_new_complete_item(self):
         """Saving a brad new item with all necessary properties set must \
@@ -180,7 +199,7 @@ unchanged.
                        u'genre=toto/artiste=Jesus\'harlem/' \
                        u'album=alleluia/titre=tata')
 
-class TestSiteRemove(object):
+class TestSiteRemove(MyTest):
     def test_remove(self):
         """A removed item must not be available any longer.
         
