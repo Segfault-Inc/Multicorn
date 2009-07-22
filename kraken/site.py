@@ -37,9 +37,11 @@ class Site(object):
     """
     
     def __init__(self, site_root, kalamar_conf=None):
-        self.site_root = unicode(site_root)
+        self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(site_root)
-        self.kalamar_site = kalamar.Site(kalamar_conf)
+        self.kalamar_site = kalamar.Site(
+            os.path.expanduser(unicode(kalamar_conf))
+        )
         self._module_cache = {}
     
     @utils.Request.application

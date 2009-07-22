@@ -81,14 +81,22 @@ class Site(object):
                 # No operator found
                 yield utils.Condition(None, None, part)
         
-    def search(self, access_point, request):
-        """List all items in "access_point" matching "request".
+    def isearch(self, access_point, request):
+        """Return a generator of all items in "access_point" matching "request".
         
         See "Site.parse_request" for the syntax of the "request" string.
 
         """
         conditions = self.parse_request(request)
         return self.access_points[access_point].search(conditions)
+    
+    def search(self, access_point, request):
+        """List all items in "access_point" matching "request".
+        
+        See "Site.parse_request" for the syntax of the "request" string.
+
+        """
+        return list(self.isearch(access_point, request))
     
     def open(self, access_point, request):
         """Return the item in access_point matching request.
@@ -97,7 +105,7 @@ class Site(object):
         If there is more than one result, raise "Site.MultipleObjectsReturned".
         
         """
-        search = iter(self.search(access_point, request))
+        search = iter(self.isearch(access_point, request))
         try:
             item = search.next()
         except StopIteration:

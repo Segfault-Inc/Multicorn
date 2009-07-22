@@ -363,10 +363,18 @@ class ItemProperties(MultiDict):
         keys.update(self._item.aliases.keys())
         return list(keys)
     
+    def keys_with_aliases(self):
+        # TODO test
+        return self._item.aliases.keys()
+    
     def keys_without_aliases(self):
         keys = set(self)
         keys.update(self.storage_properties.keys())
         return list(keys)
+    
+    def values(self):
+        # TODO test
+        return [self[key] for key in self.keys_without_aliases()]
     
     def update_parser_properties(self, properties):
         for key in properties:
