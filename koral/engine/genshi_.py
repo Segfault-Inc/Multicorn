@@ -26,21 +26,21 @@ except ImportError:
                   'GenshiEngine will not be available.')
 else:    
     class GenshiEngine(BaseEngine):
-        """Koral engine for Genshi: http://genshi.edgewall.org/
+        r"""Koral engine for Genshi: http://genshi.edgewall.org/
         
         >>> import koral.site, test.koral, os.path
         >>> path = os.path.join(os.path.dirname(test.koral.__file__), 'templates')
         >>> engine = koral.site.Site(path).engines['genshi']
-        >>> print engine.render('hello.genshi.html')
+        >>> engine.render('hello.genshi.html')
         ...   # doctest: +NORMALIZE_WHITESPACE
-        <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-                              "http://www.w3.org/TR/html4/strict.dtd">
-        <html><body>Hello, World!</body></html>
-        >>> print engine.render('hello.genshi.html', {'name': 'Python'})
+        u'<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+           "http://www.w3.org/TR/html4/strict.dtd">\n<html><body>Hello, 
+           World!</body></html>'
+        >>> engine.render('hello.genshi.html', {'name': 'Python'})
         ...   # doctest: +NORMALIZE_WHITESPACE
-        <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-                              "http://www.w3.org/TR/html4/strict.dtd">
-        <html><body>Hello, Python!</body></html>
+        u'<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">\n<html><body>Hello, 
+          Python!</body></html>'
         """
         
         name = 'genshi'
@@ -52,5 +52,6 @@ else:
             
         def render(self, template_name, values={}, lang=None, modifiers=None):
             """Render genshi template."""
-            template = self._loader.load(template_name)
-            return template.generate(**values).render('html', doctype='html')
+            stream = self._loader.load(template_name).generate(**values)
+            return u''.join(stream.serialize('html', doctype='html'))
+

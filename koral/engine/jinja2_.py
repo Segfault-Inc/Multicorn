@@ -31,10 +31,10 @@ else:
         >>> import koral.site, test.koral, os.path
         >>> path = os.path.join(os.path.dirname(test.koral.__file__), 'templates')
         >>> engine = koral.site.Site(path).engines['jinja2']
-        >>> print engine.render('hello.jinja2.html')
-        <html><body>Hello, World!</body></html>
-        >>> print engine.render('hello.jinja2.html', {'name': 'Python'})
-        <html><body>Hello, Python!</body></html>
+        >>> engine.render('hello.jinja2.html')
+        u'<html><body>Hello, World!</body></html>'
+        >>> engine.render('hello.jinja2.html', {'name': 'Python'})
+        u'<html><body>Hello, Python!</body></html>'
         """
         
         name = 'jinja2'

@@ -52,6 +52,19 @@ def find_TODOs(packages):
         if todo_count:
             yield filename, todo_count, todo_lines
 
+def print_TODOs(packages):
+    todos = list(find_TODOs(packages))
+    if not todos:
+        return # max() of an empty list raises an exception
+    width = max(len(module) for module, count, lines in todos)
+    for module, count, lines in todos:
+        print '%-*s' % (width, module), ':', count,
+        if count > 1:
+            print 'TODOs on lines',
+        else:
+            print 'TODO  on line ',
+        print ', '.join(str(line) for line in lines)
+
 def run_tests(packages, verbosity=1):
     unittest.TextTestRunner(verbosity=verbosity).run(get_tests(packages))
 
