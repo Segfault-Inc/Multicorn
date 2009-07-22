@@ -9,20 +9,10 @@ from werkzeug.serving import run_simple
 
 def action_runserver(kalamar_conf=('k', ''), root=('r', '.'),
                      hostname=('h', 'localhost'), port=('p', 5000),
-                     reloader=('r', False), debugger=('d', False),
+                     reloader=('l', False), debugger=('d', False),
                      evalex=('e', True), threaded=('t', False), processes=1):
-    """Start a Dyko server instance.
-    
-    If --kalamar_conf is not given, a default test server will be run with
-    --reloader and --debugger options.
-    If --kalamar_conf is given, a basic python server will be run
-    using this configuration.
-    
-    """
-    if kalamar_conf:
-        site = kraken.Site(root, kalamar_conf)
-    else:
-        site = kraken.Site(root)
+    """Start a Dyko server instance."""
+    site = kraken.Site(root, kalamar_conf)
     run_simple(hostname=hostname, port=port, application=site,
                 use_reloader=reloader, use_debugger=debugger,
                 use_evalex=evalex, processes=processes, threaded=threaded)
