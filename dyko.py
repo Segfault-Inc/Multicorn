@@ -7,7 +7,7 @@ import werkzeug.script
 import kraken
 from werkzeug.serving import run_simple
 
-def action_runserver(site_root=('s', '.'), kalamar_conf=('k', ''),
+def runserver(site_root=('s', '.'), kalamar_conf=('k', ''),
                      hostname=('h', 'localhost'), port=('p', 5000),
                      reloader=('r', False), debugger=('d', False),
                      evalex=('e', True), threaded=('t', False), processes=1):
