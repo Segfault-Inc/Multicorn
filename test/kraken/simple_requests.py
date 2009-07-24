@@ -43,6 +43,7 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
         self.assert_('Lorem ipsum dolor sit amet' in r.data)
+    
 
     def test_logo(self):
         r = self.client.get('/__logo/dyko.png')
@@ -82,4 +83,26 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         self.assertEqual(response.status_code, 304)
         self.assertEqual(response.data, '')
 
+class TestSession(KrakenSiteMixin, TestCase):
+    def setUp(self):
+        super(TestSession, self).setUp()
+        import os
+        import kraken.utils
+        kraken.utils.COOKIE_SECRET = os.urandom(20)
+
+    def test_session(self):
+        # get the default value
+        r1 = self.client.get('/session/')
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r1.data, repr(u'(no value)'))
+
+        # set the value
+        r2 = self.client.get('/session/blah/')
+        self.assertEqual(r2.status_code, 200)
+
+        # get again and check
+        r3 = self.client.get('/session/')
+        self.assertEqual(r3.status_code, 200)
+        self.assertEqual(r3.data, repr(u'blah'))
+        
 

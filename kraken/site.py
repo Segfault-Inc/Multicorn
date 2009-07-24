@@ -52,11 +52,20 @@ class Site(object):
         request.kalamar_site = self.kalamar_site
         try:
             if u'/__' in request.path:
-                return self.handle_static_file(request)
-            try:
-                return self.handle_simple_template(request)
-            except NotFound:
-                return self.handle_python(request)
+                response = self.handle_static_file(request)
+            else:
+                try:
+                    response = self.handle_simple_template(request)
+                except NotFound:
+                    response = self.handle_python(request)
+            # utils.Request.session is a werkzeug.cached_property
+            # the actual session object is in request.__dict__ if
+            # request.session has been accessed at least once.
+            # If it is not there, the session hasn’t changed:
+            # no need to set the cookie.
+            if 'session' in request.__dict__:
+                request.session.save_cookie(response)
+            return response
         except HTTPException, e:
             # e is also a WSGI application
             return e

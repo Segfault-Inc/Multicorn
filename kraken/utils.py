@@ -25,9 +25,14 @@ import datetime
 import inspect
 import mimetypes
 import werkzeug
+from werkzeug.contrib.securecookie import SecureCookie
+
+COOKIE_SECRET = None
 
 class Request(werkzeug.Request):
-    pass
+    @werkzeug.cached_property
+    def session(self):
+        return SecureCookie.load_cookie(self, secret_key=COOKIE_SECRET)
 
 class Response(werkzeug.Response):
     pass
