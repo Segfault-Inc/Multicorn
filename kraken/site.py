@@ -129,9 +129,18 @@ class Site(object):
     
         # Handle a simple template
         mimetype, encoding = mimetypes.guess_type(u'_.' + extension)
-        values = {'request': request}
+        values = self.simple_template_context(request)
         content = self.koral_site.engines[engine].render(template_name, values)
         return utils.Response(content, mimetype=mimetype)
+    
+    def simple_template_context(self, request):
+        return dict(
+            request=request,
+            site=dict(
+                kalamar=self.kalamar_site,
+                koral=self.koral_site,
+            )
+        )
 
     def load_python_module(self, name):
         """
