@@ -26,13 +26,20 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
                          '<html><body>Dyko root</body></html>')
 
     def test_hello(self):
-        r = self.client.get('/hello')
+        r = self.client.get('/hello/')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
         self.assertEqual(r.data, '<html><body>Hello, World!</body></html>')
 
+    def test_hello_redirect(self):
+        r = self.client.get('/hello?world')
+        self.assertEqual(r.status_code, 301)
+        self.assertEqual(r.headers['Location'], 'http://localhost/hello/?world')
+        self.assert_('redirect' in r.data.lower())
+        self.assert_('http://localhost/hello/?world' in r.data)
+
     def test_lipsum(self):
-        r = self.client.get('/lorem/ipsum')
+        r = self.client.get('/lorem/ipsum/')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
         self.assert_('Lorem ipsum dolor sit amet' in r.data)
