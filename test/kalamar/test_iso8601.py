@@ -66,7 +66,7 @@ class TestISO8601(unittest.TestCase):
         assert d.tzinfo == iso8601.UTC
 
     def test_parse_date_tz(self):
-        d = iso8601.parse_date("2006-10-20T15:34:56.123+02:30")
+        d = iso8601.parse_date("2006-10-20T15:34:56.123-02:30")
         assert d.year == 2006
         assert d.month == 10
         assert d.day == 20
@@ -74,10 +74,10 @@ class TestISO8601(unittest.TestCase):
         assert d.minute == 34
         assert d.second == 56
         assert d.microsecond == 123000
-        assert d.tzinfo.tzname(None) == "+02:30"
+        assert d.tzinfo.tzname(None) == "-02:30"
         offset = d.tzinfo.utcoffset(None)
-        assert offset.days == 0
-        assert offset.seconds == 60 * 60 * 2.5
+        assert offset.days == -1
+        assert offset.seconds == 60 * 60 * (24 - 2.5)
 
     def test_parse_invalid_date(self):
         try:
