@@ -24,6 +24,7 @@ import os.path
 import collections
 import mimetypes
 import re
+import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound
 
 import kalamar
@@ -59,7 +60,18 @@ class Site(object):
         except HTTPException, e:
             # e is also a WSGI application
             return e
-    
+
+    def handle_trailing_slash(self, request):
+        """
+        If request.path has no trailing slash, raise a HTTPException to redirect
+        """    
+        if not request.path.endswith(u'/'):
+            # Add the missing trailing slash
+            new_url = request.base_url + '/'
+            if request.query_string:
+                new_url += '?' + request.query_string
+            werkzeug.abort(werkzeug.redirect(new_url, 301))
+        
     def handle_static_file(self, request):
         """
         Try handling a request with a static file.
@@ -97,6 +109,9 @@ class Site(object):
                 handler = module['handle_request']
                 # the 2 parameters case is handled later
                 if utils.arg_count(handler) == 1:
+                    # only if the controller exists
+                    # (ie the redirect doesn’t lead to a "404 Not Found")
+                    self.handle_trailing_slash(request)
                     return handler(request)
         
         # slash-separated parts of the URL
@@ -110,6 +125,9 @@ class Site(object):
                 if 'handle_request' in module:
                     handler = module['handle_request']
                     if utils.arg_count(handler) > 1:
+                        # only if the controller exists
+                        # (ie the redirect doesn’t lead to a "404 Not Found")
+                        self.handle_trailing_slash(request)
                         return handler(request, u'/'.join(path_info))
             # take the right-most part of script_name and push it to the
             # left of path_info
@@ -125,13 +143,25 @@ class Site(object):
         template = self.find_template(request.path)
         if not template:
             raise NotFound
+        # only if the template exists
+        # (ie the redirect doesn’t lead to a "404 Not Found")
+        self.handle_trailing_slash(request)
         template_name, extension, engine = template
     
         # Handle a simple template
         mimetype, encoding = mimetypes.guess_type(u'_.' + extension)
-        values = {'request': request}
+        values = self.simple_template_context(request)
         content = self.koral_site.engines[engine].render(template_name, values)
         return utils.Response(content, mimetype=mimetype)
+    
+    def simple_template_context(self, request):
+        return dict(
+            request=request,
+            site=dict(
+                kalamar=self.kalamar_site,
+                koral=self.koral_site,
+            )
+        )
 
     def load_python_module(self, name):
         """
