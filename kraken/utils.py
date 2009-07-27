@@ -25,9 +25,63 @@ import datetime
 import inspect
 import mimetypes
 import werkzeug
+import urlparse
+import posixpath
 from werkzeug.contrib.securecookie import SecureCookie
 
 COOKIE_SECRET = None
+
+def make_absolute_url(request, url):
+    """
+    # fake request for http://localhost/foo/
+    >>> request = Request(werkzeug.create_environ(path='/foo/'))
+    
+    >>> make_absolute_url(request, 'http://localhost/foo/bar/')
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, '/foo/bar/')
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, './bar/')
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, 'bar/')
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, '../bar/')
+    'http://localhost/bar/'
+
+    # Same tests without the trailing slash
+    >>> make_absolute_url(request, 'http://localhost/foo/bar')
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, '/foo/bar')
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, './bar')
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, 'bar')
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, '../bar')
+    'http://localhost/bar'
+    """
+    parsed = urlparse.urlparse(url)
+    if parsed.scheme and parsed.netloc:
+        return url
+    if not url.startswith('/'):
+        path = request.base_url[len(request.host_url):]
+        url = '/' + path + '/' + url
+    new_url = request.host_url.rstrip('/') + posixpath.normpath(url)
+    # posixpath.normpath always remove trailing slashes
+    if url.endswith('/'):
+        new_url += '/'
+    return new_url
+
+def redirect(request, url, status=302):
+    """
+    >>> @Request.application
+    ... def test_app(request):
+    ...     return redirect(request, request.args['redirect_to'],
+    ...                     int(request.args.get('status', 302)))
+    >>> client = werkzeug.Client(test_app)
+    >>> client.get('/foo?redirect_to=../bar') # doctest: +ELLIPSIS
+    (..., '302 FOUND', [...('Location', 'http://localhost/bar')...)
+    """
+    return werkzeug.redirect(make_absolute_url(request, url), status)
 
 class Request(werkzeug.Request):
     @werkzeug.cached_property
