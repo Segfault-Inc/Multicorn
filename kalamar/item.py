@@ -94,8 +94,6 @@ class Item(object):
             - "properties": dictionnary or MultiDict of the item properties.
               These properties must be coherent with what is defined for the
               access point.
-            - "create_content": if True, create raw data in the "_content"
-              property. This may be longer.
         
         Fixture
         >>> from _test.corks import CorkAccessPoint, cork_opener

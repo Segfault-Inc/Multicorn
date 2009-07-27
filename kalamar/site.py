@@ -25,7 +25,7 @@ Create one for each independent site with its own configuration.
 import os
 import ConfigParser
 
-from kalamar import storage, utils
+from kalamar import storage, utils, Item
 
 class Site(object):
     """Kalamar site."""
@@ -125,3 +125,23 @@ class Site(object):
     def remove(self, item):
         """Remove/delete the item from the backend storage."""
         return item._access_point.remove(item)
+    
+    def create_item(self, access_point_name, properties):
+        """Return an item.
+        
+        TODO document & test
+        """
+        access_point = self.access_points[access_point_name]
+        return Item.create_item(access_point, properties)
+    
+    def get_description(self, access_point_name):
+        """Return a tuple of strings or None.
+        
+        Return the keys defined in configuration or None if "access_point_name"
+        does not exist.
+        
+        TODO test
+        """
+        access_point = self.access_points[access_point_name]
+        return access_point.property_names
+
