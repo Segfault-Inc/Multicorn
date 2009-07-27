@@ -32,6 +32,22 @@ class Request(werkzeug.Request):
 class Response(werkzeug.Response):
     pass
 
+class RedirectResponse(Response):
+    def __init__(self, location, status=302):
+        content = """
+<html>
+    <head>
+        <title>Redirection</title>
+    </head>
+    <body>
+        Redirect to <a href="%s">%s</a>
+    </body>
+</html>
+        """ % (location, location)
+        super(Response, self).__init__(content, status=status)
+        # handled by werkzeug.CommonResponseDescriptorsMixin
+        self.location = location
+
 class StaticFileResponse(object):
     """
     Respond with a static file, guessing the mimitype from the filename,

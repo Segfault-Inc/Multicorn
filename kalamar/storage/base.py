@@ -27,7 +27,17 @@ from kalamar import utils
 from kalamar.item import Item
 
 class AccessPoint(object):
-    """Abstact class for all storage backends."""
+    """Abstract class for all storage backends.
+    
+    Attributes:
+        - config: a dictionnary of the access point configuration.
+        - default_encoding: default character encoding used if the parser does
+          not have one. Read-only attribute.
+        - property_names: properties defined in the access_point configuration.
+        - url: where the data is available.
+        - basedir: directory from where relatives pathes should start.
+    
+    """
     
     @classmethod
     def from_url(cls, **config):
