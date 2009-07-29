@@ -21,11 +21,13 @@ Storage module listing all storage access points.
 """
 
 import os
+import werkzeug
 
 from kalamar.storage.base import AccessPoint
 
 def load():
-    """Import all python files in the "storage" folder."""
-    for filename in os.listdir(os.path.dirname(__file__)):
-        if filename.endswith('.py') and not filename.startswith('_'):
-            __import__(__name__ + '.' + filename[:-3])
+    """Import all python files in the "engine" folder."""
+    for module in werkzeug.find_modules(__name__, include_packages=True,
+                                        recursive=True):
+        werkzeug.import_string(module)
+
