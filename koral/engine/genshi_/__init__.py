@@ -21,10 +21,11 @@ from koral.engine.base import BaseEngine
 
 try:
     from genshi.template import TemplateLoader
+    import genshi.input
 except ImportError:
     warnings.warn('Can not import genshi. '
                   'GenshiEngine will not be available.')
-else:    
+else:
     class GenshiEngine(BaseEngine):
         r"""Koral engine for Genshi: http://genshi.edgewall.org/
         
@@ -52,8 +53,12 @@ else:
             
         def render(self, template_name, values={}, lang=None, modifiers=None):
             """Render genshi template."""
+            values = self.make_values(values)
             stream = self._loader.load(template_name).generate(**values)
             return u''.join(stream.serialize('html', doctype='html'))
+        
+        def make_values(self, values):
+            return dict(values, XML=genshi.input.XML)
         
         @property
         def items_file_path(self):
