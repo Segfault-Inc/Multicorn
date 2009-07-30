@@ -20,11 +20,18 @@ class KoralItems():
       xmlns:ko="http://koral.dyko.org"
       py:strip="">
       
+      <py:match path="head" once="true">
+          <head py:attrs="select('@*')">
+          ${select('./*')}
+          </head>
+      </py:match>
+      
       <py:match path="body" once="true">
           <body py:attrs="select('@*')">
-          ${select('*')}
+          ${select('./*')}
           </body>
       </py:match>
+      
       <!--! Do not remove this line !-->
       <xi:include py:for="item in KoralItems.find_items()" href="$item" />
 </html>
