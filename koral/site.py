@@ -23,6 +23,7 @@ Create one for each independent site.
 """
 
 from koral import engine, utils
+import os
 
 class Site(object):
     """Koral site."""
@@ -36,4 +37,11 @@ class Site(object):
         for subclass in utils.recursive_subclasses(engine.BaseEngine):
             if getattr(subclass, 'name', None):
                 self.engines[subclass.name] = subclass(self.path_to_root)
+    
+    def render(self, engine, *args, **kwargs):
+        """Shorthand to the engine render method.
+        
+        TODO test & doc
+        """
+        return self.engines[engine].render(*args, **kwargs)
 

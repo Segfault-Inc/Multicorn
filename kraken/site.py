@@ -25,7 +25,7 @@ import collections
 import mimetypes
 import re
 import werkzeug
-from werkzeug.exceptions import HTTPException, NotFound
+from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 
 import kalamar
 import koral
@@ -48,12 +48,16 @@ class Site(object):
     @utils.Request.application
     def __call__(self, request):
         """WSGI entry point for every HTTP request"""
-        request.koral_site = self.koral_site
-        request.kalamar_site = self.kalamar_site
+        request.koral = self.koral_site
+        request.kalamar = self.kalamar_site
         try:
+            response = None
             if u'/__' in request.path:
-                response = self.handle_static_file(request)
-            else:
+                try:
+                    response = self.handle_static_file(request)
+                except NotFound:
+                    pass
+            if not response:
                 try:
                     response = self.handle_simple_template(request)
                 except NotFound:
@@ -87,6 +91,8 @@ class Site(object):
         The request path is interpreted as a filename relative to the site root.
         Return a Response object or raise NotFound.
         """
+        if u'/.' in request.path:
+            raise Forbidden
         filename = os.path.join(self.site_root, *(
             part for part in request.path.split(u'/')
             if part and part != u'..'
@@ -120,6 +126,8 @@ class Site(object):
                 if utils.arg_count(handler) == 1:
                     # only if the controller exists
                     # (ie the redirect doesn’t lead to a "404 Not Found")
+                    if u'/.' in request.path:
+                        raise Forbidden
                     self.handle_trailing_slash(request)
                     return handler(request)
         
@@ -136,6 +144,9 @@ class Site(object):
                     if utils.arg_count(handler) > 1:
                         # only if the controller exists
                         # (ie the redirect doesn’t lead to a "404 Not Found")
+                        for part in script_name:
+                            if part.startswith(u'.'):
+                                raise Forbidden
                         self.handle_trailing_slash(request)
                         return handler(request, u'/'.join(path_info))
             # take the right-most part of script_name and push it to the
@@ -149,6 +160,8 @@ class Site(object):
         Try handling a request with only a template
         Return a Response object or raise NotFound
         """
+        if u'/.' in request.path:
+            raise Forbidden
         template = self.find_template(request.path)
         if not template:
             raise NotFound

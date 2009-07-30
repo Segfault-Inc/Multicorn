@@ -195,6 +195,7 @@ class DBAPIStorage(AccessPoint):
         filtered = list(self._filter_result(dict_lines, python_condition))
         
         # Convert all properties to strings
+        # TODO change this. See http://trac.dyko.org/ticket/4
         def lines_to_string(lines):
             for line in lines:
                 for key in line:

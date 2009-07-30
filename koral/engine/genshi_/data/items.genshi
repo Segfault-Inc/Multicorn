@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<?python
+import os
+
+class KoralItems():
+    @staticmethod
+    def find_items():
+        """Return a generator of pathes."""
+        parts = request.path.split(os.path.sep)
+        for i in range(len(parts) - 1):
+            path = os.path.join(request.koral.path_to_root, *parts[:i+1] )
+            path = os.path.join(path, '.items', 'items.genshi')
+            path = os.path.normpath(path)
+            if os.path.isfile(path):
+                yield path
+?>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:py="http://genshi.edgewall.org/"
+      xmlns:ko="http://koral.dyko.org"
+      py:strip="">
+      
+      <py:match path="body" once="true">
+          <body py:attrs="select('@*')">
+          ${select('*')}
+          </body>
+      </py:match>
+      <!--! Do not remove this line !-->
+      <xi:include py:for="item in KoralItems.find_items()" href="$item" />
+</html>
+
