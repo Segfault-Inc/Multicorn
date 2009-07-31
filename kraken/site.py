@@ -177,12 +177,13 @@ class Site(object):
         return utils.Response(content, mimetype=mimetype)
     
     def simple_template_context(self, request):
+        class Site: pass
+        site = Site()
+        site.kalamar = self.kalamar_site
+        site.koral = self.koral_site
         return dict(
             request=request,
-            site=dict(
-                kalamar=self.kalamar_site,
-                koral=self.koral_site,
-            )
+            site=site,
         )
 
     def load_python_module(self, name):
