@@ -380,9 +380,10 @@ class ItemProperties(MultiDict):
 
     def __getitem__(self, key):
         """Return the item "key" property."""
+        # Lazy load: load item only when needed
         if not self._loaded:
-            self._loaded = True
             self._item._parse_data()
+            self._loaded = True
         # Aliasing
         key = self._item.aliases.get(key, key)
         if key in self.storage_properties.keys():
