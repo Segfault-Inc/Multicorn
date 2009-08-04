@@ -55,7 +55,7 @@ else:
             """Render genshi template."""
             values = self.make_values(values)
             stream = self._loader.load(template_name).generate(**values)
-            return u''.join(stream.serialize('html', doctype='html'))
+            return stream.render(method='xhtml', encoding=None, doctype='xhtml')
         
         def make_values(self, values):
             return dict(values, XML=genshi.input.XML)
