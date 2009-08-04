@@ -61,8 +61,8 @@ class AccessPoint(object):
         self.default_encoding = config.get('default_encoding', 'utf-8')
         for prop in 'storage_aliases', 'parser_aliases':
             setattr(self, prop, [
-                    tuple(part.split('=', 1))
-                    for part in config.get(prop, '').split('/') if '=' in part
+                    tuple(part.split('=', 1)) if '=' in part else (part, part)
+                    for part in config.get(prop, '').strip().split('/') if part
                     ])
         self.property_names = [name for name, alias
                                in self.storage_aliases + self.parser_aliases]
