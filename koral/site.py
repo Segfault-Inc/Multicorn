@@ -38,7 +38,7 @@ class Site(object):
             if getattr(subclass, 'name', None):
                 self.engines[subclass.name] = subclass(self.path_to_root)
     
-    def render(self, engine, *args, **kwargs):
+    def render(self, engine, template_name, values={}, lang=None, modifiers=None):
         """Shorthand to the engine render method.
         
         TODO test & doc

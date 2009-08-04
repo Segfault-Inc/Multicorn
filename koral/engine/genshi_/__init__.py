@@ -34,14 +34,14 @@ else:
         >>> engine = koral.site.Site(path).engines['genshi']
         >>> engine.render('hello.genshi.html')
         ...   # doctest: +NORMALIZE_WHITESPACE
-        u'<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-           "http://www.w3.org/TR/html4/strict.dtd">\n<html><body>Hello, 
-           World!</body></html>'
+        u'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n<html><body>Hello,
+        World!</body></html>'
         >>> engine.render('hello.genshi.html', {'name': 'Python'})
         ...   # doctest: +NORMALIZE_WHITESPACE
-        u'<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">\n<html><body>Hello, 
-          Python!</body></html>'
+        u'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n<html><body>Hello,
+        Python!</body></html>'
         """
         
         name = 'genshi'
@@ -59,15 +59,5 @@ else:
         
         def make_values(self, values):
             return dict(values, XML=genshi.input.XML)
-        
-        @property
-        def items_file_path(self):
-            if not hasattr(self, '_items_file_path'):
-                self._items_file_path = os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    'data',
-                    'items.genshi'
-                )
-            return self._items_file_path
             
 
