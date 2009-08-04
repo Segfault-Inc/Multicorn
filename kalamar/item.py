@@ -394,6 +394,9 @@ class ItemProperties(MultiDict):
             except KeyError:
                 return None
     
+    # Allow item.properties.prop_name syntax
+    __getattr__ = __getitem__
+    
     def __setitem__(self, key, value):
         """Set the item "key" property to "value"."""
         # Aliasing
