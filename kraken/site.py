@@ -50,6 +50,7 @@ class Site(object):
         """WSGI entry point for every HTTP request"""
         request.koral = self.koral_site
         request.kalamar = self.kalamar_site
+        request.kraken = self
         try:
             response = None
             if u'/__' in request.path:
@@ -183,6 +184,7 @@ class Site(object):
         site = Site()
         site.kalamar = self.kalamar_site
         site.koral = self.koral_site
+        site.kraken = self
         return dict(
             request=request,
             site=site,
