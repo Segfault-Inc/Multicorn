@@ -21,6 +21,27 @@ Kalamar various utils.
 
 import operator
 import re
+import functools
+
+def apply_to_result(function):
+    """
+    Make a decorator that applies the given ``function`` to the results.
+    
+    >>> @apply_to_result(list)
+    ... def foo():
+    ...     "A generator"
+    ...     yield 'bar'
+    >>> foo.__doc__
+    'A generator'
+    >>> foo()
+    ['bar']
+    """
+    def _decorator(f):
+        @functools.wraps(f)
+        def _decorated(*args, **kwargs):
+            return function(f(*args, **kwargs))
+        return _decorated
+    return _decorator
 
 def re_match(string, pattern):
     """Return if "string" matches "pattern"."""

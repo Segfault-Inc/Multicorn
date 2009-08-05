@@ -27,16 +27,12 @@ import os
 import glob
 import re
 import itertools
+import functools
+import werkzeug
 
+from kalamar import utils
 from kalamar.storage.base import AccessPoint
 
-class FileOpener(object):
-    def __init__(self, filename):
-        self.filename = filename
-
-    def __call__(self):
-        return open(self.filename, 'rb')
-        
 
 class FileSystemStorage(AccessPoint):
     """Store items in files."""
@@ -58,13 +54,7 @@ class FileSystemStorage(AccessPoint):
             self.basedir,
             self.url[len(self.__class__.protocol + '://'):]))
 
-        index = 1
         self.filename_format = config.get('filename_format', '*')
-        self.filename_parts_pattern = []
-        for part in self.filename_format.split('/'):
-            pattern = self._pattern_to_regexp(part, index)
-            index += len(pattern.groupindex)
-            self.filename_parts_pattern.append(pattern)
     
     def get_storage_properties(self):
         """Return a list of the properties used for the storage.
@@ -165,14 +155,15 @@ class FileSystemStorage(AccessPoint):
         r"""Transform a standard pattern with wildcards into a regexp object.
 
         >>> re_ = FileSystemStorage._pattern_to_regexp(u'[*] * - *.txt', 3)
+        >>> print re_
+        ^\[(?P<path3>.*)\]\ (?P<path4>.*)\ \-\ (?P<path5>.*)\.txt$
+        >>> re_ = re.compile(re_)
         >>> re_ # doctest: +ELLIPSIS
         <_sre.SRE_Pattern object at 0x...>
         >>> re_.match(u'[au!] ... - .txt').groups()
         (u'au!', u'...', u'')
         >>> # Missing ' ' after ']'
         >>> assert re_.match(u'[au!]... - Ô.txt') is None
-        >>> print re_.pattern
-        ^\[(?P<path3>.*)\]\ (?P<path4>.*)\ \-\ (?P<path5>.*)\.txt$
 
         """
         def regexp_parts():
@@ -184,7 +175,7 @@ class FileSystemStorage(AccessPoint):
                 yield re.escape(part)
             yield '$'
 
-        return re.compile(''.join(regexp_parts()))
+        return ''.join(regexp_parts())
     
     def _storage_search(self, conditions):
         """Generate (properties, file_opener) for all files matching conditions.
@@ -202,7 +193,8 @@ class FileSystemStorage(AccessPoint):
         ...     if properties['path1'] != 'storage'])
         0
         >>> len([1 for properties, opener in ap._storage_search(request)
-        ...     if properties == {'path1': 'storage', 'path2': 'filesystem'}])
+        ...     if (properties['path1'], properties['path2']) == 
+        ...        ('storage', 'filesystem')])
         1
         >>> request = Site.parse_request('path1=parser/path2~=item$')
         >>> results = [properties['path2']
@@ -249,10 +241,12 @@ class FileSystemStorage(AccessPoint):
                             if not pattern_parts:
                                 # This is a file and the filename
                                 # pattern is completed
-                                yield properties, FileOpener(
-                                    self._real_filename(path))
+                                filename = self._real_filename(path)
+                                properties[u'_filename'] = filename
+                                yield properties, functools.partial(
+                                    self.open_file, path)
         
-        return walk(u'', self.filename_parts_pattern, ())
+        return walk(u'', self.filename_pattern_parts, ())
             
     
     def _path_from_properties(self, properties):
@@ -302,4 +296,59 @@ class FileSystemStorage(AccessPoint):
         """Remove the given item from the backend storage."""
         self.remove_file(self._path_from_properties(
             item.properties.storage_properties_old))
+    
+    @werkzeug.cached_property
+    @utils.apply_to_result(list)
+    def filename_regexp_parts(self):
+        index = 1
+        for part in self.filename_format.split('/'):
+            yield self._pattern_to_regexp(part, index)
+            index += part.count('*')
+    
+    @werkzeug.cached_property
+    def filename_pattern_parts(self):
+        return [re.compile(part) for part in self.filename_regexp_parts]
+    
+    
+    def _filename_re(self):
+        """
+        >>> ap = AccessPoint.from_url(url=u'file://foo', 
+        ...                           filename_format=u'*/*.py')
+        >>> print ap.filename_re.pattern
+        ^foo\/(?P<path1>.*)\/(?P<path2>.*)\.py$
+        """
+        return re.compile('^' + re.escape(self.root + os.sep) +
+            re.escape(os.sep).join(
+                part[1:-1] # removet ^ and $
+                for part in self.filename_regexp_parts
+            ) + '$')
+    
+    # keep _filename_re accessible so that it’s doctest is run
+    filename_re = werkzeug.cached_property(_filename_re)
+
+    def item_from_filename(self, filename):
+        """
+        Search for an item matching this filename.
+
+        >>> dirname, module = os.path.split(__file__)
+        >>> dirname, package = os.path.split(dirname)
+        >>> ap = AccessPoint.from_url(url='file://%s' % dirname,
+        ...                           filename_format='*/*.py', parser='text')
+        >>> item = ap.item_from_filename(os.path.normpath(
+        ...     os.path.splitext(__file__)[0] + '.py'
+        ... ))
+        >>> item # doctest: +ELLIPSIS
+        <kalamar.parser.textitem.TextItem object at 0x...>
+        >>> item.properties['path1']
+        'storage'
+        >>> item.properties['path2']
+        'filesystem'
+        """
+        match = self.filename_re.match(filename)
+        if not match:
+            return None
+        properties = match.groupdict()
+        properties[u'_filename'] = filename
+        return self._make_item(properties,
+                               functools.partial(open, filename, 'rb'))
 

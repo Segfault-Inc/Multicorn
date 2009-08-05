@@ -27,6 +27,7 @@ import ConfigParser
 
 from kalamar import storage, utils, Item
 
+
 class Site(object):
     """Kalamar site."""
     class NotOneObjectReturned(Exception): pass
@@ -54,7 +55,7 @@ class Site(object):
                 raise self.FileNotFoundError(config_filename)
             basedir = os.path.dirname(config_filename)
             for section in config.sections():
-                kwargs = dict(config.items(section), basedir=basedir)
+                kwargs = dict(config.items(section), basedir=basedir, site=self)
                 self.access_points[section] = storage.AccessPoint.from_url(**kwargs)
     
     @staticmethod
@@ -144,4 +145,15 @@ class Site(object):
         """
         access_point = self.access_points[access_point_name]
         return access_point.property_names
+    
+    def item_from_filename(self, filename):
+        """
+        Search all access points for an item matching this filename.
+        Return the first item found or None.
+        """
+        for ap in self.access_points.values():
+            item = ap.item_from_filename(filename)
+            if item and item is not NotImplemented:
+                return item
+
 
