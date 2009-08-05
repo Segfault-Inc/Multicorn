@@ -58,6 +58,7 @@ class AccessPoint(object):
     def __init__(self, **config):
         """Common instance initialisation."""
         self.config = config
+        self.site = config.get('site')
         self.default_encoding = config.get('default_encoding', 'utf-8')
         for prop in 'storage_aliases', 'parser_aliases':
             setattr(self, prop, [
@@ -137,14 +138,17 @@ class AccessPoint(object):
                 parser_conditions.append(condition)
         
         for properties, opener in self._storage_search(storage_conditions):
-            item = Item.get_item_parser(self.config['parser'], self,
-                                        opener, properties)
+            item = self._make_item(properties, opener)
             
             for condition in parser_conditions:
                 if not condition(item.properties):
                     break
             else:
                 yield item
+    
+    def _make_item(self, properties, opener):
+        return Item.get_item_parser(self.config['parser'], self, opener,
+                                    properties)
     
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).
@@ -182,4 +186,13 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError('Abstract method')
+
+    def item_from_filename(self, filename):
+        """
+        Search for an item matching this filename.
+        
+        Storage that do not store items if files should leave this
+        implementation that return the NotImplemented constant
+        """
+        return NotImplemented
 
