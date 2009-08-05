@@ -120,7 +120,8 @@ class Site(object):
         """
         # search for foo/bar.py or foo/bar/index.py
         for suffix in (u'', u'/index'):
-            module = self.load_python_module(request.path.strip(u'/') + suffix)
+            module_path = request.path.strip(u'/') + suffix
+            module = self.load_python_module(module_path)
             if 'handle_request' in module:
                 handler = module['handle_request']
                 # the 2 parameters case is handled later
@@ -129,6 +130,7 @@ class Site(object):
                     # (ie the redirect doesn’t lead to a "404 Not Found")
                     if u'/.' in request.path:
                         raise Forbidden
+                    request.module_directory = os.path.dirname(module_path)
                     self.handle_trailing_slash(request)
                     return handler(request)
         
