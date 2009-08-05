@@ -207,13 +207,13 @@ class Item(object):
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
         
-        This method has to be overriden.
+        This method has to be extended.
 
         This method must not worry about aliases, must not modify "properties",
-        and must just return a dict.
+        and must just use super() and update and return the MultiDict.
 
         """
-        raise NotImplementedError("Abstract method")
+        return MultiDict()
     
     def _open(self):
         """Open the stream when called for the first time.
@@ -254,19 +254,28 @@ class AtomItem(Item):
     
     def _custom_parse_data(self):
         """Parse the whole item content."""
-        return MultiDict({'_content': self._stream.read()})
+        properties = super(AtomItem, self)._custom_parse_data()
+        properties['_content'] = self._stream.read()
+        return properties
         
     def _custom_serialize(self, properties):
         """Return the item content."""
         return properties['_content']
 
-class CapsuleItem(Item, list):
+class CapsuleItem(Item):
     """An ordered list of Items (atoms or capsules).
 
     This is an abstract class.
 
     """
-    pass
+    @property
+    def subitems(self):
+        if not hasattr(self, '_subitem'):
+            self._subitems = list(self._load_subitems())
+        return self._subitems
+        
+    def _load_subitems(self):
+        raise NotImplementedError("Abstract class")
 
 class ItemProperties(MultiDict):
     """MultiDict with a default value, used as a properties storage.

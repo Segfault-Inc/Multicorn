@@ -27,14 +27,16 @@ except ImportError:
     warnings.warn('Can not import docutils. '
                   'RestItem will not be available.')
 else:
-    from kalamar.item import AtomItem
+    from kalamar.item import AtomItem, CapsuleItem
+    
     import re
+    import os.path
     
     def extract_includes(text):
         r"""
         Return a list of included filenames in the given ReST string.
         
-        >>> extract_includes(u'''
+        >>> list(extract_includes(u'''
         ... ===============
         ... A test document
         ... ===============
@@ -48,10 +50,11 @@ else:
         ... .. include:: foo/bar.rst
         ... .. .. include:: commented.rst
         ... 
-        ... ''')
+        ... '''))
         [u'nonexistent.rst', u'foo/bar.rst']
         """
-        return [match.group(1) for match in extract_includes._re.finditer(text)]
+        for match in extract_includes._re.finditer(text):
+            yield match.group(1)
     extract_includes._re = re.compile(u'^\s*.. include::\s+(\S+)\s*$',
                                       re.MULTILINE)
         
@@ -109,7 +112,7 @@ else:
         fields[u'title'] = title
         return fields
 
-    class RestItem(AtomItem):
+    class RestAtom(AtomItem):
         """TODO docstring
 
         """
@@ -117,9 +120,44 @@ else:
         
         def _custom_parse_data(self):
             """Parse docutils metadata as properties."""
-            properties = super(RestItem, self)._custom_parse_data()
+            properties = super(RestAtom, self)._custom_parse_data()
             properties.update(extract_metadata(properties['_content']))
             return properties
+        
+    class MissingItem(object):
+        """
+        Placeholder in RestCapsule subitems used when an ``include`` directive
+        has a filename that matches no item in the current site.
+        """
+        def __init__(self, filename):
+            self.filename = filename
+        
+        def __repr__(self):
+            return '<%s %r>' % (self.__class__.__name__, self.filename)
+        
+    class RestCapsule(CapsuleItem):
+        """TODO docstring
+
+        """
+        format = 'rest_capsule'
+        
+        def _custom_parse_data(self):
+            """Parse docutils metadata as properties."""
+            properties = super(RestCapsule, self)._custom_parse_data()
+            self._open()
+            self._stream.seek(0)
+            properties.update(extract_metadata(self._stream.read()))
+            return properties
+        
+        def _load_subitems(self):
+            self._open()
+            self._stream.seek(0)
+            for include in extract_includes(self._stream.read()):
+                filename = os.path.join(self.properties[u'_filename'],
+                                        os.path.normpath(include))
+                item = self._access_point.site.item_from_filename(filename)
+                # item is None if no access point has this filename
+                yield item or MissingItem(include)
         
 
 
