@@ -59,11 +59,18 @@ class AccessPoint(object):
         """Common instance initialisation."""
         self.config = config
         self.default_encoding = config.get('default_encoding', 'utf-8')
-        for prop in 'storage_aliases', 'parser_aliases':
-            setattr(self, prop, [
-                    tuple(part.split('=', 1)) if '=' in part else (part, part)
-                    for part in config.get(prop, '').strip().split('/') if part
-                    ])
+        self.storage_aliases = [
+            tuple(part.split('=', 1)) if '=' in part else (part, part)
+            for part
+            in config.get('storage_aliases', '').strip().split('/')
+            if part
+        ]
+        self.parser_aliases = [
+            tuple(part.split('=', 1)) if '=' in part else (part, part)
+            for part
+            in config.get('parser_aliases', '').strip().split('/')
+            if part
+        ]
         self.property_names = [name for name, alias
                                in self.storage_aliases + self.parser_aliases]
         self.url = config['url']
