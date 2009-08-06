@@ -102,13 +102,11 @@ else:
             # Break when we found them both
             if isinstance(element, docutils.nodes.title):
                 title = unicode(element[0])
-                if fields:
-                    break
             elif isinstance(element, docutils.nodes.field_list):
                 for field_name, field_body in element:
                     fields[field_name.astext()] = field_body.astext()
-                if title:
-                    break
+            if fields and title:
+                break
         fields[u'title'] = title
         return fields
 
