@@ -106,6 +106,7 @@ def run_tests_with_coverage(packages, *args, **kwargs):
         # Coverage v2 API
         c = coverage
 
+    c.exclude('return NotImplemented')
     c.exclude('raise NotImplementedError')
     c.exclude('except ImportError:')
     c.start()

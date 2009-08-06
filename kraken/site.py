@@ -92,14 +92,14 @@ class Site(object):
         The request path is interpreted as a filename relative to the site root.
         Return a Response object or raise NotFound.
         """
-        if u'/.' in request.path:
-            raise Forbidden
         filename = os.path.join(self.site_root, *(
             part for part in request.path.split(u'/')
             if part and part != u'..'
         ))
         if not os.path.isfile(filename):
             raise NotFound
+        if u'/.' in request.path:
+            raise Forbidden
         return utils.StaticFileResponse(filename)
         
     def handle_python(self, request):
@@ -163,11 +163,11 @@ class Site(object):
         Try handling a request with only a template
         Return a Response object or raise NotFound
         """
-        if u'/.' in request.path:
-            raise Forbidden
         template = self.find_template(request.path)
         if not template:
             raise NotFound
+        if u'/.' in request.path:
+            raise Forbidden
         # only if the template exists
         # (ie the redirect doesn’t lead to a "404 Not Found")
         self.handle_trailing_slash(request)
@@ -176,7 +176,7 @@ class Site(object):
         # Handle a simple template
         mimetype, encoding = mimetypes.guess_type(u'_.' + extension)
         values = self.simple_template_context(request)
-        content = self.koral_site.engines[engine].render(template_name, values)
+        content = self.koral_site.render(engine, template_name, values)
         return utils.Response(content, mimetype=mimetype)
     
     def simple_template_context(self, request):

@@ -334,6 +334,7 @@ class FileSystemStorage(AccessPoint):
         >>> dirname, package = os.path.split(dirname)
         >>> ap = AccessPoint.from_url(url='file://%s' % dirname,
         ...                           filename_format='*/*.py', parser='text')
+        >>> ap.item_from_filename('/inexistent') # returns None: not found
         >>> item = ap.item_from_filename(os.path.normpath(
         ...     os.path.splitext(__file__)[0] + '.py'
         ... ))

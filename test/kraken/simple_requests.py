@@ -8,6 +8,26 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         r = self.client.get('/nonexistent')
         self.assertEqual(r.status_code, 404)
 
+    def test_hidden_notfound(self):
+        r2 = self.client.get('/.hidden_but_nonexistent')
+        self.assertEqual(r2.status_code, 404)
+
+    def test_hidden_static(self):
+        r = self.client.get('/__logo/.hidden_file')
+        self.assertEqual(r.status_code, 403)
+
+    def test_hidden_python(self):
+        r = self.client.get('/.hidden_python')
+        self.assertEqual(r.status_code, 403)
+
+    def test_hidden_dir_python(self):
+        r = self.client.get('/.hidden_dir/blah')
+        self.assertEqual(r.status_code, 403)
+
+    def test_hidden_template(self):
+        r = self.client.get('/.hidden_template')
+        self.assertEqual(r.status_code, 403)
+
     def test_static_notfound(self):
         r = self.client.get('/__logo/inexistent.png')
         self.assertEqual(r.status_code, 404)
