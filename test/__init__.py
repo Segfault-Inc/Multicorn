@@ -1,5 +1,10 @@
+import sys
 import doctest
 import unittest
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 import werkzeug
 
@@ -65,8 +70,32 @@ def print_TODOs(packages):
             print 'TODO  on line ',
         print ', '.join(str(line) for line in lines)
 
+class CapturingStdoutTextTestResult(unittest._TextTestResult):
+    def startTest(self, test):
+        unittest._TextTestResult.startTest(self, test)
+        self._real_stdout = sys.stdout
+        self._captured_output = sys.stdout = StringIO()
+
+    def stopTest(self, test):
+        unittest._TextTestResult.stopTest(self, test)
+        sys.stdout = self._real_stdout
+        del self._captured_output
+
+    def _exc_info_to_string(self, err, test):
+        info = unittest._TextTestResult._exc_info_to_string(self, err, test)
+        out = self._captured_output.getvalue()
+        if out:
+            info += "*** Captured output:\n" + out + \
+                    "*** End of captured output."
+        return info
+
+class CapturingStdoutTextTestRunner(unittest.TextTestRunner):
+    def _makeResult(self):
+        return CapturingStdoutTextTestResult(self.stream, self.descriptions,
+                                             self.verbosity)
+
 def run_tests(packages, verbosity=1):
-    unittest.TextTestRunner(verbosity=verbosity).run(get_tests(packages))
+    CapturingStdoutTextTestRunner(verbosity=verbosity).run(get_tests(packages))
 
 def run_tests_with_coverage(packages, *args, **kwargs):
     import coverage
