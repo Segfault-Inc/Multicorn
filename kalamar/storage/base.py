@@ -58,6 +58,7 @@ class AccessPoint(object):
     def __init__(self, **config):
         """Common instance initialisation."""
         self.config = config
+        self.parser_name = config.get('parser', None)
         self.site = config.get('site')
         self.default_encoding = config.get('default_encoding', 'utf-8')
         self.storage_aliases = [
@@ -154,8 +155,7 @@ class AccessPoint(object):
                 yield item
     
     def _make_item(self, properties, opener):
-        return Item.get_item_parser(self.config['parser'], self, opener,
-                                    properties)
+        return Item.get_item_parser(self, opener, properties)
     
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).

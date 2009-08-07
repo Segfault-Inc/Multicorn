@@ -93,7 +93,7 @@ class TestSiteOpen(MyTest):
 class TestSiteSave(MyTest):
     
     def test_new_complete_item(self):
-        """Saving a brad new item with all necessary properties set must \
+        """Saving a brand new item with all necessary properties set must \
 make it available for later search/opening.
         
         This test needs the open method to work."""
@@ -107,7 +107,7 @@ make it available for later search/opening.
                       
         # Mutagen does not accept to create a VorbisFile
         # without initial content.
-        if access_point.config['parser'] == 'audio_vorbis':
+        if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
                                         'data', 'vorbis_sample.ogg'))
             data = vorbis_file.read()
@@ -141,7 +141,7 @@ make it available for later search/opening.
                       
         # Mutagen does not accept to create a VorbisFile
         # without initial content.
-        if access_point.config['parser'] == 'audio_vorbis':
+        if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
                                         'data', 'vorbis_sample.ogg'))
             data = vorbis_file.read()

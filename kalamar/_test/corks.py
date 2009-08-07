@@ -45,7 +45,7 @@ class CorkAccessPoint:
     parser_aliases = {"I am aliased" : "I am not aliased"}
     storage_aliases = {}
     default_encoding = "utf-8"
-    config = { "parser": "cork_item" }
+    parser_name = "cork_item"
     
     def get_storage_properties(self):
         return []
