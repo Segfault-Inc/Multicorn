@@ -1,4 +1,5 @@
 import sys
+import codecs
 import doctest
 import unittest
 try:
@@ -70,11 +71,19 @@ def print_TODOs(packages):
             print 'TODO  on line ',
         print ', '.join(str(line) for line in lines)
 
+class FakeStdout(object):
+    def __init__(self):
+        self.buffer = []
+    def write(self, data):
+        self.buffer.append(data)
+    
 class CapturingStdoutTextTestResult(unittest._TextTestResult):
     def startTest(self, test):
         unittest._TextTestResult.startTest(self, test)
         self._real_stdout = sys.stdout
-        self._captured_output = sys.stdout = StringIO()
+        self._captured_output = FakeStdout()
+        #sys.stdout = codecs.getwriter('utf8')(self._captured_output)
+        sys.stdout = self._captured_output
 
     def stopTest(self, test):
         unittest._TextTestResult.stopTest(self, test)
@@ -82,12 +91,16 @@ class CapturingStdoutTextTestResult(unittest._TextTestResult):
         del self._captured_output
 
     def _exc_info_to_string(self, err, test):
-        info = unittest._TextTestResult._exc_info_to_string(self, err, test)
-        out = self._captured_output.getvalue()
-        if out:
-            info += "*** Captured output:\n" + out + \
-                    "*** End of captured output."
-        return info
+        info = [unittest._TextTestResult._exc_info_to_string(self, err, test)]
+
+        if self._captured_output.buffer:
+            info.append("*** Captured output:\n")
+            for out in self._captured_output.buffer:
+                if isinstance(out, unicode):
+                    out = out.encode(self.stream.encoding)
+                info.append(out)
+            info.append("*** End of captured output.")
+        return ''.join(info)
 
 class CapturingStdoutTextTestRunner(unittest.TextTestRunner):
     def _makeResult(self):
