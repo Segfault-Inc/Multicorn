@@ -106,7 +106,7 @@ class Item(object):
         
         Test
         >>> item = Item.create_item(ap, properties)
-        >>> #assert item.format == ap.config['parser']
+        >>> #assert item.format == ap.parser_name
         >>> #assert isinstance(item, Item)
         
         """
@@ -116,8 +116,7 @@ class Item(object):
         storage_properties = dict((name, None) for name
                                   in access_point.get_storage_properties())
         
-        item = Item.get_item_parser(access_point.config['parser'],
-                                    access_point,
+        item = Item.get_item_parser(access_point,
                                     storage_properties = storage_properties)
         
         # ItemProperties copies storage_properties in storage_properties_old
@@ -144,21 +143,22 @@ class Item(object):
         
     
     @staticmethod
-    def get_item_parser(format, access_point, opener=StringIO,
-                        storage_properties={}):
+    def get_item_parser(access_point, opener=StringIO, storage_properties={}):
         """Return an appropriate parser instance for the given format.
         
         Your kalamar distribution should have, at least, a parser for the
-        "binary format".
+        "binary" format.
         
         >>> from _test.corks import CorkAccessPoint, cork_opener
         >>> ap = CorkAccessPoint()
-        >>> Item.get_item_parser("binary", ap, cork_opener, {"artist": "muse"})
+        >>> ap.parser_name = 'binary'
+        >>> Item.get_item_parser(ap, cork_opener, {"artist": "muse"})
         ...  # doctest: +ELLIPSIS
         <kalamar.item.AtomItem object at 0x...>
         
         An invalid format will raise a ValueError:
-        >>> Item.get_item_parser("I do not exist", ap, cork_opener)
+        >>> ap.parser_name = 'I do not exist'
+        >>> Item.get_item_parser(ap, cork_opener)
         Traceback (most recent call last):
         ...
         ValueError: Unknown format: I do not exist
@@ -166,12 +166,15 @@ class Item(object):
         """
 
         parser.load()
-
+        
+        if access_point.parser_name is None:
+            return Item(access_point, None, storage_properties)
+        
         for subclass in utils.recursive_subclasses(Item):
-            if getattr(subclass, 'format', None) == format:
+            if getattr(subclass, 'format', None) == access_point.parser_name:
                 return subclass(access_point, opener, storage_properties)
         
-        raise ValueError('Unknown format: ' + format)
+        raise ValueError('Unknown format: ' + access_point.parser_name)
 
     @property
     def encoding(self):
@@ -200,7 +203,7 @@ class Item(object):
         and must just return a string.
 
         """
-        raise NotImplementedError("Abstract class")
+        return ''
     
     def _parse_data(self):
         """Call "_custom_parse_data" and do some stuff to the result."""
@@ -237,7 +240,7 @@ class Item(object):
         True
         
         """
-        if self._stream is None:
+        if self._stream is None and self._opener is not None:
             self._stream = self._opener()
     
     def content_modified(self):

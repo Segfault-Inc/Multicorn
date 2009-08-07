@@ -31,6 +31,7 @@ except ImportError:
                   'MySQL support will not be available.')
 else:
     from MySQLdb import FIELD_TYPE
+    import MySQLdb.constants.CLIENT
     import urlparse
     import os
 
@@ -98,6 +99,9 @@ else:
                     kwargs['port'] = int(host_port[1])
                 
                 kwargs['db'], self._table = parts[3].split('?')
+                
+                kwargs['use_unicode'] = True
+                kwargs['client_flag'] = MySQLdb.constants.CLIENT.FOUND_ROWS
                 
                 self._connection = MySQLdb.connect(**kwargs)
                 self._connection.set_character_set(

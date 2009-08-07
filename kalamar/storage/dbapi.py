@@ -32,7 +32,11 @@ from kalamar.storage.base import AccessPoint
 from kalamar import utils
 from kalamar import Item
 
-_opener = lambda content: (lambda: StringIO(content))
+_opener = lambda content: (
+    lambda: StringIO(content) 
+    if content is not None
+    else None
+)
     
 class Parameter:
     def __init__(self, name, value):
@@ -67,6 +71,10 @@ class DBAPIStorage(AccessPoint):
         '<=': '<=',
         }
     
+    def __init__(self, *args, **kwargs):
+        super(DBAPIStorage, self).__init__(*args, **kwargs)
+        self.content_column = self.config.get('content_column', None)
+    
     def save(self, item):
         """Save item in the database."""
         connection, table = self.get_connection()
@@ -77,12 +85,16 @@ class DBAPIStorage(AccessPoint):
         
         cursor = connection.cursor()
         try:
+            print request
+            print repr(parameters[-1])
             cursor.execute(request, parameters)
     
             if cursor.rowcount == 0:
                 # Item does not exist, let's do an insert
                 request, parameters = self._build_insert_request(table, item,
                                                                  style)
+                print request
+                #1/0
                 cursor.execute(request, parameters)
             else:
                 assert cursor.rowcount == 1
@@ -145,7 +157,15 @@ class DBAPIStorage(AccessPoint):
         cursor = connection.cursor()
         request = 'SELECT * FROM %s WHERE 1=2;' % self._quote_name(self._table)
         cursor.execute(request)
-        return [prop[0] for prop in cursor.description]
+        properties_names = [prop[0] for prop in cursor.description]
+        
+        # If a content_column has been declared in kalamar configuration, it
+        # becomes an item property (i.e. '_content'), so we remove it from
+        # storage properties
+        if self.content_column is not None:
+            properties_names.remove(self.content_column)
+        print properties_names
+        return properties_names
     
     def get_table_description(self):
         """Return field description as a dictionnary."""
@@ -183,10 +203,11 @@ class DBAPIStorage(AccessPoint):
                               )
         # Execute request
         cursor = connection.cursor()
-        if parameters:
-            cursor.execute(request, parameters)
-        else:
-            cursor.execute(request)
+        cursor.execute(request, parameters)
+        
+        # Release lock on the table we used.
+        connection.commit()
+        
         descriptions = [description[0] for description in cursor.description]
         dict_lines = (dict(zip(descriptions, line))
                        for line in self._generate_lines_from_cursor(cursor))
@@ -199,14 +220,20 @@ class DBAPIStorage(AccessPoint):
         def lines_to_string(lines):
             for line in lines:
                 for key in line:
-                    if key != self.config['content_column'] \
+                    if key != self.content_column \
                     and not isinstance(line[key], unicode):
                         line[key] = str(line[key]).decode(self.default_encoding)
                 yield line
         
         for line in lines_to_string(filtered):
-            data = line[self.config['content_column']]
-            line.pop(self.config['content_column'])
+            data = line.get(self.content_column, None)
+            
+            # If a content_column has been declared in kalamar configuration, it
+            # becomes an item property (i.e. '_content'), so we remove it from
+            # storage properties
+            if self.content_column is not None:
+                line.pop(self.content_column)
+                
             yield (line, _opener(data))
         
         cursor.close()
@@ -387,10 +414,10 @@ class DBAPIStorage(AccessPoint):
         >>> request, param = storage._build_update_request(table, item, 'qmark')
         >>> request #doctest: +NORMALIZE_WHITESPACE
         u'UPDATE "table" SET
-          "sto_prop"=? , "pk2"=? , "pk1"=? , "sto_prop2"=? , "content_col"=?
+          "sto_prop"=? , "pk2"=? , "pk1"=? , "content_col"=? , "sto_prop2"=?
           WHERE "pk1"=? AND "pk2"=?;'
         >>> param #doctest: +NORMALIZE_WHITESPACE
-           ('sto_val', 'pk_val2', 'pk_val1', 'sto_val2', '',
+           ('sto_val', 'pk_val2', 'pk_val1', '', 'sto_val2',
             'pk_val1', 'pk_val2')
         
         """
@@ -399,34 +426,38 @@ class DBAPIStorage(AccessPoint):
         
         primary_keys = self._get_primary_keys()
         keys = item.properties.storage_properties.keys()
+        
+        # All not primary keys and all primary keys not None.
         keys = [
             key for key in keys if 
             key not in primary_keys or item.properties[key] is not None
         ]
         
-        item.properties['_content'] = item.serialize()
-        
-        if self.config['content_column'] in keys:
-            keys.remove(self.config['content_column'])
-        
         request = array('u',u"UPDATE %s SET " % self._quote_name(table))
         
         parameters = []
-        for key in keys:
+        
+        for key in keys[:-1]:
             request.extend(u"%s=? , " %
                            self._quote_name(self._sql_escape_quotes(key)))
             parameters.append(Parameter(key, item.properties[key]))
-        data_col = self._quote_name(
-                       self._sql_escape_quotes(self.config['content_column'])
-                   )
-        request.extend(u"%s=? WHERE" % data_col)
-                       
-        parameters.append(
-            Parameter(
-                self.config['content_column'],
-                item.properties['_content']
+            
+        # If a content_column has been declared in kalamar configuration, it
+        # becomes an item property (i.e. '_content'), so it is not in the 'keys'
+        # list.
+        if self.content_column is not None:
+            item.properties['_content'] = item.serialize()
+            colname = self._quote_name(
+                self._sql_escape_quotes(self.content_column)
             )
-        )
+            request.extend(u"%s=? , " % colname)
+            parameters.append(
+                Parameter(self.content_column, item.properties['_content'])
+            )
+            
+        request.extend(u"%s=? WHERE" %
+                       self._quote_name(self._sql_escape_quotes(keys[-1])))
+        parameters.append(Parameter(keys[-1], item.properties[keys[-1]]))
         
         for key in primary_keys[:-1]:
             request.extend(
@@ -444,7 +475,6 @@ class DBAPIStorage(AccessPoint):
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
-        
         return (request, parameters)
     
     def _build_insert_request(self, table, item, style):
@@ -479,10 +509,10 @@ class DBAPIStorage(AccessPoint):
         >>> request, param = storage._build_insert_request(table, item, 'qmark')
         >>> request #doctest:+NORMALIZE_WHITESPACE
         u'INSERT INTO "table"
-          ( "sto_prop" , "pk2" , "pk1" , "sto_prop2" , "content_col" )
+          ( "sto_prop" , "pk2" , "pk1" , "content_col" , "sto_prop2" )
           VALUES ( ? , ? , ? , ? , ? );'
         >>> param #doctest:+NORMALIZE_WHITESPACE
-            ('sto_val', 'pk_val2', 'pk_val1', 'sto_val2', '')
+            ('sto_val', 'pk_val2', 'pk_val1', '', 'sto_val2')
 
         """
         
@@ -497,28 +527,40 @@ class DBAPIStorage(AccessPoint):
             key for key in keys if 
             key not in primary_keys or item.properties[key] is not None
         ]
-        if self.config['content_column'] in keys:
-            keys.remove(self.config['content_column'])
         
         parameters = []
         
-        for key in keys:
+        for key in keys[:-1]:
             request.extend(u"%s , "
                        % self._quote_name(self._sql_escape_quotes(key)))
-        request.extend(u"%s ) VALUES ( "
-                   % self._quote_name(self.config['content_column']))
+            
+        # If a content_column has been declared in kalamar configuration, it
+        # becomes an item property (i.e. '_content'), so it is not in the 'keys'
+        # list.
+        if self.content_column is not None:
+            colname = self._quote_name(
+                self._sql_escape_quotes(self.content_column)
+            )
+            request.extend(u"%s , " % colname)
         
-        for key in keys:
+        request.extend(
+            u"%s ) VALUES ( "
+            % self._quote_name(self._sql_escape_quotes(keys[-1]))
+        )
+        
+        for key in keys[:-1]:
             request.extend(u"? , ")
             parameters.append(Parameter(key, item.properties[key]))
-        request.extend(u"? );")
         
-        parameters.append(
-            Parameter(
-                self.config['content_column'],
-                item.properties['_content']
+        if self.content_column is not None:
+            item.properties['_content'] = item.serialize()
+            request.extend(u"? , ")
+            parameters.append(
+                Parameter(self.content_column, item.properties['_content'])
             )
-        )
+        
+        request.extend(u"? );")
+        parameters.append(Parameter(keys[-1], item.properties[keys[-1]]))
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -531,7 +573,7 @@ class DBAPIStorage(AccessPoint):
         
         """
         for parameter in parameters:
-            if parameter.name == self.config['content_column']:
+            if parameter.name == self.content_column:
                 parameter.value = self.get_db_module().Binary(parameter.value)
             yield parameter
     
