@@ -40,7 +40,11 @@ they *need* to work well.
 
 from copy import copy
 from werkzeug import MultiDict
-
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
+    
 from kalamar import parser, utils
 
 class Item(object):
@@ -63,7 +67,7 @@ class Item(object):
     format = None
     _keys = []
 
-    def __init__(self, access_point, opener=None, storage_properties={}):
+    def __init__(self, access_point, opener=StringIO, storage_properties={}):
         """Return an instance of Item.
         
         Parameters:
@@ -140,7 +144,8 @@ class Item(object):
         
     
     @staticmethod
-    def get_item_parser(format, access_point, opener=None, storage_properties={}):
+    def get_item_parser(format, access_point, opener=StringIO,
+                        storage_properties={}):
         """Return an appropriate parser instance for the given format.
         
         Your kalamar distribution should have, at least, a parser for the
@@ -234,6 +239,17 @@ class Item(object):
         """
         if self._stream is None:
             self._stream = self._opener()
+    
+    def content_modified(self):
+        return self.properties.parser_content_modified
+    
+    def filename(self):
+        """
+        If the item is stored in a file, return it’s path/name.
+        Otherwise, return None
+        """
+        if hasattr(self._access_point, 'filename_for'):
+            return self._access_point.filename_for(self)
 
 class AtomItem(Item):
     """An indivisible block of data.
@@ -270,8 +286,9 @@ class CapsuleItem(Item):
     """
     @property
     def subitems(self):
-        if not hasattr(self, '_subitem'):
-            self._subitems = list(self._load_subitems())
+        if not hasattr(self, '_subitems'):
+            self._subitems = utils.ModificationTrackingList(
+                self._load_subitems())
         return self._subitems
         
     def _load_subitems(self):

@@ -27,35 +27,44 @@ except ImportError:
     warnings.warn('Can not import docutils. '
                   'RestItem will not be available.')
 else:
-    from kalamar.item import AtomItem, CapsuleItem
+    from kalamar.item import CapsuleItem
+    from kalamar.parser.textitem import TextItem
+    from kalamar import utils
     
     import re
     import os.path
+    
+    _test_document = u"""\
+===============
+A test document
+===============
+:date: 2009-08-04
+:abstract: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+           Suspendisse fringilla accumsan sem eget ullamcorper.
+           Aliquam erat volutpat.
+
+.. include:: nonexistent.rst
+
+Etiam a turpis erat, ac scelerisque nisl. Pellentesque habitant
+morbi tristique senectus et netus et malesuada fames ac turpis
+egestas.
+
+.. include:: foo/bar.rst
+.. include:: name with whitespaces.rst  
+.. .. include:: commented.rst
+
+"""
     
     def extract_includes(text):
         r"""
         Return a list of included filenames in the given ReST string.
         
-        >>> list(extract_includes(u'''
-        ... ===============
-        ... A test document
-        ... ===============
-        ... 
-        ... .. include:: nonexistent.rst
-        ... 
-        ... Etiam a turpis erat, ac scelerisque nisl. Pellentesque habitant
-        ... morbi tristique senectus et netus et malesuada fames ac turpis
-        ... egestas. 
-        ... 
-        ... .. include:: foo/bar.rst
-        ... .. .. include:: commented.rst
-        ... 
-        ... '''))
-        [u'nonexistent.rst', u'foo/bar.rst']
+        >>> list(extract_includes(_test_document))
+        [u'nonexistent.rst', u'foo/bar.rst', u'name with whitespaces.rst']
         """
         for match in extract_includes._re.finditer(text):
             yield match.group(1)
-    extract_includes._re = re.compile(u'^\s*.. include::\s+(\S+)\s*$',
+    extract_includes._re = re.compile(u'^\s*.. include::\s+(.+?)\s*$',
                                       re.MULTILINE)
         
         
@@ -66,23 +75,8 @@ else:
         Search for a docutils.nodes.title and a docutils.nodes.field_list
         element in the docutils document tree.
         
-        >>> sorted(extract_metadata(u'''
-        ... ===============
-        ... A test document
-        ... ===============
-        ... :date: 2009-08-04
-        ... :abstract: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-        ...            Suspendisse fringilla accumsan sem eget ullamcorper.
-        ...            Aliquam erat volutpat.
-        ... 
-        ... .. include:: nonexistent.rst
-        ... 
-        ... Etiam a turpis erat, ac scelerisque nisl. Pellentesque habitant
-        ... morbi tristique senectus et netus et malesuada fames ac turpis
-        ... egestas. Donec fringilla, nisl in viverra sagittis, elit arcu 
-        ... velit nulla quis ligula.
-        ... 
-        ... ''').items()) # doctest: +NORMALIZE_WHITESPACE
+        >>> sorted(extract_metadata(_test_document).items())
+        ... # doctest: +NORMALIZE_WHITESPACE
         [(u'abstract', u'Lorem ipsum dolor sit amet, consectetur 
                          adipiscing elit.\nSuspendisse fringilla accumsan sem
                          eget ullamcorper.\nAliquam erat volutpat.'),
@@ -110,17 +104,22 @@ else:
         fields[u'title'] = title
         return fields
 
-    class RestAtom(AtomItem):
+
+    class RestMetadataMixin(object):
+        def get_content(self):
+            self._open()
+            self._stream.seek(0)
+            return self._stream.read().decode(self.encoding)
+        
+        def get_metadata(self):
+            """Parse docutils metadata and return a dict."""
+            return extract_metadata(self.get_content())
+        
+    class RestAtom(RestMetadataMixin, TextItem):
         """TODO docstring
 
         """
         format = 'rest'
-        
-        def _custom_parse_data(self):
-            """Parse docutils metadata as properties."""
-            properties = super(RestAtom, self)._custom_parse_data()
-            properties.update(extract_metadata(properties['_content']))
-            return properties
         
     class MissingItem(object):
         """
@@ -133,7 +132,15 @@ else:
         def __repr__(self):
             return '<%s %r>' % (self.__class__.__name__, self.filename)
         
-    class RestCapsule(CapsuleItem):
+        def __nonzero__(self):
+            """
+            >>> if MissingItem('foo'): print 1
+            ... else: print 0
+            0
+            """
+            return False
+        
+    class RestCapsule(RestMetadataMixin, CapsuleItem):
         """TODO docstring
 
         """
@@ -142,20 +149,38 @@ else:
         def _custom_parse_data(self):
             """Parse docutils metadata as properties."""
             properties = super(RestCapsule, self)._custom_parse_data()
-            self._open()
-            self._stream.seek(0)
-            properties.update(extract_metadata(self._stream.read()))
+            properties.update(self.get_metadata())
             return properties
-        
+
         def _load_subitems(self):
-            self._open()
-            self._stream.seek(0)
-            for include in extract_includes(self._stream.read()):
-                filename = os.path.join(self.properties[u'_filename'],
-                                        os.path.normpath(include))
+            for include in extract_includes(self.get_content()):
+                filename = os.path.join(
+                    os.path.dirname(self.properties[u'_filename']),
+                    os.path.normpath(include))
                 item = self._access_point.site.item_from_filename(filename)
                 # item is None if no access point has this filename
                 yield item or MissingItem(include)
+       
+        def content_modified(self):
+            return super(RestCapsule, self).content_modified() or \
+                    self.subitems.modified
         
+        def _custom_serialize(self, properties):
+            content = []
+            write = content.append
+            title = self.properties[u'title']
+            write(u'=' * len(title))
+            write(title)
+            write(u'=' * len(title))
+            for key in self.properties:
+                if key != u'title':
+                    write(u':%s: %s' % (key, self.properties[key]))
+            write('')
+            for subitem in self.subitems:
+                write(u'.. include:: ' + utils.relpath(subitem.filename(),
+                    os.path.dirname(self.properties[u'_filename'])))
+            return u'\n'.join(content).encode(self.encoding)
+            
+            
 
 

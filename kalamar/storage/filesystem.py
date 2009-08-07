@@ -186,6 +186,8 @@ class FileSystemStorage(AccessPoint):
         ...                           filename_format='*/*.py')
         >>> from kalamar.site import Site
         >>> request = list(Site.parse_request('path1=storage/path2~!=^__'))
+        
+        # TODO: seems to fail on python 2.5 ??
         >>> len([1 for properties, opener in ap._storage_search(request)
         ...      if properties['path2'].startswith('__')])
         0
@@ -281,7 +283,7 @@ class FileSystemStorage(AccessPoint):
         )
 
         move = old_path and (old_path != new_path)
-        change = item.properties.parser_content_modified
+        change = item.content_modified()
         if change:
             if move:
                 # Remove old_path
@@ -296,6 +298,13 @@ class FileSystemStorage(AccessPoint):
         """Remove the given item from the backend storage."""
         self.remove_file(self._path_from_properties(
             item.properties.storage_properties_old))
+            
+    def filename_for(self, item):
+        """
+        Return the real filename for the given item
+        """
+        return self._real_filename(self._path_from_properties(
+            item.properties.storage_properties))
     
     @werkzeug.cached_property
     @utils.apply_to_result(list)
@@ -332,23 +341,56 @@ class FileSystemStorage(AccessPoint):
 
         >>> dirname, module = os.path.split(__file__)
         >>> dirname, package = os.path.split(dirname)
+        
+        dirname is the path to the kalamar package
+        
         >>> ap = AccessPoint.from_url(url='file://%s' % dirname,
         ...                           filename_format='*/*.py', parser='text')
-        >>> ap.item_from_filename('/inexistent') # returns None: not found
-        >>> item = ap.item_from_filename(os.path.normpath(
-        ...     os.path.splitext(__file__)[0] + '.py'
-        ... ))
+        >>> search = ap.item_from_filename
+        
+        # all these should return None
+        >>> search('/foo/bar') # do not start with self.root
+        >>> # do not match the pattern
+        >>> search(os.path.join(dirname, 'inexistent.py'))
+        >>> search(os.path.join(dirname, 'site.py'))
+        >>> search(os.path.join(dirname, 'storage', 'inexistent.pyc'))
+        >>> search(os.path.join(dirname, 'storage', 'base.pyc'))
+        >>> # matches, but does not exist
+        >>> search(os.path.join(dirname, 'storage', 'inexistent.py'))
+        
+        >>> item = search(os.path.join(dirname, 'storage', 'filesystem.py'))
         >>> item # doctest: +ELLIPSIS
         <kalamar.parser.textitem.TextItem object at 0x...>
         >>> item.properties['path1']
         'storage'
         >>> item.properties['path2']
         'filesystem'
+        >>> item.properties['_filename'] == \
+                os.path.normpath(os.path.splitext(__file__)[0] + '.py')
+        True
         """
-        match = self.filename_re.match(filename)
-        if not match:
+        filename = os.path.normpath(filename)
+
+        if not filename.startswith(self.root):
             return None
-        properties = match.groupdict()
+        if not os.path.isfile(filename):
+            return None
+        
+        # relative to the access point root
+        relative_filename = filename[len(self.root):]
+        
+        parts = [part for part in relative_filename.split(os.path.sep) if part]
+        if len(self.filename_pattern_parts) != len(parts):
+            return None
+        
+        properties = {}
+
+        for part, regexp in zip(parts, self.filename_pattern_parts):
+            match = regexp.match(part)
+            if not match:
+                return None
+            properties.update(match.groupdict())
+            
         properties[u'_filename'] = filename
         return self._make_item(properties,
                                functools.partial(open, filename, 'rb'))

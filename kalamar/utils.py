@@ -19,9 +19,13 @@
 Kalamar various utils.
 """
 
+import os.path
 import operator
 import re
 import functools
+import posixpath
+import ntpath
+
 
 def apply_to_result(function):
     """
@@ -87,3 +91,115 @@ class Condition(object):
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__, self.property_name,
                                    self.operator, self.value)
+                                
+
+class ModificationTrackingList(list):
+    """
+    A list with a ``modified`` attribute that becomes True when the list changes
+    
+    >>> l = ModificationTrackingList(range(3))
+    >>> l
+    ModificationTrackingList([0, 1, 2])
+    >>> l.modified
+    False
+    >>> l.pop()
+    2
+    >>> l
+    ModificationTrackingList([0, 1])
+    >>> l.modified
+    True
+    
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super(ModificationTrackingList, self).__init__(*args, **kwargs)
+        self.modified = False
+    
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, list.__repr__(self))
+    
+    def modifies(name):
+        def oncall(self, *args, **kw):
+            self.modified = True
+            return getattr(super(ModificationTrackingList, self),
+                           name)(*args, **kw)
+        oncall.__name__ = name
+        return oncall
+    
+    __delitem__ = modifies('__delitem__')
+    __delslice__ = modifies('__delslice__')
+    __iadd__ = modifies('__iadd__')
+    __imul__ = modifies('__imul__')
+    __setitem__ = modifies('__setitem__')
+    __setslice__ = modifies('__setslice__')
+    append = modifies('append')
+    extend = modifies('extend')
+    insert = modifies('insert')
+    pop = modifies('pop')
+    remove = modifies('remove')
+    reverse = modifies('reverse')
+    sort = modifies('sort')
+   
+    del modifies
+
+
+
+# backported from Python 2.6.2
+def _posix_relpath(path, start=posixpath.curdir):
+    """Return a relative version of a path"""
+
+    if not path:
+        raise ValueError("no path specified")
+
+    start_list = posixpath.abspath(start).split(posixpath.sep)
+    path_list = posixpath.abspath(path).split(posixpath.sep)
+
+    # Work out how much of the filepath is shared by start and path.
+    i = len(posixpath.commonprefix([start_list, path_list]))
+
+    rel_list = [posixpath.pardir] * (len(start_list)-i) + path_list[i:]
+    if not rel_list:
+        return posixpath.curdir
+    return posixpath.join(*rel_list)
+
+# backported from Python 2.6.2
+def _nt_relpath(path, start=ntpath.curdir):
+    """Return a relative version of a path"""
+
+    if not path:
+        raise ValueError("no path specified")
+    start_list = ntpath.abspath(start).split(ntpath.sep)
+    path_list = ntpath.abspath(path).split(ntpath.sep)
+    if start_list[0].lower() != path_list[0].lower():
+        unc_path, rest = ntpath.splitunc(path)
+        unc_start, rest = ntpath.splitunc(start)
+        if bool(unc_path) ^ bool(unc_start):
+            raise ValueError("Cannot mix UNC and non-UNC paths "
+                             "(%s and %s)" % (path, start))
+        else:
+            raise ValueError("path is on drive %s, start on drive %s"
+                                % (path_list[0], start_list[0]))
+    # Work out how much of the filepath is shared by start and path.
+    for i in range(min(len(start_list), len(path_list))):
+        if start_list[i].lower() != path_list[i].lower():
+            break
+    else:
+        i += 1
+
+    rel_list = [ntpath.pardir] * (len(start_list)-i) + path_list[i:]
+    if not rel_list:
+        return ntpath.curdir
+    return join(*rel_list)
+
+
+# Python 2.5 compatibility
+if hasattr(os.path, 'relpath'):
+    # Use the stdlib one if available (Python >=2.6)
+    relpath = os.path.relpath
+else:
+    if os.path is posixpath:
+        relpath = _posix_relpath
+    elif os.path is ntpath:
+        relpath = _nt_relpath
+    # macpath and os2emxpath do not seem to have a relpath function
+
