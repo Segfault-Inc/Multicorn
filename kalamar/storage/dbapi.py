@@ -164,7 +164,7 @@ class DBAPIStorage(AccessPoint):
         # storage properties
         if self.content_column is not None:
             properties_names.remove(self.content_column)
-        
+        print properties_names
         return properties_names
     
     def get_table_description(self):
@@ -203,10 +203,11 @@ class DBAPIStorage(AccessPoint):
                               )
         # Execute request
         cursor = connection.cursor()
-        if parameters:
-            cursor.execute(request, parameters)
-        else:
-            cursor.execute(request)
+        cursor.execute(request, parameters)
+        
+        # Release lock on the table we used.
+        connection.commit()
+        
         descriptions = [description[0] for description in cursor.description]
         dict_lines = (dict(zip(descriptions, line))
                        for line in self._generate_lines_from_cursor(cursor))
