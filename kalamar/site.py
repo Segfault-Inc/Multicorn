@@ -24,6 +24,7 @@ Create one for each independent site with its own configuration.
 
 import os
 import ConfigParser
+import warnings
 
 from kalamar import storage, utils, Item
 
@@ -35,7 +36,7 @@ class Site(object):
     class ObjectDoesNotExist(NotOneObjectReturned): pass
     class FileNotFoundError(Exception): pass
     
-    def __init__(self, config_filename=None):
+    def __init__(self, config_filename=None, fail_on_inexistent_parser=True):
         """Create a kalamar site from a configuration file.
         
         >>> Site(config_filename='nonexistent')
@@ -56,7 +57,16 @@ class Site(object):
             basedir = os.path.dirname(config_filename)
             for section in config.sections():
                 kwargs = dict(config.items(section), basedir=basedir, site=self)
-                self.access_points[section] = storage.AccessPoint.from_url(**kwargs)
+                if fail_on_inexistent_parser:
+                    ap = storage.AccessPoint.from_url(**kwargs)
+                else:
+                    try:
+                        ap = storage.AccessPoint.from_url(**kwargs)
+                    except utils.ParserNotAvailable, e:
+                        warnings.warn('The access point %r was ignored. (%s)' %
+                                      (section, e.args[0]))
+                        continue
+                self.access_points[section] = ap
     
     @staticmethod
     def parse_request(request):

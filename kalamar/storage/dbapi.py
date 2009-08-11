@@ -85,15 +85,12 @@ class DBAPIStorage(AccessPoint):
         
         cursor = connection.cursor()
         try:
-            print request
-            print repr(parameters[-1])
             cursor.execute(request, parameters)
     
             if cursor.rowcount == 0:
                 # Item does not exist, let's do an insert
                 request, parameters = self._build_insert_request(table, item,
                                                                  style)
-                print request
                 #1/0
                 cursor.execute(request, parameters)
             else:
@@ -164,7 +161,6 @@ class DBAPIStorage(AccessPoint):
         # storage properties
         if self.content_column is not None:
             properties_names.remove(self.content_column)
-        print properties_names
         return properties_names
     
     def get_table_description(self):

@@ -161,7 +161,7 @@ class Item(object):
         >>> Item.get_item_parser(ap, cork_opener)
         Traceback (most recent call last):
         ...
-        ValueError: Unknown format: I do not exist
+        ParserNotAvailable: Unknown parser: I do not exist
         
         """
 
@@ -174,7 +174,8 @@ class Item(object):
             if getattr(subclass, 'format', None) == access_point.parser_name:
                 return subclass(access_point, opener, storage_properties)
         
-        raise ValueError('Unknown format: ' + access_point.parser_name)
+        raise utils.ParserNotAvailable('Unknown parser: ' +
+                                       access_point.parser_name)
 
     @property
     def encoding(self):

@@ -11,6 +11,7 @@ def make_site():
         kalamar_conf=os.path.join(os.path.dirname(__file__), '..',
                                   'kalamar', 'data',
                                   'kalamar_fs_and_sqlite.conf'),
+        fail_on_inexistent_kalamar_parser=False,
     )
 
 class KrakenSiteMixin(object):

@@ -37,11 +37,13 @@ class Site(object):
     Create a WSGI application from a site root and a kalamar configuration file.
     """
     
-    def __init__(self, site_root, kalamar_conf=None):
+    def __init__(self, site_root, kalamar_conf=None,
+                 fail_on_inexistent_kalamar_parser=False):
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(site_root)
         self.kalamar_site = kalamar.Site(
-            os.path.expanduser(unicode(kalamar_conf))
+            os.path.expanduser(unicode(kalamar_conf)),
+            fail_on_inexistent_parser=fail_on_inexistent_kalamar_parser,
         )
         self._module_cache = {}
     

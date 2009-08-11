@@ -59,6 +59,14 @@ class AccessPoint(object):
         """Common instance initialisation."""
         self.config = config
         self.parser_name = config.get('parser', None)
+        # check that this parser exists
+        for subclass in utils.recursive_subclasses(Item):
+            if getattr(subclass, 'format', None) == self.parser_name:
+                break
+        else:
+            raise utils.ParserNotAvailable('Unknown parser: ' +
+                                           self.parser_name)
+                                       
         self.site = config.get('site')
         self.default_encoding = config.get('default_encoding', 'utf-8')
         self.storage_aliases = [

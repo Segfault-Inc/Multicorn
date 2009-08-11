@@ -69,7 +69,8 @@ operators = {
 
 operators_rev = dict((value, key) for (key, value) in operators.items())
 
-class OperatorNotAvailable(Exception): pass
+class OperatorNotAvailable(ValueError): pass
+class ParserNotAvailable(ValueError): pass
 
 def recursive_subclasses(class_):
     """Return all "class_" subclasses recursively."""

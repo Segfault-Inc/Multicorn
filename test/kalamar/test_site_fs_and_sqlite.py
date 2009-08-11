@@ -68,14 +68,17 @@ class TestSite(object):
     
     def setUp(self):
         self.temp_dir = TestData.get_temp_dir()
-        self.site = Site(os.path.join(self.temp_dir, 'kalamar_fs_and_sqlite.conf'))
+        self.site = Site(os.path.join(self.temp_dir,
+                                      'kalamar_fs_and_sqlite.conf'),
+                         fail_on_inexistent_parser=False)
     
     def tearDown(self):
         pass
 
 
 site = Site(os.path.join(os.path.dirname(__file__), 'data',
-            'kalamar_fs_and_sqlite.conf'))
+                         'kalamar_fs_and_sqlite.conf'), 
+            fail_on_inexistent_parser=False)
 
 for access_point in site.access_points:
     for test in (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove):
