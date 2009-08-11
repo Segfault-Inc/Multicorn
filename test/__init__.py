@@ -110,7 +110,7 @@ class CapturingStdoutTextTestRunner(unittest.TextTestRunner):
 def run_tests(packages, verbosity=1):
     CapturingStdoutTextTestRunner(verbosity=verbosity).run(get_tests(packages))
 
-def run_tests_with_coverage(packages, *args, **kwargs):
+def run_with_coverage(function, packages):
     import coverage
     try:
         # Coverage v3 API
@@ -123,9 +123,13 @@ def run_tests_with_coverage(packages, *args, **kwargs):
     c.exclude('raise NotImplementedError')
     c.exclude('except ImportError:')
     c.start()
-    run_tests(packages, *args, **kwargs)
+    function()
     c.stop()
     c.report([werkzeug.import_string(name).__file__ 
               for name in find_all_modules(p for p in packages if p != 'test')])
 
+def profile(function, filename):
+    import cProfile
+    cProfile.runctx('function()', {}, locals(), filename)
+    print "Profile results saved in '%s'" % filename
 
