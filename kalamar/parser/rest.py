@@ -17,6 +17,9 @@
 
 """
 ReStructured Text.
+
+Metadata extraction using docutils is kindda slow, so the results of
+``extract_metadata`` are cached.
 """
 
 try:
@@ -67,7 +70,7 @@ egestas.
     extract_includes._re = re.compile(u'^\s*.. include::\s+(.+?)\s*$',
                                       re.MULTILINE)
         
-        
+    @utils.simple_cache
     def extract_metadata(text):
         r"""
         Return a dict of metadata for the given ReST string.

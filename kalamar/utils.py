@@ -22,6 +22,7 @@ Kalamar various utils.
 import os.path
 import operator
 import re
+import hashlib
 import functools
 import posixpath
 import ntpath
@@ -143,60 +144,99 @@ class ModificationTrackingList(list):
     del modifies
 
 
-
-# backported from Python 2.6.2
-def _posix_relpath(path, start=posixpath.curdir):
-    """Return a relative version of a path"""
-
-    if not path:
-        raise ValueError("no path specified")
-
-    start_list = posixpath.abspath(start).split(posixpath.sep)
-    path_list = posixpath.abspath(path).split(posixpath.sep)
-
-    # Work out how much of the filepath is shared by start and path.
-    i = len(posixpath.commonprefix([start_list, path_list]))
-
-    rel_list = [posixpath.pardir] * (len(start_list)-i) + path_list[i:]
-    if not rel_list:
-        return posixpath.curdir
-    return posixpath.join(*rel_list)
-
-# backported from Python 2.6.2
-def _nt_relpath(path, start=ntpath.curdir):
-    """Return a relative version of a path"""
-
-    if not path:
-        raise ValueError("no path specified")
-    start_list = ntpath.abspath(start).split(ntpath.sep)
-    path_list = ntpath.abspath(path).split(ntpath.sep)
-    if start_list[0].lower() != path_list[0].lower():
-        unc_path, rest = ntpath.splitunc(path)
-        unc_start, rest = ntpath.splitunc(start)
-        if bool(unc_path) ^ bool(unc_start):
-            raise ValueError("Cannot mix UNC and non-UNC paths "
-                             "(%s and %s)" % (path, start))
-        else:
-            raise ValueError("path is on drive %s, start on drive %s"
-                                % (path_list[0], start_list[0]))
-    # Work out how much of the filepath is shared by start and path.
-    for i in range(min(len(start_list), len(path_list))):
-        if start_list[i].lower() != path_list[i].lower():
-            break
-    else:
-        i += 1
-
-    rel_list = [ntpath.pardir] * (len(start_list)-i) + path_list[i:]
-    if not rel_list:
-        return ntpath.curdir
-    return join(*rel_list)
+def simple_cache(function):
+    """
+    Decorator that caches function results.
+    The key used is a hash of the ``repr()`` of all arguments. The cache dict
+    is accessible as the ``cache`` attribute of the decorated function.
+    
+    Warning: the results stay in memory until the decorated function is
+    garbage-collected or you explicitly remove them.
+    
+    TODO: Maybe automatially remove results that weren’t used for a long time?
+    
+    >>> @simple_cache
+    ... def f():
+    ...     print 'Computing the answer...'
+    ...     return 42
+    >>> f()
+    Computing the answer...
+    42
+    >>> f()
+    42
+    >>> f.cache # doctest: +ELLIPSIS
+    {'...': 42}
+    >>> f.cache.clear()
+    >>> f.cache
+    {}
+    """
+    cache = {}
+    @functools.wraps(function)
+    def _wrapped(*args, **kwargs):
+        key = hashlib.md5(repr((args, kwargs))).digest()
+        try:
+            return cache[key]
+        except KeyError:
+            val = function(*args, **kwargs)
+            cache[key] = val
+        return val
+    _wrapped.cache = cache
+    return _wrapped
 
 
 # Python 2.5 compatibility
-if hasattr(os.path, 'relpath'):
+try:
     # Use the stdlib one if available (Python >=2.6)
-    relpath = os.path.relpath
-else:
+    from os.path import relpath
+except ImportError:
+    # backported from Python 2.6.2
+    def _posix_relpath(path, start=posixpath.curdir):
+        """Return a relative version of a path"""
+
+        if not path:
+            raise ValueError("no path specified")
+
+        start_list = posixpath.abspath(start).split(posixpath.sep)
+        path_list = posixpath.abspath(path).split(posixpath.sep)
+
+        # Work out how much of the filepath is shared by start and path.
+        i = len(posixpath.commonprefix([start_list, path_list]))
+
+        rel_list = [posixpath.pardir] * (len(start_list)-i) + path_list[i:]
+        if not rel_list:
+            return posixpath.curdir
+        return posixpath.join(*rel_list)
+
+    # backported from Python 2.6.2
+    def _nt_relpath(path, start=ntpath.curdir):
+        """Return a relative version of a path"""
+
+        if not path:
+            raise ValueError("no path specified")
+        start_list = ntpath.abspath(start).split(ntpath.sep)
+        path_list = ntpath.abspath(path).split(ntpath.sep)
+        if start_list[0].lower() != path_list[0].lower():
+            unc_path, rest = ntpath.splitunc(path)
+            unc_start, rest = ntpath.splitunc(start)
+            if bool(unc_path) ^ bool(unc_start):
+                raise ValueError("Cannot mix UNC and non-UNC paths "
+                                 "(%s and %s)" % (path, start))
+            else:
+                raise ValueError("path is on drive %s, start on drive %s"
+                                    % (path_list[0], start_list[0]))
+        # Work out how much of the filepath is shared by start and path.
+        for i in range(min(len(start_list), len(path_list))):
+            if start_list[i].lower() != path_list[i].lower():
+                break
+        else:
+            i += 1
+
+        rel_list = [ntpath.pardir] * (len(start_list)-i) + path_list[i:]
+        if not rel_list:
+            return ntpath.curdir
+        return join(*rel_list)
+
+
     if os.path is posixpath:
         relpath = _posix_relpath
     elif os.path is ntpath:
