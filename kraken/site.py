@@ -26,6 +26,7 @@ import mimetypes
 import re
 import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
+import functools
 
 import kalamar
 import koral
@@ -53,6 +54,8 @@ class Site(object):
         request.koral = self.koral_site
         request.kalamar = self.kalamar_site
         request.kraken = self
+        request.template_response = functools.partial(self.template_response,
+                                                      request)
         try:
             response = None
             if u'/__' in request.path:
@@ -174,10 +177,43 @@ class Site(object):
         # (ie the redirect doesn’t lead to a "404 Not Found")
         self.handle_trailing_slash(request)
         template_name, extension, engine = template
+        return self.template_response(request, template_name, {}, extension,
+                                      engine)
     
+    def template_response(self, request, template_name, values=None,
+                          extension=None, engine=None):
+        """
+        >>> import test.kraken
+        >>> site = test.kraken.make_site()       
+        >>> site.template_response(None, 'foo')
+        Traceback (most recent call last):
+            ...
+        ValueError: extension and engine not provided but template_name does not match *.<extension>.<engine>
+        >>> site.template_response(None, 'foo', 'html')
+        Traceback (most recent call last):
+            ...
+        TypeError: Can provide both of extension and engine or neither, but not only one
+        >>> response = site.template_response(None, 'index.html.genshi')
+        >>> response.mimetype
+        'text/html'
+        """
+        if (not extension) and (not engine):
+            match = re.match(u'^.+' + self.template_suffix_re, template_name)
+            if not match:
+                raise ValueError('extension and engine not provided but '
+                                 'template_name does not match '
+                                 '*.<extension>.<engine>')
+            extension = match.group(1)
+            engine = match.group(2)
+        elif extension or engine:
+            raise TypeError('Can provide both of extension and engine '
+                            'or neither, but not only one')
+        
         # Handle a simple template
-        mimetype, encoding = mimetypes.guess_type(u'_.' + extension)
-        values = self.simple_template_context(request)
+        mimetype, encoding = mimetypes.guess_type(u'_.' + str(extension))
+        if not values:
+            values = {}
+        values.update(self.simple_template_context(request))
         content = self.koral_site.render(engine, template_name, values)
         return utils.Response(content, mimetype=mimetype)
     
@@ -249,17 +285,12 @@ class Site(object):
         path_parts = [part for part in path.split(u'/')
                       if part and part != u'..']
         
-        # Regular expression for .<type>.<engine> 
-        # where <engine> is a koral engine name
-        suffix_re = ur'\.(.+)\.(' + u'|'.join(re.escape(e) for e in
-                                              self.koral_site.engines) + u')$'
-
-        searches = [(path_parts, u'index' + suffix_re)]
+        searches = [(path_parts, u'index' + self.template_suffix_re)]
         # if path_parts is empty (ie. path is u'' or u'/')
         # there is no path_parts[-1]
         if path_parts:
-            searches.append((path_parts[:-1],
-                             re.escape(path_parts[-1]) + suffix_re))
+            searches.append((path_parts[:-1], re.escape(path_parts[-1]) +
+                                              self.template_suffix_re))
 
         for dir_parts, basename_re in searches:
             dirname = os.path.join(self.site_root, *dir_parts)
@@ -269,4 +300,12 @@ class Site(object):
                     if match:
                         template = u'/'.join(dir_parts + [name])
                         return template, match.group(1), match.group(2)
+    
+    @werkzeug.cached_property
+    def template_suffix_re(self):
+        # Regular expression for .<type>.<engine> 
+        # where <engine> is a koral engine name
+        return ur'\.(.+)\.(' + u'|'.join(re.escape(e) for e in
+                                         self.koral_site.engines) + u')$'
 
+    

@@ -22,3 +22,19 @@ def recursive_subclasses(class_):
         for sub_subclass in recursive_subclasses(subclass):
             yield sub_subclass
 
+def indent(text, indent_level):
+    r"""
+    >>> indent(u'Lorem ipsum dolor sit amet.\n'
+    ...        u'  Maecenas malesuada iaculis luctus.\n', 2)
+    u'  Lorem ipsum dolor sit amet.\n    Maecenas malesuada iaculis luctus.'
+    """
+    lines = text.splitlines()
+
+    # Strip off trailing and leading blank lines:
+    while lines and not lines[-1].strip():
+        lines.pop()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+        
+    indent_string = u' ' * indent_level
+    return u'\n'.join(indent_string + line for line in lines)

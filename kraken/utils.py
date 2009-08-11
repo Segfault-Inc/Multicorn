@@ -28,6 +28,7 @@ import werkzeug
 import urlparse
 import posixpath
 from werkzeug.contrib.securecookie import SecureCookie
+from werkzeug.exceptions import NotFound, Forbidden
 
 COOKIE_SECRET = None
 
