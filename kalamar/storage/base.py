@@ -25,6 +25,8 @@ points.
 
 from kalamar import utils
 from kalamar.item import Item
+from kalamar import parser
+
 
 class AccessPoint(object):
     """Abstract class for all storage backends.
@@ -60,6 +62,7 @@ class AccessPoint(object):
         self.config = config
         self.parser_name = config.get('parser', None)
         # check that this parser exists
+        parser.load()
         for subclass in utils.recursive_subclasses(Item):
             if getattr(subclass, 'format', None) == self.parser_name:
                 break

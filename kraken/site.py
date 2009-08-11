@@ -38,7 +38,7 @@ class Site(object):
     """
     
     def __init__(self, site_root, kalamar_conf=None,
-                 fail_on_inexistent_kalamar_parser=False):
+                 fail_on_inexistent_kalamar_parser=True):
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(site_root)
         self.kalamar_site = kalamar.Site(
