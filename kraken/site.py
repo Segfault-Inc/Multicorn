@@ -176,7 +176,6 @@ class Site(object):
         # only if the template exists
         # (ie the redirect doesn’t lead to a "404 Not Found")
         self.handle_trailing_slash(request)
-        print template
         template_name, extension, engine = template
         return self.template_response(request, template_name, {}, extension,
                                       engine)
