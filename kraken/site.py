@@ -176,6 +176,7 @@ class Site(object):
         # only if the template exists
         # (ie the redirect doesn’t lead to a "404 Not Found")
         self.handle_trailing_slash(request)
+        print template
         template_name, extension, engine = template
         return self.template_response(request, template_name, {}, extension,
                                       engine)
@@ -189,15 +190,24 @@ class Site(object):
         Traceback (most recent call last):
             ...
         ValueError: extension and engine not provided but template_name does not match *.<extension>.<engine>
-        >>> site.template_response(None, 'foo', 'html')
+        >>> site.template_response(None, 'foo', {}, 'html')
         Traceback (most recent call last):
             ...
         TypeError: Can provide both of extension and engine or neither, but not only one
         >>> response = site.template_response(None, 'index.html.genshi')
         >>> response.mimetype
         'text/html'
+        >>> response = site.template_response(None, 'index.html.genshi', {},
+        ...                                   'html', 'genshi')
+        >>> response.mimetype
+        'text/html'
         """
-        if (not extension) and (not engine):
+        if extension and engine:
+            pass # exclude this case from the following else clauses
+        elif extension or engine:
+            raise TypeError('Can provide both of extension and engine '
+                            'or neither, but not only one')
+        else:
             match = re.match(u'^.+' + self.template_suffix_re, template_name)
             if not match:
                 raise ValueError('extension and engine not provided but '
@@ -205,9 +215,6 @@ class Site(object):
                                  '*.<extension>.<engine>')
             extension = match.group(1)
             engine = match.group(2)
-        elif extension or engine:
-            raise TypeError('Can provide both of extension and engine '
-                            'or neither, but not only one')
         
         # Handle a simple template
         mimetype, encoding = mimetypes.guess_type(u'_.' + str(extension))
