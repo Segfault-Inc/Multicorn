@@ -23,6 +23,7 @@ independent site with it’s own configuration.
 import os.path
 import collections
 import mimetypes
+import types
 import re
 import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
@@ -258,10 +259,31 @@ class Site(object):
         except KeyError:
             pass
 
-        namespace = {'__name__': 'kraken.site.' + '.'.join(parts)}
+        namespace = {'__name__': 'kraken.site.' + 
+                        name.encode('utf8'),
+                     '__file__': filename.encode('utf8'),
+                     'import_': self.import_}
         execfile(filename, namespace)
         self._module_cache[filename] = (namespace, mtime)
         return namespace
+    
+    def import_(self, name):
+        """
+        Helper for python controllers to "import" other controllers.
+        Return a module object
+
+        >>> import test.kraken
+        >>> site = test.kraken.make_site()
+        >>> module = site.import_('lorem.ipsum')
+        >>> module # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+        <module 'kraken.site.lorem/ipsum' 
+            from '.../test/kraken/site/lorem/ipsum.py'>
+        """
+        namespace = self.load_python_module(name.replace('.', '/'))
+        module = types.ModuleType('kraken.site.' + str(name))
+        for attr in namespace:
+            setattr(module, attr, namespace[attr])
+        return module
         
     def find_template(self, path):
         """
