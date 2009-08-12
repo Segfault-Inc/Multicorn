@@ -140,10 +140,10 @@ class Site(object):
                     return handler(request)
         
         # slash-separated parts of the URL
-        script_name = [part for part in request.path.split(u'/')
+        script_name = [u''] + [part for part in request.path.split(u'/')
                        if part and part != u'..']
         path_info = collections.deque()
-        while script_name:
+        while True:
             for suffix in (u'', u'/index'):
                 module = self.load_python_module(u'/'.join(script_name) + 
                                                  suffix)
@@ -157,6 +157,12 @@ class Site(object):
                                 raise Forbidden
                         self.handle_trailing_slash(request)
                         return handler(request, u'/'.join(path_info))
+            # exit loop here and not with the while condition so that
+            # the previous code is executed with script_name == []
+            # (ie. index.py at the root of the site)
+            # TODO: test this case
+            if not script_name:
+                break
             # take the right-most part of script_name and push it to the
             # left of path_info
             path_info.appendleft(script_name.pop())
