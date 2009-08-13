@@ -1,4 +1,5 @@
 
+import os
 from unittest import TestCase
 
 from test.kraken import KrakenSiteMixin
@@ -105,10 +106,9 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
 
 class TestSession(KrakenSiteMixin, TestCase):
     def setUp(self):
+        self.site_secret_key = os.urandom(20)
+        print repr(self.site_secret_key)
         super(TestSession, self).setUp()
-        import os
-        import kraken.utils
-        kraken.utils.COOKIE_SECRET = os.urandom(20)
 
     def test_session(self):
         # get the default value

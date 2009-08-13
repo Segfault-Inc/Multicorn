@@ -39,8 +39,15 @@ class Site(object):
     Create a WSGI application from a site root and a kalamar configuration file.
     """
     
-    def __init__(self, site_root, kalamar_conf=None,
+    def __init__(self, site_root, kalamar_conf=None, secret_key=None,
                  fail_on_inexistent_kalamar_parser=True):
+        """
+        site_root: dirname of the root of the site
+        kalamar_conf: path to the kalamar config file
+        secret_key: used for signed cookies for sessions
+                    use something like os.urandom(20) to get one
+        """
+        self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(site_root)
         self.kalamar_site = kalamar.Site(
@@ -49,37 +56,43 @@ class Site(object):
         )
         self._module_cache = {}
     
-    @utils.Request.application
-    def __call__(self, request):
+    def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request"""
+        request = utils.Request(environ, self.secret_key)
+        try:
+            response = self.handle_request(request)
+        except HTTPException, e:
+            # e is also a WSGI application
+            return e(environ, start_response)
+
+        # utils.Request.session is a werkzeug.cached_property
+        # the actual session object is in request.__dict__ if
+        # request.session has been accessed at least once.
+        # If it is not there, the session hasn’t changed:
+        # no need to set the cookie.
+        if 'session' in request.__dict__:
+            request.session.save_cookie(response)
+        
+        return response(environ, start_response)
+
+    def handle_request(self, request):
         request.koral = self.koral_site
         request.kalamar = self.kalamar_site
         request.kraken = self
         request.template_response = functools.partial(self.template_response,
                                                       request)
-        try:
-            response = None
-            if u'/__' in request.path:
-                try:
-                    response = self.handle_static_file(request)
-                except NotFound:
-                    pass
-            if not response:
-                try:
-                    response = self.handle_simple_template(request)
-                except NotFound:
-                    response = self.handle_python(request)
-            # utils.Request.session is a werkzeug.cached_property
-            # the actual session object is in request.__dict__ if
-            # request.session has been accessed at least once.
-            # If it is not there, the session hasn’t changed:
-            # no need to set the cookie.
-            if 'session' in request.__dict__:
-                request.session.save_cookie(response)
-            return response
-        except HTTPException, e:
-            # e is also a WSGI application
-            return e
+        response = None
+        if u'/__' in request.path:
+            try:
+                response = self.handle_static_file(request)
+            except NotFound:
+                pass
+        if not response:
+            try:
+                response = self.handle_simple_template(request)
+            except NotFound:
+                response = self.handle_python(request)
+        return response
 
     def handle_trailing_slash(self, request):
         """

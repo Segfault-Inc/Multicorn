@@ -26,8 +26,10 @@ import werkzeug
 from koral.engine.base import BaseEngine
 
 def load():
-    """Import all python files in the "engine" folder."""
-    for module in werkzeug.find_modules(__name__, include_packages=True,
-                                        recursive=True):
-        werkzeug.import_string(module)
-
+    """Import all modules in the curent package."""
+    if not load.__loaded:
+        for module in werkzeug.find_modules(__name__, include_packages=True,
+                                            recursive=True):
+            werkzeug.import_string(module)
+        load.__loaded = True
+load.__loaded = False
