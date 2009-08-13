@@ -20,6 +20,7 @@ Various utilities for Kraken
 """
 
 import os
+import sys
 import hashlib
 import datetime
 import inspect
@@ -140,3 +141,11 @@ def arg_count(function):
     args, varargs, varkw, defaults = inspect.getargspec(function)
     return len(args)
 
+def runserver(wsgi_app, args=None):
+    """
+    Run a developpement server from command line for the given WSGI application.
+    """
+    if args is None:
+        args = sys.argv[1:]
+    action_runserver = script.make_runserver(wsgi_app)
+    werkzeug.script.run(args=['runserver'] + args)
