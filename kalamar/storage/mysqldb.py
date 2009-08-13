@@ -73,7 +73,7 @@ else:
                     # Hack to convert python locale format to MySQL
                     self.default_encoding.replace('-','')
                 )
-            self._connection.ping(reconnect=True)
+            self._connection.ping(True)
             return (self._connection, self._table)
         
         def _get_primary_keys(self):
