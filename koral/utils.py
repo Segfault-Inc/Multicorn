@@ -24,8 +24,8 @@ def recursive_subclasses(class_):
 
 def indent(text, indent_level):
     r"""
-    >>> indent(u'Lorem ipsum dolor sit amet.\n'
-    ...        u'  Maecenas malesuada iaculis luctus.\n', 2)
+    >>> indent(u'\n\nLorem ipsum dolor sit amet.\n'
+    ...        u'  Maecenas malesuada iaculis luctus.\n\n', 2)
     u'  Lorem ipsum dolor sit amet.\n    Maecenas malesuada iaculis luctus.'
     """
     lines = text.splitlines()
