@@ -31,7 +31,6 @@ import posixpath
 from werkzeug.contrib.securecookie import SecureCookie
 from werkzeug.exceptions import NotFound, Forbidden
 
-COOKIE_SECRET = None
 
 def make_absolute_url(request, url):
     """
@@ -86,9 +85,15 @@ def redirect(request, url, status=302):
     return werkzeug.redirect(make_absolute_url(request, url), status)
 
 class Request(werkzeug.Request):
+    def __init__(self, environ, session_secret_key=None):
+        super(Request, self).__init__(environ)
+        self.session_secret_key = session_secret_key
+        
     @werkzeug.cached_property
     def session(self):
-        return SecureCookie.load_cookie(self, secret_key=COOKIE_SECRET)
+        return SecureCookie.load_cookie(
+            self, secret_key=self.session_secret_key
+        )
 
 class Response(werkzeug.Response):
     pass
@@ -144,8 +149,20 @@ def arg_count(function):
 def runserver(wsgi_app, args=None):
     """
     Run a developpement server from command line for the given WSGI application.
+    
+    >>> runserver(None, ['--help']) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    usage: ...
+    >>> real_argv = sys.argv
+    >>> sys.argv = [sys.argv[0], '--help']
+    >>> runserver(None) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    usage: ...    
+    >>> sys.argv = real_argv
+    
     """
     if args is None:
         args = sys.argv[1:]
-    action_runserver = script.make_runserver(wsgi_app)
-    werkzeug.script.run(args=['runserver'] + args)
+    if not args or args[0] != '--help':
+        args = ['runserver'] + args
+    action_runserver = werkzeug.script.make_runserver(lambda: wsgi_app)
+    werkzeug.script.run(args=args)
+
