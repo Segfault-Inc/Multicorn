@@ -128,6 +128,8 @@ class DBAPIStorage(AccessPoint):
     def get_connection(self):
         """Return a DB-API connection object and the table name in a tuple.
         
+        If connection is broken, get_connection will try to get a new one.
+        
         This method must be overriden.
 
         This method can use config['url'] to connect and may keep connection in

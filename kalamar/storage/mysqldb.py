@@ -52,41 +52,6 @@ else:
             
             """
             if not getattr(self, '_connection', None):
-                decode_string = lambda c: c.decode(
-                                    # Hack to convert python locale format to MySQL
-                                    self.default_encoding.replace('-','')
-                                )
-    #            converters = {
-    #                FIELD_TYPE.BIT: bool,
-    #                FIELD_TYPE.BLOB: str,
-    #                FIELD_TYPE.CHAR: decode_string,
-    #                #FIELD_TYPE.DATE
-    #                #FIELD_TYPE.DATETIME
-    #                FIELD_TYPE.DECIMAL: float,
-    #                FIELD_TYPE.DOUBLE: float,
-    #                #FIELD_TYPE.ENUM
-    #                FIELD_TYPE.FLOAT: float,
-    #                #FIELD_TYPE.GEOMETRY
-    #                FIELD_TYPE.INT24: int,
-    #                #FIELD_TYPE.INTERVAL
-    #                FIELD_TYPE.LONG: int,
-    #                FIELD_TYPE.LONGLONG: int,
-    #                FIELD_TYPE.LONG_BLOB: str,
-    #                FIELD_TYPE.MEDIUM_BLOB: str,
-    #                #FIELD_TYPE.NEWDATE
-    #                FIELD_TYPE.NEWDECIMAL: float,
-    #                #FIELD_TYPE.SET
-    #                FIELD_TYPE.SHORT: int,
-    #                FIELD_TYPE.STRING: decode_string,
-    #                #FIELD_TYPE.TIME
-    #                #FIELD_TYPE.TIMESTAMP
-    #                FIELD_TYPE.TINY: int,
-    #                FIELD_TYPE.TINY_BLOB: str,
-    #                FIELD_TYPE.VARCHAR: decode_string,
-    #                FIELD_TYPE.VAR_STRING: decode_string,
-    #                FIELD_TYPE.YEAR: int
-    #            }
-    #            kwargs = {'conv': converters}
                 kwargs = {}
                 parts = self.config['url'].split('/')
                 
@@ -105,9 +70,10 @@ else:
                 
                 self._connection = MySQLdb.connect(**kwargs)
                 self._connection.set_character_set(
+                    # Hack to convert python locale format to MySQL
                     self.default_encoding.replace('-','')
                 )
-
+            self._connection.ping(reconnect=True)
             return (self._connection, self._table)
         
         def _get_primary_keys(self):

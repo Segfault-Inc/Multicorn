@@ -35,6 +35,7 @@ else:
     import os
     from time import sleep
     from kalamar import iso8601
+    import socket
 
     from dbapi import DBAPIStorage
 
@@ -52,7 +53,8 @@ else:
                 postgres://user:password@host[:port]/base?table
             
             """
-            if not hasattr(self, '_connection'):
+            
+            def connect():
                 kwargs = {}
                 parts = self.config['url'].split('/')
                 
@@ -67,7 +69,18 @@ else:
                 kwargs['database'], self._table = parts[3].split('?')
                 
                 self._connection = self.get_db_module().connect(**kwargs)
+            
+            if not hasattr(self, '_connection'):
+                connect()
                 
+            try:
+                # Non-documented. Do sth (?) to the database and raises an
+                # exception if connection is broken.
+                # TODO figure out a better way to do this.
+                self._connection.conn.isready()
+            except (postg.ProgrammingError, socket.error):
+                connect()
+            
             return (self._connection, self._table)
         
         def _get_primary_keys(self):
