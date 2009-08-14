@@ -151,7 +151,8 @@ class AccessPoint(object):
         for condition in conditions:
             if condition.property_name in storage_properties:
                 storage_conditions.append(utils.Condition(
-                    storage_aliases[condition.property_name],
+                    storage_aliases.get(condition.property_name,
+                                        condition.property_name),
                     condition.operator, condition.value))
             else:
                 parser_conditions.append(condition)
