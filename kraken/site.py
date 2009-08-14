@@ -252,6 +252,7 @@ class Site(object):
         return dict(
             request=request,
             site=site,
+            import_=self.import_
         )
 
     def load_python_module(self, name):
