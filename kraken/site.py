@@ -141,8 +141,8 @@ class Site(object):
         for suffix in (u'', u'/index'):
             module_path = request.path.strip(u'/') + suffix
             module = self.load_python_module(module_path)
-            if 'handle_request' in module:
-                handler = module['handle_request']
+            if hasattr(module, 'handle_request'):
+                handler = module.handle_request
                 # the 2 parameters case is handled later
                 if utils.arg_count(handler) == 1:
                     # only if the controller exists
@@ -161,8 +161,8 @@ class Site(object):
             for suffix in (u'', u'/index'):
                 module = self.load_python_module(u'/'.join(script_name) + 
                                                  suffix)
-                if 'handle_request' in module:
-                    handler = module['handle_request']
+                if hasattr(module, 'handle_request'):
+                    handler = module.handle_request
                     if utils.arg_count(handler) > 1:
                         # only if the controller exists
                         # (ie the redirect doesn’t lead to a "404 Not Found")
@@ -277,8 +277,11 @@ class Site(object):
                      '__file__': filename.encode('utf8'),
                      'import_': self.import_}
         execfile(filename, namespace)
-        self._module_cache[filename] = (namespace, mtime)
-        return namespace
+        module = types.ModuleType(namespace['__name__'])
+        for attr in namespace:
+            setattr(module, attr, namespace[attr])
+        self._module_cache[filename] = (module, mtime)
+        return module
     
     def import_(self, name):
         """
@@ -292,11 +295,7 @@ class Site(object):
         <module 'kraken.site.lorem/ipsum' 
             from '.../test/kraken/site/lorem/ipsum.py'>
         """
-        namespace = self.load_python_module(name.replace('.', '/'))
-        module = types.ModuleType('kraken.site.' + str(name))
-        for attr in namespace:
-            setattr(module, attr, namespace[attr])
-        return module
+        return self.load_python_module(name.replace('.', '/'))
         
     def find_template(self, path):
         """
