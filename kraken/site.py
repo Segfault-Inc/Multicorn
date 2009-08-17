@@ -58,29 +58,26 @@ class Site(object):
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request"""
-        request = utils.Request(environ, self.secret_key)
+        request = self.make_request(environ)
         try:
             response = self.handle_request(request)
         except HTTPException, e:
             # e is also a WSGI application
             return e(environ, start_response)
 
-        # utils.Request.session is a werkzeug.cached_property
-        # the actual session object is in request.__dict__ if
-        # request.session has been accessed at least once.
-        # If it is not there, the session hasn’t changed:
-        # no need to set the cookie.
-        if 'session' in request.__dict__:
-            request.session.save_cookie(response)
-        
+        response = self.process_response(request, response)
         return response(environ, start_response)
-
-    def handle_request(self, request):
+    
+    def make_request(self, environ):
+        request = utils.Request(environ, self.secret_key)
         request.koral = self.koral_site
         request.kalamar = self.kalamar_site
         request.kraken = self
         request.template_response = functools.partial(self.template_response,
                                                       request)
+        return request
+    
+    def handle_request(self, request):
         response = None
         if u'/__' in request.path:
             try:
@@ -92,6 +89,17 @@ class Site(object):
                 response = self.handle_simple_template(request)
             except NotFound:
                 response = self.handle_python(request)
+        return response
+
+    def process_response(self, request, response):
+        # utils.Request.session is a werkzeug.cached_property
+        # the actual session object is in request.__dict__ if
+        # request.session has been accessed at least once.
+        # If it is not there, the session hasn’t changed:
+        # no need to set the cookie.
+        if 'session' in request.__dict__:
+            request.session.save_cookie(response)
+            
         return response
 
     def handle_trailing_slash(self, request):
