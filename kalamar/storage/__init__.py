@@ -23,8 +23,6 @@ Storage module listing all storage access points.
 import os
 import werkzeug
 
-from kalamar.storage.base import AccessPoint
-
 def load():
     """Import all modules in the curent package."""
     if not load.__loaded:

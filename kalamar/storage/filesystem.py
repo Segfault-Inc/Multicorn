@@ -308,39 +308,20 @@ class FileSystemStorage(AccessPoint):
     
     @werkzeug.cached_property
     @utils.apply_to_result(list)
-    def filename_regexp_parts(self):
+    def filename_pattern_parts(self):
         index = 1
         for part in self.filename_format.split('/'):
-            yield self._pattern_to_regexp(part, index)
+            yield re.compile(self._pattern_to_regexp(part, index))
             index += part.count('*')
     
-    @werkzeug.cached_property
-    def filename_pattern_parts(self):
-        return [re.compile(part) for part in self.filename_regexp_parts]
-    
-    
-    def _filename_re(self):
-        """
-        >>> ap = AccessPoint.from_url(url=u'file://foo', 
-        ...                           filename_format=u'*/*.py')
-        >>> print ap.filename_re.pattern
-        ^foo\/(?P<path1>.*)\/(?P<path2>.*)\.py$
-        """
-        return re.compile('^' + re.escape(self.root + os.sep) +
-            re.escape(os.sep).join(
-                part[1:-1] # removet ^ and $
-                for part in self.filename_regexp_parts
-            ) + '$')
-    
-    # keep _filename_re accessible so that it’s doctest is run
-    filename_re = werkzeug.cached_property(_filename_re)
-
     def item_from_filename(self, filename):
         """
-        Search for an item matching this filename.
+        Search for an item matching this ``filename``.
+        ``filename`` has to be os.normpath’d
 
         >>> dirname, module = os.path.split(__file__)
         >>> dirname, package = os.path.split(dirname)
+        >>> dirname = os.path.normpath(dirname)
         
         dirname is the path to the kalamar package
         
@@ -369,11 +350,7 @@ class FileSystemStorage(AccessPoint):
                 os.path.normpath(os.path.splitext(__file__)[0] + '.py')
         True
         """
-        filename = os.path.normpath(filename)
-
         if not filename.startswith(self.root):
-            return None
-        if not os.path.isfile(filename):
             return None
         
         # relative to the access point root
@@ -391,6 +368,9 @@ class FileSystemStorage(AccessPoint):
                 return None
             properties.update(match.groupdict())
             
+        if not os.path.isfile(filename):
+            return None
+
         properties[u'_filename'] = filename
         return self._make_item(properties,
                                functools.partial(open, filename, 'rb'))
