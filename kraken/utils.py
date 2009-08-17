@@ -47,6 +47,8 @@ def make_absolute_url(request, url):
     'http://localhost/foo/bar/'
     >>> make_absolute_url(request, '../bar/')
     'http://localhost/bar/'
+    >>> make_absolute_url(request, '/')
+    'http://localhost/'
 
     # Same tests without the trailing slash
     >>> make_absolute_url(request, 'http://localhost/foo/bar')
@@ -60,15 +62,16 @@ def make_absolute_url(request, url):
     >>> make_absolute_url(request, '../bar')
     'http://localhost/bar'
     """
-    parsed = urlparse.urlparse(url)
-    if parsed.scheme and parsed.netloc:
+    if urlparse.urlparse(url).netloc:
+        # The URL has a 'host' part: it’s already absolute
         return url
     if not url.startswith('/'):
+        # Relative to the current URL, not the site root
         path = request.base_url[len(request.host_url):]
         url = '/' + path + '/' + url
     new_url = request.host_url.rstrip('/') + posixpath.normpath(url)
     # posixpath.normpath always remove trailing slashes
-    if url.endswith('/'):
+    if url.endswith('/') and url != '/':
         new_url += '/'
     return new_url
 
@@ -79,8 +82,12 @@ def redirect(request, url, status=302):
     ...     return redirect(request, request.args['redirect_to'],
     ...                     int(request.args.get('status', 302)))
     >>> client = werkzeug.Client(test_app)
+
     >>> client.get('/foo?redirect_to=../bar') # doctest: +ELLIPSIS
     (..., '302 FOUND', [...('Location', 'http://localhost/bar')...)
+
+    >>> client.get('/foo?redirect_to=/') # doctest: +ELLIPSIS
+    (..., '302 FOUND', [...('Location', 'http://localhost/')...)
     """
     return werkzeug.redirect(make_absolute_url(request, url), status)
 
