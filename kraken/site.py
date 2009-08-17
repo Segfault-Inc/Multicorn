@@ -49,12 +49,15 @@ class Site(object):
         """
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
-        self.koral_site = koral.Site(site_root)
+        self.koral_site = koral.Site(self.site_root)
         self.kalamar_site = kalamar.Site(
             os.path.expanduser(unicode(kalamar_conf)),
             fail_on_inexistent_parser=fail_on_inexistent_kalamar_parser,
         )
         self._module_cache = {}
+    
+#    def __repr__(self):
+#        return '<>'
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request"""
@@ -272,7 +275,7 @@ class Site(object):
         parts = [part for part in name.split(u'/') if part and part != u'..']
         filename = os.path.join(self.site_root, *parts) + u'.py'
         if not os.path.isfile(filename):
-            return {}
+            return None
         mtime = os.stat(filename).st_mtime
         try:
             module, old_mtime = self._module_cache[filename]
@@ -281,14 +284,11 @@ class Site(object):
         except KeyError:
             pass
 
-        namespace = {'__name__': 'kraken.site.' + 
-                        name.encode('utf8'),
-                     '__file__': filename.encode('utf8'),
-                     'import_': self.import_}
-        execfile(filename, namespace)
-        module = types.ModuleType(namespace['__name__'])
-        for attr in namespace:
-            setattr(module, attr, namespace[attr])
+        name = 'kraken.site.' + name.encode('utf8')
+        module = types.ModuleType(name)
+        module.__file__ = filename.encode('utf8')
+        module.import_ = self.import_
+        execfile(filename, module.__dict__)
         self._module_cache[filename] = (module, mtime)
         return module
     
@@ -299,12 +299,21 @@ class Site(object):
 
         >>> import test.kraken
         >>> site = test.kraken.make_site()
-        >>> module = site.import_('lorem.ipsum')
-        >>> module # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+        >>> module = site.import_('inexistent') # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        ImportError: No module named inexistent in u'.../test/kraken/site'
+
+        >>> site.import_('lorem.ipsum') # doctest: +ELLIPSIS
+        ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken.site.lorem/ipsum' 
             from '.../test/kraken/site/lorem/ipsum.py'>
         """
-        return self.load_python_module(name.replace('.', '/'))
+        module = self.load_python_module(name.replace('.', '/'))
+        if module is None:
+            raise ImportError('No module named %s in %r' % (name,
+                                                           	self.site_root))
+        return module
         
     def find_template(self, path):
         """
