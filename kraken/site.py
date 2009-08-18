@@ -49,38 +49,38 @@ class Site(object):
         """
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
-        self.koral_site = koral.Site(site_root)
+        self.koral_site = koral.Site(self.site_root)
         self.kalamar_site = kalamar.Site(
             os.path.expanduser(unicode(kalamar_conf)),
             fail_on_inexistent_parser=fail_on_inexistent_kalamar_parser,
         )
         self._module_cache = {}
     
+#    def __repr__(self):
+#        return '<>'
+    
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request"""
-        request = utils.Request(environ, self.secret_key)
+        request = self.make_request(environ)
         try:
             response = self.handle_request(request)
         except HTTPException, e:
             # e is also a WSGI application
             return e(environ, start_response)
 
-        # utils.Request.session is a werkzeug.cached_property
-        # the actual session object is in request.__dict__ if
-        # request.session has been accessed at least once.
-        # If it is not there, the session hasn’t changed:
-        # no need to set the cookie.
-        if 'session' in request.__dict__:
-            request.session.save_cookie(response)
-        
+        response = self.process_response(request, response)
         return response(environ, start_response)
-
-    def handle_request(self, request):
+    
+    def make_request(self, environ):
+        request = utils.Request(environ, self.secret_key)
         request.koral = self.koral_site
         request.kalamar = self.kalamar_site
         request.kraken = self
         request.template_response = functools.partial(self.template_response,
                                                       request)
+        return request
+    
+    def handle_request(self, request):
         response = None
         if u'/__' in request.path:
             try:
@@ -92,6 +92,17 @@ class Site(object):
                 response = self.handle_simple_template(request)
             except NotFound:
                 response = self.handle_python(request)
+        return response
+
+    def process_response(self, request, response):
+        # utils.Request.session is a werkzeug.cached_property
+        # the actual session object is in request.__dict__ if
+        # request.session has been accessed at least once.
+        # If it is not there, the session hasn’t changed:
+        # no need to set the cookie.
+        if 'session' in request.__dict__:
+            request.session.save_cookie(response)
+            
         return response
 
     def handle_trailing_slash(self, request):
@@ -141,8 +152,8 @@ class Site(object):
         for suffix in (u'', u'/index'):
             module_path = request.path.strip(u'/') + suffix
             module = self.load_python_module(module_path)
-            if 'handle_request' in module:
-                handler = module['handle_request']
+            if hasattr(module, 'handle_request'):
+                handler = module.handle_request
                 # the 2 parameters case is handled later
                 if utils.arg_count(handler) == 1:
                     # only if the controller exists
@@ -161,8 +172,8 @@ class Site(object):
             for suffix in (u'', u'/index'):
                 module = self.load_python_module(u'/'.join(script_name) + 
                                                  suffix)
-                if 'handle_request' in module:
-                    handler = module['handle_request']
+                if hasattr(module, 'handle_request'):
+                    handler = module.handle_request
                     if utils.arg_count(handler) > 1:
                         # only if the controller exists
                         # (ie the redirect doesn’t lead to a "404 Not Found")
@@ -252,6 +263,7 @@ class Site(object):
         return dict(
             request=request,
             site=site,
+            import_=self.import_
         )
 
     def load_python_module(self, name):
@@ -263,7 +275,7 @@ class Site(object):
         parts = [part for part in name.split(u'/') if part and part != u'..']
         filename = os.path.join(self.site_root, *parts) + u'.py'
         if not os.path.isfile(filename):
-            return {}
+            return None
         mtime = os.stat(filename).st_mtime
         try:
             module, old_mtime = self._module_cache[filename]
@@ -272,13 +284,13 @@ class Site(object):
         except KeyError:
             pass
 
-        namespace = {'__name__': 'kraken.site.' + 
-                        name.encode('utf8'),
-                     '__file__': filename.encode('utf8'),
-                     'import_': self.import_}
-        execfile(filename, namespace)
-        self._module_cache[filename] = (namespace, mtime)
-        return namespace
+        name = 'kraken.site.' + name.encode('utf8')
+        module = types.ModuleType(name)
+        module.__file__ = filename.encode('utf8')
+        module.import_ = self.import_
+        execfile(filename, module.__dict__)
+        self._module_cache[filename] = (module, mtime)
+        return module
     
     def import_(self, name):
         """
@@ -287,15 +299,20 @@ class Site(object):
 
         >>> import test.kraken
         >>> site = test.kraken.make_site()
-        >>> module = site.import_('lorem.ipsum')
-        >>> module # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+        >>> module = site.import_('inexistent') # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        ImportError: No module named inexistent in u'.../test/kraken/site'
+
+        >>> site.import_('lorem.ipsum') # doctest: +ELLIPSIS
+        ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken.site.lorem/ipsum' 
             from '.../test/kraken/site/lorem/ipsum.py'>
         """
-        namespace = self.load_python_module(name.replace('.', '/'))
-        module = types.ModuleType('kraken.site.' + str(name))
-        for attr in namespace:
-            setattr(module, attr, namespace[attr])
+        module = self.load_python_module(name.replace('.', '/'))
+        if module is None:
+            raise ImportError('No module named %s in %r' % (name,
+                                                           	self.site_root))
         return module
         
     def find_template(self, path):

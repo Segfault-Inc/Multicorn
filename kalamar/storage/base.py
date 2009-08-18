@@ -26,6 +26,7 @@ points.
 from kalamar import utils
 from kalamar.item import Item
 from kalamar import parser
+from kalamar import storage
 
 
 class AccessPoint(object):
@@ -52,6 +53,7 @@ class AccessPoint(object):
 
         """
         protocol = config['url'].split(':', 1)[0]
+        storage.load()
         for subclass in utils.recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:
                 return subclass(**config)
@@ -151,7 +153,8 @@ class AccessPoint(object):
         for condition in conditions:
             if condition.property_name in storage_properties:
                 storage_conditions.append(utils.Condition(
-                    storage_aliases[condition.property_name],
+                    storage_aliases.get(condition.property_name,
+                                        condition.property_name),
                     condition.operator, condition.value))
             else:
                 parser_conditions.append(condition)

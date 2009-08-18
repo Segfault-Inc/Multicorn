@@ -26,7 +26,9 @@ import os
 import ConfigParser
 import warnings
 
-from kalamar import storage, utils, Item
+from kalamar.storage import base
+from kalamar import utils
+from kalamar import Item
 
 
 class Site(object):
@@ -44,7 +46,7 @@ class Site(object):
             ...
         FileNotFoundError: nonexistent
         """
-        storage.load()
+        self.config_filename = config_filename
 
         config = ConfigParser.RawConfigParser()
         
@@ -58,10 +60,10 @@ class Site(object):
             for section in config.sections():
                 kwargs = dict(config.items(section), basedir=basedir, site=self)
                 if fail_on_inexistent_parser:
-                    ap = storage.AccessPoint.from_url(**kwargs)
+                    ap = base.AccessPoint.from_url(**kwargs)
                 else:
                     try:
-                        ap = storage.AccessPoint.from_url(**kwargs)
+                        ap = base.AccessPoint.from_url(**kwargs)
                     except utils.ParserNotAvailable, e:
                         warnings.warn('The access point %r was ignored. (%s)' %
                                       (section, e.args[0]))
@@ -161,6 +163,7 @@ class Site(object):
         Search all access points for an item matching this filename.
         Return the first item found or None.
         """
+        filename = os.path.normpath(filename)
         for ap in self.access_points.values():
             item = ap.item_from_filename(filename)
             if item and item is not NotImplemented:
