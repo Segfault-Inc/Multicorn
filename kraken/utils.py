@@ -153,9 +153,9 @@ def arg_count(function):
     args, varargs, varkw, defaults = inspect.getargspec(function)
     return len(args)
 
-def runserver(wsgi_app, args=None):
+def runserver(site, args=None):
     """
-    Run a developpement server from command line for the given WSGI application.
+    Run a developpement server from command line for the given Kraken site.
     
     >>> runserver(None, ['--help']) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...
@@ -170,6 +170,10 @@ def runserver(wsgi_app, args=None):
         args = sys.argv[1:]
     if not args or args[0] != '--help':
         args = ['runserver'] + args
-    action_runserver = werkzeug.script.make_runserver(lambda: wsgi_app)
+    action_runserver = werkzeug.script.make_runserver(
+        lambda: site,
+        # Files for the reloader to watch
+        extra_files=[site.kalamar_site.config_filename] if site else [],
+    )
     werkzeug.script.run(args=args)
 

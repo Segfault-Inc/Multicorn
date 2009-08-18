@@ -46,6 +46,7 @@ class Site(object):
             ...
         FileNotFoundError: nonexistent
         """
+        self.config_filename = config_filename
 
         config = ConfigParser.RawConfigParser()
         
