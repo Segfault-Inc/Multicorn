@@ -108,9 +108,7 @@ else:
             ]
         
         def _convert_parameters(self, parameters):
-            description = self.get_table_description()
             module = self.get_db_module()
-            
             conv_dict = {
                 16: bool,
                 17: module.Binary,
@@ -146,8 +144,10 @@ else:
                 #1700: {'bin_in': <function numeric_recv at 0x97621b4>},
                 2275: unicode
             }
+            
+            description = self.get_table_description()
             new_parameters = []
-            #prop_name is the same as the column name
+            #parameter.name is the same as the column name
             for parameter in parameters:
                 if parameter.value is not None:
                     column_type_code = int(
