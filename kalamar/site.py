@@ -29,6 +29,7 @@ import warnings
 from kalamar.storage import base
 from kalamar import utils
 from kalamar import Item
+from kalamar import requestparser
 
 
 class Site(object):
@@ -75,25 +76,26 @@ class Site(object):
     def parse_request(request):
         """Convert a "request" string to (prop_name, operator, value) tuples.
         
-        >>> list(Site.parse_request(u'/1/b=42/c>=3/')) # doctest: +ELLIPSIS
+        >>> list(Site.parse_request(u"/'1'/b='42'/c>='3'/")) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         [Condition(None, None, u'1'),
          Condition(u'b', <built-in function eq>, u'42'),
          Condition(u'c', <built-in function ge>, u'3')]
 
         """
-        request = unicode(request)
-        for part in request.split(u'/'):
-            if not part:
-                continue
-            for operator_str, operator_func in utils.operators.items():
-                if operator_str in part:
-                    name, value = part.split(operator_str, 1)
-                    yield utils.Condition(name, operator_func, value)
-                    break
-            else:
-                # No operator found
-                yield utils.Condition(None, None, part)
+        return requestparser.iparse(request)
+#        request = unicode(request)
+#        for part in request.split(u'/'):
+#            if not part:
+#                continue
+#            for operator_str, operator_func in utils.operators.items():
+#                if operator_str in part:
+#                    name, value = part.split(operator_str, 1)
+#                    yield utils.Condition(name, operator_func, value)
+#                    break
+#            else:
+#                # No operator found
+#                yield utils.Condition(None, None, part)
         
     def isearch(self, access_point, request):
         """Return a generator of all items in "access_point" matching "request".

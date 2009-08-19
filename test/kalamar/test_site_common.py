@@ -29,13 +29,13 @@ class TestSiteSearch(MyTest):
     
     def test_non_ascii(self):
         """Request with non ascii characters must be handled correctly."""
-        request = u'artiste=Birelli Lagrène'
+        request = u'artiste="Birelli Lagrène"'
         for item in self.site.search(self.access_point_name, request):
             self.assertEqual(item.properties["artiste"], u'Birelli Lagrène')
         
     def test_without_sugar(self):
         """A request without syntaxic sugar must return the corresponding items."""
-        request = u'artiste=Water please/genre=rock'
+        request = u'artiste="Water please"/genre="rock"'
         for item in self.site.search(self.access_point_name, request):
             self.assertEqual(item.properties["genre"], u'rock')
             self.assertEqual(item.properties["artiste"], u'Water please')
@@ -43,7 +43,7 @@ class TestSiteSearch(MyTest):
     def test_with_sugar(self):
         """A request with syntaxic sugar must guess properties' names from \
 configuration."""
-        request = u'rock/Water please'
+        request = u'"rock"/"Water please"'
         for item in self.site.search(self.access_point_name, request):
             self.assertEqual(item.properties["genre"], u'rock')
             self.assertEqual(item.properties["artiste"], u'Water please')
@@ -70,14 +70,14 @@ class TestSiteOpen(MyTest):
     def test_no_result(self):
         """Trying to open an item that does not exist must raise the exception \
 'ObjectDoesNotExist'."""
-        request = u'genre=doesnt_exist'
+        request = u'genre="doesnt_exist"'
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
     
     def test_one_result(self):
         """Trying to open an unique item must return the corresponding item."""
-        request = u'genre=rock/artiste=Jesus\'harlem' \
-                  u'/album=amen/titre=mechanical blues'
+        request = u'genre="rock"/artiste="Jesus\'harlem"' \
+                  u'/album="amen"/titre="mechanical blues"'
         item = self.site.open(self.access_point_name, request)
         self.assertEqual(item.properties['genre'], u'rock')
         self.assertEqual(item.properties['artiste'], u'Jesus\'harlem')
@@ -86,7 +86,7 @@ class TestSiteOpen(MyTest):
     
     def test_many_results(self):
         """Try to open many item must raise 'MultiObjectsReturned'."""
-        request = u'genre=rock'
+        request = u'genre="rock"'
         self.assertRaises(self.site.MultipleObjectsReturned, self.site.open,
                           self.access_point_name, request)
 
@@ -118,8 +118,8 @@ make it available for later search/opening.
         # Must not raise any exception
         item2=self.site.open(
             self.access_point_name,
-            u'genre=funk/artiste=loopzilla/'
-            u'album=demo/titre=many money/piste=2'
+            u'genre="funk"/artiste="loopzilla"/'
+            u'album="demo"/titre="many money"/piste="2"'
         )
         
     def test_two_new_items(self):
@@ -156,8 +156,8 @@ make it available for later search/opening.
         
         properties.pop('_content')
         properties2.pop('_content')
-        request = '/'.join('%s=%s' % prop for prop in properties.items())
-        request2 = '/'.join('%s=%s' % prop for prop in properties2.items())
+        request = '/'.join('%s="%s"' % prop for prop in properties.items())
+        request2 = '/'.join('%s="%s"' % prop for prop in properties2.items())
         
         
         item = self.site.open(self.access_point_name, request)
@@ -175,8 +175,8 @@ make it available for later search/opening.
 unchanged.
         
         This test needs the open method to work."""
-        request = u'genre=rock/artiste=Jesus\'harlem/' \
-                  u'album=amen/titre=mechanical blues'
+        request = u'genre="rock"/artiste="Jesus\'harlem"/' \
+                  u'album="amen"/titre="mechanical blues"'
         item = self.site.open(self.access_point_name, request)
         self.site.save(item)
         # Must not raise any exception
@@ -186,8 +186,8 @@ unchanged.
         """Saving a modified existing item must modify it on the access point.
         
         This test needs the open method to work."""
-        request = u'genre=rock/artiste=Jesus\'harlem/' \
-                  u'album=alleluia/titre=solomon'
+        request = u'genre="rock"/artiste="Jesus\'harlem"/' \
+                  u'album="alleluia"/titre="solomon"'
         item = self.site.open(self.access_point_name, request)
         item.properties['genre'] = 'toto'
         item.properties['titre'] = 'tata'
@@ -196,15 +196,15 @@ unchanged.
                           self.access_point_name, request)
         # Should not raise any exception
         self.site.open(self.access_point_name,
-                       u'genre=toto/artiste=Jesus\'harlem/' \
-                       u'album=alleluia/titre=tata')
+                       u'genre="toto"/artiste="Jesus\'harlem"/' \
+                       u'album="alleluia"/titre="tata"')
 
 class TestSiteRemove(MyTest):
     def test_remove(self):
         """A removed item must not be available any longer.
         
         This test needs the open method to work."""
-        request = u'genre=rock/artiste=Jesus\'harlem/album=amen/titre=cross'
+        request = u'genre="rock"/artiste="Jesus\'harlem"/album="amen"/titre="cross"'
         item = self.site.open(self.access_point_name, request)
         self.site.remove(item)
         self.assertEqual(list(self.site.search(self.access_point_name, request)), [])
