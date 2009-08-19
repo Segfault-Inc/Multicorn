@@ -3,6 +3,7 @@
 import os
 import time
 from kalamar import Item
+from kalamar.storage.dbapi import DBAPIStorage
 
 class MyTest(object):
     """This class is meant to work if co-inherited with unittest.TestCase
@@ -39,6 +40,35 @@ class TestSiteSearch(MyTest):
         for item in self.site.search(self.access_point_name, request):
             self.assertEqual(item.properties["genre"], u'rock')
             self.assertEqual(item.properties["artiste"], u'Water please')
+            
+    def test_property_type_string(self):
+        request = u'piste="1"'
+        
+        items = self.site.search(self.access_point_name, request)
+        
+        if self.access_point_name == 'fs_text_classified' or \
+           self.access_point_name == 'fs_vorbis_classified':
+            self.assertEqual(len(items), 4)
+            for item in items:
+                self.assertEqual(item.properties["piste"], u"1")
+        else:
+            self.assertEqual(len(items), 0)
+        
+    
+    def test_property_type_integer(self):
+        request = u'piste=1'
+        
+        items = self.site.search(self.access_point_name, request)    
+        for item in items:
+            print item.properties
+        if self.access_point_name != 'fs_text_classified' and \
+            self.access_point_name != 'fs_vorbis_classified':
+            self.assertEqual(len(items), 4)
+        else:
+            self.assertEqual(len(items), 0)
+            
+        for item in items:
+            self.assertEqual(item.properties["piste"], 1)
     
     def test_with_sugar(self):
         """A request with syntaxic sugar must guess properties' names from \
@@ -116,6 +146,7 @@ make it available for later search/opening.
         item = Item.create_item(access_point, properties)
         self.site.save(item)
         # Must not raise any exception
+        # FIXME TODO TODO TODO
         item2=self.site.open(
             self.access_point_name,
             u'genre="funk"/artiste="loopzilla"/'

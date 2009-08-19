@@ -68,6 +68,8 @@ else:
             
             temporary_file.close()
             
+            properties["tracknumber"] = int(properties["tracknumber"])
+            
             return properties
         
         def _custom_serialize(self, properties):

@@ -112,15 +112,15 @@ else:
             conv_dict = {
                 16: bool,
                 17: module.Binary,
-                19: unicode,
-                20: long,
-                21: int,
-                23: int,
-                25: unicode,
+                #19: unicode,
+                #20: long,
+                #21: int,
+                #23: int,
+                #25: unicode,
                 #26: {'txt_in': <function numeric_in at 0x976217c>},
-                700: float,
-                701: float,
-                829: unicode,
+                #700: float,
+                #701: float,
+                #829: unicode,
                 #1000: {'bin_in': <function array_recv at 0x97623e4>},
                 #1003: {'bin_in': <function array_recv at 0x97623e4>},
                 #1005: {'bin_in': <function array_recv at 0x97623e4>},
@@ -131,8 +131,8 @@ else:
                 #1016: {'bin_in': <function array_recv at 0x97623e4>},
                 #1021: {'bin_in': <function array_recv at 0x97623e4>},
                 #1022: {'bin_in': <function array_recv at 0x97623e4>},
-                1042: unicode,
-                1043: unicode,
+                #1042: unicode,
+                #1043: unicode,
                 # TODO add a test case for date & time handling
                 1082: iso8601.parse_date,
                 #1083: {'txt_in': <function time_in at 0x976210c>},
@@ -142,7 +142,7 @@ else:
                 #1231: {'bin_in': <function array_recv at 0x97623e4>},
                 #1263: {'bin_in': <function array_recv at 0x97623e4>},
                 #1700: {'bin_in': <function numeric_recv at 0x97621b4>},
-                2275: unicode
+                #2275: unicode
             }
             
             description = self.get_table_description()
@@ -153,7 +153,7 @@ else:
                     column_type_code = int(
                         description[parameter.name]['type_code']
                     )
-                    converter = conv_dict[column_type_code]
+                    converter = conv_dict.get(column_type_code, lambda x: x)
                     parameter.value = converter(parameter.value)
                 new_parameters.append(parameter)
             return new_parameters

@@ -34,6 +34,7 @@ class TestItem(TextItem):
         properties = super(TestItem, self)._custom_parse_data()
         data = properties['_content']
         properties.update(dict(zip(self._keys, data.split('\n'))))
+        properties['tracknumber'] = int(properties['tracknumber'])
         #if properties['tracknumber'] != '':
         #    properties['tracknumber'] = int(properties['tracknumber'])
         #else:

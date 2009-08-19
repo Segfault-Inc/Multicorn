@@ -193,48 +193,57 @@ class DBAPIStorage(AccessPoint):
         
         # Process conditions
         sql_condition, python_condition = self._process_conditions(conditions)
+        
         # Build request
         request, parameters = self._build_select_request(
                                   sql_condition,
                                   table,
                                   self.get_db_module().paramstyle
                               )
+        
+        print request, parameters
         # Execute request
         cursor = connection.cursor()
-        cursor.execute(request, parameters)
-        
-        # Release lock on the table we used.
-        connection.commit()
-        
-        descriptions = [description[0] for description in cursor.description]
-        dict_lines = (dict(zip(descriptions, line))
-                       for line in self._generate_lines_from_cursor(cursor))
-        
-        # Filter result and yield tuples (properties, value)
-        filtered = list(self._filter_result(dict_lines, python_condition))
-        
-        # Convert all properties to strings
-        # TODO change this. See http://trac.dyko.org/ticket/4
-        def lines_to_string(lines):
-            for line in lines:
-                for key in line:
-                    if key != self.content_column \
-                    and not isinstance(line[key], unicode):
-                        line[key] = str(line[key]).decode(self.default_encoding)
-                yield line
-        
-        for line in lines_to_string(filtered):
-            data = line.get(self.content_column, None)
+        try:
+            cursor.execute(request, parameters)
             
-            # If a content_column has been declared in kalamar configuration, it
-            # becomes an item property (i.e. '_content'), so we remove it from
-            # storage properties
-            if self.content_column is not None:
-                line.pop(self.content_column)
-                
-            yield (line, _opener(data))
+            # Release lock on the table we used.
+            connection.commit()
         
-        cursor.close()
+            descriptions = [description[0] for description in cursor.description]
+            dict_lines = (dict(zip(descriptions, line))
+                            for line in self._generate_lines_from_cursor(cursor))
+            
+            # Filter result and yield tuples (properties, value)
+            filtered = list(self._filter_result(dict_lines, python_condition))
+            
+            # Convert all properties to strings
+            # TODO change this. See http://trac.dyko.org/ticket/4
+        #        def lines_to_string(lines):
+        #            for line in lines:
+        #                for key in line:
+        #                    if key != self.content_column \
+        #                    and not isinstance(line[key], unicode):
+        #                        line[key] = str(line[key]).decode(self.default_encoding)
+        #                yield line
+            
+        #        for line in lines_to_string(filtered):
+            for line in filtered:
+                data = line.get(self.content_column, None)
+                
+                # If a content_column has been declared in kalamar configuration, it
+                # becomes an item property (i.e. '_content'), so we remove it from
+                # storage properties
+                if self.content_column is not None:
+                    line.pop(self.content_column)
+                    
+                yield (line, _opener(data))
+        except self.get_db_module().ProgrammingError:
+            # Probably an argument type error occured in cursor.execute().
+            #raise
+            pass
+        finally:
+            cursor.close()
     
     def _generate_lines_from_cursor(self, cursor):
         result = cursor.fetchmany()
@@ -299,7 +308,8 @@ class DBAPIStorage(AccessPoint):
                 operator = utils.operators[self.sql_operators[operator_str]]
                 sql_conditions.append(
                     utils.Condition(condition.property_name,
-                                    operator, condition.value))
+                                    operator, condition.value)
+                )
             else:
                 python_conditions.append(condition)
 

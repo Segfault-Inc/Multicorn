@@ -31,7 +31,9 @@ except ImportError:
                   'MySQL support will not be available.')
 else:
     from MySQLdb import FIELD_TYPE
+    from MySQLdb import converters
     import MySQLdb.constants.CLIENT
+    import decimal
     import urlparse
     import os
 
@@ -40,6 +42,30 @@ else:
     class MySQLdbStorage(DBAPIStorage):
         """MySQLdb access point"""
         protocol = 'mysql'
+        
+        # Key are thos available in FIELD_TYPE.*
+        # Here, the programmer was too lazy to find each litteral constants.
+        converter = {
+            0: decimal.Decimal,
+            #1: <type 'int'>,
+            #2: <type 'int'>,
+            #3: <type 'long'>,
+            #4: <type 'float'>,
+            #5: <type 'float'>,
+            7: converters.mysql_timestamp_converter,
+            #8: <type 'long'>,
+            #9: <type 'int'>,
+            10: converters.Date_or_None,
+            11: converters.TimeDelta_or_None,
+            12: converters.DateTime_or_None,
+            #13: <type 'int'>,
+            #15: [(128, <type 'str'>)],
+            246: decimal.Decimal,
+            248: converters.Str2Set,
+            #252: [(128, <type 'str'>)],
+            #253: [(128, <type 'str'>)],
+            #254: [(128, <type 'str'>)]
+        }
         
         def get_db_module(self):
             return MySQLdb
@@ -66,9 +92,11 @@ else:
                 kwargs['db'], self._table = parts[3].split('?')
                 
                 kwargs['use_unicode'] = True
+                kwargs['conv'] = self.converter
                 kwargs['client_flag'] = MySQLdb.constants.CLIENT.FOUND_ROWS
                 
                 self._connection = MySQLdb.connect(**kwargs)
+                self._connection.set_sql_mode('ANSI')
                 self._connection.set_character_set(
                     # Hack to convert python locale format to MySQL
                     self.default_encoding.replace('-','')
