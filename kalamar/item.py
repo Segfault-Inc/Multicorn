@@ -404,25 +404,37 @@ class ItemProperties(MultiDict):
         # TODO test
         return [self[key] for key in self.keys_without_aliases()]
     
+    @property
+    def aliased_storage_property(self):
+        # TODO test
+        return dict(
+            (prop, self[prop]) 
+            for prop, aliased in self._item.aliases.items()
+            if aliased in self.storage_properties
+        )
+
+    
     def update_parser_properties(self, properties):
         for key in properties:
             super(ItemProperties, self).__setitem__(key, properties[key])
 
     def __getitem__(self, key):
         """Return the item "key" property."""
+        # Aliasing
+        key = self._item.aliases.get(key, key)
+
+        if key in self.storage_properties.keys():
+            return self.storage_properties[key]
+
         # Lazy load: load item only when needed
         if not self._loaded:
             self._item._parse_data()
-            self._loaded = True
-        # Aliasing
-        key = self._item.aliases.get(key, key)
-        if key in self.storage_properties.keys():
-            return self.storage_properties[key]
-        else:
-            try:
-                return super(ItemProperties, self).__getitem__(key)
-            except KeyError:
-                return None
+            self._loaded = True            
+
+        try:
+            return super(ItemProperties, self).__getitem__(key)
+        except KeyError:
+            return None
     
     # Allow item.properties.prop_name syntax
     __getattr__ = __getitem__

@@ -59,6 +59,7 @@ class Site(object):
             basedir = os.path.dirname(config_filename)
             for section in config.sections():
                 kwargs = dict(config.items(section), basedir=basedir, site=self)
+                kwargs['name'] = section
                 if fail_on_inexistent_parser:
                     ap = base.AccessPoint.from_url(**kwargs)
                 else:

@@ -62,6 +62,7 @@ class AccessPoint(object):
     def __init__(self, **config):
         """Common instance initialisation."""
         self.config = config
+        self.name = config.get('name')
         self.parser_name = config.get('parser', None)
         # check that this parser exists
         parser.load()

@@ -288,8 +288,12 @@ class FileSystemStorage(AccessPoint):
             if move:
                 # Remove old_path
                 self.remove(item)
+            # get the serialized content BEFORE we overwrite the file
+            # that is because parsing is made as late as possible :
+            # item.serialize() may still need the file to be there
+            content = item.serialize()
             fd = self.open_file(new_path, mode='wb')
-            fd.write(item.serialize())
+            fd.write(content)
             fd.close()
         elif move:
             self.rename(old_path, new_path)
