@@ -404,6 +404,15 @@ class ItemProperties(MultiDict):
         # TODO test
         return [self[key] for key in self.keys_without_aliases()]
     
+    @property
+    def aliased_storage_property(self):
+        return dict(
+            (prop, self[prop]) 
+            for prop, aliased in self._item.aliases.items()
+            if aliased in self.storage_properties
+        )
+
+    
     def update_parser_properties(self, properties):
         for key in properties:
             super(ItemProperties, self).__setitem__(key, properties[key])
