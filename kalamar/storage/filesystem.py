@@ -185,7 +185,7 @@ class FileSystemStorage(AccessPoint):
         >>> ap = AccessPoint.from_url(url='file://%s' % dirname,
         ...                           filename_format='*/*.py')
         >>> from kalamar.site import Site
-        >>> request = list(Site.parse_request('path1=storage/path2~!=^__'))
+        >>> request = list(Site.parse_request('path1="storage"/path2~!="^__"'))
         
         # TODO: seems to fail on python 2.5 ??
         >>> len([1 for properties, opener in ap._storage_search(request)
@@ -198,7 +198,7 @@ class FileSystemStorage(AccessPoint):
         ...     if (properties['path1'], properties['path2']) == 
         ...        ('storage', 'filesystem')])
         1
-        >>> request = Site.parse_request('path1=parser/path2~=item$')
+        >>> request = Site.parse_request('path1="parser"/path2~="item$"')
         >>> results = [properties['path2']
         ...            for properties, opener in ap._storage_search(request)]
         >>> assert u'textitem' in results

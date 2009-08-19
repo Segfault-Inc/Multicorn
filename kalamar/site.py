@@ -75,7 +75,7 @@ class Site(object):
     def parse_request(request):
         """Convert a "request" string to (prop_name, operator, value) tuples.
         
-        >>> list(Site.parse_request(u'/1/b=42/c>=3/')) # doctest: +ELLIPSIS
+        >>> list(Site.parse_request(u"/'1'/b='42'/c>='3'/")) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         [Condition(None, None, u'1'),
          Condition(u'b', <built-in function eq>, u'42'),
