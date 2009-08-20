@@ -3,6 +3,7 @@
 import re
 from kalamar import utils
 from kalamar.utils import Condition
+from kalamar import iso8601
 #from time import sleep
 
 def iparse(data):
@@ -123,6 +124,20 @@ class Parser(object):
     >>> p = Parser(ur"'a\a'")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE
     [Condition(None, None, u'a\\a')]
+    
+    ----------------
+    Date:
+    ----------------
+    
+    >>> p = Parser(ur"1988-02-03")
+    >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    [Condition(None, None, datetime.datetime(1988, 2, 3, 0, 0,
+    tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+     
+    >>> p = Parser(ur"1988-02-03T17:31:15")
+    >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    [Condition(None, None, datetime.datetime(1988, 2, 3, 17, 31, 15,
+    tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
     
     ================
     Explicit syntax:
@@ -434,7 +449,7 @@ class Parser(object):
         if self._quoted and (self._mode == 'begin' or self._mode == 'value'):
             return True
         elif self._mode == 'begin' or self._mode == 'value':
-            if re.match(ur'^[\w]$', c, re.UNICODE):
+            if re.match(ur'^[\w:-]$', c, re.UNICODE):
                 return True
         return False
     
@@ -455,10 +470,12 @@ class Parser(object):
     def convert_value(self, value):
         if self._quoted:
             new_value = value
-        elif re.match(r"^0x[abcdef\d]+$|^[\d]+$|^\d+\.?\d+$", value, re.IGNORECASE):
-            new_value = eval(value)
         elif self.strings[-1] == 'None':
             new_value = None
+        elif re.match(r"^0x[abcdef\d]+$|^[\d]+$|^\d+\.?\d+$", value, re.IGNORECASE):
+            new_value = eval(value)
+        elif iso8601.ISO8601_REGEX.match(value):
+            new_value = iso8601.parse_date(value)
         else:
             raise RequestSyntaxError("Failed to convert value: %s." % repr(value))
         
