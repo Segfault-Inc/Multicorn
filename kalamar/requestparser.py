@@ -204,18 +204,6 @@ class Parser(object):
         ...
     RequestSyntaxError: Reached EOF while scanning a quoted string.
     
-    >>> p = Parser(ur"$")
-    >>> p.parse()
-    Traceback (most recent call last):
-        ...
-    RequestSyntaxError: Character u'$' is not allowed outside quotes.
-    
-    >>> p = Parser(ur"a$")
-    >>> p.parse()
-    Traceback (most recent call last):
-        ...
-    RequestSyntaxError: Character u'$' is not allowed outside quotes.
-    
     >>> p = Parser(ur"a=c=")
     >>> p.parse()
     Traceback (most recent call last):
@@ -328,13 +316,7 @@ class Parser(object):
                             self._start = True
                         else:
                             self._quoted = False
-                            if self.is_ok(c):
-                                self.strings[-1] += c
-                            else:
-                                raise RequestSyntaxError(
-                                    "Character %s is not allowed outside quotes."
-                                    % repr(c)
-                                )
+                            self.strings[-1] += c
                         try:
                             c = self._idata.next()
                         except StopIteration:
@@ -379,7 +361,7 @@ class Parser(object):
                                         )
                                 except StopIteration:
                                     self._stop_parsing = True
-                            elif self.is_ok(c):
+                            else:
                                 self.strings[-1] += c
                                 try:
                                     c = self._idata.next()
@@ -387,11 +369,6 @@ class Parser(object):
                                     raise RequestSyntaxError(
                                         "Reached EOF while scanning a quoted string."
                                     )
-                            else:
-                                raise RequestSyntaxError(
-                                    "Character %s is not allowed inside quotes."
-                                    % repr(c)
-                                )
                         else: # not qoted
                             if c == self.break_char:
                                 self._stop_condition = True
@@ -408,17 +385,12 @@ class Parser(object):
                                         "Got %s but expected %s."
                                         % (repr(c), repr(self.break_char))
                                     )
-                            elif self.is_ok(c):
+                            else:
                                 self.strings[-1] += c
                                 try:
                                     c = self._idata.next()
                                 except StopIteration:
                                     self._stop_parsing = True
-                            else:
-                                raise RequestSyntaxError(
-                                    "Character %s is not allowed outside quotes."
-                                    % repr(c)
-                                )
                     
                 elif self._mode == 'operator':
                     if self.is_operator_char(c):
@@ -445,13 +417,14 @@ class Parser(object):
                     yield Condition(self.strings[-3], operator, value)
                 self.strings = ['']
         
-    def is_ok(self, c):
-        if self._quoted and (self._mode == 'begin' or self._mode == 'value'):
-            return True
-        elif self._mode == 'begin' or self._mode == 'value':
-            if re.match(ur'^[\w:-]$', c, re.UNICODE):
-                return True
-        return False
+#    def is_ok(self, c):
+##        if self._quoted and (self._mode == 'begin' or self._mode == 'value'):
+##            return True
+##        elif self._mode == 'begin' or self._mode == 'value':
+##            if re.match(ur'^[^/]$', c, re.UNICODE):
+##                return True
+##        return False
+#        return True
     
     def is_blank(self, c):
         if re.match(ur'^\s$', c, re.UNICODE):
