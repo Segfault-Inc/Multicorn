@@ -236,12 +236,25 @@ class Parser(object):
     
     quote_chars = u'\'"'
     escape_char = u'\\'
-    escaped_chars = '\'"\\'
+    escaped_chars = u'\'"\\'
     break_char = u'/'
+
+    @classmethod
+    def escape_string(cls, value):
+        r"""
+        >>> Parser.escape_string(u'Foo "bar"...')
+        u'"Foo \\"bar\\"..."'
+        """
+        # escape the backslash itself first
+        value = value.replace(cls.escape_char, cls.escape_char * 2)
+        # then all other 
+        for char in cls.escaped_chars:
+            if char != cls.escape_char:
+                value = value.replace(char, cls.escape_char + char)
+        return u'"%s"' % value
     
     def __init__(self, data):
-        data == unicode(data)
-        self.data = data
+        self.data = unicode(data)
         
         self.strings = ['']
         
