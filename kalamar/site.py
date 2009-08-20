@@ -74,7 +74,9 @@ class Site(object):
     
     @staticmethod
     def parse_request(request):
-        """Convert a "request" string to (prop_name, operator, value) tuples.
+        """
+        Convert a "request" string to Condition objects.
+        If ``request`` is not a string, it is returned unmodified.
         
         >>> list(Site.parse_request(u"/'1'/b='42'/c>='3'/")) # doctest: +ELLIPSIS
         ...                                  # doctest: +NORMALIZE_WHITESPACE
@@ -83,30 +85,21 @@ class Site(object):
          Condition(u'c', <built-in function ge>, u'3')]
 
         """
-        return requestparser.iparse(request)
-#        request = unicode(request)
-#        for part in request.split(u'/'):
-#            if not part:
-#                continue
-#            for operator_str, operator_func in utils.operators.items():
-#                if operator_str in part:
-#                    name, value = part.split(operator_str, 1)
-#                    yield utils.Condition(name, operator_func, value)
-#                    break
-#            else:
-#                # No operator found
-#                yield utils.Condition(None, None, part)
+        if isinstance(request, basestring):
+            return requestparser.iparse(request)
+        else:
+            return request
         
-    def isearch(self, access_point, request):
+    def isearch(self, access_point, request=None):
         """Return a generator of all items in "access_point" matching "request".
         
         See "Site.parse_request" for the syntax of the "request" string.
 
         """
-        conditions = self.parse_request(request)
+        conditions = self.parse_request(request or [])
         return self.access_points[access_point].search(conditions)
     
-    def search(self, access_point, request):
+    def search(self, access_point, request=None):
         """List all items in "access_point" matching "request".
         
         See "Site.parse_request" for the syntax of the "request" string.
@@ -114,7 +107,7 @@ class Site(object):
         """
         return list(self.isearch(access_point, request))
     
-    def open(self, access_point, request):
+    def open(self, access_point, request=None):
         """Return the item in access_point matching request.
         
         If there is no result, raise "Site.ObjectDoesNotExist".
