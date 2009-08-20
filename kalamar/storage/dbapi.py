@@ -201,7 +201,6 @@ class DBAPIStorage(AccessPoint):
                                   self.get_db_module().paramstyle
                               )
         
-        print request, parameters
         # Execute request
         cursor = connection.cursor()
         try:

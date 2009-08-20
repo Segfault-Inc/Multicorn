@@ -42,33 +42,39 @@ class TestSiteSearch(MyTest):
             self.assertEqual(item.properties["artiste"], u'Water please')
             
     def test_property_type_string(self):
-        request = u'piste="1"'
-        
-        items = self.site.search(self.access_point_name, request)
-        
-        if self.access_point_name == 'fs_text_classified' or \
-           self.access_point_name == 'fs_vorbis_classified':
-            self.assertEqual(len(items), 4)
-            for item in items:
-                self.assertEqual(item.properties["piste"], u"1")
-        else:
-            self.assertEqual(len(items), 0)
+        # SQLite has no typing
+        if not('sqlite' in self.access_point_name or
+               'storage' in self.access_point_name):
+            request = u'piste="01"'
+            
+            items = self.site.search(self.access_point_name, request)
+            
+            if ('fs' in self.access_point_name and
+               'classified' in self.access_point_name) or \
+               'rest' in self.access_point_name:
+                self.assertEqual(len(items), 4)
+                for item in items:
+                    self.assertEqual(item.properties["piste"], u"01")
+            else:
+                self.assertEqual(len(items), 0)
         
     
     def test_property_type_integer(self):
-        request = u'piste=1'
-        
-        items = self.site.search(self.access_point_name, request)    
-        for item in items:
-            print item.properties
-        if self.access_point_name != 'fs_text_classified' and \
-            self.access_point_name != 'fs_vorbis_classified':
-            self.assertEqual(len(items), 4)
-        else:
-            self.assertEqual(len(items), 0)
+        # SQLite has no typing
+        if not('sqlite' in self.access_point_name or
+               'storage' in self.access_point_name):
+            request = u'piste=1'
             
-        for item in items:
-            self.assertEqual(item.properties["piste"], 1)
+            items = self.site.search(self.access_point_name, request)
+            if not('fs' in self.access_point_name and
+                   'classified' in self.access_point_name or
+                   'rest' in self.access_point_name):
+                self.assertEqual(len(items), 4)
+            else:
+                self.assertEqual(len(items), 0)
+                
+            for item in items:
+                self.assertEqual(item.properties["piste"], 1)
     
     def test_with_sugar(self):
         """A request with syntaxic sugar must guess properties' names from \
@@ -132,8 +138,14 @@ make it available for later search/opening.
         properties = {'genre': 'funk',
                       'artiste': 'loopzilla',
                       'album': 'demo',
-                      'titre': 'many money',
-                      'piste': '2'}
+                      'titre': 'many money'}
+                      
+        if not('fs' in self.access_point_name and
+               'classified' in self.access_point_name or
+               'rest' in self.access_point_name):
+            properties['piste'] = 2
+        else:
+            properties['piste'] = '2'
                       
         # Mutagen does not accept to create a VorbisFile
         # without initial content.
@@ -145,12 +157,19 @@ make it available for later search/opening.
             
         item = Item.create_item(access_point, properties)
         self.site.save(item)
+        
+        if not('fs' in self.access_point_name and
+               'classified' in self.access_point_name or
+               'rest' in self.access_point_name):
+            request = u'''genre="funk"/artiste="loopzilla"/
+                          album="demo"/titre="many money"/piste=2'''
+        else:
+            request = u'''genre="funk"/artiste="loopzilla"/
+                          album="demo"/titre="many money"/piste="2"'''
+        
         # Must not raise any exception
-        # FIXME TODO TODO TODO
         item2=self.site.open(
-            self.access_point_name,
-            u'genre="funk"/artiste="loopzilla"/'
-            u'album="demo"/titre="many money"/piste="2"'
+            self.access_point_name, request
         )
         
     def test_two_new_items(self):
@@ -162,13 +181,20 @@ make it available for later search/opening.
         properties = {'genre': 'funk',
                       'artiste': 'loopzilla',
                       'album': 'demo',
-                      'titre': 'many money',
-                      'piste': '2'}
+                      'titre': 'many money'}
         properties2 = {'genre': 'funk',
                        'artiste': 'loopzilla',
                        'album': 'demo',
-                       'titre': 'mamma mia',
-                       'piste': '3'}
+                       'titre': 'mamma mia'}
+        
+        if not('fs' in self.access_point_name and
+                'classified' in self.access_point_name or
+                'rest' in self.access_point_name):
+            properties['piste'] = 2
+            properties2['piste'] = 3
+        else:
+            properties['piste'] = '2'
+            properties2['piste'] = '3'
                       
         # Mutagen does not accept to create a VorbisFile
         # without initial content.
@@ -187,8 +213,17 @@ make it available for later search/opening.
         
         properties.pop('_content')
         properties2.pop('_content')
-        request = '/'.join('%s="%s"' % prop for prop in properties.items())
-        request2 = '/'.join('%s="%s"' % prop for prop in properties2.items())
+        
+        if not('fs' in self.access_point_name and
+                'classified' in self.access_point_name or
+                'rest' in self.access_point_name):
+            request = '/'.join('%s="%s"' % prop for prop in properties.items() if prop[0] != 'piste')
+            request2 = '/'.join('%s="%s"' % prop for prop in properties2.items() if prop[0] != 'piste')
+            request += '/piste=%i' % properties['piste']
+            request2 += '/piste=%i' % properties2['piste']
+        else:
+            request = '/'.join('%s="%s"' % prop for prop in properties.items())
+            request2 = '/'.join('%s="%s"' % prop for prop in properties2.items())
         
         
         item = self.site.open(self.access_point_name, request)

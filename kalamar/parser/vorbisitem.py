@@ -65,7 +65,7 @@ else:
             
             for key in vorbis_tags:
                 properties.setlist(key, vorbis_tags[key])
-            
+                
             temporary_file.close()
             
             properties["tracknumber"] = int(properties["tracknumber"])
@@ -82,7 +82,10 @@ else:
             keys = self.properties.parser_keys()
             keys.remove('_content')
             for key in keys:
-                vorbis_tags[key] = self.properties.getlist(key)
+                vorbis_tags[key] = [
+                    unicode(element) for element
+                    in self.properties.getlist(key)
+                ]
             vorbis_tags.save()
             
             temporary_file.file.flush()
