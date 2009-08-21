@@ -100,6 +100,15 @@ configuration."""
         self.assertEqual(albums, set([u'manouche swing',
                                       u'S.O.B', u'alleluia',
                                       u'amen']))
+    def test_regexp(self):
+        """The regexp operator must behave like re.search in python."""
+        request = u'titre ~= "a.*s$"'
+        result = list(self.site.search(self.access_point_name, request))
+        
+        self.assertEqual(len(result), 2)
+        for item in result:
+            self.assert_('a' in item.properties['titre'])
+            self.assertEqual(item.properties['titre'][-1], 's')
 
 class TestSiteOpen(MyTest):
     

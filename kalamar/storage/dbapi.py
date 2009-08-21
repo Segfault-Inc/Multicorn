@@ -204,6 +204,7 @@ class DBAPIStorage(AccessPoint):
         # Execute request
         cursor = connection.cursor()
         try:
+            print request, parameters
             cursor.execute(request, parameters)
             
             # Release lock on the table we used.
@@ -239,7 +240,8 @@ class DBAPIStorage(AccessPoint):
                 yield (line, _opener(data))
         except self.get_db_module().ProgrammingError:
             # Probably an argument type error occured in cursor.execute().
-            #raise
+            # TODO any better way to handle argument type error ?
+            raise
             pass
         finally:
             cursor.close()
@@ -259,8 +261,8 @@ class DBAPIStorage(AccessPoint):
         >>> lines = ({'name' : 'toto', 'number' : 42},
         ...          {'name' : 'tata', 'number' : 123},
         ...          {'name' : 'toto', 'number' : 123})
-        >>> conditions = (('name', utils.operators['='], 'toto'),
-        ...               ('number', utils.operators['='], 42))
+        >>> conditions = (utils.Condition('name', utils.operators['='], 'toto'),
+        ...               utils.Condition('number', utils.operators['='], 42))
         
         Test
         >>> for line in DBAPIStorage._filter_result(lines, conditions):
@@ -269,8 +271,8 @@ class DBAPIStorage(AccessPoint):
         
         """
         for line in dict_lines:
-            for name, function, value in conditions:
-                if not function(line[name], value):
+            for condition in conditions:
+                if not condition.operator(line[condition.property_name], condition.value):
                     break
             else:
                 yield line
@@ -303,7 +305,11 @@ class DBAPIStorage(AccessPoint):
         
         for condition in conditions:
             operator_str = utils.operators_rev[condition.operator]
-            if operator_str in self.sql_operators:
+            
+            if operator_str in self.sql_operators and \
+               not(condition.value is None and operator_str in ('=', '!=')):
+                # Operators other than = and != have a weird behaviour in python
+                # wich differs from SQL.
                 operator = utils.operators[self.sql_operators[operator_str]]
                 sql_conditions.append(
                     utils.Condition(condition.property_name,
@@ -366,22 +372,43 @@ class DBAPIStorage(AccessPoint):
         conditions = list(conditions)
         table = self._sql_escape_quotes(table)
         table = self._quote_name(table)
-        named_condition = (
-            self._quote_name(condition.property_name) + 
-            self.sql_operators[utils.operators_rev[condition.operator]]
-            for condition in conditions
-        )
         
-        # No need to worry about the final '?' when there is no condition since
-        # this case is handled in the following 'if-else'.
-        request = u'? AND '.join(named_condition) + '?'
+        def named_conditions(conditions):
+            for condition in conditions:
+                operator = utils.operators_rev[condition.operator]
+                if condition.value is None:
+                    if operator == '=':
+                        yield self._quote_name(condition.property_name) + \
+                              ' IS NULL'
+                    elif operator == '!=':
+                        yield self._quote_name(condition.property_name) + \
+                              ' IS NOT NULL'
+                    else:
+                        # Nothing to do since others operators are handled in
+                        # python for None properties (see _process_conditions).
+                        pass
+                else:
+                    yield self._quote_name(condition.property_name) + \
+                          self.sql_operators[operator] + '?'
+#        named_conditions = (
+#            self._quote_name(condition.property_name) + 
+#            self.sql_operators[utils.operators_rev[condition.operator]]
+#            for condition in conditions
+#        )
+        
+#        # No need to worry about the final '?' when there is no condition since
+#        # this case is handled in the following 'if-else'.
+        request = u' AND '.join(named_conditions(conditions))
         
         # We don't use conditions because others _build_***_request don't have
         # access to them.
-        parameters = [Parameter(condition.property_name,condition.value)
-                      for condition in conditions]
+        parameters = [
+            Parameter(condition.property_name,condition.value)
+            for condition in conditions
+            if condition.value is not None
+        ]
         
-        if parameters:
+        if conditions:
             request = u"SELECT * FROM %s WHERE %s ;" % (table, request)
         else:
             request = u"SELECT * FROM %s ;" % table

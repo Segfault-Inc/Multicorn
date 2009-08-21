@@ -18,7 +18,6 @@ else:
                                  TestSiteRemove
     from kalamar import Site
 
-    
     site = Site(os.path.join(os.path.dirname(__file__), 'data',
                 'kalamar_mysql.conf'))
 
