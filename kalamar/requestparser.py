@@ -126,18 +126,27 @@ class Parser(object):
     [Condition(None, None, u'a\\a')]
     
     ----------------
+    Blanks stripping:
+    ----------------
+    
+    >>> p = Parser(u"   a a  =   'aa'   /   b \n\t\v\f=   'bb'    ")
+    >>> p.parse() # doctest: +NORMALIZE_WHITESPACE
+    [Condition(u'a a', <built-in function eq>, u'aa'),
+     Condition(u'b', <built-in function eq>, u'bb')]
+    
+    ----------------
     Date:
     ----------------
     
     >>> p = Parser(ur"1988-02-03")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
     [Condition(None, None, datetime.datetime(1988, 2, 3, 0, 0,
-    tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+                                 tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
      
-    >>> p = Parser(ur"1988-02-03T17:31:15")
+    >>> p = Parser(ur"1988-02-03 17:31:15")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
     [Condition(None, None, datetime.datetime(1988, 2, 3, 17, 31, 15,
-    tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+                                 tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
     
     ================
     Explicit syntax:
@@ -167,12 +176,6 @@ class Parser(object):
     ===============
     Parsing errors:
     ===============
-
-    >>> p = Parser(u"a a")
-    >>> p.parse()
-    Traceback (most recent call last):
-        ...
-    RequestSyntaxError: Got u'a' but expected operator or u'/'.
 
     >>> p = Parser(u"'a''")
     >>> p.parse()
@@ -241,6 +244,8 @@ class Parser(object):
     escape_char = u'\\'
     escaped_chars = u'\'"\\'
     break_char = u'/'
+    blank_chars = ' \t\n\r\f\v'
+    stripped_chars = blank_chars
 
     @classmethod
     def escape_string(cls, value):
@@ -286,6 +291,7 @@ class Parser(object):
 #                print "mode =", self._mode, "/ quoted =", self._quoted, \
 #                      "/ start =", self._start, "/finish =", self._finish, \
 #                      "/ c ='", c, "'"
+#                print self.strings
                 if c == self.escape_char and self._quoted and \
                    (self._mode == 'begin' or self._mode == 'value'):
                     # same behaviour as python's strings escaping
@@ -325,6 +331,17 @@ class Parser(object):
                         if self.is_blank(c):
                             # ignore trailing blanks
                             pass
+                        elif self.is_operator_char(c):
+                            if self._mode == 'begin':
+                                self._start = True
+                                self._finish = False
+                                self._mode = 'operator'
+                                self.strings.append(c)
+                            else:
+                                raise RequestSyntaxError(
+                                    "Got %s but expected %s."
+                                    % (repr(c), repr(self.break_char))
+                                )
                         elif c == self.break_char:
                             self._stop_condition = True
                         else:
@@ -341,24 +358,25 @@ class Parser(object):
                             if c == self._quote_char:
                                 try:
                                     c = self._idata.next()
-                                    if self.is_operator_char(c):
-                                        if self._mode == 'begin':
-                                            self._start = True
-                                            self._finish = False
-                                            self._mode = 'operator'
-                                            self.strings.append('')
-                                        else:
-                                            raise RequestSyntaxError(
-                                                "Got %s but expected %s."
-                                                % (repr(c), repr(self.break_char))
-                                            )
-                                    elif c == self.break_char:
-                                        self._stop_condition = True
-                                    else:
-                                        raise RequestSyntaxError(
-                                            "Got %s but expected operator or %s."
-                                            % (repr(c), repr(self.break_char))
-                                        )
+                                    self._finish = True
+#                                    if self.is_operator_char(c):
+#                                        if self._mode == 'begin':
+#                                            self._start = True
+#                                            self._finish = False
+#                                            self._mode = 'operator'
+#                                            self.strings.append('')
+#                                        else:
+#                                            raise RequestSyntaxError(
+#                                                "Got %s but expected %s."
+#                                                % (repr(c), repr(self.break_char))
+#                                            )
+#                                    elif c == self.break_char:
+#                                        self._stop_condition = True
+#                                    else:
+#                                        raise RequestSyntaxError(
+#                                            "Got %s but expected operator or %s."
+#                                            % (repr(c), repr(self.break_char))
+#                                        )
                                 except StopIteration:
                                     self._stop_parsing = True
                             else:
@@ -372,13 +390,13 @@ class Parser(object):
                         else: # not qoted
                             if c == self.break_char:
                                 self._stop_condition = True
-                            elif self.is_blank(c):
-                                self._finish = True
+                                self.strings[-1] = self.strings[-1].strip(self.stripped_chars)
                             elif self.is_operator_char(c):
                                 if self._mode == 'begin':
                                     self._start = True
                                     self._finish = False
                                     self._mode = 'operator'
+                                    self.strings[-1] = self.strings[-1].strip(self.stripped_chars)
                                     self.strings.append('')
                                 else:
                                     raise RequestSyntaxError(
@@ -427,9 +445,7 @@ class Parser(object):
 #        return True
     
     def is_blank(self, c):
-        if re.match(ur'^\s$', c, re.UNICODE):
-                return True
-        return False
+        return c in self.blank_chars
     
     def is_operator_seq(self, s):
         return s in utils.operators
@@ -455,6 +471,6 @@ class Parser(object):
         return new_value
 
 #if __name__ == '__main__':
-#    p = Parser()
-#    a = p.parse(u" aa ")
+#    p = Parser(ur"a  ='b'")
+#    a = p.parse()
 #    print a

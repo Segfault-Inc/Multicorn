@@ -133,8 +133,7 @@ else:
                 #1022: {'bin_in': <function array_recv at 0x97623e4>},
                 #1042: unicode,
                 #1043: unicode,
-                # TODO add a test case for date & time handling
-                1082: iso8601.parse_date,
+                #1082: iso8601.parse_date,
                 #1083: {'txt_in': <function time_in at 0x976210c>},
                 #1114: {'bin_in': <function timestamp_recv at 0x9760f7c>},
                 #1184: {'bin_in': <function timestamptz_recv at 0x9760fb4>},

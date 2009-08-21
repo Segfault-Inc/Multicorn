@@ -4,8 +4,7 @@ import warnings
 try:
     import MySQLdb
 except ImportError:
-    warnings.warn('MySQL access not tested. (Could not import MySQLdb)',
-                  stacklevel=2)
+    warnings.warn('MySQL access not tested. (Could not import MySQLdb)')
 else:
     import os
     import sys
@@ -47,8 +46,9 @@ else:
     try:
         site.access_points.values()[0].get_connection()
     except Exception:
+        raise
         warnings.warn('MySQL access not tested. '
-                      '(Could not connect to the database)', stacklevel=2)
+                      '(Could not connect to the database)' )
     else:
         # Magic tricks
         for access_point in site.access_points:

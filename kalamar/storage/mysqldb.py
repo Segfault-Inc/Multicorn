@@ -30,9 +30,11 @@ except ImportError:
     warnings.warn('Cannot import MySQLdb. '
                   'MySQL support will not be available.')
 else:
-    from MySQLdb import FIELD_TYPE
+    from MySQLdb.constants import FIELD_TYPE, FLAG, CLIENT
     from MySQLdb import converters
-    import MySQLdb.constants.CLIENT
+    from copy import copy
+    import types
+    import array
     import decimal
     import urlparse
     import os
@@ -43,29 +45,71 @@ else:
         """MySQLdb access point"""
         protocol = 'mysql'
         
-        # Key are thos available in FIELD_TYPE.*
+        # Key are those available in FIELD_TYPE.*
         # Here, the programmer was too lazy to find each litteral constants.
-        converter = {
-            0: decimal.Decimal,
-            #1: <type 'int'>,
-            #2: <type 'int'>,
-            #3: <type 'long'>,
-            #4: <type 'float'>,
-            #5: <type 'float'>,
-            7: converters.mysql_timestamp_converter,
-            #8: <type 'long'>,
-            #9: <type 'int'>,
-            10: converters.Date_or_None,
-            11: converters.TimeDelta_or_None,
-            12: converters.DateTime_or_None,
-            #13: <type 'int'>,
-            #15: [(128, <type 'str'>)],
-            246: decimal.Decimal,
-            248: converters.Str2Set,
-            #252: [(128, <type 'str'>)],
-            #253: [(128, <type 'str'>)],
-            #254: [(128, <type 'str'>)]
-        }
+        identity = lambda x: x
+        conversions = copy(converters.conversions)
+        
+        # This is the complete conversion dictionnary as found in converters.
+        # Copy then unquote the line you want to modify.
+        conversions.update({
+            #types.IntType: converters.Thing2Str,
+            #types.LongType: converters.Long2Int,
+            #types.FloatType: converters.Float2Str,
+            #types.NoneType: converters.None2NULL,
+            #types.TupleType: converters.escape_sequence,
+            #types.ListType: converters.escape_sequence,
+            #types.DictType: converters.escape_dict,
+            #types.InstanceType: converters.Instance2Str,
+            #array.ArrayType: converters.array2Str,
+            #types.StringType: converters.Thing2Literal, # default
+            #types.UnicodeType: converters.Unicode2Str,
+            #types.ObjectType: converters.Instance2Str,
+            #types.BooleanType: converters.Bool2Str,
+            #DateTimeType: converters.DateTime2literal,
+            #DateTimeDeltaType: converters.DateTimeDelta2literal,
+            #Set: converters.Set2Str,
+            #FIELD_TYPE.TINY: int,
+            FIELD_TYPE.TINY: identity,
+            #FIELD_TYPE.SHORT: int,
+            FIELD_TYPE.SHORT: identity,
+            #FIELD_TYPE.LONG: long,
+            FIELD_TYPE.LONG: identity,
+            #FIELD_TYPE.FLOAT: float,
+            FIELD_TYPE.FLOAT: identity,
+            #FIELD_TYPE.DOUBLE: float,
+            FIELD_TYPE.DOUBLE: identity,
+            #FIELD_TYPE.DECIMAL: float,
+            FIELD_TYPE.DECIMAL: identity,
+            #FIELD_TYPE.NEWDECIMAL: float,
+            FIELD_TYPE.NEWDECIMAL: identity,
+            #FIELD_TYPE.LONGLONG: long,
+            FIELD_TYPE.LONGLONG: identity,
+            #FIELD_TYPE.INT24: int,
+            FIELD_TYPE.INT24: identity,
+            #FIELD_TYPE.YEAR: int,
+            FIELD_TYPE.YEAR: identity,
+            #FIELD_TYPE.SET: converters.Str2Set,
+            #FIELD_TYPE.TIMESTAMP: converters.mysql_timestamp_converter,
+            #FIELD_TYPE.DATETIME: converters.DateTime_or_None,
+            FIELD_TYPE.DATETIME: identity,
+            #FIELD_TYPE.TIME: converters.TimeDelta_or_None,
+            #FIELD_TYPE.TIME: converters.TimeDelta_or_None,
+            #FIELD_TYPE.DATE: converters.Date_or_None,
+            FIELD_TYPE.DATE: identity,
+            #FIELD_TYPE.BLOB: [
+            #    (FLAG.BINARY, str),
+            #    ],
+            #FIELD_TYPE.STRING: [
+            #    (FLAG.BINARY, str),
+            #    ],
+            #FIELD_TYPE.VAR_STRING: [
+            #    (FLAG.BINARY, str),
+            #    ],
+            #FIELD_TYPE.VARCHAR: [
+            #    (FLAG.BINARY, str),
+            #    ],
+        })
         
         def get_db_module(self):
             return MySQLdb
@@ -92,8 +136,8 @@ else:
                 kwargs['db'], self._table = parts[3].split('?')
                 
                 kwargs['use_unicode'] = True
-                kwargs['conv'] = self.converter
-                kwargs['client_flag'] = MySQLdb.constants.CLIENT.FOUND_ROWS
+                kwargs['conv'] = self.conversions
+                kwargs['client_flag'] = CLIENT.FOUND_ROWS
                 
                 self._connection = MySQLdb.connect(**kwargs)
                 self._connection.set_sql_mode('ANSI')
