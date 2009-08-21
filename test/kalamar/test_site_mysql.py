@@ -45,10 +45,8 @@ else:
     
     try:
         site.access_points.values()[0].get_connection()
-    except Exception:
-        raise
-        warnings.warn('MySQL access not tested. '
-                      '(Could not connect to the database)' )
+    except Exception, e:
+        warnings.warn('MySQL access not tested. ' + e )
     else:
         # Magic tricks
         for access_point in site.access_points:

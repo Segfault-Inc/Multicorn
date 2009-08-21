@@ -4,8 +4,7 @@ import warnings
 try:
     from pg8000 import dbapi
 except ImportError:
-    warnings.warn('PostgresSQL access not tested. (Could not import pg8000)',
-                  stacklevel=2)
+    warnings.warn('PostgresSQL access not tested. (Could not import pg8000)')
 else:
     import os
     import sys
@@ -45,9 +44,8 @@ else:
 
     try:
         site.access_points.values()[0].get_connection()
-    except Exception:
-        warnings.warn('PostgresSQL access not tested. '
-                      '(Could not connect to the database)', stacklevel=2)
+    except Exception, e:
+        warnings.warn('PostgresSQL access not tested. ' + e)
     else:
         # Magic tricks
         for access_point in site.access_points:
