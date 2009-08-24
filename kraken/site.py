@@ -160,7 +160,7 @@ class Site(object):
                     # (ie the redirect doesn’t lead to a "404 Not Found")
                     if u'/.' in request.path:
                         raise Forbidden
-                    request.module_directory = os.path.dirname(module_path)
+                    request.module_directory = os.path.dirname(module_path).strip('/')
                     self.handle_trailing_slash(request)
                     return handler(request)
         
@@ -170,8 +170,8 @@ class Site(object):
         path_info = collections.deque()
         while True:
             for suffix in (u'', u'/index'):
-                module = self.load_python_module(u'/'.join(script_name) + 
-                                                 suffix)
+                module_path = u'/'.join(script_name) + suffix
+                module = self.load_python_module(module_path)
                 if hasattr(module, 'handle_request'):
                     handler = module.handle_request
                     if utils.arg_count(handler) > 1:
@@ -181,6 +181,7 @@ class Site(object):
                             if part.startswith(u'.'):
                                 raise Forbidden
                         self.handle_trailing_slash(request)
+                        request.module_directory = os.path.dirname(module_path).strip('/')
                         return handler(request, u'/'.join(path_info))
             # exit loop here and not with the while condition so that
             # the previous code is executed with script_name == []
@@ -304,12 +305,13 @@ class Site(object):
             ...
         ImportError: No module named inexistent in u'.../test/kraken/site'
 
-        >>> site.import_('lorem.ipsum') # doctest: +ELLIPSIS
+        >>> site.import_('lorem/ipsum') # doctest: +ELLIPSIS
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken.site.lorem/ipsum' 
             from '.../test/kraken/site/lorem/ipsum.py'>
         """
-        module = self.load_python_module(name.replace('.', '/'))
+        #module = self.load_python_module(name.replace('.', '/'))
+        module = self.load_python_module(name)
         if module is None:
             raise ImportError('No module named %s in %r' % (name,
                                                            	self.site_root))
