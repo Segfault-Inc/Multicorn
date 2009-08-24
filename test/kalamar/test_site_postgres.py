@@ -45,7 +45,7 @@ else:
     try:
         site.access_points.values()[0].get_connection()
     except Exception, e:
-        warnings.warn('PostgresSQL access not tested. ' + e)
+        warnings.warn('PostgresSQL access not tested. ' + unicode(e))
     else:
         # Magic tricks
         for access_point in site.access_points:
