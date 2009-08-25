@@ -87,7 +87,7 @@ class Item(object):
         self.aliases_rev = dict((b,a) for (a,b) in enumerate(self.aliases))
         
         self.properties = ItemProperties(self, storage_properties)
-       
+    
     @staticmethod
     def create_item(access_point, properties):
         """Return a new item instance.
@@ -187,6 +187,9 @@ class Item(object):
 
         """
         return self._access_point.default_encoding
+    
+    def save(self):
+        self._access_point.save(self)
 
     def serialize(self):
         """Return the item serialized into a string."""
