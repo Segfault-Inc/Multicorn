@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, os
+import os
+import sys
 sys.path.insert(0, os.path.dirname(__file__))
 import werkzeug.script
 import functools
@@ -21,6 +22,7 @@ def run_tests(packages='kalamar,koral,kraken,test', verbose=('v', False),
         test.print_TODOs(packages)
 
 def main(*args):
+    """Run the main test server with given args."""
     werkzeug.script.run(namespace={'test': run_tests}, action_prefix='',
                         args=['test'] + list(args))
 
