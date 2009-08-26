@@ -22,8 +22,9 @@ Create one for each independent site.
 
 """
 
-from koral import engine, utils
 import os
+
+from koral import engine, utils
 
 class Site(object):
     """Koral site."""

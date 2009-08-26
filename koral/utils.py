@@ -16,14 +16,17 @@
 # along with Koral.  If not, see <http://www.gnu.org/licenses/>.
 
 def recursive_subclasses(class_):
-    """Return all "class_" subclasses recursively."""
+    """Return all ``class_`` subclasses recursively."""
     yield class_
     for subclass in class_.__subclasses__():
         for sub_subclass in recursive_subclasses(subclass):
             yield sub_subclass
 
 def indent(text, indent_level):
-    r"""
+    r"""Indent text with ``indent_level`` spaces.
+
+    Trailing and leading blank lines are removed.
+
     >>> indent(u'\n\nLorem ipsum dolor sit amet.\n'
     ...        u'  Maecenas malesuada iaculis luctus.\n\n', 2)
     u'  Lorem ipsum dolor sit amet.\n    Maecenas malesuada iaculis luctus.'
