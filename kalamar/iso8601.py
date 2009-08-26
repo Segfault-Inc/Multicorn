@@ -1,8 +1,7 @@
-# coding: utf8
-
+# -*- coding: utf-8 -*-
 # This file is part of Dyko
-# Copyright (c) 2007 Michael Twomey
-
+# Copyright © 2007 Michael Twomey
+#
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -16,7 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with Dyko.  If not, see <http://www.gnu.org/licenses/>.
 
-"""ISO 8601 date time string parsing
+"""
+ISO 8601 date time string parsing.
 
 Basic usage:
 >>> import iso8601
@@ -34,19 +34,17 @@ __all__ = ["parse_date", "ParseError"]
 # Adapted from http://delete.me.uk/2005/03/iso8601.html
 ISO8601_REGEX = re.compile(r"(?P<year>[0-9]{4})(-(?P<month>[0-9]{1,2})(-(?P<day>[0-9]{1,2})"
     r"((?P<separator>.)(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2})(:(?P<second>[0-9]{2})(\.(?P<fraction>[0-9]+))?)?"
-    r"(?P<timezone>Z|(([-+])([0-9]{2}):([0-9]{2})))?)?)?)?"
-)
+    r"(?P<timezone>Z|(([-+])([0-9]{2}):([0-9]{2})))?)?)?)?")
 TIMEZONE_REGEX = re.compile("(?P<prefix>[+-])(?P<hours>[0-9]{2}).(?P<minutes>[0-9]{2})")
 
 class ParseError(Exception):
-    """Raised when there is a problem parsing a date string"""
+    """Exception raised when there is a problem parsing a date string."""
+    pass
 
 # Yoinked from python docs
 ZERO = timedelta(0)
 class Utc(tzinfo):
-    """UTC
-    
-    """
+    """UTC timezone information."""
     def utcoffset(self, dt):
         return ZERO
 
@@ -58,9 +56,7 @@ class Utc(tzinfo):
 UTC = Utc()
 
 class FixedOffset(tzinfo):
-    """Fixed offset in hours and minutes from UTC
-    
-    """
+    """Fixed offset in hours and minutes from UTC."""
     def __init__(self, offset_hours, offset_minutes, name):
         self.__offset = timedelta(hours=offset_hours, minutes=offset_minutes)
         self.__name = name
@@ -78,9 +74,7 @@ class FixedOffset(tzinfo):
         return "<FixedOffset %r>" % self.__name
 
 def parse_timezone(tzstring, default_timezone=UTC):
-    """Parses ISO 8601 time zone specs into tzinfo offsets
-    
-    """
+    """Parse ISO 8601 timezone specs into tzinfo offsets."""
     if tzstring == "Z":
         return default_timezone
     # This isn't strictly correct, but it's common to encounter dates without
@@ -97,7 +91,7 @@ def parse_timezone(tzstring, default_timezone=UTC):
     return FixedOffset(hours, minutes, tzstring)
 
 def parse_date(datestring, default_timezone=UTC):
-    """Parses ISO 8601 dates into datetime objects
+    """Parses ISO 8601 dates into datetime objects.
     
     The timezone is parsed from the date string. However it is quite common to
     have dates without a timezone (not strictly correct). In this case the

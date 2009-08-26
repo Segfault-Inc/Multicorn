@@ -29,8 +29,7 @@ import ntpath
 
 
 def apply_to_result(function):
-    """
-    Make a decorator that applies the given ``function`` to the results.
+    """Make a decorator that applies the given ``function`` to the results.
     
     >>> @apply_to_result(list)
     ... def foo():
@@ -146,8 +145,8 @@ class ModificationTrackingList(list):
 
 
 def simple_cache(function):
-    """
-    Decorator that caches function results.
+    """Decorator that caches function results.
+
     The key used is a hash of the ``repr()`` of all arguments. The cache dict
     is accessible as the ``cache`` attribute of the decorated function.
     
