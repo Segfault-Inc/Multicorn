@@ -354,11 +354,13 @@ class FileSystemStorage(AccessPoint):
                 os.path.normpath(os.path.splitext(__file__)[0] + '.py')
         True
         """
-        if not filename.startswith(self.root):
+        absolute_filename = os.path.abspath(filename)
+        root = os.path.abspath(self.root)
+        if not absolute_filename.startswith(root):
             return None
         
         # relative to the access point root
-        relative_filename = filename[len(self.root):]
+        relative_filename = absolute_filename[len(root):]
         
         parts = [part for part in relative_filename.split(os.path.sep) if part]
         if len(self.filename_pattern_parts) != len(parts):
