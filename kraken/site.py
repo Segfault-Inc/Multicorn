@@ -309,8 +309,19 @@ class Site(object):
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken.site.lorem/ipsum' 
             from '.../test/kraken/site/lorem/ipsum.py'>
+            
+        Special names:
+        >>> site.import_('kraken') # doctest: +ELLIPSIS
+        <kraken.site.Site object at 0x...>
+        >>> site.import_('kalamar') # doctest: +ELLIPSIS
+        <kalamar.site.Site object at 0x...>
+        >>> site.import_('koral') # doctest: +ELLIPSIS
+        <koral.site.Site object at 0x...>
         """
-        #module = self.load_python_module(name.replace('.', '/'))
+        if name == 'kraken': return self
+        if name == 'koral': return self.koral_site
+        if name == 'kalamar': return self.kalamar_site
+        
         module = self.load_python_module(name)
         if module is None:
             raise ImportError('No module named %s in %r' % (name,
