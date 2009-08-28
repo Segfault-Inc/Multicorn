@@ -39,6 +39,8 @@ class CachedKalamarSite(object):
         def _wrapper(self, *args, **kwargs):
             key = (method_name, args, tuple(sorted(kwargs.items())))
             try:
+                # XXX all args and kwargs must be hashable
+                # (use a tuples instead of lists)
                 return self._cache[key]
             except KeyError:
                 value = getattr(self.kalamar_site, method_name)(*args, **kwargs)
@@ -50,7 +52,7 @@ class CachedKalamarSite(object):
     isearch = _cached_method('isearch')
     search = _cached_method('search')
     open = _cached_method('open')
-    item_from_filenames = _cached_method('item_from_filenames')
+    item_from_filename = _cached_method('item_from_filename')
     del _cached_method
     
     def save(self, *args, **kwargs):
