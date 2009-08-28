@@ -2,7 +2,7 @@
 
 import os
 from unittest import TestCase
-from kalamar import Site
+from test.kalamar import Site
 from test.kalamar.test_site_fs_and_sqlite import TestData
 
 import warnings

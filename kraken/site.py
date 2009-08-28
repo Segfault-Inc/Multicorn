@@ -32,6 +32,7 @@ import functools
 import kalamar
 import koral
 from kraken import utils
+from kraken.cached_kalamar import CachedKalamarSite
 
 
 class Site(object):
@@ -74,7 +75,7 @@ class Site(object):
     def make_request(self, environ):
         request = utils.Request(environ, self.secret_key)
         request.koral = self.koral_site
-        request.kalamar = self.kalamar_site
+        request.kalamar = CachedKalamarSite(self.kalamar_site)
         request.kraken = self
         request.template_response = functools.partial(self.template_response,
                                                       request)
@@ -216,19 +217,20 @@ class Site(object):
                           extension=None, engine=None):
         """
         >>> import test.kraken
-        >>> site = test.kraken.make_site()       
-        >>> site.template_response(None, 'foo')
+        >>> site = test.kraken.make_site()
+        >>> req = site.make_request({})
+        >>> site.template_response(req, 'foo')
         Traceback (most recent call last):
             ...
         ValueError: extension and engine not provided but template_name does not match *.<extension>.<engine>
-        >>> site.template_response(None, 'foo', {}, 'html')
+        >>> site.template_response(req, 'foo', {}, 'html')
         Traceback (most recent call last):
             ...
         TypeError: Can provide both of extension and engine or neither, but not only one
-        >>> response = site.template_response(None, 'index.html.genshi')
+        >>> response = site.template_response(req, 'index.html.genshi')
         >>> response.mimetype
         'text/html'
-        >>> response = site.template_response(None, 'index.html.genshi', {},
+        >>> response = site.template_response(req, 'index.html.genshi', {},
         ...                                   'html', 'genshi')
         >>> response.mimetype
         'text/html'
@@ -258,7 +260,9 @@ class Site(object):
     def simple_template_context(self, request):
         class Site: pass
         site = Site()
-        site.kalamar = self.kalamar_site
+        # request.kalamar is a CachedKalamarSite
+        # use the same instance so that they share the cache
+        site.kalamar = request.kalamar
         site.koral = self.koral_site
         site.kraken = self
         return dict(
@@ -318,9 +322,15 @@ class Site(object):
         >>> site.import_('koral') # doctest: +ELLIPSIS
         <koral.site.Site object at 0x...>
         """
-        if name == 'kraken': return self
-        if name == 'koral': return self.koral_site
-        if name == 'kalamar': return self.kalamar_site
+        if name == 'kraken':
+            return self
+        if name == 'koral':
+            return self.koral_site
+        if name == 'kalamar':
+            # XXX ideally we would return request.kalamar here
+            # (a CachedKalamarSite instance) but we don’t have a reference
+            # to the request
+            return self.kalamar_site
         
         module = self.load_python_module(name)
         if module is None:

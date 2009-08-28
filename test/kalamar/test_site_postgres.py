@@ -16,7 +16,7 @@ else:
                                  TestSiteOpen,\
                                  TestSiteSave,\
                                  TestSiteRemove
-    from kalamar import Site
+    from test.kalamar import Site
 
     site = Site(os.path.join(os.path.dirname(__file__), 'data',
                 'kalamar_postgres.conf'))
