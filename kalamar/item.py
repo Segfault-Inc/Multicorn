@@ -190,6 +190,9 @@ class Item(object):
     
     def save(self):
         self._access_point.save(self)
+        
+    def remove(self):
+        self._access_point.remove(self)
 
     def serialize(self):
         """Return the item serialized into a string."""
