@@ -23,29 +23,19 @@ This access point is internally used for testing purpose.
 """
 
 from kalamar.parser.textitem import TextItem
+import email
 
-class TestItem(TextItem):
-    """Test access point item."""
-    format = 'test_format'
-    _keys = ('genre', 'artist', 'album', 'tracknumber', 'title')
+class MessageItem(TextItem):
+    """Parse email message using python's email module."""
+    format = 'email'
     
     def _custom_parse_data(self):
-        """Parse known properties of the test item."""
-        properties = super(TestItem, self)._custom_parse_data()
-        data = properties['_content']
-        properties.update(dict(zip(self._keys, data.split('\n'))))
-        if properties['tracknumber']:
-            properties['tracknumber'] = int(properties['tracknumber'])
-        else:
-            properties['tracknumber'] = None
-        #if properties['tracknumber'] != '':
-        #    properties['tracknumber'] = int(properties['tracknumber'])
-        #else:
-        #    properties['tracknumber'] = None
+        properties = super(MessageItem, self)._custom_parse_data()
+        msg = email.message_from_string(properties['_content'])
+        msg.set_charset('utf-8')
+        properties['message'] = msg
         return properties
         
     def _custom_serialize(self, properties):
-        """Return a string of properties representing the test item."""
-        properties['_content'] = u'\n'.join(unicode(properties.get(key, u''))
-                                            for key in self._keys)
+        properties['_content'] = properties['message'].as_string()
         return super(TestItem, self)._custom_serialize(properties)
