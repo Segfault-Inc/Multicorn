@@ -268,7 +268,7 @@ unchanged.
         item = self.site.open(self.access_point_name, request)
         item.properties['artiste'] = 'toto'
         item.properties['titre'] = 'tata'
-        item.save()
+        self.site.save(item)
         #self.site.save(item)
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
