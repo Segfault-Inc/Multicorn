@@ -261,17 +261,20 @@ unchanged.
         """Saving a modified existing item must modify it on the access point.
         
         This test needs the open method to work."""
-        request = u'genre="rock"/artiste="Jesus\'harlem"/' \
-                  u'album="alleluia"/titre="solomon"'
+        
+        # !! This test needs the "fs_text_mixed" access point defined in
+        # $test$/kalamar/data/kalamar_fs_and_sqlite.conf
+        request = u'genre="rock"/album="alleluia"/titre="solomon"'
         item = self.site.open(self.access_point_name, request)
-        item.properties['genre'] = 'toto'
+        item.properties['artiste'] = 'toto'
         item.properties['titre'] = 'tata'
-        self.site.save(item)
+        item.save()
+        #self.site.save(item)
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
         # Should not raise any exception
         self.site.open(self.access_point_name,
-                       u'genre="toto"/artiste="Jesus\'harlem"/' \
+                       u'genre="rock"/artiste="toto"/' \
                        u'album="alleluia"/titre="tata"')
 
 class TestSiteRemove(MyTest):
