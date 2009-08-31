@@ -204,7 +204,6 @@ class DBAPIStorage(AccessPoint):
         # Execute request
         cursor = connection.cursor()
         try:
-            print request, parameters
             cursor.execute(request, parameters)
             
             # Release lock on the table we used.
