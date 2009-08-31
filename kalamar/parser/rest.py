@@ -179,9 +179,12 @@ egestas.
                 if key != u'title':
                     write(u':%s: %s' % (key, self.properties[key]))
             write('')
+            # Don’t use self.properties._filename here because it may not be
+            # there yet if we create a capsule from scratch
+            dirname = os.path.dirname(self.filename())
             for subitem in self.subitems:
-                write(u'.. include:: ' + utils.relpath(subitem.filename(),
-                    os.path.dirname(self.properties[u'_filename'])))
+                write(u'.. include:: ' + utils.relpath(
+                    subitem.properties._filename, dirname))
             return u'\n'.join(content).encode(self.encoding)
             
             
