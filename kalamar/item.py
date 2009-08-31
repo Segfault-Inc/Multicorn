@@ -421,8 +421,11 @@ class ItemProperties(MultiDict):
 
     
     def update_parser_properties(self, properties):
+        pkeys = self.parser_keys()
         for key in properties:
-            super(ItemProperties, self).__setitem__(key, properties[key])
+            # If the property is not already manually set by user.
+            if key not in pkeys:
+                super(ItemProperties, self).__setitem__(key, properties[key])
 
     def __getitem__(self, key):
         """Return the item "key" property."""
