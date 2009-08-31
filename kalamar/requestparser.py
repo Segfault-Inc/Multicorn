@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import re
+import datetime
 from kalamar import utils
 from kalamar.utils import Condition
 from kalamar import iso8601
@@ -461,6 +462,12 @@ class Parser(object):
             new_value = value
         elif self.strings[-1] == 'None':
             new_value = None
+        elif self.strings[-1] == 'Now':
+            new_value = datetime.datetime.now()
+        elif self.strings[-1] == 'True':
+            new_value = True
+        elif self.strings[-1] == 'False':
+            new_value = False
         elif re.match(r"^0x[abcdef\d]+$|^[\d]+$|^\d+\.?\d+$", value, re.IGNORECASE):
             new_value = eval(value)
         elif iso8601.ISO8601_REGEX.match(value):
