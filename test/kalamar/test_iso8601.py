@@ -21,8 +21,11 @@ import unittest
 
 class TestISO8601(unittest.TestCase):
 
-    def test_iso8601_regex(self):
-        assert iso8601.ISO8601_REGEX.match("2006-10-11T00:14:33Z")
+    def test_iso8601_regex_datetime(self):
+        assert iso8601.ISO8601_REGEX_DATETIME.match("2006-10-11T00:14:33Z")
+        
+    def test_iso8601_regex_date(self):
+        assert iso8601.ISO8601_REGEX_DATE.match("2006-10-11")
 
     def test_timezone_regex(self):
         assert iso8601.TIMEZONE_REGEX.match("+01:00")
@@ -30,8 +33,8 @@ class TestISO8601(unittest.TestCase):
         assert iso8601.TIMEZONE_REGEX.match("+01:20")
         assert iso8601.TIMEZONE_REGEX.match("-01:00")
 
-    def test_parse_date(self):
-        d = iso8601.parse_date("2006-10-20T15:34:56Z")
+    def test_parse_datetime(self):
+        d = iso8601.parse_datetime("2006-10-20T15:34:56Z")
         assert d.year == 2006
         assert d.month == 10
         assert d.day == 20
@@ -40,8 +43,8 @@ class TestISO8601(unittest.TestCase):
         assert d.second == 56
         assert d.tzinfo == iso8601.UTC
 
-    def test_parse_date_fraction(self):
-        d = iso8601.parse_date("2006-10-20T15:34:56.123Z")
+    def test_parse_datetime_fraction(self):
+        d = iso8601.parse_datetime("2006-10-20T15:34:56.123Z")
         assert d.year == 2006
         assert d.month == 10
         assert d.day == 20
@@ -51,11 +54,11 @@ class TestISO8601(unittest.TestCase):
         assert d.microsecond == 123000
         assert d.tzinfo == iso8601.UTC
 
-    def test_parse_date_fraction_2(self):
+    def test_parse_datetime_fraction_2(self):
         """From bug 6
         
         """
-        d = iso8601.parse_date("2007-5-7T11:43:55.328Z'")
+        d = iso8601.parse_datetime("2007-5-7T11:43:55.328Z'")
         assert d.year == 2007
         assert d.month == 5
         assert d.day == 7
@@ -65,8 +68,8 @@ class TestISO8601(unittest.TestCase):
         assert d.microsecond == 328000
         assert d.tzinfo == iso8601.UTC
 
-    def test_parse_date_tz(self):
-        d = iso8601.parse_date("2006-10-20T15:34:56.123-02:30")
+    def test_parse_datetime_tz(self):
+        d = iso8601.parse_datetime("2006-10-20T15:34:56.123-02:30")
         assert d.year == 2006
         assert d.month == 10
         assert d.day == 20
@@ -81,7 +84,7 @@ class TestISO8601(unittest.TestCase):
 
     def test_parse_invalid_date(self):
         try:
-            iso8601.parse_date(None)
+            iso8601.parse_datetime(None)
         except iso8601.ParseError:
             pass
         else:
@@ -89,7 +92,7 @@ class TestISO8601(unittest.TestCase):
 
     def test_parse_invalid_date2(self):
         try:
-            iso8601.parse_date("23")
+            iso8601.parse_datetime("23")
         except iso8601.ParseError:
             pass
         else:
@@ -102,7 +105,7 @@ class TestISO8601(unittest.TestCase):
         strictly correct this is quite common. I'll assume UTC for the time zone
         in this case.
         """
-        d = iso8601.parse_date("2007-01-01T08:00:00")
+        d = iso8601.parse_datetime("2007-01-01T08:00:00")
         assert d.year == 2007
         assert d.month == 1
         assert d.day == 1
@@ -114,14 +117,14 @@ class TestISO8601(unittest.TestCase):
 
     def test_parse_no_timezone_different_default(self):
         tz = iso8601.FixedOffset(2, 0, "test offset")
-        d = iso8601.parse_date("2007-01-01T08:00:00", default_timezone=tz)
+        d = iso8601.parse_datetime("2007-01-01T08:00:00", default_timezone=tz)
         assert d.tzinfo == tz
 
     def test_space_separator(self):
         """Handle a separator other than T
         
         """
-        d = iso8601.parse_date("2007-06-23 06:40:34.00Z")
+        d = iso8601.parse_datetime("2007-06-23 06:40:34.00Z")
         assert d.year == 2007
         assert d.month == 6
         assert d.day == 23
