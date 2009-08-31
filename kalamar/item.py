@@ -422,9 +422,13 @@ class ItemProperties(MultiDict):
     
     def update_parser_properties(self, properties):
         pkeys = self.parser_keys()
+        # Hum hum
+        if not self._loaded and \
+           len(super(ItemProperties, self).__getitem__('_content')) == 0:
+            pkeys.remove('_content')
         for key in properties:
             # If the property is not already manually set by user.
-            if key not in pkeys:
+            if True or key not in pkeys:
                 super(ItemProperties, self).__setitem__(key, properties[key])
 
     def __getitem__(self, key):
