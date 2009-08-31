@@ -149,13 +149,21 @@ class Parser(object):
         None,
         datetime.datetime(1988, 2, 3, 17, 31, 15,
             tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
-                                 
+    
     >>> p = Parser(ur"1988-02-03 17:31:15+05:00")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
     [Condition(None,
         None,
         datetime.datetime(1988, 2, 3, 17, 31, 15,
             tzinfo=<FixedOffset u'+05:00'>))]
+    
+    >>> p = Parser(ur"Now")
+    >>> p.parse() # doctest: +ELLIPSIS
+    [Condition(None, None, datetime.datetime(..., ..., ..., ..., ..., ..., ...))]
+
+    >>> p = Parser(ur"Today")
+    >>> p.parse() # doctest: +ELLIPSIS
+    [Condition(None, None, datetime.date(..., ..., ...))]
     
     ================
     Explicit syntax:
@@ -472,6 +480,8 @@ class Parser(object):
             new_value = None
         elif self.strings[-1] == 'Now':
             new_value = datetime.datetime.now()
+        elif self.strings[-1] == 'Today':
+            new_value = datetime.date.today()
         elif self.strings[-1] == 'True':
             new_value = True
         elif self.strings[-1] == 'False':
