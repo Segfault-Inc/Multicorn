@@ -136,18 +136,26 @@ class Parser(object):
      Condition(u'b', <built-in function eq>, u'bb')]
     
     ----------------
-    Date:
+    Date & datetime:
     ----------------
     
     >>> p = Parser(ur"1988-02-03")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-    [Condition(None, None, datetime.datetime(1988, 2, 3, 0, 0,
-                                 tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+    [Condition(None, None, datetime.date(1988, 2, 3))]
      
     >>> p = Parser(ur"1988-02-03 17:31:15")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-    [Condition(None, None, datetime.datetime(1988, 2, 3, 17, 31, 15,
-                                 tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+    [Condition(None,
+        None,
+        datetime.datetime(1988, 2, 3, 17, 31, 15,
+            tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+                                 
+    >>> p = Parser(ur"1988-02-03 17:31:15+05:00")
+    >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    [Condition(None,
+        None,
+        datetime.datetime(1988, 2, 3, 17, 31, 15,
+            tzinfo=<FixedOffset u'+05:00'>))]
     
     ================
     Explicit syntax:
@@ -470,7 +478,9 @@ class Parser(object):
             new_value = False
         elif re.match(r"^0x[abcdef\d]+$|^[\d]+$|^\d+\.?\d+$", value, re.IGNORECASE):
             new_value = eval(value)
-        elif iso8601.ISO8601_REGEX.match(value):
+        elif iso8601.ISO8601_REGEX_DATETIME.match(value):
+            new_value = iso8601.parse_datetime(value)
+        elif iso8601.ISO8601_REGEX_DATE.match(value):
             new_value = iso8601.parse_date(value)
         else:
             raise RequestSyntaxError("Failed to convert value: %s." % repr(value))
