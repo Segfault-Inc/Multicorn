@@ -17,6 +17,7 @@
 
 """
 Kalamar various utils.
+
 """
 
 import os.path
@@ -27,9 +28,8 @@ import functools
 import posixpath
 import ntpath
 
-
 def apply_to_result(function):
-    """Make a decorator that applies the given ``function`` to the results.
+    """Make a decorator that applies ``function`` to the results.
     
     >>> @apply_to_result(list)
     ... def foo():
@@ -39,6 +39,7 @@ def apply_to_result(function):
     'A generator'
     >>> foo()
     ['bar']
+
     """
     def _decorator(f):
         @functools.wraps(f)
@@ -48,11 +49,11 @@ def apply_to_result(function):
     return _decorator
 
 def re_match(string, pattern):
-    """Return if "string" matches "pattern"."""
+    """Return if ``string`` matches ``pattern``."""
     return bool(re.search(pattern, string))
 
 def re_not_match(string, pattern):
-    """Return if "string" does not match "pattern"."""
+    """Return if ``string" does not match ``pattern``."""
     return not re.search(pattern, string)
 
 operators = {
@@ -63,8 +64,7 @@ operators = {
     u'<': operator.lt,
     u'<=': operator.le,
     u'~=': re_match,
-    u'~!=': re_not_match,
-}
+    u'~!=': re_not_match}
 
 operators_rev = dict((value, key) for (key, value) in operators.items())
 
@@ -72,7 +72,7 @@ class OperatorNotAvailable(ValueError): pass
 class ParserNotAvailable(ValueError): pass
 
 def recursive_subclasses(class_):
-    """Return all "class_" subclasses recursively."""
+    """Return all ``class_`` subclasses recursively."""
     yield class_
     for subclass in class_.__subclasses__():
         for sub_subclass in recursive_subclasses(subclass):
@@ -95,8 +95,7 @@ class Condition(object):
                                 
 
 class ModificationTrackingList(list):
-    """
-    A list with a ``modified`` attribute that becomes True when the list changes
+    """List with a ``modified`` attribute becoming True when the list changes.
     
     >>> l = ModificationTrackingList(range(3))
     >>> l
@@ -143,7 +142,6 @@ class ModificationTrackingList(list):
    
     del modifies
 
-
 def simple_cache(function):
     """Decorator that caches function results.
 
@@ -169,6 +167,7 @@ def simple_cache(function):
     >>> f.cache.clear()
     >>> f.cache
     {}
+
     """
     cache = {}
     @functools.wraps(function)
@@ -183,7 +182,6 @@ def simple_cache(function):
     _wrapped.cache = cache
     return _wrapped
 
-
 # Python 2.5 compatibility
 try:
     # Use the stdlib one if available (Python >=2.6)
@@ -191,10 +189,9 @@ try:
 except ImportError:
     # backported from Python 2.6.2
     def _posix_relpath(path, start=posixpath.curdir):
-        """Return a relative version of a path"""
-
+        """Return a relative version of a path."""
         if not path:
-            raise ValueError("no path specified")
+            raise ValueError("No path specified")
 
         start_list = posixpath.abspath(start).split(posixpath.sep)
         path_list = posixpath.abspath(path).split(posixpath.sep)
@@ -209,10 +206,9 @@ except ImportError:
 
     # backported from Python 2.6.2
     def _nt_relpath(path, start=ntpath.curdir):
-        """Return a relative version of a path"""
-
+        """Return a relative version of a path."""
         if not path:
-            raise ValueError("no path specified")
+            raise ValueError("No path specified")
         start_list = ntpath.abspath(start).split(ntpath.sep)
         path_list = ntpath.abspath(path).split(ntpath.sep)
         if start_list[0].lower() != path_list[0].lower():
@@ -222,8 +218,9 @@ except ImportError:
                 raise ValueError("Cannot mix UNC and non-UNC paths "
                                  "(%s and %s)" % (path, start))
             else:
-                raise ValueError("path is on drive %s, start on drive %s"
-                                    % (path_list[0], start_list[0]))
+                raise ValueError("Path is on drive %s, start on drive %s"
+                                 % (path_list[0], start_list[0]))
+
         # Work out how much of the filepath is shared by start and path.
         for i in range(min(len(start_list), len(path_list))):
             if start_list[i].lower() != path_list[i].lower():
@@ -234,8 +231,7 @@ except ImportError:
         rel_list = [ntpath.pardir] * (len(start_list)-i) + path_list[i:]
         if not rel_list:
             return ntpath.curdir
-        return join(*rel_list)
-
+        return ntpath.join(*rel_list)
 
     if os.path is posixpath:
         relpath = _posix_relpath

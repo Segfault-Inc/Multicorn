@@ -43,7 +43,7 @@ else:
             return sqlite3
         
         def get_connection(self):
-            """Return (connection, table)
+            """Return (``connection``, ``table``).
             
             Need 'url' in the configuration in the following format:
                 sqlite:///path/to/file?table
@@ -59,7 +59,7 @@ else:
                 splitted_path = url_dict.path.split('?', 1)
                 file = splitted_path[0][2:]
                 self._table = splitted_path[1]
-                file = os.path.join(self.config["basedir"], file)
+                file = os.path.join(self.config['basedir'], file)
                 self._connection = sqlite3.connect(file)
 
             return (self._connection, self._table)

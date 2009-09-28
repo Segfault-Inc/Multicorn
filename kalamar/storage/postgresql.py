@@ -17,7 +17,7 @@
 # along with Dyko.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-SQLite 3 access point.
+PostgreSQL access point.
 
 This implementation depends on DBAPIStorage, the generic SQL database access
 point.
@@ -33,11 +33,11 @@ except ImportError:
 else:
     import urlparse
     import os
-    from time import sleep
-    from kalamar import iso8601
     import socket
+    from time import sleep
 
     from dbapi import DBAPIStorage
+    from kalamar import iso8601
 
     class PostgreSQLStorage(DBAPIStorage):
         """PostgreSQL access point"""
@@ -47,13 +47,12 @@ else:
             return postg
         
         def get_connection(self):
-            """Return (connection, table)
+            """Return (``connection``, ``table``)
             
             Need 'url' in the configuration in the following format:
                 postgres://user:password@host[:port]/base?table
             
             """
-            
             def connect():
                 kwargs = {}
                 parts = self.config['url'].split('/')
@@ -86,7 +85,7 @@ else:
         def _get_primary_keys(self):
             """Return the list of the table primary keys.
             
-            TODO test (possible ?)
+            TODO test (possible?)
             
             """
             connection, table = self.get_connection()
@@ -99,13 +98,12 @@ else:
                         AND idx.indexrelid = c2.oid
                         AND attr.attrelid = c.oid
                         AND attr.attnum = idx.indkey[0]
-                        AND c.relname = %s;""", [table])
+                        AND c.relname = %s ;""", [table])
 
             return [
                 field[0].decode('utf-8') 
                 for field in cursor.fetchall()
-                if field[1]
-            ]
+                if field[1]]
         
         def _convert_parameters(self, parameters):
             module = self.get_db_module()
@@ -150,8 +148,7 @@ else:
             for parameter in parameters:
                 if parameter.value is not None:
                     column_type_code = int(
-                        description[parameter.name]['type_code']
-                    )
+                        description[parameter.name]['type_code'])
                     converter = conv_dict.get(column_type_code, lambda x: x)
                     parameter.value = converter(parameter.value)
                 new_parameters.append(parameter)

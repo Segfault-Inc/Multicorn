@@ -40,10 +40,7 @@ they *need* to work well.
 
 from copy import copy
 from werkzeug import MultiDict
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from cStringIO import StringIO
     
 from kalamar import parser, utils
 
@@ -63,7 +60,6 @@ class Item(object):
     inherited by the parsers.
 
     """
-    
     format = None
     _keys = []
 
@@ -110,7 +106,6 @@ class Item(object):
         >>> #assert isinstance(item, Item)
         
         """
-        
         parser.load()
         
         storage_properties = dict((name, None) for name
@@ -137,8 +132,8 @@ class Item(object):
         
         return item
         
-        # TODO: Check if all storage/parser properties have been set ?
-        #       Is it even possible ?
+        # TODO: Check if all storage/parser properties have been set?
+        #       Is it even possible?
         
         
     
@@ -164,7 +159,6 @@ class Item(object):
         ParserNotAvailable: Unknown parser: I do not exist
         
         """
-
         parser.load()
         
         if access_point.parser_name is None:
@@ -211,7 +205,6 @@ class Item(object):
     
     def _parse_data(self):
         """Call "_custom_parse_data" and do some stuff to the result."""
-
         self._open()
         prop = self._custom_parse_data()
         self.properties.update_parser_properties(prop)
@@ -251,9 +244,11 @@ class Item(object):
         return self.properties.parser_content_modified
     
     def filename(self):
-        """
-        If the item is stored in a file, return it’s path/name.
-        Otherwise, return None
+        """Return the file path.
+
+        If the item is stored in a file, return its path/name.
+        Else return None
+
         """
         if hasattr(self._access_point, 'filename_for'):
             return self._access_point.filename_for(self)
@@ -264,7 +259,6 @@ class AtomItem(Item):
     Give access to the binary data.
     
     """
-    
     format = 'binary'
     
     def read(self):
@@ -374,6 +368,7 @@ class ItemProperties(MultiDict):
 
         For performance purpose, note that the load is lazy: calling this
         function does not really load the item in memory.
+
         """
         # Internal values set for lazy load
         self._item = item
@@ -411,12 +406,10 @@ class ItemProperties(MultiDict):
     def aliased_storage_property(self):
         # TODO test
         return dict(
-            (prop, self[prop]) 
+            (prop, self[prop])
             for prop, aliased in self._item.aliases.items()
-            if aliased in self.storage_properties
-        )
+            if aliased in self.storage_properties)
 
-    
     def update_parser_properties(self, properties):
         for key in properties:
             super(ItemProperties, self).__setitem__(key, properties[key])
