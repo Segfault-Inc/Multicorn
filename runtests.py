@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+# Public Domain
+
 import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
-import werkzeug.script
 import functools
+import werkzeug.script
 
 def run_tests(packages='kalamar,koral,kraken,test', verbose=('v', False),
               coverage=('c', False), profile=('p', False), todo=('t', False)):
