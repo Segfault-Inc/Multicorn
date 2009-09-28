@@ -16,7 +16,7 @@ setup(
         'kraken': 'kraken'},
     package_data = {
         '': ['AUTHORS'],
-        'doc': ['*.txt', '*.rst']},
+        'doc': ['*.rst']},
     install_requires = {
         'Werkzeug': ['werkzeug>=0.5']},
     extras_require = {
