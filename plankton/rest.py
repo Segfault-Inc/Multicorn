@@ -16,20 +16,24 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-reStructuredText
+reStructuredText converter.
+
+TODO docstring
+
 """
 
 import docutils.core
 
 def rest_to_html(rest_data, filename=None, **kwargs):
-    """
+    """Convert ReST to HTML.
+
     Convert a reStructured to HTML, not including <html> and <body> tags.
     If given, ``filename`` is used to resolve relative includes.
+
     """
     parts = docutils.core.publish_parts(
         source=rest_data,
         source_path=filename,
         writer_name="html",
-        settings_overrides=kwargs
-    )
+        settings_overrides=kwargs)
     return parts['fragment']
