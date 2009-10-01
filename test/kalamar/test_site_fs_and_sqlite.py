@@ -10,7 +10,7 @@ from test_site_common import TestSiteSearch,\
                              TestSiteOpen,\
                              TestSiteSave,\
                              TestSiteRemove
-from kalamar import Site
+from test.kalamar import Site
 
 class TestData(object):
     _original_data = os.path.join(os.path.dirname(__file__), 'data')

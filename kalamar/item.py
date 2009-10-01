@@ -182,9 +182,6 @@ class Item(object):
         """
         return self._access_point.default_encoding
     
-    def save(self):
-        self._access_point.save(self)
-
     def serialize(self):
         """Return the item serialized into a string."""
         # Remove aliases
@@ -411,8 +408,15 @@ class ItemProperties(MultiDict):
             if aliased in self.storage_properties)
 
     def update_parser_properties(self, properties):
+        pkeys = self.parser_keys()
+        # Hum hum
+        if not self._loaded and \
+           len(super(ItemProperties, self).__getitem__('_content')) == 0:
+            pkeys.remove('_content')
         for key in properties:
-            super(ItemProperties, self).__setitem__(key, properties[key])
+            # If the property is not already manually set by user.
+            if True or key not in pkeys:
+                super(ItemProperties, self).__setitem__(key, properties[key])
 
     def __getitem__(self, key):
         """Return the item "key" property."""

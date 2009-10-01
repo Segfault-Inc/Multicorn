@@ -30,11 +30,11 @@ import types
 import re
 import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
-import functools
 
 import kalamar
 import koral
 from kraken import utils
+from kraken.cached_kalamar import CachedKalamarSite
 
 
 
@@ -74,7 +74,7 @@ class Site(object):
         """TODO docstring."""
         request = utils.Request(environ, self.secret_key)
         request.koral = self.koral_site
-        request.kalamar = self.kalamar_site
+        request.kalamar = CachedKalamarSite(self.kalamar_site)
         request.kraken = self
         request.template_response = lambda *args, **kwargs:\
             self.template_response(request, *args, **kwargs)
@@ -219,19 +219,20 @@ class Site(object):
         """Build a response for ``request`` according to given parameters.
 
         >>> import test.kraken
-        >>> site = test.kraken.make_site()       
-        >>> site.template_response(None, 'foo')
+        >>> site = test.kraken.make_site()
+        >>> req = site.make_request({})
+        >>> site.template_response(req, 'foo')
         Traceback (most recent call last):
             ...
         ValueError: extension and engine not provided but template_name does not match *.<extension>.<engine>
-        >>> site.template_response(None, 'foo', {}, 'html')
+        >>> site.template_response(req, 'foo', {}, 'html')
         Traceback (most recent call last):
             ...
         TypeError: Can provide both of extension and engine or neither, but not only one
-        >>> response = site.template_response(None, 'index.html.genshi')
+        >>> response = site.template_response(req, 'index.html.genshi')
         >>> response.mimetype
         'text/html'
-        >>> response = site.template_response(None, 'index.html.genshi', {},
+        >>> response = site.template_response(req, 'index.html.genshi', {},
         ...                                   'html', 'genshi')
         >>> response.mimetype
         'text/html'
@@ -263,7 +264,9 @@ class Site(object):
         """TODO docstring."""
         class Site: pass
         site = Site()
-        site.kalamar = self.kalamar_site
+        # request.kalamar is a CachedKalamarSite
+        # use the same instance so that they share the cache
+        site.kalamar = request.kalamar
         site.koral = self.koral_site
         site.kraken = self
         return dict(request = request, site = site, import_ = self.import_)
@@ -313,9 +316,26 @@ class Site(object):
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken.site.lorem/ipsum' 
             from '.../test/kraken/site/lorem/ipsum.py'>
+            
+        Special names:
+        >>> site.import_('kraken') # doctest: +ELLIPSIS
+        <kraken.site.Site object at 0x...>
+        >>> site.import_('kalamar') # doctest: +ELLIPSIS
+        <kalamar.site.Site object at 0x...>
+        >>> site.import_('koral') # doctest: +ELLIPSIS
+        <koral.site.Site object at 0x...>
 
         """
-        #module = self.load_python_module(name.replace('.', '/'))
+        if name == 'kraken':
+            return self
+        if name == 'koral':
+            return self.koral_site
+        if name == 'kalamar':
+            # XXX ideally we would return request.kalamar here
+            # (a CachedKalamarSite instance) but we don’t have a reference
+            # to the request
+            return self.kalamar_site
+        
         module = self.load_python_module(name)
         if module is None:
             raise ImportError('No module named %s in %r' % (name,

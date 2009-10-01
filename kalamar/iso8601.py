@@ -20,25 +20,30 @@ ISO 8601 date time string parsing.
 
 Basic usage:
 >>> import iso8601
->>> iso8601.parse_date('2007-01-25T12:00:00Z') # doctest:+ELLIPSIS
+>>> iso8601.parse_date('2007-01-25')
+datetime.date(2007, 1, 25)
+>>> iso8601.parse_datetime('2007-01-25T12:00:00Z') # doctest:+ELLIPSIS
 datetime.datetime(2007, 1, 25, 12, 0, tzinfo=<...iso8601.Utc object at...>)
->>>
 
 """
 
-from datetime import datetime, timedelta, tzinfo
+from datetime import date, datetime, timedelta, tzinfo
 import re
 
-__all__ = ['parse_date', 'ParseError']
+__all__ = ['parse_date', "parse_datetime", 'ParseError']
 
 # Adapted from http://delete.me.uk/2005/03/iso8601.html
-ISO8601_REGEX = re.compile(
+ISO8601_REGEX_DATE = re.compile(
+    r'(?P<year>[0-9]{4})(-(?P<month>[0-9]{1,2})(-(?P<day>[0-9]{1,2})))')
+ISO8601_REGEX_DATETIME = re.compile(
     r'(?P<year>[0-9]{4})(-(?P<month>[0-9]{1,2})(-(?P<day>[0-9]{1,2})'
     r'((?P<separator>.)(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2})'
     r'(:(?P<second>[0-9]{2})(\.(?P<fraction>[0-9]+))?)?'
-    r'(?P<timezone>Z|(([-+])([0-9]{2}):([0-9]{2})))?)?)?)?')
+    r'(?P<timezone>Z|(([-+])([0-9]{2}):([0-9]{2})))?)))')
 TIMEZONE_REGEX = re.compile(
     '(?P<prefix>[+-])(?P<hours>[0-9]{2}).(?P<minutes>[0-9]{2})')
+
+
 
 class ParseError(Exception):
     """Exception raised when there is a problem parsing a date string."""
@@ -92,8 +97,8 @@ def parse_timezone(tzstring, default_timezone=UTC):
         hours, minutes = -hours, -minutes
     return FixedOffset(hours, minutes, tzstring)
 
-def parse_date(datestring, default_timezone=UTC):
-    """Parses ISO 8601 dates into datetime objects.
+def parse_datetime(datestring, default_timezone=UTC):
+    """Parses ISO 8601 dates into datetime objects
     
     The timezone is parsed from the date string. However it is quite common to
     have dates without a timezone (not strictly correct). In this case the
@@ -103,13 +108,11 @@ def parse_date(datestring, default_timezone=UTC):
     """
     if not isinstance(datestring, basestring):
         raise ParseError('Expecting a string %r' % datestring)
-    match = ISO8601_REGEX.match(datestring)
+    match = ISO8601_REGEX_DATETIME.match(datestring)
     if not match:
         raise ParseError('Unable to parse date string %r' % datestring)
     groups = match.groupdict()
     tz = parse_timezone(groups['timezone'], default_timezone=default_timezone)
-    if (groups['hour'], groups['minute'], groups['second']) == 3 * (None,):
-        groups['hour'], groups['minute'], groups['second'] = 0, 0, 0
     if groups['fraction'] is None:
         groups['fraction'] = 0
     else:
@@ -118,3 +121,13 @@ def parse_date(datestring, default_timezone=UTC):
         int(groups['year']), int(groups['month']), int(groups['day']),
         int(groups['hour']), int(groups['minute']), int(groups['second']),
         int(groups['fraction']), tz)
+        
+def parse_date(datestring, default_timezone=UTC):
+    """Parses ISO 8601 dates into date objects."""
+    if not isinstance(datestring, basestring):
+        raise ParseError("Expecting a string %r" % datestring)
+    match = ISO8601_REGEX_DATE.match(datestring)
+    if not match:
+        raise ParseError("Unable to parse date string %r" % datestring)
+    groups = match.groupdict()
+    return date(int(groups["year"]), int(groups["month"]), int(groups["day"]))

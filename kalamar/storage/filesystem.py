@@ -286,13 +286,13 @@ class FileSystemStorage(AccessPoint):
         move = old_path and (old_path != new_path)
         change = item.content_modified()
         if change:
-            if move:
-                # Remove old_path
-                self.remove(item)
-            # get the serialized content BEFORE we overwrite the file
+            # get the serialized content BEFORE we overwrite or remove the file
             # that is because parsing is made as late as possible:
             # item.serialize() may still need the file to be there
             content = item.serialize()
+            if move:
+                # Remove old_path
+                self.remove(item)
             fd = self.open_file(new_path, mode='wb')
             fd.write(content)
             fd.close()
@@ -353,11 +353,13 @@ class FileSystemStorage(AccessPoint):
                 os.path.normpath(os.path.splitext(__file__)[0] + '.py')
         True
         """
-        if not filename.startswith(self.root):
+        absolute_filename = os.path.abspath(filename)
+        root = os.path.abspath(self.root)
+        if not absolute_filename.startswith(root):
             return None
         
         # relative to the access point root
-        relative_filename = filename[len(self.root):]
+        relative_filename = absolute_filename[len(root):]
         
         parts = [part for part in relative_filename.split(os.path.sep) if part]
         if len(self.filename_pattern_parts) != len(parts):

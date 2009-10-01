@@ -196,7 +196,6 @@ class DBAPIStorage(AccessPoint):
         # Execute request
         cursor = connection.cursor()
         try:
-            print request, parameters
             cursor.execute(request, parameters)
             
             # Release lock on the table we used.
@@ -378,14 +377,7 @@ class DBAPIStorage(AccessPoint):
                 else:
                     yield self._quote_name(condition.property_name) + \
                           self.sql_operators[operator] + '?'
-#        named_conditions = (
-#            self._quote_name(condition.property_name) + 
-#            self.sql_operators[utils.operators_rev[condition.operator]]
-#            for condition in conditions
-#        )
         
-#        # No need to worry about the final '?' when there is no condition since
-#        # this case is handled in the following 'if-else'.
         request = u' AND '.join(named_conditions(conditions))
         
         # We don't use conditions because others _build_***_request don't have
