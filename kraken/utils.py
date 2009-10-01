@@ -16,7 +16,8 @@
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Various utilities for Kraken
+Various utilities for Kraken.
+
 """
 
 import os
@@ -31,9 +32,9 @@ import posixpath
 from werkzeug.contrib.securecookie import SecureCookie
 from werkzeug.exceptions import NotFound, Forbidden
 
-
 def make_absolute_url(request, url):
-    """
+    """Return a clean absolute URL from ``request`` and ``url``.
+
     # fake request for http://localhost/foo/
     >>> request = Request(werkzeug.create_environ(path='/foo/'))
     
@@ -61,6 +62,7 @@ def make_absolute_url(request, url):
     'http://localhost/foo/bar'
     >>> make_absolute_url(request, '../bar')
     'http://localhost/bar'
+
     """
     if urlparse.urlparse(url).netloc:
         # The URL has a 'host' part: it’s already absolute
@@ -76,7 +78,8 @@ def make_absolute_url(request, url):
     return new_url
 
 def redirect(request, url, status=302):
-    """
+    """Redirect client to relative or absolute ``url`` with ``status``.
+
     >>> @Request.application
     ... def test_app(request):
     ...     return redirect(request, request.args['redirect_to'],
@@ -88,41 +91,46 @@ def redirect(request, url, status=302):
 
     >>> client.get('/foo?redirect_to=/') # doctest: +ELLIPSIS
     (..., '302 FOUND', [...('Location', 'http://localhost/')...)
+
     """
     return werkzeug.redirect(make_absolute_url(request, url), status)
 
 class Request(werkzeug.Request):
+    """TODO docstring."""
     def __init__(self, environ, session_secret_key=None):
+        """TODO docstring"""
         super(Request, self).__init__(environ)
         self.session_secret_key = session_secret_key
         
     @werkzeug.cached_property
     def session(self):
+        """TODO docstring."""
         return SecureCookie.load_cookie(
-            self, secret_key=self.session_secret_key
-        )
+            self, secret_key=self.session_secret_key)
 
 class Response(werkzeug.Response):
+    """TODO docstring."""
     pass
 
 
 class StaticFileResponse(object):
-    """
+    """Respond with the a static file.
+
     Respond with a static file, guessing the mimitype from the filename,
     and using WSGI’s ``file_wrapper`` when available.
+
     """
     
     def __init__(self, filename):
+        """Create the response with the ``filename`` static file."""
         self.filename = filename
     
     def __call__(self, environ, start_response):
+        """Return the file and set the response headers."""
         stat = os.stat(self.filename)
         etag = '%s,%s,%s' % (self.filename, stat.st_size, stat.st_mtime)
         etag = '"%s"' % hashlib.md5(etag).hexdigest()
-        headers = [
-            ('Date', werkzeug.http_date()),
-            ('Etag', etag),
-        ]
+        headers = [('Date', werkzeug.http_date()), ('Etag', etag)]
         mtime = datetime.datetime.utcfromtimestamp(stat.st_mtime)
         if not werkzeug.is_resource_modified(environ, etag=etag,
                                              last_modified=mtime):
@@ -133,15 +141,14 @@ class StaticFileResponse(object):
         headers.extend((
             ('Content-Type', mime_type or 'application/octet-stream'),
             ('Content-Length', str(stat.st_size)),
-            ('Last-Modified', werkzeug. http_date(stat.st_mtime))
-        ))
+            ('Last-Modified', werkzeug. http_date(stat.st_mtime))))
         start_response('200 OK', headers)
         return werkzeug.wrap_file(environ, open(self.filename, 'rb'))
 
 def arg_count(function):
-    """
-    Return the nubmer of explicit arguments the function takes
-    ie. without *args and **kwargs.
+    """Return the nubmer of explicit arguments the function takes.
+    
+    *args and **kwargs arguments are excluded.
     
     >>> arg_count(lambda: 1)
     0
@@ -149,13 +156,13 @@ def arg_count(function):
     2
     >>> arg_count(lambda x, y, *args: 1)
     2
+
     """
     args, varargs, varkw, defaults = inspect.getargspec(function)
     return len(args)
 
 def runserver(site, args=None):
-    """
-    Run a developpement server from command line for the given Kraken site.
+    """Run a developpement server for the given Kraken ``site``.
     
     >>> runserver(None, ['--help']) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...
@@ -173,7 +180,6 @@ def runserver(site, args=None):
     action_runserver = werkzeug.script.make_runserver(
         lambda: site,
         # Files for the reloader to watch
-        extra_files=[site.kalamar_site.config_filename] if site else [],
-    )
+        extra_files=[site.kalamar_site.config_filename] if site else [])
     werkzeug.script.run(args=args)
 
