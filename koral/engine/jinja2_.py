@@ -35,8 +35,8 @@ else:
         u'<html><body>Hello, World!</body></html>'
         >>> engine.render('hello.jinja2.html', {'name': 'Python'})
         u'<html><body>Hello, Python!</body></html>'
+
         """
-        
         name = 'jinja2'
         
         def __init__(self, *args, **kwargs):

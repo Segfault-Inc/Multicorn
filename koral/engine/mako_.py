@@ -36,8 +36,8 @@ else:
         u'<html><body>Hello, World!</body></html>\n'
         >>> engine.render('hello.mako.html', {'name': 'Python'})
         u'<html><body>Hello, Python!</body></html>\n'
+
         """
-        
         name = 'mako'
         
         def __init__(self, *args, **kwargs):

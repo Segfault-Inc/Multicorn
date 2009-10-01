@@ -26,9 +26,10 @@ import os
 
 from koral import engine, utils
 
+
+
 class Site(object):
     """Koral site."""
-
     def __init__(self, path_to_root):
         """Create a kalamar site."""
         self.path_to_root = path_to_root
@@ -44,11 +45,8 @@ class Site(object):
         """Shorthand to the engine render method.
         
         TODO test & doc
+
         """
         return self.engines[engine].render(
-            template_name,
-            values,
-            lang,
-            modifiers
-        )
+            template_name, values, lang, modifiers)
 

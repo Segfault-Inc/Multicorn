@@ -30,6 +30,7 @@ def indent(text, indent_level):
     >>> indent(u'\n\nLorem ipsum dolor sit amet.\n'
     ...        u'  Maecenas malesuada iaculis luctus.\n\n', 2)
     u'  Lorem ipsum dolor sit amet.\n    Maecenas malesuada iaculis luctus.'
+
     """
     lines = text.splitlines()
 
