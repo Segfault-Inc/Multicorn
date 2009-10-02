@@ -29,7 +29,8 @@ try:
     from pg8000 import dbapi as postg
 except ImportError:
     warnings.warn('Cannot import pg8000. '
-                  'PostgreSQL support will not be available.')
+                  'PostgreSQL support will not be available.',
+                  ImportWarning)
 else:
     import urlparse
     import os

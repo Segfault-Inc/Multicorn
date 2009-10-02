@@ -4,7 +4,8 @@ import warnings
 try:
     import MySQLdb
 except ImportError:
-    warnings.warn('MySQL access not tested. (Could not import MySQLdb)')
+    warnings.warn('MySQL access not tested. (Could not import MySQLdb)',
+                  ImportWarning)
 else:
     import os
     import sys

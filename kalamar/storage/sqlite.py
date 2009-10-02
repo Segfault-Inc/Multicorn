@@ -28,7 +28,8 @@ try:
     import sqlite3
 except ImportError:
     warnings.warn('Cannot import sqlite3. '
-                  'SQLite3 support will not be available.')
+                  'SQLite3 support will not be available.',
+                  ImportWarning)
 else:
     import urlparse
     import os

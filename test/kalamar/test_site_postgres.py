@@ -4,7 +4,8 @@ import warnings
 try:
     from pg8000 import dbapi
 except ImportError:
-    warnings.warn('PostgresSQL access not tested. (Could not import pg8000)')
+    warnings.warn('PostgresSQL access not tested. (Could not import pg8000)',
+                  ImportWarning)
 else:
     import os
     import sys

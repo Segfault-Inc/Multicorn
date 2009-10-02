@@ -29,7 +29,8 @@ try:
 except ImportError:
     import warnings
     warnings.warn('Can not import docutils. '
-                  'RestItem will not be available.')
+                  'RestItem will not be available.',
+                  ImportWarning)
 else:
     from kalamar.item import CapsuleItem
     from kalamar.parser.textitem import TextItem

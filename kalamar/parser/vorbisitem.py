@@ -27,7 +27,8 @@ try:
 except ImportError:
     import warnings
     warnings.warn('Can not import mutagen. '
-                  'VorbisItem will not be available.')
+                  'VorbisItem will not be available.',
+                  ImportWarning)
 else:
     from werkzeug import MultiDict
     from tempfile import NamedTemporaryFile

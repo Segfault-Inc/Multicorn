@@ -28,7 +28,8 @@ try:
     import MySQLdb
 except ImportError:
     warnings.warn('Cannot import MySQLdb. '
-                  'MySQL support will not be available.')
+                  'MySQL support will not be available.',
+                  ImportWarning)
 else:
     from MySQLdb.constants import FIELD_TYPE, FLAG, CLIENT
     from MySQLdb import converters
