@@ -24,7 +24,8 @@ try:
     import genshi.input
 except ImportError:
     warnings.warn('Can not import genshi. '
-                  'GenshiEngine will not be available.')
+                  'GenshiEngine will not be available.',
+                  ImportWarning)
 else:
     class GenshiEngine(BaseEngine):
         r"""Koral engine for Genshi: http://genshi.edgewall.org/

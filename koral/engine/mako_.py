@@ -24,7 +24,8 @@ try:
     from mako.lookup import TemplateLookup
 except ImportError:
     warnings.warn('Can not import mako. '
-                  'MakoEngine will not be available.')
+                  'MakoEngine will not be available.',
+                  ImportWarning)
 else:
     class MakoEngine(BaseEngine):
         r"""Koral engine for Mako: http://www.makotemplates.org/
