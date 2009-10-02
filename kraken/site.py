@@ -310,12 +310,12 @@ class Site(object):
         >>> module = site.import_('inexistent') # doctest: +ELLIPSIS
         Traceback (most recent call last):
             ...
-        ImportError: No module named inexistent in u'.../test/kraken/site'
+        ImportError: No module named inexistent in u'...test/kraken/site'
 
         >>> site.import_('lorem/ipsum') # doctest: +ELLIPSIS
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken.site.lorem/ipsum' 
-            from '.../test/kraken/site/lorem/ipsum.py'>
+            from '...test/kraken/site/lorem/ipsum.py'>
             
         Special names:
         >>> site.import_('kraken') # doctest: +ELLIPSIS
