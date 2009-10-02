@@ -25,12 +25,30 @@ datetime.date(2007, 1, 25)
 >>> iso8601.parse_datetime('2007-01-25T12:00:00Z') # doctest:+ELLIPSIS
 datetime.datetime(2007, 1, 25, 12, 0, tzinfo=<...iso8601.Utc object at...>)
 
+Bad inputs:
+>>> iso8601.parse_date([2007, 1, 25]) # doctest:+ELLIPSIS
+Traceback (most recent call last):
+...
+ParseError: Expecting a string instead of [2007, 1, 25]
+>>> iso8601.parse_date('2007/01/25') # doctest:+ELLIPSIS
+Traceback (most recent call last):
+...
+ParseError: Unable to parse date string '2007/01/25'
+>>> iso8601.parse_datetime(123456789) # doctest:+ELLIPSIS
+Traceback (most recent call last):
+...
+ParseError: Expecting a string instead of 123456789
+>>> iso8601.parse_datetime('20070125120000') # doctest:+ELLIPSIS
+Traceback (most recent call last):
+...
+ParseError: Unable to parse datetime string '20070125120000'
+
 """
 
 from datetime import date, datetime, timedelta, tzinfo
 import re
 
-__all__ = ['parse_date', "parse_datetime", 'ParseError']
+__all__ = ['parse_date', 'parse_datetime', 'ParseError']
 
 # Adapted from http://delete.me.uk/2005/03/iso8601.html
 ISO8601_REGEX_DATE = re.compile(
@@ -42,6 +60,7 @@ ISO8601_REGEX_DATETIME = re.compile(
     r'(?P<timezone>Z|(([-+])([0-9]{2}):([0-9]{2})))?)))')
 TIMEZONE_REGEX = re.compile(
     '(?P<prefix>[+-])(?P<hours>[0-9]{2}).(?P<minutes>[0-9]{2})')
+ZERO = timedelta(0)
 
 
 
@@ -50,9 +69,19 @@ class ParseError(Exception):
     pass
 
 # Yoinked from python docs
-ZERO = timedelta(0)
 class Utc(tzinfo):
-    """UTC timezone information."""
+    """UTC timezone information.
+
+    >>> utc = Utc()
+    >>> dt = date(2007, 1, 25)
+    >>> utc.utcoffset(dt)
+    datetime.timedelta(0)
+    >>> utc.tzname(dt)
+    'UTC'
+    >>> utc.dst(dt)
+    datetime.timedelta(0)
+    
+    """
     def utcoffset(self, dt):
         return ZERO
 
@@ -64,7 +93,18 @@ class Utc(tzinfo):
 UTC = Utc()
 
 class FixedOffset(tzinfo):
-    """Fixed offset in hours and minutes from UTC."""
+    """Fixed offset in hours and minutes from UTC.
+
+    >>> fixed = FixedOffset(-2, 30, 'TST')
+    >>> dt = date(2007, 1, 25)
+    >>> fixed.utcoffset(dt)
+    datetime.timedelta(-1, 81000)
+    >>> fixed.tzname(dt)
+    'TST'
+    >>> fixed.dst(dt)
+    datetime.timedelta(0)
+    
+    """
     def __init__(self, offset_hours, offset_minutes, name):
         self.__offset = timedelta(hours=offset_hours, minutes=offset_minutes)
         self.__name = name
@@ -107,10 +147,10 @@ def parse_datetime(datestring, default_timezone=UTC):
 
     """
     if not isinstance(datestring, basestring):
-        raise ParseError('Expecting a string %r' % datestring)
+        raise ParseError('Expecting a string instead of %r' % datestring)
     match = ISO8601_REGEX_DATETIME.match(datestring)
     if not match:
-        raise ParseError('Unable to parse date string %r' % datestring)
+        raise ParseError('Unable to parse datetime string %r' % datestring)
     groups = match.groupdict()
     tz = parse_timezone(groups['timezone'], default_timezone=default_timezone)
     if groups['fraction'] is None:
@@ -125,9 +165,9 @@ def parse_datetime(datestring, default_timezone=UTC):
 def parse_date(datestring, default_timezone=UTC):
     """Parses ISO 8601 dates into date objects."""
     if not isinstance(datestring, basestring):
-        raise ParseError("Expecting a string %r" % datestring)
+        raise ParseError('Expecting a string instead of %r' % datestring)
     match = ISO8601_REGEX_DATE.match(datestring)
     if not match:
-        raise ParseError("Unable to parse date string %r" % datestring)
+        raise ParseError('Unable to parse date string %r' % datestring)
     groups = match.groupdict()
-    return date(int(groups["year"]), int(groups["month"]), int(groups["day"]))
+    return date(int(groups['year']), int(groups['month']), int(groups['day']))
