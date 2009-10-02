@@ -57,7 +57,7 @@ class CachedKalamarSite(object):
     
     isearch = _cached_method('isearch')
     search = _cached_method('search')
-    #open = _cached_method('open')
+    open = _cached_method('open')
     item_from_filename = _cached_method('item_from_filename')
     del _cached_method
     
