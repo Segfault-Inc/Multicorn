@@ -29,6 +29,7 @@ import re
 import itertools
 import functools
 import werkzeug
+from random import random
 
 from kalamar import utils
 from kalamar.storage.base import AccessPoint
@@ -267,7 +268,11 @@ class FileSystemStorage(AccessPoint):
             pattern_parts = self.filename_format.split('*')
             yield pattern_parts[0]
             for i, part in enumerate(pattern_parts[1:]):
-                yield unicode(properties[u'path%i' % (i + 1)])
+                # If no property is set, give a random name instead of None
+                # Closes bug #8
+                # TODO avoid already existing numbers (``hash`` limitation)
+                yield unicode(properties[u'path%i' % (i + 1)]
+                              or abs(hash(random())))
                 yield part
 
         return ''.join(path_parts())
