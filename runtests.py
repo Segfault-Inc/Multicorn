@@ -12,7 +12,7 @@ import werkzeug.script
 def run_tests(packages='kalamar,koral,kraken,test', verbose=('v', False),
               coverage=('c', False), profile=('p', False), todo=('t', False),
               warning=('w', 'ignore')):
-    """Run all doctests and unittests found in "packages"."""
+    """Run all doctests and unittests found in ``packages``."""
     warnings.simplefilter(warning, Warning)
     warnings.simplefilter('default', ImportWarning)
     import test.kraken
