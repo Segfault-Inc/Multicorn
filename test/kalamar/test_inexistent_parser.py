@@ -21,8 +21,11 @@ class TestInexistentParser(TestCase):
         log = []
         old_showwarning = warnings.showwarning
         old_filters = warnings.filters
-        warnings.showwarning = lambda *args, **kwargs: log.append(
-            warnings.WarningMessage(*args, **kwargs))
+        warnings.showwarning = \
+            lambda message, category, filename, lineno, file=None, line=None: \
+            log.append({
+                'message': message, 'category': category, 'filename': filename,
+                'lineno': lineno, 'file': file, 'line': line})
 
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always")
@@ -30,8 +33,8 @@ class TestInexistentParser(TestCase):
         kalamar.Site(self.conf, fail_on_inexistent_parser=False)
         # Verify some things
         self.assertEquals(len(log), 1)
-        self.assert_(log[-1].category is UserWarning)
-        self.assertEquals(str(log[-1].message), "The access point 'foo' was "
+        self.assert_(log[-1]["category"] is UserWarning)
+        self.assertEquals(str(log[-1]["message"]), "The access point 'foo' was "
                           "ignored. (Unknown parser: inexistent)")
 
         # Stop catching warnings
