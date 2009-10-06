@@ -22,7 +22,7 @@ def runserver(site_root=('s', '.'), kalamar_conf=('k', ''),
                        threaded=threaded)
 
 def main(*args):
-    """Run the main server with given args."""
+    """Run the main server with given ``args``."""
     werkzeug.script.run(namespace={'runserver': runserver}, action_prefix='',
                         args=['runserver'] + list(args))
 
