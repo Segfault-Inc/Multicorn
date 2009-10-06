@@ -16,7 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-ReStructured Text.
+ReStructuredText.
 
 Metadata extraction using docutils is kindda slow, so the results of
 ``extract_metadata`` are cached.
@@ -75,8 +75,7 @@ egestas.
         
     @utils.simple_cache
     def extract_metadata(text):
-        r"""
-        Return a dict of metadata for the given ReST string.
+        r"""Return a dict of metadata for the given ReST string.
         
         Search for a docutils.nodes.title and a docutils.nodes.field_list
         element in the docutils document tree.
@@ -129,7 +128,8 @@ egestas.
         format = 'rest'
         
     class MissingItem(object):
-        """
+        """Missing ReST item.
+
         Placeholder in RestCapsule subitems used when an ``include`` directive
         has a filename that matches no item in the current site.
 

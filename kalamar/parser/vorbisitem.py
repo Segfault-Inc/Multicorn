@@ -47,8 +47,6 @@ else:
         - genre
         - track
         
-        TODO write test
-
         """
         format = 'audio_vorbis'
         
