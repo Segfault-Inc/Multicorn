@@ -137,6 +137,7 @@ class Site(object):
         """Return an item.
         
         TODO document & test
+
         """
         access_point = self.access_points[access_point_name]
         return Item.create_item(access_point, properties)
@@ -146,8 +147,7 @@ class Site(object):
         
         Return the keys defined in configuration or None if
         ``access_point_name`` does not exist.
-        
-        TODO test
+
         """
         access_point = self.access_points[access_point_name]
         return access_point.property_names

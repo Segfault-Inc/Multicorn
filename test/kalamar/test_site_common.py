@@ -286,3 +286,27 @@ class TestSiteRemove(MyTest):
         self.site.remove(item)
         self.assertEqual(list(self.site.search(self.access_point_name, request)), [])
 
+class TestSiteGetDescription(MyTest):
+    def test_get_description(self):
+        """TODO
+        """
+        description = self.site.get_description(self.access_point_name)
+        self.assertEqual(description, self.site.access_points[self.access_point_name].property_names)
+
+class TestSiteCreateItem(MyTest):
+    def test_remove(self):
+        """TODO
+        
+        This test needs the open method to work.
+
+        """
+        # Vorbis parser is read only
+        if self.site.access_points[self.access_point_name].parser_name != 'audio_vorbis':
+            request = u'genre="rock"/artiste="Jesus\'harlem"/album="love is love"/titre="GreatGreatGod"'
+            properties = {'genre': 'rock', 'artiste': "Jesus'harlem",
+                          'album': 'love is love', 'titre': 'GreatGreatGod'}
+            item_create = self.site.create_item(self.access_point_name, properties)
+            self.site.save(item_create)
+            item_open = self.site.open(self.access_point_name, request)
+            for tag in ('genre', 'artiste', 'album', 'titre', 'unknown'):
+                self.assertEqual(item_create.properties[tag], item_open.properties[tag])

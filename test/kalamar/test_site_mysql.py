@@ -16,7 +16,9 @@ else:
     from test_site_common import TestSiteSearch,\
                                  TestSiteOpen,\
                                  TestSiteSave,\
-                                 TestSiteRemove
+                                 TestSiteRemove,\
+                                 TestSiteGetDescription,\
+                                 TestSiteCreateItem
     from test.kalamar import Site
 
     site = Site(os.path.join(os.path.dirname(__file__), 'data',
@@ -51,7 +53,8 @@ else:
         # Magic tricks
         for access_point in site.access_points:
             for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
-                         TestSiteRemove):
+                         TestSiteRemove, TestSiteGetDescription,
+                         TestCreateItem):
                 cls = type(test.__name__+'_'+access_point, 
                            (TestSite, test, TestCase),
                            {"access_point_name": access_point})
