@@ -32,7 +32,7 @@ bbb\\
 ccc
 -----
 
-will be interpreted as 3 fields: ['a\\aa\naaa', 'bbb\\', 'ccc']
+This example will be interpreted as 3 fields: ['a\\aa\naaa', 'bbb\\', 'ccc']
 
 """
 
@@ -99,4 +99,3 @@ class TextFieldsItem(TextItem):
             field = field.replace(u'\n', u'\\\n')
             escaped_fields.append(field)
         return u'\n'.join(escaped_fields)
-    
