@@ -195,47 +195,41 @@ class DBAPIStorage(AccessPoint):
         
         # Execute request
         cursor = connection.cursor()
-        try:
-            cursor.execute(request, parameters)
-            
-            # Release lock on the table we used.
-            connection.commit()
+        cursor.execute(request, parameters)
         
-            descriptions = [description[0] for description in cursor.description]
-            dict_lines = (dict(zip(descriptions, line))
-                            for line in self._generate_lines_from_cursor(cursor))
+        # Release lock on the table we used.
+        connection.commit()
+    
+        descriptions = [description[0] for description in cursor.description]
+        dict_lines = (dict(zip(descriptions, line))
+                        for line in self._generate_lines_from_cursor(cursor))
+        
+        # Filter result and yield tuples (properties, value)
+        filtered = list(self._filter_result(dict_lines, python_condition))
+        
+        # Convert all properties to strings
+        # TODO change this. See http://trac.dyko.org/ticket/4
+    #        def lines_to_string(lines):
+    #            for line in lines:
+    #                for key in line:
+    #                    if key != self.content_column \
+    #                    and not isinstance(line[key], unicode):
+    #                        line[key] = str(line[key]).decode(self.default_encoding)
+    #                yield line
+        
+    #        for line in lines_to_string(filtered):
+        for line in filtered:
+            data = line.get(self.content_column, None)
             
-            # Filter result and yield tuples (properties, value)
-            filtered = list(self._filter_result(dict_lines, python_condition))
-            
-            # Convert all properties to strings
-            # TODO change this. See http://trac.dyko.org/ticket/4
-        #        def lines_to_string(lines):
-        #            for line in lines:
-        #                for key in line:
-        #                    if key != self.content_column \
-        #                    and not isinstance(line[key], unicode):
-        #                        line[key] = str(line[key]).decode(self.default_encoding)
-        #                yield line
-            
-        #        for line in lines_to_string(filtered):
-            for line in filtered:
-                data = line.get(self.content_column, None)
+            # If a content_column has been declared in kalamar configuration, it
+            # becomes an item property (i.e. '_content'), so we remove it from
+            # storage properties
+            if self.content_column is not None:
+                line.pop(self.content_column)
                 
-                # If a content_column has been declared in kalamar configuration, it
-                # becomes an item property (i.e. '_content'), so we remove it from
-                # storage properties
-                if self.content_column is not None:
-                    line.pop(self.content_column)
-                    
-                yield (line, _opener(data))
-        except self.get_db_module().ProgrammingError:
-            # Probably an argument type error occured in cursor.execute().
-            # TODO any better way to handle argument type error?
-            raise
-            pass
-        finally:
-            cursor.close()
+            yield (line, _opener(data))
+
+        cursor.close()
     
     def _generate_lines_from_cursor(self, cursor):
         result = cursor.fetchmany()
@@ -354,7 +348,17 @@ class DBAPIStorage(AccessPoint):
         u'SELECT * FROM "table" ;'
         >>> params
         ()
-        
+
+        If a condition value is None, replace the test by IS (NOT) NULL
+        >>> conditions = (utils.Condition(u'toto', utils.operators[u'='], None),
+        ...     utils.Condition(u'the_answer', utils.operators[u'!='], None))
+        >>> req, params = storage._build_select_request(conditions,
+        ...                                             'table', 'qmark')
+        >>> req
+        u'SELECT * FROM "table" WHERE "toto" IS NULL AND "the_answer" IS NOT NULL ;'
+        >>> params
+        ()
+
         """
         conditions = list(conditions)
         table = self._sql_escape_quotes(table)
@@ -370,10 +374,8 @@ class DBAPIStorage(AccessPoint):
                     elif operator == '!=':
                         yield self._quote_name(condition.property_name) + \
                               ' IS NOT NULL'
-                    else:
-                        # Nothing to do since others operators are handled in
-                        # python for None properties (see _process_conditions).
-                        pass
+                    # else: nothing to do since others operators are handled in
+                    # python for None properties (see _process_conditions).
                 else:
                     yield self._quote_name(condition.property_name) + \
                           self.sql_operators[operator] + '?'
