@@ -165,6 +165,14 @@ class Parser(object):
     >>> p.parse() # doctest: +ELLIPSIS
     [Condition(None, None, datetime.date(..., ..., ...))]
     
+    >>> p = Parser(ur"True")
+    >>> p.parse() # doctest:
+    [Condition(None, None, True)]
+    
+    >>> p = Parser(ur"False")
+    >>> p.parse() # doctest:
+    [Condition(None, None, False)]
+    
     ===============
     Explicit syntax
     ===============
