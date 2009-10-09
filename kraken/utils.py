@@ -164,16 +164,28 @@ def arg_count(function):
 def runserver(site, args=None):
     """Run a developpement server for the given Kraken ``site``.
     
+    Setup test
+    >>> real_argv = sys.argv
+    >>> import logging
+    >>> logging.getLogger('werkzeug').setLevel(logging.FATAL)
+
+    Test
     >>> runserver(None, ['--help']) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...
-    >>> real_argv = sys.argv
+    >>> sys.argv = [sys.argv[0]]
+    >>> try: runserver(None, ['--port=1'])
+    ... except Exception, e: print e
+    [Errno 13] Permission denied
     >>> sys.argv = [sys.argv[0], '--help']
     >>> runserver(None) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...    
+
+    Restore real argv
     >>> sys.argv = real_argv
     
     """
-    if args is None:
+    # TODO manage other cases
+    if not args:
         args = sys.argv[1:]
     if not args or args[0] != '--help':
         args = ['runserver'] + args
