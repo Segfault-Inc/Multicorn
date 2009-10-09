@@ -173,9 +173,9 @@ def runserver(site, args=None):
     >>> runserver(None, ['--help']) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...
     >>> sys.argv = [sys.argv[0]]
-    >>> try: runserver(None, ['--port=1'])
-    ... except Exception, e: print e
-    [Errno 13] Permission denied
+    >>> try: runserver(None, ['--port=1']) # doctest: +ELLIPSIS
+    ... except Exception, e: print e.strerror
+    Permission denied
     >>> sys.argv = [sys.argv[0], '--help']
     >>> runserver(None) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...    
