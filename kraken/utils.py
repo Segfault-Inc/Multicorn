@@ -174,7 +174,7 @@ def runserver(site, args=None):
     usage: ...
     >>> sys.argv = [sys.argv[0]]
     >>> try: runserver(None, ['--port=1']) # doctest: +ELLIPSIS
-    ... except Exception, e: print e.strerror
+    ... except Exception, e: print e[1]
     Permission denied
     >>> sys.argv = [sys.argv[0], '--help']
     >>> runserver(None) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
