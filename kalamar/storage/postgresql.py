@@ -96,8 +96,8 @@ else:
         def _convert_parameters(self, parameters):
             module = self.get_db_module()
             conv_dict = {
-                #16: bool,
-                #17: module.Binary,
+                16: bool,
+                17: module.Binary,
                 #19: unicode,
                 #20: long,
                 #21: int,
