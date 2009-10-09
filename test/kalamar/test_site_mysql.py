@@ -34,13 +34,9 @@ else:
             cursor = connection.cursor()
             try:
                 cursor.execute('DELETE FROM textes;')
-                cursor.execute(
-                    'insert into textes select * from textes_bak;'
-                )
+                cursor.execute('INSERT INTO textes SELECT * FROM textes_bak;')
                 cursor.execute('DELETE FROM morceaux;')
-                cursor.execute(
-                    'insert into morceaux select * from morceaux_bak;'
-                )
+                cursor.execute('INSERT INTO morceaux SELECT * FROM morceaux_bak;')
                 connection.commit()
             finally:
                 cursor.close()
@@ -54,7 +50,7 @@ else:
         for access_point in site.access_points:
             for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
                          TestSiteRemove, TestSiteGetDescription,
-                         TestCreateItem):
+                         TestSiteCreateItem):
                 cls = type(test.__name__+'_'+access_point, 
                            (TestSite, test, TestCase),
                            {"access_point_name": access_point})

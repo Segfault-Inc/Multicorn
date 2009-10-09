@@ -32,13 +32,9 @@ else:
             cursor = connection.cursor()
             try:
                 cursor.execute('DELETE FROM textes;')
-                cursor.execute(
-                    'insert into textes select * from textes_bak;'
-                )
+                cursor.execute('INSERT INTO textes SELECT * from textes_bak;')
                 cursor.execute('DELETE FROM morceaux;')
-                cursor.execute(
-                    'insert into morceaux select * from morceaux_bak;'
-                )
+                cursor.execute('INSERT INTO morceaux SELECT * from morceaux_bak;')
                 connection.commit()
             finally:
                 cursor.close()

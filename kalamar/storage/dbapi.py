@@ -164,7 +164,7 @@ class DBAPIStorage(AccessPoint):
         """Return field description as a dictionnary."""
         connection, table = self.get_connection()
         cursor = connection.cursor()
-        cursor.execute('SELECT * FROM %s WHERE 0;'
+        cursor.execute('SELECT * FROM %s WHERE 1=0;'
                        % self._quote_name(self._table))
         fields_names = (desc_values[0] for desc_values in cursor.description)
         desc_names = ('type_code', 
@@ -690,7 +690,7 @@ class DBAPIStorage(AccessPoint):
 
         else:
             raise DBAPIStorage.UnsupportedParameterStyleError(style)
-        
+
         return request, parameters
     
     @staticmethod
@@ -714,7 +714,7 @@ class DBAPIStorage(AccessPoint):
         redefined for SGDBs using a different character.
         
         """
-        return '"%s"' % name
+        return u'"%s"' % name
     
     def _get_primary_keys(self):
         """Return a list of primary keys names.

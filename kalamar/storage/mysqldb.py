@@ -105,6 +105,7 @@ else:
         })
         
         def get_db_module(self):
+            """Return a DB-API implementation module."""
             return MySQLdb
         
         def get_connection(self):
@@ -129,7 +130,7 @@ else:
                 kwargs['db'], self._table = parts[3].split('?')
                 
                 kwargs['use_unicode'] = True
-                kwargs['conv'] = self.conversions
+                #kwargs['conv'] = self.conversions
                 kwargs['client_flag'] = CLIENT.FOUND_ROWS
                 
                 self._connection = MySQLdb.connect(**kwargs)
@@ -157,9 +158,14 @@ else:
 
             return [unicode(field['Field'])
                     for field in fields
-                    if field['Key']=='PRI']
+                    if field['Key'] == 'PRI']
         
         @staticmethod
         def _quote_name(name):
-            """Quote an SQL name (e.g. column name) with ` (grave accent)."""
+            """Quote an SQL name (e.g. column name) with ` (grave accent).
+
+            >>> MySQLdbStorage._quote_name('spam')
+            '`spam`'
+
+            """
             return '`%s`' % name
