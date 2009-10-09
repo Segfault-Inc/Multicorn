@@ -16,10 +16,10 @@ def runserver(site_root=('s', '.'), kalamar_conf=('k', ''),
               evalex=('e', True), threaded=('t', False), processes=1):
     """Start a Dyko server instance."""
     site = kraken.Site(site_root, kalamar_conf)
-    serving.run_simple(hostname=hostname, port=port, application=site,
-                       use_reloader=reloader, use_debugger=debugger,
-                       use_evalex=evalex, processes=processes,
-                       threaded=threaded)
+    werkzeug.serving.run_simple(
+        hostname=hostname, port=port, application=site, use_reloader=reloader,
+        use_debugger=debugger, use_evalex=evalex, processes=processes,
+        threaded=threaded)
 
 def main(*args):
     """Run the main server with given ``args``."""
