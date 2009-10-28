@@ -54,7 +54,7 @@ class Site(object):
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(self.site_root)
         self.kalamar_site = kalamar.Site(
-            os.path.expanduser(unicode(kalamar_conf)),
+            os.path.expanduser(unicode(kalamar_conf)) if kalamar_conf else None,
             fail_on_inexistent_parser=fail_on_inexistent_kalamar_parser)
         self._module_cache = {}
     
