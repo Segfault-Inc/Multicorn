@@ -1,12 +1,14 @@
 
 
 class CachedKalamarSite(object):
-    """
+    """Kalamar cache wrapper.
+
     Wrapper for kalamar that caches results of the following methods:
-        isearch, search, open, item_from_filenames
+        ``isearch``, ``search``, ``open``, ``item_from_filenames``
     All cached entries are removed when the following methods are called:
-        save, remove
-    Warning: arguments for cached methods must be hashable
+        ``save``, ``remove``
+
+    Warning: arguments for cached methods must be hashable.
     
     >>> class FakeKalamar(object):
     ...     y = 1
@@ -30,17 +32,21 @@ class CachedKalamarSite(object):
     >>> kalamar.search(2) # cache has been invalidated
     search 2
     1
+
     """
     def __init__(self, kalamar_site):
+        """TODO docstring"""
         self.kalamar_site = kalamar_site
         self._cache = {}
     
     def _cached_method(method_name):
+        """TODO docstring"""
         def _wrapper(self, *args, **kwargs):
+            """TODO docstring"""
             key = (method_name, args, tuple(sorted(kwargs.items())))
             try:
                 # XXX all args and kwargs must be hashable
-                # (use a tuples instead of lists)
+                # (use tuples instead of lists)
                 return self._cache[key]
             except KeyError:
                 value = getattr(self.kalamar_site, method_name)(*args, **kwargs)
@@ -56,14 +62,16 @@ class CachedKalamarSite(object):
     del _cached_method
     
     def save(self, *args, **kwargs):
+        """TODO docstring"""
         self._cache = {}
         return self.kalamar_site.save(*args, **kwargs)
         
     def remove(self, *args, **kwargs):
+        """TODO docstring"""
         self._cache = {}
         return self.kalamar_site.remove(*args, **kwargs)
 
     def __getattr__(self, name):
-        """Proxy for other methods"""
+        """Proxy for other methods."""
         return getattr(self.kalamar_site, name)
     

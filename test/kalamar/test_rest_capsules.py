@@ -10,6 +10,7 @@ try:
     import docutils
 except ImportError:
     warnings.warn('ReST parser not tested. (Could not import docutils)',
+                  ImportWarning,
                   stacklevel=2)
 else:
 

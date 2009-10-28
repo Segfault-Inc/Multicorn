@@ -9,7 +9,9 @@ from unittest import TestCase
 from test_site_common import TestSiteSearch,\
                              TestSiteOpen,\
                              TestSiteSave,\
-                             TestSiteRemove
+                             TestSiteRemove,\
+                             TestSiteGetDescription,\
+                             TestSiteCreateItem
 from test.kalamar import Site
 
 class TestData(object):
@@ -81,7 +83,8 @@ site = Site(os.path.join(os.path.dirname(__file__), 'data',
             fail_on_inexistent_parser=False)
 
 for access_point in site.access_points:
-    for test in (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove):
+    for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
+                 TestSiteRemove, TestSiteGetDescription, TestSiteCreateItem):
         cls = type(test.__name__+'_'+access_point, (TestSite, test, TestCase),
                    {"access_point_name": access_point})
         setattr(sys.modules[__name__], cls.__name__, cls)

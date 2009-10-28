@@ -38,14 +38,10 @@ class TestItem(TextItem):
             properties['tracknumber'] = int(properties['tracknumber'])
         else:
             properties['tracknumber'] = None
-        #if properties['tracknumber'] != '':
-        #    properties['tracknumber'] = int(properties['tracknumber'])
-        #else:
-        #    properties['tracknumber'] = None
         return properties
         
     def _custom_serialize(self, properties):
         """Return a string of properties representing the test item."""
-        properties['_content'] = u'\n'.join(unicode(properties.get(key, u''))
-                                            for key in self._keys)
+        properties['_content'] = u'\n'.join(
+            unicode(properties.get(key, u'')) for key in self._keys)
         return super(TestItem, self)._custom_serialize(properties)

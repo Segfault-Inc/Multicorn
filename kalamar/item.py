@@ -24,26 +24,23 @@ your own parsers:
 - CapsuleItem
 - AtomItem
 
-Any item parser class has to have a static attribute "format" set to the format
-parsed, otherwise this class will be hidden to get_item_parser.
+Any item parser class has to have a static attribute ``format`` set to the
+format parsed, otherwise this class will be hidden to get_item_parser.
 
 A parser class must implement the following methods:
 - _custom_parse_data(self)
 - _custom_serialize(self, properties)
 
-It must have a class attribute "format" which is name of the parsed format.
+It must have a class attribute ``format`` which is name of the parsed format.
 
-Parser classes can define an atribute "_keys" listing the name of the properties
-they *need* to work well.
+Parser classes can define an atribute ``_keys`` listing the name of the
+properties they *need* to work well.
 
 """
 
 from copy import copy
 from werkzeug import MultiDict
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from cStringIO import StringIO
     
 from kalamar import parser, utils
 
@@ -63,7 +60,6 @@ class Item(object):
     inherited by the parsers.
 
     """
-    
     format = None
     _keys = []
 
@@ -93,9 +89,9 @@ class Item(object):
         """Return a new item instance.
         
         Parameters:
-            - "access_point": instance of the access point where the item
+            - ``access_point``: instance of the access point where the item
               will be reachable (after saving).
-            - "properties": dictionnary or MultiDict of the item properties.
+            - ``properties``: dictionnary or MultiDict of the item properties.
               These properties must be coherent with what is defined for the
               access point.
         
@@ -110,7 +106,6 @@ class Item(object):
         >>> #assert isinstance(item, Item)
         
         """
-        
         parser.load()
         
         storage_properties = dict((name, None) for name
@@ -127,8 +122,8 @@ class Item(object):
         # set them manually.
         item.properties._loaded = True
         
-        # Some parsers may need the "_content" property in their "serialize"
-        # method.
+        # Some parsers may need the ``_content`` property in their
+        # ``serialize`` method.
         if '_content' not in properties:
             properties['_content'] = ''
         
@@ -137,22 +132,20 @@ class Item(object):
         
         return item
         
-        # TODO: Check if all storage/parser properties have been set ?
-        #       Is it even possible ?
+        # TODO: Check if all storage/parser properties have been set?
+        #       Is it even possible?
         
-        
-    
     @staticmethod
     def get_item_parser(access_point, opener=StringIO, storage_properties={}):
         """Return an appropriate parser instance for the given format.
         
         Your kalamar distribution should have, at least, a parser for the
-        "binary" format.
+        ``binary`` format.
         
         >>> from _test.corks import CorkAccessPoint, cork_opener
         >>> ap = CorkAccessPoint()
         >>> ap.parser_name = 'binary'
-        >>> Item.get_item_parser(ap, cork_opener, {"artist": "muse"})
+        >>> Item.get_item_parser(ap, cork_opener, {'artist': 'muse'})
         ...  # doctest: +ELLIPSIS
         <kalamar.item.AtomItem object at 0x...>
         
@@ -164,7 +157,6 @@ class Item(object):
         ParserNotAvailable: Unknown parser: I do not exist
         
         """
-
         parser.load()
         
         if access_point.parser_name is None:
@@ -200,15 +192,14 @@ class Item(object):
 
         This method has to be overriden.
 
-        This method must not worry about aliases, must not modify "properties",
-        and must just return a string.
+        This method must not worry about aliases, must not modify
+        ``properties``, and must just return a string.
 
         """
         return ''
     
     def _parse_data(self):
-        """Call "_custom_parse_data" and do some stuff to the result."""
-
+        """Call ``_custom_parse_data`` and do some stuff to the result."""
         self._open()
         prop = self._custom_parse_data()
         self.properties.update_parser_properties(prop)
@@ -218,8 +209,9 @@ class Item(object):
         
         This method has to be extended.
 
-        This method must not worry about aliases, must not modify "properties",
-        and must just use super() and update and return the MultiDict.
+        This method must not worry about aliases, must not modify
+        ``properties``, and must just use super() and update and return the
+        MultiDict.
 
         """
         return MultiDict()
@@ -248,9 +240,11 @@ class Item(object):
         return self.properties.parser_content_modified
     
     def filename(self):
-        """
-        If the item is stored in a file, return it’s path/name.
-        Otherwise, return None
+        """Return the file path.
+
+        If the item is stored in a file, return its path/name.
+        Else return None
+
         """
         if hasattr(self._access_point, 'filename_for'):
             return self._access_point.filename_for(self)
@@ -261,16 +255,15 @@ class AtomItem(Item):
     Give access to the binary data.
     
     """
-    
     format = 'binary'
     
     def read(self):
-        """Alias for properties["_content"]."""
-        return self.properties["_content"]
+        """Alias for properties['_content']."""
+        return self.properties['_content']
 
     def write(self, value):
-        """Alias for properties["_content"] = value."""
-        self.properties["_content"] = value
+        """Alias for properties['_content'] = value."""
+        self.properties['_content'] = value
     
     def _custom_parse_data(self):
         """Parse the whole item content."""
@@ -296,13 +289,13 @@ class CapsuleItem(Item):
         return self._subitems
         
     def _load_subitems(self):
-        raise NotImplementedError("Abstract class")
+        raise NotImplementedError('Abstract class')
 
 class ItemProperties(MultiDict):
     """MultiDict with a default value, used as a properties storage.
 
     You have to give a reference to the item to the constructor. You can force
-    some properties to a value giving a dictionnary as "storage_properties"
+    some properties to a value giving a dictionnary as ``storage_properties``
     argument.
     
     >>> from _test.corks import CorkItem, CorkAccessPoint
@@ -318,7 +311,7 @@ class ItemProperties(MultiDict):
     >>> prop.getlist('cork_prop')
     ['I am a cork prop', 'toto', 'tata']
     
-    This key has been forced with "storage_properties":
+    This key has been forced with ``storage_properties``:
     >>> prop['b']
     'B'
     
@@ -347,7 +340,7 @@ class ItemProperties(MultiDict):
     Return None if the key does not exist:
     >>> prop['I do not exist']
     
-    CorkItem has an alias "I am aliased" -> "I am not aliased":
+    CorkItem has an alias 'I am aliased' -> 'I am not aliased':
     >>> prop['I am aliased']
     'value of: I am not aliased'
     >>> prop['I am not aliased']
@@ -366,11 +359,12 @@ class ItemProperties(MultiDict):
     def __init__(self, item, storage_properties={}):
         """Load item properties.
 
-        The "storage_properties" argument is a dictionnary used to set default
-        values for some properties.
+        The ``storage_properties`` argument is a dictionnary used to set
+        default values for some properties.
 
         For performance purpose, note that the load is lazy: calling this
         function does not really load the item in memory.
+
         """
         # Internal values set for lazy load
         self._item = item
@@ -391,35 +385,24 @@ class ItemProperties(MultiDict):
         keys.update(self._item.aliases.keys())
         return list(keys)
     
-    def keys_with_aliases(self):
-        # TODO test
-        return self._item.aliases.keys()
-    
     def keys_without_aliases(self):
         keys = set(self)
         keys.update(self.storage_properties.keys())
         return list(keys)
     
-    def values(self):
-        # TODO test
-        return [self[key] for key in self.keys_without_aliases()]
-    
-    @property
-    def aliased_storage_property(self):
-        # TODO test
-        return dict(
-            (prop, self[prop]) 
-            for prop, aliased in self._item.aliases.items()
-            if aliased in self.storage_properties
-        )
-
-    
     def update_parser_properties(self, properties):
+        pkeys = self.parser_keys()
+        # Hum hum
+        if not self._loaded and \
+           len(super(ItemProperties, self).__getitem__('_content')) == 0:
+            pkeys.remove('_content')
         for key in properties:
-            super(ItemProperties, self).__setitem__(key, properties[key])
+            # If the property is not already manually set by user.
+            if True or key not in pkeys:
+                super(ItemProperties, self).__setitem__(key, properties[key])
 
     def __getitem__(self, key):
-        """Return the item "key" property."""
+        """Return the item ``key`` property."""
         # Aliasing
         key = self._item.aliases.get(key, key)
 
@@ -440,7 +423,7 @@ class ItemProperties(MultiDict):
     __getattr__ = __getitem__
     
     def __setitem__(self, key, value):
-        """Set the item "key" property to "value"."""
+        """Set the item ``key`` property to ``value``."""
         # Aliasing
         key = self._item.aliases.get(key, key)
         if key in self.storage_properties.keys():

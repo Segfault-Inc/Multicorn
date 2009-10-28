@@ -23,24 +23,23 @@ Base template engine.
 class BaseEngine(object):
     """Abstract class for all template engine adaptators in Koral.
     
-    Subclasses must override the "render" method.
+    Subclasses must override the ``render`` method.
 
     """
-
     def __init__(self, path_to_root):
         """Template engine initialisation."""
         self.path_to_root = path_to_root
     
     def render(self, template_name, values={}, lang=None, modifiers=None):
-        """Render "template_name" with the "values" dict, return unicode.
+        """Render ``template_name`` with the ``values`` dict, return unicode.
 
         This method has to be overriden.
             
         Parameters:
-            - "template_name": path to the template file used.
-            - "values": dictionnary of values used by the template.
-            - "lang": lang code like "en-us" or "fr"
-            - "modifiers": theming modifiers. These can be specific to each
+            - ``template_name``: path to the template file used.
+            - ``values``: dictionnary of values used by the template.
+            - ``lang``: lang code like "en-us" or "fr"
+            - ``modifiers``: theming modifiers. These can be specific to each
               template engine.
 
         """

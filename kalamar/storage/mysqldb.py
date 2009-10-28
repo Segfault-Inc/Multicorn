@@ -28,7 +28,8 @@ try:
     import MySQLdb
 except ImportError:
     warnings.warn('Cannot import MySQLdb. '
-                  'MySQL support will not be available.')
+                  'MySQL support will not be available.',
+                  ImportWarning)
 else:
     from MySQLdb.constants import FIELD_TYPE, FLAG, CLIENT
     from MySQLdb import converters
@@ -97,25 +98,18 @@ else:
             #FIELD_TYPE.TIME: converters.TimeDelta_or_None,
             #FIELD_TYPE.DATE: converters.Date_or_None,
             FIELD_TYPE.DATE: identity,
-            #FIELD_TYPE.BLOB: [
-            #    (FLAG.BINARY, str),
-            #    ],
-            #FIELD_TYPE.STRING: [
-            #    (FLAG.BINARY, str),
-            #    ],
-            #FIELD_TYPE.VAR_STRING: [
-            #    (FLAG.BINARY, str),
-            #    ],
-            #FIELD_TYPE.VARCHAR: [
-            #    (FLAG.BINARY, str),
-            #    ],
+            #FIELD_TYPE.BLOB: [(FLAG.BINARY, str)],
+            #FIELD_TYPE.STRING: [(FLAG.BINARY, str)],
+            #FIELD_TYPE.VAR_STRING: [(FLAG.BINARY, str)],
+            #FIELD_TYPE.VARCHAR: [(FLAG.BINARY, str)],
         })
         
         def get_db_module(self):
+            """Return a DB-API implementation module."""
             return MySQLdb
         
         def get_connection(self):
-            """Return (connection, table)
+            """Return (``connection``, ``table``).
             
             Need 'url' in the configuration in the following format:
                 mysql://user:password@host[:port]/base?table
@@ -136,38 +130,42 @@ else:
                 kwargs['db'], self._table = parts[3].split('?')
                 
                 kwargs['use_unicode'] = True
-                kwargs['conv'] = self.conversions
+                #kwargs['conv'] = self.conversions
                 kwargs['client_flag'] = CLIENT.FOUND_ROWS
                 
                 self._connection = MySQLdb.connect(**kwargs)
                 self._connection.set_sql_mode('ANSI')
                 self._connection.set_character_set(
                     # Hack to convert python locale format to MySQL
-                    self.default_encoding.replace('-','')
-                )
+                    self.default_encoding.replace('-',''))
             self._connection.ping(True)
             return (self._connection, self._table)
         
         def _get_primary_keys(self):
             """Return the list of the table primary keys.
             
-            TODO test (possible ?)
+            TODO test (possible?)
             
             """
             connection, table = self.get_connection()
             cursor = connection.cursor()
-            cursor.execute('DESCRIBE %s;' % table)
+            cursor.execute('DESCRIBE %s ;' % table)
             
-            fields = (dict(zip(['Field', 'Type', 'Null', 'Key', 'Default', 'Extra'], values))
+            fields = (dict(zip(
+                        ['Field', 'Type', 'Null', 'Key', 'Default', 'Extra'],
+                        values))
                       for values in cursor.fetchall())
 
             return [unicode(field['Field'])
                     for field in fields
-                    if field['Key']=='PRI']
+                    if field['Key'] == 'PRI']
         
         @staticmethod
         def _quote_name(name):
-            """
-            Quote an SQL name (e.g. table name, column name) with ` (grave accent).
+            """Quote an SQL name (e.g. column name) with ` (grave accent).
+
+            >>> MySQLdbStorage._quote_name('spam')
+            '`spam`'
+
             """
             return '`%s`' % name

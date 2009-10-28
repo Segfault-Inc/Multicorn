@@ -2,14 +2,14 @@
 
 import re
 import datetime
-from kalamar import utils
-from kalamar.utils import Condition
-from kalamar import iso8601
 #from time import sleep
+
+from kalamar import iso8601, utils
+from kalamar.utils import Condition
 
 def iparse(data):
     p = Parser(data)
-    return  p.iparse()
+    return p.iparse()
 
 def parse(data):
     """
@@ -23,28 +23,28 @@ class RequestSyntaxError(ValueError): pass
 
 class Parser(object):
     ur"""
-    ==============
-    Empty request:
-    ==============
+    =============
+    Empty request
+    =============
     
     >>> p = Parser(u'')
     >>> p.parse()
     []
     
-    =================
-    Implicit request:
-    =================
-    -----------
-    None value:
-    -----------
+    ================
+    Implicit request
+    ================
+    ----------
+    None value
+    ----------
     
     >>> p = Parser(u'None')
     >>> p.parse()
     [Condition(None, None, None)]
     
-    --------
-    Numeric:
-    --------
+    -------
+    Numeric
+    -------
     
     >>> p = Parser(u'1')
     >>> p.parse()
@@ -90,9 +90,9 @@ class Parser(object):
     [Condition(None, None, 1),
      Condition(None, None, 2)]
     
-    --------
-    Strings:
-    --------
+    -------
+    Strings
+    -------
 
     >>> p = Parser(ur'''"aa"/'bb'/"cc"''')
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE
@@ -112,9 +112,9 @@ class Parser(object):
     [Condition(None, None, u'a/a'),
      Condition(None, None, u'b/b')]
     
-    ----------------
-    String escaping:
-    ----------------
+    ---------------
+    String escaping
+    ---------------
     
     >>> p = Parser(ur"'a\'a'/'b\\b'")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE
@@ -127,7 +127,7 @@ class Parser(object):
     [Condition(None, None, u'a\\a')]
     
     ----------------
-    Blanks stripping:
+    Blanks stripping
     ----------------
     
     >>> p = Parser(u"   a a  =   'aa'   /   b \n\t\v\f=   'bb'    ")
@@ -135,23 +135,47 @@ class Parser(object):
     [Condition(u'a a', <built-in function eq>, u'aa'),
      Condition(u'b', <built-in function eq>, u'bb')]
     
-    ----------------
-    Date:
-    ----------------
+    ---------------
+    Date & datetime
+    ---------------
     
     >>> p = Parser(ur"1988-02-03")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-    [Condition(None, None, datetime.datetime(1988, 2, 3, 0, 0,
-                                 tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+    [Condition(None, None, datetime.date(1988, 2, 3))]
      
     >>> p = Parser(ur"1988-02-03 17:31:15")
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
-    [Condition(None, None, datetime.datetime(1988, 2, 3, 17, 31, 15,
-                                 tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
+    [Condition(None,
+        None,
+        datetime.datetime(1988, 2, 3, 17, 31, 15,
+            tzinfo=<kalamar.iso8601.Utc object at 0x...>))]
     
-    ================
-    Explicit syntax:
-    ================
+    >>> p = Parser(ur"1988-02-03 17:31:15+05:00")
+    >>> p.parse() # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+    [Condition(None,
+        None,
+        datetime.datetime(1988, 2, 3, 17, 31, 15,
+            tzinfo=<FixedOffset u'+05:00'>))]
+    
+    >>> p = Parser(ur"Now")
+    >>> p.parse() # doctest: +ELLIPSIS
+    [Condition(None, None, datetime.datetime(..., ..., ..., ..., ..., ..., ...))]
+
+    >>> p = Parser(ur"Today")
+    >>> p.parse() # doctest: +ELLIPSIS
+    [Condition(None, None, datetime.date(..., ..., ...))]
+    
+    >>> p = Parser(ur"True")
+    >>> p.parse() # doctest:
+    [Condition(None, None, True)]
+    
+    >>> p = Parser(ur"False")
+    >>> p.parse() # doctest:
+    [Condition(None, None, False)]
+    
+    ===============
+    Explicit syntax
+    ===============
         
     >>> p = Parser(ur"a=1")
     >>> p.parse()
@@ -174,9 +198,9 @@ class Parser(object):
     [Condition(u'a', <built-in function ge>, 1),
      Condition(u'c', <function re_not_match at 0x...>, u'd')]
 
-    ===============
-    Parsing errors:
-    ===============
+    ==============
+    Parsing errors
+    ==============
 
     >>> p = Parser(u"'a''")
     >>> p.parse()
@@ -238,7 +262,6 @@ class Parser(object):
         ...
     RequestSyntaxError: Failed to convert value: u'1a'.
 
-
     """
     
     quote_chars = u'\'"'
@@ -253,6 +276,7 @@ class Parser(object):
         r"""
         >>> Parser.escape_string(u'Foo "bar"...')
         u'"Foo \\"bar\\"..."'
+
         """
         # escape the backslash itself first
         value = value.replace(cls.escape_char, cls.escape_char * 2)
@@ -300,16 +324,14 @@ class Parser(object):
                         old_c, c = c, self._idata.next()
                     except StopIteration:
                         raise RequestSyntaxError(
-                            "Reached EOF while scanning a quoted string."
-                        )
+                            "Reached EOF while scanning a quoted string.")
                     if c in self.escaped_chars:
                         self.strings[-1] += c
                         try:
                             c = self._idata.next()
                         except StopIteration:
                             raise RequestSyntaxError(
-                                "Reached EOF while scanning a quoted string."
-                            )
+                                "Reached EOF while scanning a quoted string.")
                     else:
                         self.strings[-1] += old_c
                 elif self._mode == 'begin' or self._mode == 'value':
@@ -341,15 +363,13 @@ class Parser(object):
                             else:
                                 raise RequestSyntaxError(
                                     "Got %s but expected %s."
-                                    % (repr(c), repr(self.break_char))
-                                )
+                                    % (repr(c), repr(self.break_char)))
                         elif c == self.break_char:
                             self._stop_condition = True
                         else:
                             raise RequestSyntaxError(
                                 "Got %s but expected operator or %s."
-                                % (repr(c), repr(self.break_char))
-                            )
+                                % (repr(c), repr(self.break_char)))
                         try:
                             c = self._idata.next()
                         except StopIteration:
@@ -386,9 +406,8 @@ class Parser(object):
                                     c = self._idata.next()
                                 except StopIteration:
                                     raise RequestSyntaxError(
-                                        "Reached EOF while scanning a quoted string."
-                                    )
-                        else: # not qoted
+                                        "Reached EOF while scanning a quoted string.")
+                        else: # not quoted
                             if c == self.break_char:
                                 self._stop_condition = True
                                 self.strings[-1] = self.strings[-1].strip(self.stripped_chars)
@@ -402,8 +421,7 @@ class Parser(object):
                                 else:
                                     raise RequestSyntaxError(
                                         "Got %s but expected %s."
-                                        % (repr(c), repr(self.break_char))
-                                    )
+                                        % (repr(c), repr(self.break_char)))
                             else:
                                 self.strings[-1] += c
                                 try:
@@ -424,8 +442,7 @@ class Parser(object):
                             self.strings.append('')
                         else:
                             raise RequestSyntaxError(
-                                "Invalid operator %s." % repr(self.strings[-1])
-                            )
+                                "Invalid operator %s." % repr(self.strings[-1]))
                 
             if len(self.strings[-1]) > 0:
                 value = self.convert_value(self.strings[-1])
@@ -464,13 +481,17 @@ class Parser(object):
             new_value = None
         elif self.strings[-1] == 'Now':
             new_value = datetime.datetime.now()
+        elif self.strings[-1] == 'Today':
+            new_value = datetime.date.today()
         elif self.strings[-1] == 'True':
             new_value = True
         elif self.strings[-1] == 'False':
             new_value = False
         elif re.match(r"^0x[abcdef\d]+$|^[\d]+$|^\d+\.?\d+$", value, re.IGNORECASE):
             new_value = eval(value)
-        elif iso8601.ISO8601_REGEX.match(value):
+        elif iso8601.ISO8601_REGEX_DATETIME.match(value):
+            new_value = iso8601.parse_datetime(value)
+        elif iso8601.ISO8601_REGEX_DATE.match(value):
             new_value = iso8601.parse_date(value)
         else:
             raise RequestSyntaxError("Failed to convert value: %s." % repr(value))

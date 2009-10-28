@@ -16,10 +16,11 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-ReStructured Text.
+ReStructuredText.
 
 Metadata extraction using docutils is kindda slow, so the results of
 ``extract_metadata`` are cached.
+
 """
 
 try:
@@ -28,7 +29,8 @@ try:
 except ImportError:
     import warnings
     warnings.warn('Can not import docutils. '
-                  'RestItem will not be available.')
+                  'RestItem will not be available.',
+                  ImportWarning)
 else:
     from kalamar.item import CapsuleItem
     from kalamar.parser.textitem import TextItem
@@ -59,21 +61,21 @@ egestas.
 """
     
     def extract_includes(text):
-        r"""
-        Return a list of included filenames in the given ReST string.
+        r"""Return a list of included filenames in the given ReST string.
         
         >>> list(extract_includes(_test_document))
         [u'nonexistent.rst', u'foo/bar.rst', u'name with whitespaces.rst']
+
         """
         for match in extract_includes._re.finditer(text):
             yield match.group(1)
+
     extract_includes._re = re.compile(u'^\s*.. include::\s+(.+?)\s*$',
                                       re.MULTILINE)
         
     @utils.simple_cache
     def extract_metadata(text):
-        r"""
-        Return a dict of metadata for the given ReST string.
+        r"""Return a dict of metadata for the given ReST string.
         
         Search for a docutils.nodes.title and a docutils.nodes.field_list
         element in the docutils document tree.
@@ -85,12 +87,13 @@ egestas.
                          eget ullamcorper.\nAliquam erat volutpat.'),
          (u'date', u'2009-08-04'),
          (u'title', u'A test document')]
+
         """
         tree = docutils.core.publish_doctree(text, settings_overrides={
             'file_insertion_enabled': False, # do not follow includes
             'report_level': 3, # do not warn that they weren’t followed
             'docinfo_xform': False, # do not interpret bibliographic fields
-        })
+            })
 
         title = None
         fields = {}
@@ -125,9 +128,11 @@ egestas.
         format = 'rest'
         
     class MissingItem(object):
-        """
+        """Missing ReST item.
+
         Placeholder in RestCapsule subitems used when an ``include`` directive
         has a filename that matches no item in the current site.
+
         """
         def __init__(self, filename):
             self.filename = filename
@@ -140,6 +145,7 @@ egestas.
             >>> if MissingItem('foo'): print 1
             ... else: print 0
             0
+
             """
             return False
         

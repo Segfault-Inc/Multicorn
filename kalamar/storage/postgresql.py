@@ -1,5 +1,4 @@
-# coding: utf8
-
+# -*- coding: utf-8 -*-
 # This file is part of Dyko
 # Copyright © 2008-2009 Kozea
 #
@@ -17,7 +16,7 @@
 # along with Dyko.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-SQLite 3 access point.
+PostgreSQL access point.
 
 This implementation depends on DBAPIStorage, the generic SQL database access
 point.
@@ -29,31 +28,27 @@ try:
     from pg8000 import dbapi as postg
 except ImportError:
     warnings.warn('Cannot import pg8000. '
-                  'PostgreSQL support will not be available.')
+                  'PostgreSQL support will not be available.',
+                  ImportWarning)
 else:
-    import urlparse
-    import os
-    from time import sleep
-    from kalamar import iso8601
-    import socket
-
     from dbapi import DBAPIStorage
 
     class PostgreSQLStorage(DBAPIStorage):
         """PostgreSQL access point"""
         protocol = 'postgres'
+        # TODO enable client encoding configuration
+        _client_encoding = 'utf-8'
                 
         def get_db_module(self):
             return postg
         
         def get_connection(self):
-            """Return (connection, table)
+            """Return (``connection``, ``table``)
             
             Need 'url' in the configuration in the following format:
                 postgres://user:password@host[:port]/base?table
             
             """
-            
             def connect():
                 kwargs = {}
                 parts = self.config['url'].split('/')
@@ -73,20 +68,12 @@ else:
             if not hasattr(self, '_connection'):
                 connect()
                 
-            try:
-                # Non-documented. Do sth (?) to the database and raises an
-                # exception if connection is broken.
-                # TODO figure out a better way to do this.
-                self._connection.conn.isready()
-            except (postg.ProgrammingError, socket.error):
-                connect()
-            
             return (self._connection, self._table)
         
         def _get_primary_keys(self):
             """Return the list of the table primary keys.
             
-            TODO test (possible ?)
+            TODO test (possible?)
             
             """
             connection, table = self.get_connection()
@@ -99,13 +86,12 @@ else:
                         AND idx.indexrelid = c2.oid
                         AND attr.attrelid = c.oid
                         AND attr.attnum = idx.indkey[0]
-                        AND c.relname = %s;""", [table])
+                        AND c.relname = %s ;""", [table])
 
             return [
-                field[0].decode('utf-8') 
+                field[0].decode(self._client_encoding) 
                 for field in cursor.fetchall()
-                if field[1]
-            ]
+                if field[1]]
         
         def _convert_parameters(self, parameters):
             module = self.get_db_module()
@@ -133,7 +119,7 @@ else:
                 #1022: {'bin_in': <function array_recv at 0x97623e4>},
                 #1042: unicode,
                 #1043: unicode,
-                #1082: iso8601.parse_date,
+                #1082: kalamar.iso8601.parse_date,
                 #1083: {'txt_in': <function time_in at 0x976210c>},
                 #1114: {'bin_in': <function timestamp_recv at 0x9760f7c>},
                 #1184: {'bin_in': <function timestamptz_recv at 0x9760fb4>},
@@ -141,7 +127,7 @@ else:
                 #1231: {'bin_in': <function array_recv at 0x97623e4>},
                 #1263: {'bin_in': <function array_recv at 0x97623e4>},
                 #1700: {'bin_in': <function numeric_recv at 0x97621b4>},
-                #2275: unicode
+                #2275: unicode,
             }
             
             description = self.get_table_description()
@@ -150,9 +136,19 @@ else:
             for parameter in parameters:
                 if parameter.value is not None:
                     column_type_code = int(
-                        description[parameter.name]['type_code']
-                    )
+                        description[parameter.name]['type_code'])
                     converter = conv_dict.get(column_type_code, lambda x: x)
                     parameter.value = converter(parameter.value)
                 new_parameters.append(parameter)
             return new_parameters
+
+        def _format_request(self, request, parameters, style):
+            """Format request and parameters according to ``style``.
+
+            pg8000 needs to encode requests according to the client encoding.
+
+            """
+            request, parameters = super(PostgreSQLStorage, self)._format_request(
+                request, parameters, style)
+            request = request.encode(self._client_encoding)
+            return request, parameters

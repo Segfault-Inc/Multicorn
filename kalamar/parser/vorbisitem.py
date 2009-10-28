@@ -27,7 +27,8 @@ try:
 except ImportError:
     import warnings
     warnings.warn('Can not import mutagen. '
-                  'VorbisItem will not be available.')
+                  'VorbisItem will not be available.',
+                  ImportWarning)
 else:
     from werkzeug import MultiDict
     from tempfile import NamedTemporaryFile
@@ -38,22 +39,19 @@ else:
         
         The vorbis format allows a lot of things for tagging. It is possible to
         add any label you want and, for each label, to put several values.
-        Because of that, this module cannot guarantee a set of properties. Despite
-        this, here are some common tags you can use:
+        Because of that, this module cannot guarantee a set of
+        properties. Despite this, here are some common tags you can use:
         - time_length : duration in seconds
         - _content : raw ogg/vorbis data
         - artist
         - genre
         - track
         
-        TODO write test
-
         """
         format = 'audio_vorbis'
         
         def _custom_parse_data(self):
             """Parse Ogg/Vorbis metadata as properties."""
-            
             properties = super(VorbisItem, self)._custom_parse_data()
             
             # Create a real file descriptor, as VorbisFile does not accept a stream
@@ -68,13 +66,12 @@ else:
                 
             temporary_file.close()
             
-            properties["tracknumber"] = int(properties["tracknumber"])
+            properties['tracknumber'] = int(properties['tracknumber'])
             
             return properties
         
         def _custom_serialize(self, properties):
             """Return the whole file into a bytes string."""
-            
             temporary_file = NamedTemporaryFile()
             temporary_file.write(self.read())
             
@@ -84,8 +81,7 @@ else:
             for key in keys:
                 vorbis_tags[key] = [
                     unicode(element) for element
-                    in self.properties.getlist(key)
-                ]
+                    in self.properties.getlist(key)]
             vorbis_tags.save()
             
             temporary_file.file.flush()

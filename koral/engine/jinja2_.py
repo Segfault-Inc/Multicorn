@@ -23,7 +23,8 @@ try:
     from jinja2 import Environment, FileSystemLoader
 except ImportError:
     warnings.warn('Can not import jinja2. '
-                  'Jinja2Engine will not be available.')
+                  'Jinja2Engine will not be available.',
+                  ImportWarning)
 else:    
     class Jinja2Engine(BaseEngine):
         """Koral engine for Jinja2: http://jinja.pocoo.org/2/
@@ -35,8 +36,8 @@ else:
         u'<html><body>Hello, World!</body></html>'
         >>> engine.render('hello.jinja2.html', {'name': 'Python'})
         u'<html><body>Hello, Python!</body></html>'
+
         """
-        
         name = 'jinja2'
         
         def __init__(self, *args, **kwargs):

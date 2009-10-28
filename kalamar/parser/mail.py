@@ -16,20 +16,23 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Test access point.
+Mail parser.
 
-This access point is internally used for testing purpose.
+This parser is based on python builtin email module.
 
 """
 
 from kalamar.parser.textitem import TextItem
 import email
 
+
+
 class MessageItem(TextItem):
-    """Parse email message using python's email module."""
-    format = 'email'
+    """Parse email messages using python builtin email module."""
+    format = 'mail'
     
     def _custom_parse_data(self):
+        """Parse email headers as properties."""
         properties = super(MessageItem, self)._custom_parse_data()
         msg = email.message_from_string(properties['_content'])
         msg.set_charset('utf-8')

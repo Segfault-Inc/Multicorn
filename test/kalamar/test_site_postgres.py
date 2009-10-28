@@ -1,10 +1,9 @@
-# coding: utf8
-
 import warnings
 try:
     from pg8000 import dbapi
 except ImportError:
-    warnings.warn('PostgresSQL access not tested. (Could not import pg8000)')
+    warnings.warn('PostgresSQL access not tested. (Could not import pg8000)',
+                  ImportWarning)
 else:
     import os
     import sys
@@ -15,7 +14,9 @@ else:
     from test_site_common import TestSiteSearch,\
                                  TestSiteOpen,\
                                  TestSiteSave,\
-                                 TestSiteRemove
+                                 TestSiteRemove,\
+                                 TestSiteGetDescription,\
+                                 TestSiteCreateItem
     from test.kalamar import Site
 
     site = Site(os.path.join(os.path.dirname(__file__), 'data',
@@ -31,13 +32,9 @@ else:
             cursor = connection.cursor()
             try:
                 cursor.execute('DELETE FROM textes;')
-                cursor.execute(
-                    'insert into textes select * from textes_bak;'
-                )
+                cursor.execute('INSERT INTO textes SELECT * from textes_bak;')
                 cursor.execute('DELETE FROM morceaux;')
-                cursor.execute(
-                    'insert into morceaux select * from morceaux_bak;'
-                )
+                cursor.execute('INSERT INTO morceaux SELECT * from morceaux_bak;')
                 connection.commit()
             finally:
                 cursor.close()
@@ -50,7 +47,8 @@ else:
         # Magic tricks
         for access_point in site.access_points:
             for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
-                         TestSiteRemove):
+                         TestSiteRemove, TestSiteGetDescription,
+                         TestSiteCreateItem):
                 cls = type(test.__name__+'_'+access_point, 
                            (TestSite, test, TestCase),
                            {"access_point_name": access_point})

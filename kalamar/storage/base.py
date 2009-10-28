@@ -18,7 +18,7 @@
 """
 Default access point.
 
-"AccessPoint" is the class to override in order to create storage access
+``AccessPoint`` is the class to override in order to create storage access
 points.
 
 """
@@ -27,7 +27,6 @@ from kalamar import utils
 from kalamar.item import Item
 from kalamar import parser
 from kalamar import storage
-
 
 class AccessPoint(object):
     """Abstract class for all storage backends.
@@ -79,14 +78,12 @@ class AccessPoint(object):
             tuple(part.split('=', 1)) if '=' in part else (part, part)
             for part
             in config.get('storage_aliases', '').strip().split('/')
-            if part
-        ]
+            if part]
         self.parser_aliases = [
             tuple(part.split('=', 1)) if '=' in part else (part, part)
             for part
             in config.get('parser_aliases', '').strip().split('/')
-            if part
-        ]
+            if part]
         self.property_names = [name for name, alias
                                in self.storage_aliases + self.parser_aliases]
         self.url = config['url']
@@ -95,12 +92,12 @@ class AccessPoint(object):
     def expand_syntaxic_sugar(self, conditions):
         """Expand syntaxic sugar in requests.
         
-        "conditions" is a list of (property_name, operator, value) tuples
+        ``conditions`` is a list of (property_name, operator, value) tuples
         as returned by kalamar.site.Site.parse_request.
         
-        If "operator" is None, set it to "kalamar.utils.equals".
+        If ``operator`` is None, set it to ``kalamar.utils.equals``.
 
-        If "property_name" is None in the n-th condition, set it to 
+        If ``property_name`` is None in the n-th condition, set it to 
         the n-th property of this access point.
         
         >>> ap = AccessPoint(url='', storage_aliases='a=p1/b=p2/c=p3')
@@ -210,11 +207,11 @@ class AccessPoint(object):
         raise NotImplementedError('Abstract method')
 
     def item_from_filename(self, filename):
-        """
-        Search for an item matching this filename.
+        """Search for an item matching this filename.
         
-        Storage that do not store items if files should leave this
-        implementation that return the NotImplemented constant
+        Storage that do not store items in files should leave this
+        implementation that return the NotImplemented constant.
+
         """
         return NotImplemented
 

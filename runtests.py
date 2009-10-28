@@ -1,13 +1,20 @@
 #!/usr/bin/env python
 
-import sys, os
+# Public Domain
+
+import os
+import sys
 sys.path.insert(0, os.path.dirname(__file__))
-import werkzeug.script
 import functools
+import warnings
+import werkzeug.script
 
 def run_tests(packages='kalamar,koral,kraken,test', verbose=('v', False),
-              coverage=('c', False), profile=('p', False), todo=('t', False)):
-    """Run all doctests and unittests found in "packages"."""
+              coverage=('c', False), profile=('p', False), todo=('t', False),
+              warning=('w', 'ignore')):
+    """Run all doctests and unittests found in ``packages``."""
+    warnings.simplefilter(warning, Warning)
+    warnings.simplefilter('default', ImportWarning)
     import test.kraken
     packages = packages.split(',')
     verbosity = 2 if verbose else 1
@@ -21,6 +28,7 @@ def run_tests(packages='kalamar,koral,kraken,test', verbose=('v', False),
         test.print_TODOs(packages)
 
 def main(*args):
+    """Run the main test server with given args."""
     werkzeug.script.run(namespace={'test': run_tests}, action_prefix='',
                         args=['test'] + list(args))
 

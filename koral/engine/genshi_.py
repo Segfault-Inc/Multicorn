@@ -24,7 +24,8 @@ try:
     import genshi.input
 except ImportError:
     warnings.warn('Can not import genshi. '
-                  'GenshiEngine will not be available.')
+                  'GenshiEngine will not be available.',
+                  ImportWarning)
 else:
     class GenshiEngine(BaseEngine):
         r"""Koral engine for Genshi: http://genshi.edgewall.org/
@@ -42,8 +43,8 @@ else:
         u'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n<html><body>Hello,
         Python!</body></html>'
-        """
-        
+
+        """        
         name = 'genshi'
         
         def __init__(self, *args, **kwargs):

@@ -27,10 +27,7 @@ import ConfigParser
 import warnings
 
 from kalamar.storage import base
-from kalamar import utils
-from kalamar import Item
-from kalamar import requestparser
-
+from kalamar import Item, requestparser, utils
 
 class Site(object):
     """Kalamar site."""
@@ -46,6 +43,7 @@ class Site(object):
         Traceback (most recent call last):
             ...
         FileNotFoundError: nonexistent
+
         """
         self.config_filename = config_filename
 
@@ -67,18 +65,18 @@ class Site(object):
                     try:
                         ap = base.AccessPoint.from_url(**kwargs)
                     except utils.ParserNotAvailable, e:
-                        warnings.warn('The access point %r was ignored. (%s)' %
-                                      (section, e.args[0]))
+                        warnings.warn('The access point %r was ignored. (%s)'
+                                      % (section, e.args[0]))
                         continue
                 self.access_points[section] = ap
     
     @staticmethod
     def parse_request(request):
-        """
-        Convert a "request" string to Condition objects.
+        """Convert a ``request`` string to Condition objects.
+
         If ``request`` is not a string, it is returned unmodified.
         
-        >>> list(Site.parse_request(u"/'1'/b='42'/c>='3'/")) # doctest: +ELLIPSIS
+        >>> list(Site.parse_request(u"/'1'/b='42'/c>='3'/"))
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         [Condition(None, None, u'1'),
          Condition(u'b', <built-in function eq>, u'42'),
@@ -91,18 +89,18 @@ class Site(object):
             return request
         
     def isearch(self, access_point, request=None):
-        """Return a generator of all items in "access_point" matching "request".
+        """Return a generator of items in ``access_point`` matching ``request``.
         
-        See "Site.parse_request" for the syntax of the "request" string.
+        See ``Site.parse_request`` for the syntax of the ``request`` string.
 
         """
         conditions = self.parse_request(request or [])
         return self.access_points[access_point].search(conditions)
     
     def search(self, access_point, request=None):
-        """List all items in "access_point" matching "request".
+        """List all items in ``access_point`` matching ``request``.
         
-        See "Site.parse_request" for the syntax of the "request" string.
+        See ``Site.parse_request`` for the syntax of the ``request`` string.
 
         """
         return list(self.isearch(access_point, request))
@@ -110,8 +108,8 @@ class Site(object):
     def open(self, access_point, request=None):
         """Return the item in access_point matching request.
         
-        If there is no result, raise "Site.ObjectDoesNotExist".
-        If there is more than one result, raise "Site.MultipleObjectsReturned".
+        If there is no result, raise ``Site.ObjectDoesNotExist``.
+        If there are more than 1 result, raise ``Site.MultipleObjectsReturned``.
         
         """
         search = iter(self.isearch(access_point, request))
@@ -139,6 +137,7 @@ class Site(object):
         """Return an item.
         
         TODO document & test
+
         """
         access_point = self.access_points[access_point_name]
         return Item.create_item(access_point, properties)
@@ -146,18 +145,18 @@ class Site(object):
     def get_description(self, access_point_name):
         """Return a tuple of strings or None.
         
-        Return the keys defined in configuration or None if "access_point_name"
-        does not exist.
-        
-        TODO test
+        Return the keys defined in configuration or None if
+        ``access_point_name`` does not exist.
+
         """
         access_point = self.access_points[access_point_name]
         return access_point.property_names
     
     def item_from_filename(self, filename):
-        """
-        Search all access points for an item matching this filename.
+        """Search all access points for an item matching ``filename``.
+
         Return the first item found or None.
+
         """
         filename = os.path.normpath(filename)
         for ap in self.access_points.values():

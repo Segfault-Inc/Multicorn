@@ -16,8 +16,11 @@
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Instances of the Site class are WSGI applications.  Create one for each
-independent site with it’s own configuration.
+WSGI interface.
+
+Instances of the Site class are WSGI applications. Create one for each
+independent site with its own configuration.
+
 """
 
 import os.path
@@ -27,7 +30,6 @@ import types
 import re
 import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
-import functools
 
 import kalamar
 import koral
@@ -35,33 +37,29 @@ from kraken import utils
 from kraken.cached_kalamar import CachedKalamarSite
 
 
+
 class Site(object):
-    """
-    Create a WSGI application from a site root and a kalamar configuration file.
-    """
-    
+    """WSGI application from a site root and a kalamar configuration file."""
     def __init__(self, site_root, kalamar_conf=None, secret_key=None,
                  fail_on_inexistent_kalamar_parser=True):
-        """
-        site_root: dirname of the root of the site
-        kalamar_conf: path to the kalamar config file
-        secret_key: used for signed cookies for sessions
-                    use something like os.urandom(20) to get one
+        """Initialize the Site.
+
+        ``site_root``: dirname of the root of the site
+        ``kalamar_conf``: path to the kalamar config file
+        ``secret_key``: used for signed cookies for sessions
+                        use something like os.urandom(20) to get one
+
         """
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(self.site_root)
         self.kalamar_site = kalamar.Site(
             os.path.expanduser(unicode(kalamar_conf)),
-            fail_on_inexistent_parser=fail_on_inexistent_kalamar_parser,
-        )
+            fail_on_inexistent_parser=fail_on_inexistent_kalamar_parser)
         self._module_cache = {}
     
-#    def __repr__(self):
-#        return '<>'
-    
     def __call__(self, environ, start_response):
-        """WSGI entry point for every HTTP request"""
+        """WSGI entry point for every HTTP request."""
         request = self.make_request(environ)
         try:
             response = self.handle_request(request)
@@ -73,15 +71,17 @@ class Site(object):
         return response(environ, start_response)
     
     def make_request(self, environ):
+        """TODO docstring."""
         request = utils.Request(environ, self.secret_key)
         request.koral = self.koral_site
         request.kalamar = CachedKalamarSite(self.kalamar_site)
         request.kraken = self
-        request.template_response = functools.partial(self.template_response,
-                                                      request)
+        request.template_response = lambda *args, **kwargs:\
+            self.template_response(request, *args, **kwargs)
         return request
     
     def handle_request(self, request):
+        """TODO docstring."""
         response = None
         if u'/__' in request.path:
             try:
@@ -96,6 +96,7 @@ class Site(object):
         return response
 
     def process_response(self, request, response):
+        """TODO docstring."""
         # utils.Request.session is a werkzeug.cached_property
         # the actual session object is in request.__dict__ if
         # request.session has been accessed at least once.
@@ -107,9 +108,7 @@ class Site(object):
         return response
 
     def handle_trailing_slash(self, request):
-        """
-        If request.path has no trailing slash, raise a HTTPException to redirect
-        """    
+        """Redirect if ``request.path`` has no trailing slash."""    
         if not request.path.endswith(u'/'):
             # Add the missing trailing slash
             new_url = request.base_url + '/'
@@ -118,15 +117,15 @@ class Site(object):
             werkzeug.abort(werkzeug.redirect(new_url, 301))
         
     def handle_static_file(self, request):
-        """
-        Try handling a request with a static file.
+        """Try handling a request with a static file.
+
         The request path is interpreted as a filename relative to the site root.
         Return a Response object or raise NotFound.
+
         """
         filename = os.path.join(self.site_root, *(
             part for part in request.path.split(u'/')
-            if part and part != u'..'
-        ))
+            if part and part != u'..'))
         if not os.path.isfile(filename):
             raise NotFound
         if u'/.' in request.path:
@@ -134,9 +133,9 @@ class Site(object):
         return utils.StaticFileResponse(filename)
         
     def handle_python(self, request):
-        """
-        Try handling a request with a python controller
-        Return a Response object or raise NotFound
+        """Try handling a ``request`` with a python controller.
+
+        Return a Response object or raise NotFound.
         
         Exemple:
             If request.path is u'/foo/bar', this method tries the following,
@@ -148,6 +147,7 @@ class Site(object):
                 - handle_request(request, u'bar') in foo.py
                 - handle_request(request, u'bar') in foo/index.py
                 - handle_request(request, u'foo/bar') in index.py
+
         """
         # search for foo/bar.py or foo/bar/index.py
         for suffix in (u'', u'/index'):
@@ -197,9 +197,10 @@ class Site(object):
         raise NotFound
         
     def handle_simple_template(self, request):
-        """
-        Try handling a request with only a template
-        Return a Response object or raise NotFound
+        """Try handling a request with only a template.
+        
+        Return a Response object or raise NotFound.
+
         """
         template = self.find_template(request.path)
         if not template:
@@ -215,7 +216,8 @@ class Site(object):
     
     def template_response(self, request, template_name, values=None,
                           extension=None, engine=None):
-        """
+        """Build a response for ``request`` according to given parameters.
+
         >>> import test.kraken
         >>> site = test.kraken.make_site()
         >>> req = site.make_request({})
@@ -234,6 +236,7 @@ class Site(object):
         ...                                   'html', 'genshi')
         >>> response.mimetype
         'text/html'
+
         """
         if extension and engine:
             pass # exclude this case from the following else clauses
@@ -258,6 +261,7 @@ class Site(object):
         return utils.Response(content, mimetype=mimetype)
     
     def simple_template_context(self, request):
+        """TODO docstring."""
         class Site: pass
         site = Site()
         # request.kalamar is a CachedKalamarSite
@@ -265,17 +269,16 @@ class Site(object):
         site.kalamar = request.kalamar
         site.koral = self.koral_site
         site.kraken = self
-        return dict(
-            request=request,
-            site=site,
-            import_=self.import_
-        )
+        return dict(request = request, site = site, import_ = self.import_)
 
     def load_python_module(self, name):
-        """
-        Return a dictionnary of everything defined in the module `name`
-        (slash-separated path relative to the site root, without the extension).
+        """Return a dictionary of everything defined in the module ``name``.
+        
+        The path is a slash-separated path relative to the site root, without
+        the extension.
+
         Return an empy dictionnary if the module does not exist.
+
         """
         parts = [part for part in name.split(u'/') if part and part != u'..']
         filename = os.path.join(self.site_root, *parts) + u'.py'
@@ -298,21 +301,21 @@ class Site(object):
         return module
     
     def import_(self, name):
-        """
-        Helper for python controllers to "import" other controllers.
-        Return a module object
+        """Helper for python controllers to "import" other controllers.
+
+        Return a module object.
 
         >>> import test.kraken
         >>> site = test.kraken.make_site()
         >>> module = site.import_('inexistent') # doctest: +ELLIPSIS
         Traceback (most recent call last):
             ...
-        ImportError: No module named inexistent in u'.../test/kraken/site'
+        ImportError: No module named inexistent in u'...test/kraken/site'
 
         >>> site.import_('lorem/ipsum') # doctest: +ELLIPSIS
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken.site.lorem/ipsum' 
-            from '.../test/kraken/site/lorem/ipsum.py'>
+            from '...test/kraken/site/lorem/ipsum.py'>
             
         Special names:
         >>> site.import_('kraken') # doctest: +ELLIPSIS
@@ -321,6 +324,7 @@ class Site(object):
         <kalamar.site.Site object at 0x...>
         >>> site.import_('koral') # doctest: +ELLIPSIS
         <koral.site.Site object at 0x...>
+
         """
         if name == 'kraken':
             return self
@@ -339,9 +343,11 @@ class Site(object):
         return module
         
     def find_template(self, path):
-        """
+        """Find the template at ``path``.
+
         Search for an existing template named <path>/index.<type>.<engine>
         or <path>.<type>.<engine> where <engine> is a koral engine name.
+
         Return (template_name, type, engine) for the first one found or None.
 
         >>> import test.kraken
@@ -368,6 +374,7 @@ class Site(object):
         >>> site.find_template(u'/lorem/')
         (u'lorem/index.txt.jinja2', u'txt', u'jinja2')
         >>> site.find_template(u'/lorem/ipsum')
+
         """
         path_parts = [part for part in path.split(u'/')
                       if part and part != u'..']
@@ -390,6 +397,7 @@ class Site(object):
     
     @werkzeug.cached_property
     def template_suffix_re(self):
+        """TODO docstring."""
         # Regular expression for .<type>.<engine> 
         # where <engine> is a koral engine name
         return ur'\.(.+)\.(' + u'|'.join(re.escape(e) for e in

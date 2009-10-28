@@ -29,14 +29,13 @@ import re
 import itertools
 import functools
 import werkzeug
+from random import random
 
 from kalamar import utils
 from kalamar.storage.base import AccessPoint
 
-
 class FileSystemStorage(AccessPoint):
     """Store items in files."""
-    
     protocol = 'file'
     
     def __init__(self, **config):
@@ -81,9 +80,9 @@ class FileSystemStorage(AccessPoint):
         return os.path.join(self.root, *filename.split('/'))
 
     def listdir(self, dirname):
-        """List files and directories in "dirname".
+        """List files and directories in ``dirname``.
         
-        "dirname" is a slash-separated path relative to the access point
+        ``dirname`` is a slash-separated path relative to the access point
         root.
         
         >>> dirname, basename = os.path.split(__file__)
@@ -95,9 +94,9 @@ class FileSystemStorage(AccessPoint):
         return os.listdir(self._real_filename(dirname))
 
     def isdir(self, dirname):
-        """Return true if "dirname" refers to an existing directory.
+        """Return true if ``dirname`` refers to an existing directory.
         
-        "dirname" is a slash-separated path relative to the access point
+        ``dirname`` is a slash-separated path relative to the access point
         root.
         
         >>> dirname, basename = os.path.split(__file__)
@@ -111,7 +110,7 @@ class FileSystemStorage(AccessPoint):
     def open_file(self, filename, mode='rb'):
         """Open a file for reading and return a stream.
 
-        "filename" is a slash-separated path relative to the access point
+        ``filename`` is a slash-separated path relative to the access point
         root.
         
         If opening for writing (ie. 'w' in mode), create parent directories
@@ -132,19 +131,19 @@ class FileSystemStorage(AccessPoint):
         return open(self._real_filename(filename), mode)
         
     def rename(self, source, destination):
-        """Rename/move a file.
+        """Rename/move a file from ``source`` to ``detination``.
 
-        "filename" is a slash-separated path relative to the access point
-        root.
+        ``source`` and ``destination `` are slash-separated paths relative to
+        the access point root.
 
         """
         os.renames(self._real_filename(source),
                    self._real_filename(destination))
 
     def remove_file(self, filename):
-        """Remove a file from the backend
+        """Remove a file from the backend.
 
-        "filename" is a slash-separated path relative to the access point
+        ``filename`` is a slash-separated path relative to the access point
         root.
 
         """
@@ -208,9 +207,13 @@ class FileSystemStorage(AccessPoint):
         conditions = list(conditions)
         
         def walk(subdir, pattern_parts, previous_properties):
-            """Generate (properties, file_opener) for files in "subdir"
-            matching "pattern_parts", and recursively call "walk" with subdirs
-            in subdir."""
+            """Walk through ``subdir`` finding files matching ``pattern_parts``.
+
+            Generate (``properties``, ``file_opener``) for files in ``subdir``
+            matching ``pattern_parts``, and recursively call ``walk`` with
+            subdirs in subdir.
+
+            """
             # We make a copy of pattern_parts here instead of using
             # pattern_parts.pop(0) because the original list may be used
             # for other calls to walk()
@@ -265,7 +268,11 @@ class FileSystemStorage(AccessPoint):
             pattern_parts = self.filename_format.split('*')
             yield pattern_parts[0]
             for i, part in enumerate(pattern_parts[1:]):
-                yield unicode(properties[u'path%i' % (i + 1)])
+                # If no property is set, give a random name instead of None
+                # Closes bug #8
+                # TODO avoid already existing numbers (``hash`` limitation)
+                yield unicode(properties[u'path%i' % (i + 1)]
+                              or abs(hash(random())))
                 yield part
 
         return ''.join(path_parts())
@@ -279,14 +286,13 @@ class FileSystemStorage(AccessPoint):
         else:
             old_path = None
         new_path = self._path_from_properties(
-            item.properties.storage_properties
-        )
+            item.properties.storage_properties)
 
         move = old_path and (old_path != new_path)
         change = item.content_modified()
         if change:
             # get the serialized content BEFORE we overwrite or remove the file
-            # that is because parsing is made as late as possible :
+            # that is because parsing is made as late as possible:
             # item.serialize() may still need the file to be there
             content = item.serialize()
             if move:
@@ -299,14 +305,12 @@ class FileSystemStorage(AccessPoint):
             self.rename(old_path, new_path)
 
     def remove(self, item):
-        """Remove the given item from the backend storage."""
+        """Remove ``item`` from the backend storage."""
         self.remove_file(self._path_from_properties(
             item.properties.storage_properties_old))
             
     def filename_for(self, item):
-        """
-        Return the real filename for the given item
-        """
+        """Return the real filename for ``item``."""
         return self._real_filename(self._path_from_properties(
             item.properties.storage_properties))
     
@@ -321,13 +325,13 @@ class FileSystemStorage(AccessPoint):
     def item_from_filename(self, filename):
         """
         Search for an item matching this ``filename``.
-        ``filename`` has to be os.normpath’d
+        ``filename`` has to be os.normpath’d.
 
         >>> dirname, module = os.path.split(__file__)
         >>> dirname, package = os.path.split(dirname)
         >>> dirname = os.path.normpath(dirname)
         
-        dirname is the path to the kalamar package
+        ``dirname`` is the path to the kalamar package.
         
         >>> ap = AccessPoint.from_url(url='file://%s' % dirname,
         ...                           filename_format='*/*.py', parser='text')

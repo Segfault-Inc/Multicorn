@@ -6,10 +6,10 @@ from kalamar import Item
 from kalamar.storage.dbapi import DBAPIStorage
 
 class MyTest(object):
-    """This class is meant to work if co-inherited with unittest.TestCase
+    """This class is meant to work if co-inherited with unittest.TestCase.
     
     When inheriting, this class must be declared before unittest.TestCase in the
-    parents list (i.e. sth like ChildClass(..., MyTest,...,TestCase, ...) )
+    parents list (i.e. sth like ChildClass(..., MyTest, ...,TestCase, ...))
     
     """
     
@@ -77,8 +77,7 @@ class TestSiteSearch(MyTest):
                 self.assertEqual(item.properties["piste"], 1)
     
     def test_with_sugar(self):
-        """A request with syntaxic sugar must guess properties' names from \
-configuration."""
+        """Request with syntaxic sugar must guess props names from config."""
         request = u'"rock"/"Water please"'
         for item in self.site.search(self.access_point_name, request):
             self.assertEqual(item.properties["genre"], u'rock')
@@ -113,8 +112,7 @@ configuration."""
 class TestSiteOpen(MyTest):
     
     def test_no_result(self):
-        """Trying to open an item that does not exist must raise the exception \
-'ObjectDoesNotExist'."""
+        """Opening an non-existing item must raise ``ObjectDoesNotExist``."""
         request = u'genre="doesnt_exist"'
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
@@ -138,10 +136,11 @@ class TestSiteOpen(MyTest):
 class TestSiteSave(MyTest):
     
     def test_new_complete_item(self):
-        """Saving a brand new item with all necessary properties set must \
-make it available for later search/opening.
+        """New item saved with necessary properties must make it available.
         
-        This test needs the open method to work."""
+        This test needs the open method to work.
+
+        """
         access_point = self.site.access_points[self.access_point_name]
         
         properties = {'genre': 'funk',
@@ -160,7 +159,7 @@ make it available for later search/opening.
         # without initial content.
         if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
-                                        'data', 'vorbis_sample.ogg'))
+                                            'data', 'vorbis_sample.ogg'))
             data = vorbis_file.read()
             properties['_content']  = data
             
@@ -177,12 +176,10 @@ make it available for later search/opening.
                           album="demo"/titre="many money"/piste="2"'''
         
         # Must not raise any exception
-        item2=self.site.open(
-            self.access_point_name, request
-        )
+        item2 = self.site.open(self.access_point_name, request)
         
     def test_two_new_items(self):
-        """Two new and differents saved item must both be availables and corrects.
+        """Two new and different saved items must both be available and correct.
         
         This test needs the open method to work."""
         access_point = self.site.access_points[self.access_point_name]
@@ -209,10 +206,10 @@ make it available for later search/opening.
         # without initial content.
         if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
-                                        'data', 'vorbis_sample.ogg'))
+                                            'data', 'vorbis_sample.ogg'))
             data = vorbis_file.read()
-            properties['_content']  = data
-            properties2['_content']  = data
+            properties['_content'] = data
+            properties2['_content'] = data
             
         item = Item.create_item(access_point, properties)
         item2 = Item.create_item(access_point, properties2)
@@ -233,23 +230,22 @@ make it available for later search/opening.
         else:
             request = '/'.join('%s="%s"' % prop for prop in properties.items())
             request2 = '/'.join('%s="%s"' % prop for prop in properties2.items())
-        
-        
+
         item = self.site.open(self.access_point_name, request)
         item2 = self.site.open(self.access_point_name, request2)
         
-        self.assertEqual(item.properties['titre'],'many money')
-        self.assertEqual(item2.properties['titre'],'mamma mia')
-        
+        self.assertEqual(item.properties['titre'], 'many money')
+        self.assertEqual(item2.properties['titre'], 'mamma mia')
         
     def test_new_incomplete_item(self):
         pass # TODO : wtf should kalamar do in this case ?
     
     def test_unmodified_item(self):
-        """Saving an unmodified existing item must leave the access point \
-unchanged.
+        """Saving an unmodified existing item must not change the access point.
         
-        This test needs the open method to work."""
+        This test needs the open method to work.
+
+        """
         request = u'genre="rock"/artiste="Jesus\'harlem"/' \
                   u'album="amen"/titre="mechanical blues"'
         item = self.site.open(self.access_point_name, request)
@@ -260,7 +256,9 @@ unchanged.
     def test_modified_item(self):
         """Saving a modified existing item must modify it on the access point.
         
-        This test needs the open method to work."""
+        This test needs the open method to work.
+
+        """
         
         # !! This test needs the "fs_text_mixed" access point defined in
         # $test$/kalamar/data/kalamar_fs_and_sqlite.conf
@@ -269,21 +267,46 @@ unchanged.
         item.properties['artiste'] = 'toto'
         item.properties['titre'] = 'tata'
         self.site.save(item)
-        #self.site.save(item)
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
         # Should not raise any exception
         self.site.open(self.access_point_name,
-                       u'genre="rock"/artiste="toto"/' \
+                       u'genre="rock"/artiste="toto"/'
                        u'album="alleluia"/titre="tata"')
 
 class TestSiteRemove(MyTest):
     def test_remove(self):
         """A removed item must not be available any longer.
         
-        This test needs the open method to work."""
+        This test needs the open method to work.
+
+        """
         request = u'genre="rock"/artiste="Jesus\'harlem"/album="amen"/titre="cross"'
         item = self.site.open(self.access_point_name, request)
         self.site.remove(item)
         self.assertEqual(list(self.site.search(self.access_point_name, request)), [])
 
+class TestSiteGetDescription(MyTest):
+    def test_get_description(self):
+        """TODO
+        """
+        description = self.site.get_description(self.access_point_name)
+        self.assertEqual(description, self.site.access_points[self.access_point_name].property_names)
+
+class TestSiteCreateItem(MyTest):
+    def test_remove(self):
+        """TODO
+        
+        This test needs the open method to work.
+
+        """
+        # Vorbis parser is read only
+        if self.site.access_points[self.access_point_name].parser_name != 'audio_vorbis':
+            request = u'genre="rock"/artiste="Jesus\'harlem"/album="love is love"/titre="GreatGreatGod"'
+            properties = {'genre': 'rock', 'artiste': "Jesus'harlem",
+                          'album': 'love is love', 'titre': 'GreatGreatGod'}
+            item_create = self.site.create_item(self.access_point_name, properties)
+            self.site.save(item_create)
+            item_open = self.site.open(self.access_point_name, request)
+            for tag in ('genre', 'artiste', 'album', 'titre', 'unknown'):
+                self.assertEqual(item_create.properties[tag], item_open.properties[tag])
