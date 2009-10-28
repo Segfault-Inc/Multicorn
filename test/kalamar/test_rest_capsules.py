@@ -14,7 +14,7 @@ except ImportError:
                   stacklevel=2)
 else:
 
-    class TestSite(TestCase):
+    class TestCapsules(TestCase):
         
         def setUp(self):
             self.temp_dir = TestData.get_temp_dir()
@@ -22,7 +22,7 @@ else:
         
         def test_consistency(self):
             # all albums
-            for album in  self.site.search('rest_capsules'):
+            for album in self.site.search('rest_capsules'):
                 for track in album.subitems:
                     if track:
                         # check that this tracks belongs to this album
@@ -36,14 +36,14 @@ else:
         
         def test_album_length(self):
             album_length = {}
-            for album in  self.site.search('rest_capsules'):
+            for album in self.site.search('rest_capsules'):
                 album_length[album.properties['album']] = sum(1
                     for track in album.subitems if track)
             self.assertEquals(album_length, {u'manouche swing': 3, u'amen': 8,
                                              u'alleluia': 7, u'S.O.B': 2})
 
         def test_remove_last(self):
-            for album in  self.site.search('rest_capsules'):
+            for album in self.site.search('rest_capsules'):
                 # list track titles
                 tracks = [track.properties['title']
                           for track in album.subitems if track]
@@ -63,5 +63,25 @@ else:
                            for track in album2.subitems if track]
                 # verify that what we get back is what we saved
                 self.assertEquals(tracks2, tracks[:-1])
+        
+        def test_create(self):
+            """
+            create a new capsule from stratch, save it, load it back
+            and check we get it as expected
+            """
+            compilation = self.site.create_item('rest_capsules', 
+                                                dict(album='Compilation'))
+            track_titles = set()
+            for album in self.site.search('rest_capsules'):
+                for track in album.subitems:
+                    if track:
+                        compilation.subitems.append(track)
+                        track_titles.add(track.properties.title)
+            self.site.save(compilation)
+            
 
+            compilation2 = self.site.open('rest_capsules', '"Compilation"')
+            self.assertEquals(track_titles, set(track.properties.title 
+                for track in compilation2.subitems))
+            
 
