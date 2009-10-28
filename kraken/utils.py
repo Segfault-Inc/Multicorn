@@ -192,6 +192,8 @@ def runserver(site, args=None):
     action_runserver = werkzeug.script.make_runserver(
         lambda: site,
         # Files for the reloader to watch
-        extra_files=[site.kalamar_site.config_filename] if site else [])
+        extra_files=[site.kalamar_site.config_filename]
+            if site and site.kalamar_site.config_filename else []
+    )
     werkzeug.script.run(args=args)
 
