@@ -50,18 +50,19 @@ class Item(object):
     You can use the Item.get_item_parser static method to get automatically the
     parser you want.
 
-    Useful attributes:
-    - properties: acts like a defaultdict. The keys are strings and the values
-      are MultiDict of python objects with default value at None.
-    - _access_point: where, in kalamar, is stored the item. It is an instance
-      of AccessPoint.
+    Useful tips:
+    - Item acts as a defaultdict. The keys are strings and the values are
+      MultiDict of python objects with default value at None.
+    - _access_point: attribute where, in kalamar, is stored the item. It is
+      an instance of AccessPoint.
 
     This class is abstract and used by AtomItem and CapsuleItem, which are
     inherited by the parsers.
 
+    TODO: write tests and documentation
+
     """
     format = None
-    _keys = []
 
     def __init__(self, access_point, opener=StringIO, storage_properties={}):
         """Return an instance of Item.
@@ -77,13 +78,39 @@ class Item(object):
         self._opener = opener
         self._stream = None
         self._access_point = access_point
+        self._loaded = False
+        self._modified = False
         
         self.aliases = dict(self._access_point.parser_aliases)
         self.aliases.update(self._access_point.storage_aliases)
-        self.aliases_rev = dict((b,a) for (a,b) in enumerate(self.aliases))
+        self.reverse_aliases = dict((b,a) for (a,b) in enumerate(self.aliases))
+
+        self.raw_storage_properties = MultiDict(storage_properties)
+        self.raw_parser_properties = MultiDict()
+
+        self.storage_properties = AliasedMultiDict(
+            self.raw_storage_properties, self.aliases)
+        self.parser_properties = AliasedMultiDict(
+            self.raw_parser_properties, self.aliases)
         
-        self.properties = ItemProperties(self, storage_properties)
+        self.raw_properties = CombinedMultiDict([
+                self.raw_storage_properties, self.raw_parser_properties])
+        self.properties = CombinedMultiDict([
+                self.storage_properties, self.parser_properties])
+
+        self['_content'] = ''
+        self.old_storage_properties = copy(storage_properties)
+
+    def __getitem__(self, key):
+        """Return the item ``key`` property."""
+        return self.properties[key]
     
+    def __setitem__(self, key, value):
+        """Set the item ``key`` property to ``value``."""
+        key = self.aliases.get(key, key)
+        self.storage_properties[key] = value
+        self._modified = True
+
     @staticmethod
     def create_item(access_point, properties):
         """Return a new item instance.
@@ -102,39 +129,13 @@ class Item(object):
         
         Test
         >>> item = Item.create_item(ap, properties)
-        >>> #assert item.format == ap.parser_name
-        >>> #assert isinstance(item, Item)
+        >>> assert item.format == ap.parser_name
+        >>> assert isinstance(item, Item)
         
         """
-        parser.load()
-        
-        storage_properties = dict((name, None) for name
-                                  in access_point.get_storage_properties())
-        
-        item = Item.get_item_parser(access_point,
-                                    storage_properties = storage_properties)
-        
-        # ItemProperties copies storage_properties in storage_properties_old
-        # by default, but this is a nonsens in the case of a new item.
-        item.properties.storage_properties_old = {}
-                
-        # Needed because there is no binary data to parse properties from. We
-        # set them manually.
-        item.properties._loaded = True
-        
-        # Some parsers may need the ``_content`` property in their
-        # ``serialize`` method.
-        if '_content' not in properties:
-            properties['_content'] = ''
-        
-        for name in properties:
-            item.properties[name] = properties[name]
-        
-        return item
-        
-        # TODO: Check if all storage/parser properties have been set?
-        #       Is it even possible?
-        
+        # TODO: rewrite this according to new API
+        pass
+
     @staticmethod
     def get_item_parser(access_point, opener=StringIO, storage_properties={}):
         """Return an appropriate parser instance for the given format.
@@ -180,11 +181,36 @@ class Item(object):
         """
         return self._access_point.default_encoding
     
+    @property
+    def modified(self):
+        """Return if the item has been modified since creation.
+
+        TODO: documentation
+
+        """
+        return self._modified
+    
+    @property
+    def filename(self):
+        """Return the file path.
+
+        If the item is stored in a file, return its path/name.
+        Else return None
+
+        """
+        if hasattr(self._access_point, 'filename_for'):
+            return self._access_point.filename_for(self)
+
+    @property
+    def keys(self):
+        """Return properties keys"""
+        return self.properties.keys()
+
     def serialize(self):
         """Return the item serialized into a string."""
         # Remove aliases
-        properties = dict((name, self.properties[name]) for name
-                          in self.properties.keys_without_aliases())
+        properties = dict((name, self[name]) for name
+                          in self.raw_properties.keys())
         return self._custom_serialize(properties)
     
     def _custom_serialize(self, properties):
@@ -197,12 +223,11 @@ class Item(object):
 
         """
         return ''
-    
+
     def _parse_data(self):
         """Call ``_custom_parse_data`` and do some stuff to the result."""
         self._open()
-        prop = self._custom_parse_data()
-        self.properties.update_parser_properties(prop)
+        self.properties.update_parser_properties(self._custom_parse_data())
 
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
@@ -215,7 +240,7 @@ class Item(object):
 
         """
         return MultiDict()
-    
+
     def _open(self):
         """Open the stream when called for the first time.
         
@@ -235,19 +260,8 @@ class Item(object):
         """
         if self._stream is None and self._opener is not None:
             self._stream = self._opener()
-    
-    def content_modified(self):
-        return self.properties.parser_content_modified
-    
-    def filename(self):
-        """Return the file path.
 
-        If the item is stored in a file, return its path/name.
-        Else return None
 
-        """
-        if hasattr(self._access_point, 'filename_for'):
-            return self._access_point.filename_for(self)
 
 class AtomItem(Item):
     """An indivisible block of data.
@@ -258,22 +272,23 @@ class AtomItem(Item):
     format = 'binary'
     
     def read(self):
-        """Alias for properties['_content']."""
-        return self.properties['_content']
+        """Alias for item['_content']."""
+        return self['_content']
 
     def write(self, value):
-        """Alias for properties['_content'] = value."""
-        self.properties['_content'] = value
+        """Alias for item['_content'] = value."""
+        self['_content'] = value
     
     def _custom_parse_data(self):
         """Parse the whole item content."""
-        properties = super(AtomItem, self)._custom_parse_data()
-        properties['_content'] = self._stream.read()
-        return properties
+        # TODO: rewrite this according to new API
+        pass
         
     def _custom_serialize(self, properties):
         """Return the item content."""
         return properties['_content']
+
+
 
 class CapsuleItem(Item):
     """An ordered list of Items (atoms or capsules).
@@ -291,143 +306,17 @@ class CapsuleItem(Item):
     def _load_subitems(self):
         raise NotImplementedError('Abstract class')
 
-class ItemProperties(MultiDict):
-    """MultiDict with a default value, used as a properties storage.
 
-    You have to give a reference to the item to the constructor. You can force
-    some properties to a value giving a dictionnary as ``storage_properties``
-    argument.
-    
-    >>> from _test.corks import CorkItem, CorkAccessPoint
-    >>> item = CorkItem(CorkAccessPoint(),
-    ...                 storage_properties={'a': 'A', 'b': 'B'})
-    >>> prop = item.properties
-    
-    ItemProperties works as a dictionnary:
-    >>> prop['cork_prop']
-    'I am a cork prop'
-    
-    But it can contais multiple values:
-    >>> prop.getlist('cork_prop')
-    ['I am a cork prop', 'toto', 'tata']
-    
-    This key has been forced with ``storage_properties``:
-    >>> prop['b']
-    'B'
-    
-    You can modifie content and know if the item's data has been modified:
-    >>> prop.parser_content_modified
-    False
-    >>> prop['cork_prop'] = 'new value'
-    >>> prop['cork_prop']
-    'new value'
-    >>> prop.parser_content_modified
-    True
-    
-    Storage properties can be accessed separately by a dictionnary:
-    >>> prop.storage_properties
-    {'a': 'A', 'b': 'B'}
-    
-    If a storage property has been changed, the old value is still reachable:
-    >>> prop['b'] = 'toto'
-    >>> prop.storage_properties_old
-    {'a': 'A', 'b': 'B'}
-    
-    But the original value is not changed:
-    >>> super(ItemProperties, prop).__getitem__('b')
-    "item's b"
-    
-    Return None if the key does not exist:
-    >>> prop['I do not exist']
-    
-    CorkItem has an alias 'I am aliased' -> 'I am not aliased':
-    >>> prop['I am aliased']
-    'value of: I am not aliased'
-    >>> prop['I am not aliased']
-    'value of: I am not aliased'
-    
-    Keys with aliases can be known with
-    >>> prop.keys()
-    ['a', 'b', '_content', 'cork_prop', 'I am not aliased', 'I am aliased']
-    
-    Or without aliases
-    >>> prop.keys_without_aliases()
-    ['cork_prop', 'I am not aliased', 'b', 'a', '_content']
-    
+
+class AliasedMultiDict(object):
+    """Helper class
+
+    TODO: documentation and tests
+
     """
-    
-    def __init__(self, item, storage_properties={}):
-        """Load item properties.
-
-        The ``storage_properties`` argument is a dictionnary used to set
-        default values for some properties.
-
-        For performance purpose, note that the load is lazy: calling this
-        function does not really load the item in memory.
-
-        """
-        # Internal values set for lazy load
-        self._item = item
-        self._loaded = False
-        
-        # Up-to-date properties
-        self.storage_properties = storage_properties
-        # Properties set before last synchronizing on storage
-        self.storage_properties_old = copy(storage_properties)
-        self['_content'] = ''
-        self.parser_content_modified = False
-    
-    def parser_keys(self):
-        return list(self)
-    
-    def keys(self):
-        keys = set(self.keys_without_aliases())
-        keys.update(self._item.aliases.keys())
-        return list(keys)
-    
-    def keys_without_aliases(self):
-        keys = set(self)
-        keys.update(self.storage_properties.keys())
-        return list(keys)
-    
-    def update_parser_properties(self, properties):
-        pkeys = self.parser_keys()
-        # Hum hum
-        if not self._loaded and \
-           len(super(ItemProperties, self).__getitem__('_content')) == 0:
-            pkeys.remove('_content')
-        for key in properties:
-            # If the property is not already manually set by user.
-            if True or key not in pkeys:
-                super(ItemProperties, self).__setitem__(key, properties[key])
+    def __init__(data, aliases):
+        self.data = data
+        self.aliases = aliases
 
     def __getitem__(self, key):
-        """Return the item ``key`` property."""
-        # Aliasing
-        key = self._item.aliases.get(key, key)
-
-        if key in self.storage_properties.keys():
-            return self.storage_properties[key]
-
-        # Lazy load: load item only when needed
-        if not self._loaded:
-            self._item._parse_data()
-            self._loaded = True            
-
-        try:
-            return super(ItemProperties, self).__getitem__(key)
-        except KeyError:
-            return None
-    
-    # Allow item.properties.prop_name syntax
-    __getattr__ = __getitem__
-    
-    def __setitem__(self, key, value):
-        """Set the item ``key`` property to ``value``."""
-        # Aliasing
-        key = self._item.aliases.get(key, key)
-        if key in self.storage_properties.keys():
-            self.storage_properties[key] = value
-        else:
-            super(ItemProperties, self).__setitem__(key, value)
-            self.parser_content_modified = True
+        return self.data[self.aliases.get(key, key)]
