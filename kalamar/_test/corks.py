@@ -18,30 +18,27 @@
 """Some corks used for testing."""
 
 import os
-from ..item import Item, ItemProperties
+from ..item import Item
 
 class CorkItem(Item):
-    
     aliases = {"I am aliased" : "I am not aliased"}
     format = "cork_item"
     
     def __init__(self, access_point, opener=None, storage_properties={}):
-        self.properties = ItemProperties(self, storage_properties)
+        pass
         
     def _parse_data(self):
-        self.properties.update(
-            {"I am not aliased" : "value of: I am not aliased",
-            "cork_prop" : "I am a cork prop",
-            "a" : "item's a",
-            "b" : "item's b",
-            "_content" : "item's raw data"})
-        self.properties.setlistdefault("cork_prop").extend(["toto", "tata"])
+        self["I am not aliased"] = "value of: I am not aliased"
+        self["cork_prop"] = "I am a cork prop"
+        self["a"] = "item's a"
+        self["b"] = "item's b"
+        self["_content"] = "item's raw data"
+        #self.properties.setlistdefault("cork_prop").extend(["toto", "tata"])
         
     def serialize(self):
         return self.properties['_content']
 
 class CorkAccessPoint:
-    
     parser_aliases = {"I am aliased" : "I am not aliased"}
     storage_aliases = {}
     default_encoding = "utf-8"
