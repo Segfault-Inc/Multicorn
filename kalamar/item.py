@@ -39,7 +39,7 @@ properties they *need* to work well.
 """
 
 from copy import copy
-from werkzeug import MultiDict
+from werkzeug import MultiDict, CombinedMultiDict
 from cStringIO import StringIO
     
 from kalamar import parser, utils
@@ -314,9 +314,13 @@ class AliasedMultiDict(object):
     TODO: documentation and tests
 
     """
-    def __init__(data, aliases):
+    def __init__(self, data, aliases):
         self.data = data
         self.aliases = aliases
 
     def __getitem__(self, key):
         return self.data[self.aliases.get(key, key)]
+
+    def __setitem__(self, key, value):
+        # TODO: write this
+        pass
