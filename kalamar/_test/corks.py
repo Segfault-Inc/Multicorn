@@ -18,15 +18,17 @@
 """Some corks used for testing."""
 
 import os
+from werkzeug import MultiDict, CombinedMultiDict
+
 from ..item import Item
 
 class CorkItem(Item):
-    aliases = {"I am aliased" : "I am not aliased"}
     format = "cork_item"
     
     def __init__(self, access_point, opener=None, storage_properties={}):
-        pass
-        
+        super(CorkItem, self).__init__(access_point, opener, storage_properties)
+        self.aliases = {"I am aliased": "I am not aliased"}
+
     def _parse_data(self):
         self["I am not aliased"] = "value of: I am not aliased"
         self["cork_prop"] = "I am a cork prop"
@@ -36,10 +38,10 @@ class CorkItem(Item):
         #self.properties.setlistdefault("cork_prop").extend(["toto", "tata"])
         
     def serialize(self):
-        return self.properties['_content']
+        return self['_content']
 
 class CorkAccessPoint:
-    parser_aliases = {"I am aliased" : "I am not aliased"}
+    parser_aliases = {"I am aliased": "I am not aliased"}
     storage_aliases = {}
     default_encoding = "utf-8"
     parser_name = "cork_item"

@@ -103,13 +103,23 @@ class Item(object):
 
     def __getitem__(self, key):
         """Return the item ``key`` property."""
-        return self.properties[key]
+        # Lazy load: load item only when needed
+        if not self._loaded:
+            self._parse_data()
+            self._loaded = True            
+
+        try:
+            return self.properties[key]
+        except KeyError:
+            return None
     
     def __setitem__(self, key, value):
         """Set the item ``key`` property to ``value``."""
-        key = self.aliases.get(key, key)
-        self.storage_properties[key] = value
-        self._modified = True
+        if key in self.storage_properties.keys():
+            self.storage_properties[key] = value
+        else:
+            self.parser_properties[key] = value
+            self._modified = True
 
     @staticmethod
     def create_item(access_point, properties):
@@ -133,8 +143,31 @@ class Item(object):
         >>> assert isinstance(item, Item)
         
         """
-        # TODO: rewrite this according to new API
-        pass
+        parser.load()
+        
+        storage_properties = dict((name, None) for name
+                                  in access_point.get_storage_properties())
+        
+        item = Item.get_item_parser(access_point,
+                                    storage_properties = storage_properties)
+        
+        # ItemProperties copies storage_properties in old_storage_properties
+        # by default, but this is a nonsens in the case of a new item.
+        item.old_storage_properties = MultiDict()
+                
+        # Needed because there is no binary data to parse properties from. We
+        # set them manually.
+        item._loaded = True
+        
+        # Some parsers may need the ``_content`` property in their
+        # ``serialize`` method.
+        if '_content' not in properties:
+            properties['_content'] = ''
+        
+        for name, value in properties.items():
+            item[name] = value
+        
+        return item
 
     @staticmethod
     def get_item_parser(access_point, opener=StringIO, storage_properties={}):
@@ -201,7 +234,6 @@ class Item(object):
         if hasattr(self._access_point, 'filename_for'):
             return self._access_point.filename_for(self)
 
-    @property
     def keys(self):
         """Return properties keys"""
         return self.properties.keys()
@@ -227,7 +259,9 @@ class Item(object):
     def _parse_data(self):
         """Call ``_custom_parse_data`` and do some stuff to the result."""
         self._open()
-        self.properties.update_parser_properties(self._custom_parse_data())
+        parse_data = self._custom_parse_data()
+        for key, value in parse_data.items():
+            self[key] = value
 
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
@@ -281,8 +315,9 @@ class AtomItem(Item):
     
     def _custom_parse_data(self):
         """Parse the whole item content."""
-        # TODO: rewrite this according to new API
-        pass
+        properties = super(AtomItem, self)._custom_parse_data()
+        properties['_content'] = self._stream.read()
+        return properties
         
     def _custom_serialize(self, properties):
         """Return the item content."""
@@ -318,9 +353,14 @@ class AliasedMultiDict(object):
         self.data = data
         self.aliases = aliases
 
+    def __contains__(self, key):
+        return key in self.keys()
+
     def __getitem__(self, key):
         return self.data[self.aliases.get(key, key)]
 
     def __setitem__(self, key, value):
-        # TODO: write this
-        pass
+        self.data[self.aliases.get(key, key)] = value
+
+    def keys(self):
+        return self.aliases.keys() + self.data.keys()

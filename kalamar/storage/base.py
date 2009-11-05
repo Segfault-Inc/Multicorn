@@ -158,7 +158,7 @@ class AccessPoint(object):
                 parser_conditions.append(condition)
         
         for properties, opener in self._storage_search(storage_conditions):
-            item = self._make_item(properties, opener)
+            item = self._make_item(opener, properties)
             
             for condition in parser_conditions:
                 if not condition(item.properties):
@@ -166,7 +166,7 @@ class AccessPoint(object):
             else:
                 yield item
     
-    def _make_item(self, properties, opener):
+    def _make_item(self, opener, properties):
         return Item.get_item_parser(self, opener, properties)
     
     def get_storage_properties(self):

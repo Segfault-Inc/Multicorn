@@ -106,7 +106,7 @@ class DBAPIStorage(AccessPoint):
         primary_keys = self._get_primary_keys()
         parameters = []
         
-        parameters.extend(Parameter(key, item.properties[key])
+        parameters.extend(Parameter(key, item[key])
                           for key in primary_keys)
         request.extend(" AND ".join("%s=?" % self._quote_name(key)
                                     for key in primary_keys))
@@ -439,48 +439,48 @@ class DBAPIStorage(AccessPoint):
         table = self._sql_escape_quotes(table)
         
         primary_keys = self._get_primary_keys()
-        keys = item.properties.storage_properties.keys()
+        keys = item.storage_properties.keys()
         
         # All not primary keys and all primary keys not None.
         keys = [
             key for key in keys if 
-            key not in primary_keys or item.properties[key] is not None]
-        
-        request = array('u',u"UPDATE %s SET " % self._quote_name(table))
+            key not in primary_keys or item[key] is not None]
+
+        request = array('u', u"UPDATE %s SET " % self._quote_name(table))
         
         parameters = []
         
         for key in keys[:-1]:
             request.extend(u"%s=? , " %
                            self._quote_name(self._sql_escape_quotes(key)))
-            parameters.append(Parameter(key, item.properties[key]))
+            parameters.append(Parameter(key, item[key]))
             
         # If a content_column has been declared in kalamar configuration, it
         # becomes an item property (i.e. '_content'), so it is not in the 'keys'
         # list.
         if self.content_column is not None:
-            item.properties['_content'] = item.serialize()
+            item['_content'] = item.serialize()
             colname = self._quote_name(
                 self._sql_escape_quotes(self.content_column)
             )
             request.extend(u'%s=? , ' % colname)
             parameters.append(
-                Parameter(self.content_column, item.properties['_content'])
+                Parameter(self.content_column, item['_content'])
             )
             
         request.extend(u'%s=? WHERE' %
                        self._quote_name(self._sql_escape_quotes(keys[-1])))
-        parameters.append(Parameter(keys[-1], item.properties[keys[-1]]))
+        parameters.append(Parameter(keys[-1], item[keys[-1]]))
         
         for key in primary_keys[:-1]:
             request.extend(
                 u' %s=? AND' % self._quote_name(self._sql_escape_quotes(key)))
-            parameters.append(Parameter(key, item.properties[key]))
+            parameters.append(Parameter(key, item[key]))
         request.extend(
             u' %s=? ;' % self._quote_name(
                 self._sql_escape_quotes(primary_keys[-1])))
         parameters.append(
-            Parameter(primary_keys[-1], item.properties[primary_keys[-1]]))
+            Parameter(primary_keys[-1], item[primary_keys[-1]]))
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -526,15 +526,15 @@ class DBAPIStorage(AccessPoint):
         """
         
         table = self._sql_escape_quotes(table)
-        item.properties['_content'] = item.serialize()
+        item['_content'] = item.serialize()
         
         request = array('u', u'INSERT INTO %s ( ' % self._quote_name(table))
         
         primary_keys = self._get_primary_keys()
-        keys = item.properties.storage_properties.keys()
+        keys = item.storage_properties.keys()
         keys = [
             key for key in keys if 
-            key not in primary_keys or item.properties[key] is not None]
+            key not in primary_keys or item[key] is not None]
         
         parameters = []
         
@@ -556,16 +556,16 @@ class DBAPIStorage(AccessPoint):
         
         for key in keys[:-1]:
             request.extend(u'? , ')
-            parameters.append(Parameter(key, item.properties[key]))
+            parameters.append(Parameter(key, item[key]))
         
         if self.content_column is not None:
-            item.properties['_content'] = item.serialize()
+            item['_content'] = item.serialize()
             request.extend(u'? , ')
             parameters.append(
-                Parameter(self.content_column, item.properties['_content']))
+                Parameter(self.content_column, item['_content']))
         
         request.extend(u'? ) ;')
-        parameters.append(Parameter(keys[-1], item.properties[keys[-1]]))
+        parameters.append(Parameter(keys[-1], item[keys[-1]]))
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)

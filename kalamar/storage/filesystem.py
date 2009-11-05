@@ -280,17 +280,16 @@ class FileSystemStorage(AccessPoint):
         
     def save(self, item):
         """Add/update/move an item."""
-        if item.properties.storage_properties_old:
+        if item.old_storage_properties:
             old_path = self._path_from_properties(
-                item.properties.storage_properties_old)
+                item.old_storage_properties)
         else:
             old_path = None
         new_path = self._path_from_properties(
-            item.properties.storage_properties)
+            item.storage_properties)
 
         move = old_path and (old_path != new_path)
-        change = item.content_modified()
-        if change:
+        if item.modified:
             # get the serialized content BEFORE we overwrite or remove the file
             # that is because parsing is made as late as possible:
             # item.serialize() may still need the file to be there
@@ -307,12 +306,12 @@ class FileSystemStorage(AccessPoint):
     def remove(self, item):
         """Remove ``item`` from the backend storage."""
         self.remove_file(self._path_from_properties(
-            item.properties.storage_properties_old))
+            item.old_storage_properties))
             
     def filename_for(self, item):
         """Return the real filename for ``item``."""
         return self._real_filename(self._path_from_properties(
-            item.properties.storage_properties))
+            item.storage_properties))
     
     @werkzeug.cached_property
     @utils.apply_to_result(list)
@@ -338,23 +337,23 @@ class FileSystemStorage(AccessPoint):
         >>> search = ap.item_from_filename
         
         # all these should return None
-        >>> search('/foo/bar') # do not start with self.root
-        >>> # do not match the pattern
+        >>> search('/foo/bar') # do not start with self.root \
+        # do not match the pattern
         >>> search(os.path.join(dirname, 'inexistent.py'))
         >>> search(os.path.join(dirname, 'site.py'))
         >>> search(os.path.join(dirname, 'storage', 'inexistent.pyc'))
-        >>> search(os.path.join(dirname, 'storage', 'base.pyc'))
-        >>> # matches, but does not exist
+        >>> search(os.path.join(dirname, 'storage', 'base.pyc')) \
+        # matches, but does not exist
         >>> search(os.path.join(dirname, 'storage', 'inexistent.py'))
         
         >>> item = search(os.path.join(dirname, 'storage', 'filesystem.py'))
         >>> item # doctest: +ELLIPSIS
         <kalamar.parser.textitem.TextItem object at 0x...>
-        >>> item.properties['path1']
+        >>> item['path1']
         'storage'
-        >>> item.properties['path2']
+        >>> item['path2']
         'filesystem'
-        >>> item.properties['_filename'] == \
+        >>> item['_filename'] == \
                 os.path.normpath(os.path.splitext(__file__)[0] + '.py')
         True
         """
@@ -382,6 +381,6 @@ class FileSystemStorage(AccessPoint):
             return None
 
         properties[u'_filename'] = filename
-        return self._make_item(properties,
-                               functools.partial(open, filename, 'rb'))
+        return self._make_item(functools.partial(open, filename, 'rb'),
+                               properties)
 
