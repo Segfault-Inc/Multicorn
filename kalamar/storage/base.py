@@ -161,7 +161,7 @@ class AccessPoint(object):
             item = self._make_item(opener, properties)
             
             for condition in parser_conditions:
-                if not condition(item.properties):
+                if not condition(item):
                     break
             else:
                 yield item

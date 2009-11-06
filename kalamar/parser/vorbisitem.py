@@ -76,7 +76,7 @@ else:
             temporary_file.write(self.read())
             
             vorbis_tags = Open(temporary_file.name)
-            keys = self.properties.parser_keys()
+            keys = self.parser_properties.keys()
             keys.remove('_content')
             for key in keys:
                 vorbis_tags[key] = [

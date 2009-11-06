@@ -289,7 +289,7 @@ class FileSystemStorage(AccessPoint):
             item.storage_properties)
 
         move = old_path and (old_path != new_path)
-        if item.modified:
+        if item.content_modified:
             # get the serialized content BEFORE we overwrite or remove the file
             # that is because parsing is made as late as possible:
             # item.serialize() may still need the file to be there

@@ -264,8 +264,8 @@ class TestSiteSave(MyTest):
         # $test$/kalamar/data/kalamar_fs_and_sqlite.conf
         request = u'genre="rock"/album="alleluia"/titre="solomon"'
         item = self.site.open(self.access_point_name, request)
-        item.properties['artiste'] = 'toto'
-        item.properties['titre'] = 'tata'
+        item['artiste'] = 'toto'
+        item['titre'] = 'tata'
         self.site.save(item)
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)

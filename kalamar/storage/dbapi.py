@@ -439,7 +439,7 @@ class DBAPIStorage(AccessPoint):
         table = self._sql_escape_quotes(table)
         
         primary_keys = self._get_primary_keys()
-        keys = item.storage_properties.keys()
+        keys = item.raw_storage_properties.keys()
         
         # All not primary keys and all primary keys not None.
         keys = [

@@ -79,7 +79,8 @@ class Item(object):
         self._stream = None
         self._access_point = access_point
         self._loaded = False
-        self._modified = False
+        self._content_modified = False
+        self._parser_modified = False
         
         self.aliases = dict(self._access_point.parser_aliases)
         self.aliases.update(self._access_point.storage_aliases)
@@ -117,9 +118,10 @@ class Item(object):
         """Set the item ``key`` property to ``value``."""
         if key in self.storage_properties.keys():
             self.storage_properties[key] = value
+            self._content_modified = True
         else:
             self.parser_properties[key] = value
-            self._modified = True
+            self._parser_modified = True
 
     @staticmethod
     def create_item(access_point, properties):
@@ -215,13 +217,22 @@ class Item(object):
         return self._access_point.default_encoding
     
     @property
-    def modified(self):
+    def content_modified(self):
         """Return if the item has been modified since creation.
 
         TODO: documentation
 
         """
-        return self._modified
+        return self._content_modified
+    
+    @property
+    def parser_modified(self):
+        """Return if the item has been modified since creation.
+
+        TODO: documentation
+
+        """
+        return self._parser_modified
     
     @property
     def filename(self):
@@ -364,3 +375,6 @@ class AliasedMultiDict(object):
 
     def keys(self):
         return self.aliases.keys() + self.data.keys()
+
+    def getlist(self, key, type=None):
+        return self.data.getlist(self.aliases.get(key, key), type)

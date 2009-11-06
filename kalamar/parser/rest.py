@@ -172,7 +172,7 @@ egestas.
        
         def content_modified(self):
             return super(RestCapsule, self).content_modified() or \
-                    self.subitems.modified
+                self.subitems.parser_modified
         
         def _custom_serialize(self, properties):
             content = []
