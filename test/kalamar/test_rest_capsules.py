@@ -27,8 +27,8 @@ else:
                     if track:
                         # check that this tracks belongs to this album
                         for prop in ('genre', 'artist', 'album'):
-                            self.assertEquals(album.properties[prop],
-                                              track.properties[prop])
+                            self.assertEquals(album[prop],
+                                              track[prop])
                     else:
                         self.assertEquals(track.filename, 'MISSING.rst')
                         self.assertEquals(repr(track),
@@ -37,7 +37,7 @@ else:
         def test_album_length(self):
             album_length = {}
             for album in self.site.search('rest_capsules'):
-                album_length[album.properties['album']] = sum(1
+                album_length[album['album']] = sum(1
                     for track in album.subitems if track)
             self.assertEquals(album_length, {u'manouche swing': 3, u'amen': 8,
                                              u'alleluia': 7, u'S.O.B': 2})
@@ -45,7 +45,7 @@ else:
         def test_remove_last(self):
             for album in self.site.search('rest_capsules'):
                 # list track titles
-                tracks = [track.properties['title']
+                tracks = [track['title']
                           for track in album.subitems if track]
                           
                 # remove the last non-missing one
@@ -54,12 +54,11 @@ else:
                 self.assert_(album.subitems.modified)
                 
                 # save to ReST file and load back
-                self.site.save(album)
-                request = '/'.join(prop + '="' + album.properties[prop] + '"'
+                request = '/'.join(prop + '="' + album[prop] + '"'
                                    for prop in ('genre', 'artist', 'album'))
                 album2 = self.site.open('rest_capsules', request)
                 
-                tracks2 = [track.properties['title']
+                tracks2 = [track['title']
                            for track in album2.subitems if track]
                 # verify that what we get back is what we saved
                 self.assertEquals(tracks2, tracks[:-1])
@@ -76,12 +75,12 @@ else:
                 for track in album.subitems:
                     if track:
                         compilation.subitems.append(track)
-                        track_titles.add(track.properties.title)
+                        track_titles.add(track['title'])
             self.site.save(compilation)
             
 
             compilation2 = self.site.open('rest_capsules', '"Compilation"')
-            self.assertEquals(track_titles, set(track.properties.title 
+            self.assertEquals(track_titles, set(track['title']
                 for track in compilation2.subitems))
             
 

@@ -32,14 +32,14 @@ class TestSiteSearch(MyTest):
         """Request with non ascii characters must be handled correctly."""
         request = u'artiste="Birelli Lagrène"'
         for item in self.site.search(self.access_point_name, request):
-            self.assertEqual(item.properties["artiste"], u'Birelli Lagrène')
+            self.assertEqual(item["artiste"], u'Birelli Lagrène')
         
     def test_without_sugar(self):
         """A request without syntaxic sugar must return the corresponding items."""
         request = u'artiste="Water please"/genre="rock"'
         for item in self.site.search(self.access_point_name, request):
-            self.assertEqual(item.properties["genre"], u'rock')
-            self.assertEqual(item.properties["artiste"], u'Water please')
+            self.assertEqual(item["genre"], u'rock')
+            self.assertEqual(item["artiste"], u'Water please')
             
     def test_property_type_string(self):
         # SQLite has no typing
@@ -54,7 +54,7 @@ class TestSiteSearch(MyTest):
                'rest' in self.access_point_name:
                 self.assertEqual(len(items), 4)
                 for item in items:
-                    self.assertEqual(item.properties["piste"], u"01")
+                    self.assertEqual(item["piste"], u"01")
             else:
                 self.assertEqual(len(items), 0)
         
@@ -74,22 +74,22 @@ class TestSiteSearch(MyTest):
                 self.assertEqual(len(items), 0)
                 
             for item in items:
-                self.assertEqual(item.properties["piste"], 1)
+                self.assertEqual(item["piste"], 1)
     
     def test_with_sugar(self):
         """Request with syntaxic sugar must guess props names from config."""
         request = u'"rock"/"Water please"'
         for item in self.site.search(self.access_point_name, request):
-            self.assertEqual(item.properties["genre"], u'rock')
-            self.assertEqual(item.properties["artiste"], u'Water please')
+            self.assertEqual(item["genre"], u'rock')
+            self.assertEqual(item["artiste"], u'Water please')
     
     def test_all_data(self):
         """An empty search must return the whole collection."""
         request = u''
         all_objects = list(self.site.search(self.access_point_name, request))
-        genres = set(item.properties["genre"] for item in all_objects)
-        artistes = set(item.properties["artiste"] for item in all_objects)
-        albums = set(item.properties["album"] for item in all_objects)
+        genres = set(item["genre"] for item in all_objects)
+        artistes = set(item["artiste"] for item in all_objects)
+        albums = set(item["album"] for item in all_objects)
         
         self.assertEqual(len(all_objects), 20)
         self.assertEqual(genres, set([u'jazz', u'rock']))
@@ -106,8 +106,8 @@ class TestSiteSearch(MyTest):
         
         self.assertEqual(len(result), 2)
         for item in result:
-            self.assert_('a' in item.properties['titre'])
-            self.assertEqual(item.properties['titre'][-1], 's')
+            self.assert_('a' in item['titre'])
+            self.assertEqual(item['titre'][-1], 's')
 
 class TestSiteOpen(MyTest):
     
@@ -122,10 +122,10 @@ class TestSiteOpen(MyTest):
         request = u'genre="rock"/artiste="Jesus\'harlem"' \
                   u'/album="amen"/titre="mechanical blues"'
         item = self.site.open(self.access_point_name, request)
-        self.assertEqual(item.properties['genre'], u'rock')
-        self.assertEqual(item.properties['artiste'], u'Jesus\'harlem')
-        self.assertEqual(item.properties['album'], u'amen')
-        self.assertEqual(item.properties['titre'], u'mechanical blues')
+        self.assertEqual(item['genre'], u'rock')
+        self.assertEqual(item['artiste'], u'Jesus\'harlem')
+        self.assertEqual(item['album'], u'amen')
+        self.assertEqual(item['titre'], u'mechanical blues')
     
     def test_many_results(self):
         """Try to open many item must raise 'MultiObjectsReturned'."""
@@ -234,8 +234,8 @@ class TestSiteSave(MyTest):
         item = self.site.open(self.access_point_name, request)
         item2 = self.site.open(self.access_point_name, request2)
         
-        self.assertEqual(item.properties['titre'], 'many money')
-        self.assertEqual(item2.properties['titre'], 'mamma mia')
+        self.assertEqual(item['titre'], 'many money')
+        self.assertEqual(item2['titre'], 'mamma mia')
         
     def test_new_incomplete_item(self):
         pass # TODO : wtf should kalamar do in this case ?
@@ -309,4 +309,4 @@ class TestSiteCreateItem(MyTest):
             self.site.save(item_create)
             item_open = self.site.open(self.access_point_name, request)
             for tag in ('genre', 'artiste', 'album', 'titre', 'unknown'):
-                self.assertEqual(item_create.properties[tag], item_open.properties[tag])
+                self.assertEqual(item_create[tag], item_open[tag])

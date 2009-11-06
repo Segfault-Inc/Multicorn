@@ -431,7 +431,7 @@ class DBAPIStorage(AccessPoint):
           "sto_prop"=? , "pk2"=? , "pk1"=? , "content_col"=? , "sto_prop2"=?
           WHERE "pk1"=? AND "pk2"=? ;'
         >>> param #doctest: +NORMALIZE_WHITESPACE
-           ('sto_val', 'pk_val2', 'pk_val1', '', 'sto_val2',
+           ('sto_val', 'pk_val2', 'pk_val1', "item's raw data", 'sto_val2',
             'pk_val1', 'pk_val2')
         
         """
@@ -446,12 +446,12 @@ class DBAPIStorage(AccessPoint):
             key for key in keys if 
             key not in primary_keys or item[key] is not None]
 
-        request = array('u', u"UPDATE %s SET " % self._quote_name(table))
+        request = array('u', u'UPDATE %s SET ' % self._quote_name(table))
         
         parameters = []
         
         for key in keys[:-1]:
-            request.extend(u"%s=? , " %
+            request.extend(u'%s=? , ' %
                            self._quote_name(self._sql_escape_quotes(key)))
             parameters.append(Parameter(key, item[key]))
             
@@ -461,12 +461,10 @@ class DBAPIStorage(AccessPoint):
         if self.content_column is not None:
             item['_content'] = item.serialize()
             colname = self._quote_name(
-                self._sql_escape_quotes(self.content_column)
-            )
+                self._sql_escape_quotes(self.content_column))
             request.extend(u'%s=? , ' % colname)
             parameters.append(
-                Parameter(self.content_column, item['_content'])
-            )
+                Parameter(self.content_column, item['_content']))
             
         request.extend(u'%s=? WHERE' %
                        self._quote_name(self._sql_escape_quotes(keys[-1])))
@@ -521,7 +519,7 @@ class DBAPIStorage(AccessPoint):
           ( "sto_prop" , "pk2" , "pk1" , "content_col" , "sto_prop2" )
           VALUES ( ? , ? , ? , ? , ? ) ;'
         >>> param #doctest:+NORMALIZE_WHITESPACE
-            ('sto_val', 'pk_val2', 'pk_val1', '', 'sto_val2')
+            ('sto_val', 'pk_val2', 'pk_val1', "item's raw data", 'sto_val2')
 
         """
         
@@ -531,7 +529,7 @@ class DBAPIStorage(AccessPoint):
         request = array('u', u'INSERT INTO %s ( ' % self._quote_name(table))
         
         primary_keys = self._get_primary_keys()
-        keys = item.storage_properties.keys()
+        keys = item.raw_storage_properties.keys()
         keys = [
             key for key in keys if 
             key not in primary_keys or item[key] is not None]

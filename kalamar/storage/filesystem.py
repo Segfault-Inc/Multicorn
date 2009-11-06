@@ -286,7 +286,7 @@ class FileSystemStorage(AccessPoint):
         else:
             old_path = None
         new_path = self._path_from_properties(
-            item.storage_properties)
+            item.raw_storage_properties)
 
         move = old_path and (old_path != new_path)
         if item.content_modified:
@@ -311,7 +311,7 @@ class FileSystemStorage(AccessPoint):
     def filename_for(self, item):
         """Return the real filename for ``item``."""
         return self._real_filename(self._path_from_properties(
-            item.storage_properties))
+            item.raw_storage_properties))
     
     @werkzeug.cached_property
     @utils.apply_to_result(list)

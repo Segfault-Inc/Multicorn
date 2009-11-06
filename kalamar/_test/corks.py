@@ -30,12 +30,11 @@ class CorkItem(Item):
         self.aliases = {"I am aliased": "I am not aliased"}
 
     def _parse_data(self):
-        self["I am not aliased"] = "value of: I am not aliased"
-        self["cork_prop"] = "I am a cork prop"
-        self["a"] = "item's a"
-        self["b"] = "item's b"
-        self["_content"] = "item's raw data"
-        #self.properties.setlistdefault("cork_prop").extend(["toto", "tata"])
+        self['I am not aliased'] = 'value of: I am not aliased'
+        self['cork_prop'] = 'I am a cork prop'
+        self['a'] = 'item\'s a'
+        self['b'] = 'item\'s b'
+        self['_content'] = 'item\'s raw data'
         
     def serialize(self):
         return self['_content']

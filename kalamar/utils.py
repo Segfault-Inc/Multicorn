@@ -85,9 +85,9 @@ class Condition(object):
         self.operator = operator
         self.value = value
     
-    def __call__(self, properties):
+    def __call__(self, item):
         """Return True if this dict of properties matches this condition."""
-        return self.operator(properties[self.property_name], self.value)
+        return self.operator(item[self.property_name], self.value)
     
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__, self.property_name,

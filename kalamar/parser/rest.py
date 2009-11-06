@@ -164,7 +164,7 @@ egestas.
         def _load_subitems(self):
             for include in extract_includes(self.get_content()):
                 filename = os.path.join(
-                    os.path.dirname(self.properties[u'_filename']),
+                    os.path.dirname(self[u'_filename']),
                     os.path.normpath(include))
                 item = self._access_point.site.item_from_filename(filename)
                 # item is None if no access point has this filename
@@ -177,20 +177,18 @@ egestas.
         def _custom_serialize(self, properties):
             content = []
             write = content.append
-            title = self.properties[u'title']
+            title = self[u'title']
             write(u'=' * len(title))
             write(title)
             write(u'=' * len(title))
-            for key in self.properties:
+            for key in self.keys():
                 if key != u'title':
-                    write(u':%s: %s' % (key, self.properties[key]))
+                    write(u':%s: %s' % (key, self[key]))
             write('')
-            # Don’t use self.properties._filename here because it may not be
-            # there yet if we create a capsule from scratch
-            dirname = os.path.dirname(self.filename())
+            dirname = os.path.dirname(self.filename)
             for subitem in self.subitems:
                 write(u'.. include:: ' + utils.relpath(
-                    subitem.properties._filename, dirname))
+                    subitem[u'_filename'], dirname))
             return u'\n'.join(content).encode(self.encoding)
             
             

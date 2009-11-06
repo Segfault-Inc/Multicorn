@@ -82,8 +82,8 @@ class Item(object):
         self._content_modified = False
         self._parser_modified = False
         
-        self.aliases = dict(self._access_point.parser_aliases)
-        self.aliases.update(self._access_point.storage_aliases)
+        self.aliases = dict(access_point.parser_aliases)
+        self.aliases.update(access_point.storage_aliases)
         self.reverse_aliases = dict((b,a) for (a,b) in enumerate(self.aliases))
 
         self.raw_storage_properties = MultiDict(storage_properties)
@@ -116,11 +116,18 @@ class Item(object):
     
     def __setitem__(self, key, value):
         """Set the item ``key`` property to ``value``."""
+        # TODO: maybe use setlist/getlist attributes
         if key in self.storage_properties.keys():
-            self.storage_properties[key] = value
+            if isinstance(value, list):
+                self.storage_properties.setlist(key, value)
+            else:
+                self.storage_properties[key] = value
             self._content_modified = True
         else:
-            self.parser_properties[key] = value
+            if isinstance(value, list):
+                self.parser_properties.setlist(key, value)
+            else:
+                self.parser_properties[key] = value
             self._parser_modified = True
 
     @staticmethod
