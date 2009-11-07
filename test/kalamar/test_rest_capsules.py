@@ -54,6 +54,7 @@ else:
                 self.assert_(album.subitems.modified)
                 
                 # save to ReST file and load back
+                self.site.save(album)
                 request = '/'.join(prop + '="' + album[prop] + '"'
                                    for prop in ('genre', 'artist', 'album'))
                 album2 = self.site.open('rest_capsules', request)
