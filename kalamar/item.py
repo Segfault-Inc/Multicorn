@@ -82,17 +82,20 @@ class Item(object):
         self._content_modified = False
         self._parser_modified = False
         
-        self.aliases = dict(access_point.parser_aliases)
-        self.aliases.update(access_point.storage_aliases)
-        self.reverse_aliases = dict((b,a) for (a,b) in enumerate(self.aliases))
-
+        self.storage_aliases = dict(access_point.storage_aliases)
+        self.parser_aliases = dict(access_point.parser_aliases)
+        
         self.raw_storage_properties = MultiDict(storage_properties)
         self.raw_parser_properties = MultiDict()
 
         self.storage_properties = AliasedMultiDict(
-            self.raw_storage_properties, self.aliases)
+            self.raw_storage_properties,
+            self.storage_aliases
+        )
         self.parser_properties = AliasedMultiDict(
-            self.raw_parser_properties, self.aliases)
+            self.raw_parser_properties,
+            self.parser_aliases
+        )
         
         self.raw_properties = CombinedMultiDict([
                 self.raw_storage_properties, self.raw_parser_properties])
@@ -117,7 +120,14 @@ class Item(object):
     def __setitem__(self, key, value):
         """Set the item ``key`` property to ``value``."""
         # TODO: maybe use setlist/getlist attributes
-        if key in self.storage_properties.keys():
+        if key in self.storage_aliases:
+            is_storage = True
+        elif key in self.parser_aliases:
+            is_storage = False
+        else:
+            is_storage = key in self.storage_properties
+            
+        if is_storage:
             if isinstance(value, list):
                 self.storage_properties.setlist(key, value)
             else:
@@ -166,6 +176,7 @@ class Item(object):
                 
         # Needed because there is no binary data to parse properties from. We
         # set them manually.
+        # XXX TODO: is this still true after item refactoring?
         item._loaded = True
         
         # Some parsers may need the ``_content`` property in their
