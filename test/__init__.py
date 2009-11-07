@@ -19,7 +19,10 @@ def find_all_modules(packages):
         except ValueError, e:
             if e.args != ("'%s' is not a package" % package,):
                 raise
-
+        except ImportError:
+            # Maybe this is not a module
+            # (eg an unittest class or method)
+            pass
 def get_tests(packages):
     """
     Return a TestSuite
@@ -34,6 +37,10 @@ def get_tests(packages):
             # doctest.DocTestSuite throws ValueError when there is no test
             if len(e.args) != 2 or e.args[1] != "has no tests":
                 raise
+        except ImportError:
+            # unitest's loadTestsFromName worked. Maybe this is not a module
+            # (eg an unittest class or method)
+            pass
         else:
             suite.addTests(tests)
     return suite
