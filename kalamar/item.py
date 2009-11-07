@@ -241,8 +241,17 @@ class Item(object):
         return self._access_point.default_encoding
     
     @property
-    def content_modified(self):
+    def modified(self):
         """Return if the item has been modified since creation.
+
+        TODO: documentation
+
+        """
+        return self._content_modified or self._parser_modified
+    
+    @property
+    def content_modified(self):
+        """Return if content properties have been modified since creation.
 
         TODO: documentation
 
@@ -251,7 +260,7 @@ class Item(object):
     
     @property
     def parser_modified(self):
-        """Return if the item has been modified since creation.
+        """Return if parser properties have been modified since creation.
 
         TODO: documentation
 
