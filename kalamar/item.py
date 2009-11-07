@@ -89,13 +89,9 @@ class Item(object):
         self.raw_parser_properties = MultiDict()
 
         self.storage_properties = AliasedMultiDict(
-            self.raw_storage_properties,
-            self.storage_aliases
-        )
+            self.raw_storage_properties, self.storage_aliases)
         self.parser_properties = AliasedMultiDict(
-            self.raw_parser_properties,
-            self.parser_aliases
-        )
+            self.raw_parser_properties, self.parser_aliases)
         
         self.raw_properties = CombinedMultiDict([
                 self.raw_storage_properties, self.raw_parser_properties])
@@ -264,7 +260,7 @@ class Item(object):
             return self._access_point.filename_for(self)
 
     def keys(self):
-        """Return properties keys"""
+        """Return properties keys."""
         return self.properties.keys()
 
     def serialize(self):
