@@ -108,12 +108,22 @@ class Item(object):
     def __getitem__(self, key):
         """Return the item ``key`` property."""
         # Lazy load: load item only when needed
-        if not self._loaded:
+        if key in self.storage_aliases:
+            is_storage = True
+        elif key in self.parser_aliases:
+            is_storage = False
+        else:
+            is_storage = key in self.storage_properties
+
+        if not (is_storage or self._loaded):
             self._parse_data()
             self._loaded = True            
 
         try:
-            return self.properties[key]
+            if is_storage:
+                return self.storage_properties[key]
+            else:
+                return self.parser_properties[key]
         except KeyError:
             return None
     
@@ -269,10 +279,7 @@ class Item(object):
 
     def serialize(self):
         """Return the item serialized into a string."""
-        # Remove aliases
-        properties = dict((name, self[name]) for name
-                          in self.raw_properties.keys())
-        return self._custom_serialize(properties)
+        return self._custom_serialize(self.raw_parser_properties)
     
     def _custom_serialize(self, properties):
         """Serialize item from its properties, return a data string.
@@ -288,9 +295,7 @@ class Item(object):
     def _parse_data(self):
         """Call ``_custom_parse_data`` and do some stuff to the result."""
         self._open()
-        parse_data = self._custom_parse_data()
-        for key, value in parse_data.items():
-            self[key] = value
+        self.raw_parser_properties.update(self._custom_parse_data())
 
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.

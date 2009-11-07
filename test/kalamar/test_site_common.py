@@ -174,7 +174,7 @@ class TestSiteSave(MyTest):
         else:
             request = u'''genre="funk"/artiste="loopzilla"/
                           album="demo"/titre="many money"/piste="2"'''
-        
+
         # Must not raise any exception
         item2 = self.site.open(self.access_point_name, request)
         
