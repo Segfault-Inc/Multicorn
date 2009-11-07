@@ -79,7 +79,7 @@ class Item(object):
         self._stream = None
         self._access_point = access_point
         self._loaded = False
-        self._content_modified = False
+        self._storage_modified = False
         self._parser_modified = False
         
         self.storage_aliases = dict(access_point.storage_aliases)
@@ -138,7 +138,7 @@ class Item(object):
                 self.storage_properties.setlist(key, value)
             else:
                 self.storage_properties[key] = value
-            self._content_modified = True
+            self._storage_modified = True
         else:
             if isinstance(value, list):
                 self.parser_properties.setlist(key, value)
@@ -247,16 +247,16 @@ class Item(object):
         TODO: documentation
 
         """
-        return self._content_modified or self._parser_modified
+        return self._storage_modified or self._parser_modified
     
     @property
-    def content_modified(self):
+    def storage_modified(self):
         """Return if content properties have been modified since creation.
 
         TODO: documentation
 
         """
-        return self._content_modified
+        return self._storage_modified
     
     @property
     def parser_modified(self):
@@ -376,6 +376,11 @@ class CapsuleItem(Item):
             self._subitems = utils.ModificationTrackingList(
                 self._load_subitems())
         return self._subitems
+        
+    @property
+    def content_modified(self):
+        # TODO: test this here and for children classes
+        return self.parser_modified or self.subitems.modified
         
     def _load_subitems(self):
         raise NotImplementedError('Abstract class')
