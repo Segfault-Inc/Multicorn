@@ -170,10 +170,6 @@ egestas.
                 # item is None if no access point has this filename
                 yield item or MissingItem(include)
        
-        def content_modified(self):
-            return super(RestCapsule, self).content_modified() or \
-                self.subitems.parser_modified
-        
         def _custom_serialize(self, properties):
             content = []
             write = content.append

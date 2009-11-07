@@ -281,27 +281,28 @@ class FileSystemStorage(AccessPoint):
     def save(self, item):
         """Add/update/move an item."""
         if item.old_storage_properties:
-            old_path = self._path_from_properties(
-                item.old_storage_properties)
+            old_path = self._path_from_properties(item.old_storage_properties)
         else:
             old_path = None
-        new_path = self._path_from_properties(
-            item.raw_storage_properties)
 
-        move = old_path and (old_path != new_path)
+        new_path = self._path_from_properties(item.raw_storage_properties)
+
         if item.modified:
-            # get the serialized content BEFORE we overwrite or remove the file
-            # that is because parsing is made as late as possible:
-            # item.serialize() may still need the file to be there
-            content = item.serialize()
-            if move:
-                # Remove old_path
-                self.remove(item)
-            fd = self.open_file(new_path, mode='wb')
-            fd.write(content)
-            fd.close()
-        elif move:
-            self.rename(old_path, new_path)
+            if old_path and not item.parser_modified:
+                # Move only: just rename
+                self.rename(old_path, new_path)
+            else:
+                # Add or update: serialize content…
+                content = item.serialize()
+
+                if old_path and item.storage_modified:
+                    # Move and update: remove old file
+                    self.remove(item)
+
+                # Add or update: …and write it
+                fd = self.open_file(new_path, mode='wb')
+                fd.write(content)
+                fd.close()
 
     def remove(self, item):
         """Remove ``item`` from the backend storage."""
