@@ -72,16 +72,17 @@ else:
         
         def _custom_serialize(self, properties):
             """Return the whole file into a bytes string."""
+            self._open()
+            self._stream.seek(0)
             temporary_file = NamedTemporaryFile()
-            temporary_file.write(self.read())
+            data = self._stream.read()
+            temporary_file.write(data)
             
             vorbis_tags = Open(temporary_file.name)
-            keys = self.parser_properties.keys()
-            keys.remove('_content')
-            for key in keys:
-                vorbis_tags[key] = [
-                    unicode(element) for element
-                    in self.properties.getlist(key)]
+            for key in self.raw_parser_properties:
+                if key != '_content':
+                    vorbis_tags[key] = [unicode(element) for element
+                                        in self.raw_parser_properties.getlist(key)]
             vorbis_tags.save()
             
             temporary_file.file.flush()

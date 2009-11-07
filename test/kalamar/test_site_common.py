@@ -155,15 +155,17 @@ class TestSiteSave(MyTest):
         else:
             properties['piste'] = '2'
                       
+        item = Item.create_item(access_point, properties)
+
         # Mutagen does not accept to create a VorbisFile
         # without initial content.
         if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
                                             'data', 'vorbis_sample.ogg'))
-            data = vorbis_file.read()
-            properties['_content']  = data
+            item._stream = vorbis_file
+            item._loaded = True # prevent _parse_data from overwriting
+                                # the properties we just set
             
-        item = Item.create_item(access_point, properties)
         self.site.save(item)
         
         if not('fs' in self.access_point_name and
@@ -174,7 +176,7 @@ class TestSiteSave(MyTest):
         else:
             request = u'''genre="funk"/artiste="loopzilla"/
                           album="demo"/titre="many money"/piste="2"'''
-
+        
         # Must not raise any exception
         item2 = self.site.open(self.access_point_name, request)
         
@@ -202,18 +204,17 @@ class TestSiteSave(MyTest):
             properties['piste'] = '2'
             properties2['piste'] = '3'
                       
+        item = Item.create_item(access_point, properties)
+        item2 = Item.create_item(access_point, properties2)
+        
         # Mutagen does not accept to create a VorbisFile
         # without initial content.
         if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
                                             'data', 'vorbis_sample.ogg'))
-            data = vorbis_file.read()
-            properties['_content'] = data
-            properties2['_content'] = data
+            item._stream = vorbis_file
+            item2._stream = vorbis_file
             
-        item = Item.create_item(access_point, properties)
-        item2 = Item.create_item(access_point, properties2)
-        
         self.site.save(item)
         self.site.save(item2)
         
