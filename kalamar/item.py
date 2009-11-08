@@ -358,11 +358,18 @@ class CapsuleItem(Item):
                 self._load_subitems())
         return self._subitems
         
-    @property
-    def content_modified(self):
-        # TODO: test this here and for children classes
-        return self.parser_modified or self.subitems.modified
+    def _get_parser_modified(self):
+        """Capsule parser_modified getter."""
+        # TODO: this is wrong in some cases, please fix it
+        return self._parser_modified or self.subitems.modified
+
+    def _set_parser_modified(self, value):
+        """Capsule parser_modified setter."""
+        # TODO: this is wrong in some cases, please fix it
+        self._parser_modified = value
         
+    parser_modified = property(_get_parser_modified, _set_parser_modified)
+
     def _load_subitems(self):
         raise NotImplementedError('Abstract class')
 
