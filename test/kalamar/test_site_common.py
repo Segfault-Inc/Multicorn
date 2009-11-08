@@ -250,6 +250,8 @@ class TestSiteSave(MyTest):
         request = u'genre="rock"/artiste="Jesus\'harlem"/' \
                   u'album="amen"/titre="mechanical blues"'
         item = self.site.open(self.access_point_name, request)
+        self.assertEqual(item.storage_modified, False)
+        self.assertEqual(item.parser_modified, False)
         self.site.save(item)
         # Must not raise any exception
         self.site.open(self.access_point_name, request)

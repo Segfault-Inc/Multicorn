@@ -98,7 +98,6 @@ class Item(object):
         self.properties = CombinedMultiDict([
                 self.storage_properties, self.parser_properties])
 
-        self['_content'] = ''
         self.old_storage_properties = copy(storage_properties)
 
     def __getitem__(self, key):
