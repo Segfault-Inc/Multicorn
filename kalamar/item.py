@@ -79,8 +79,8 @@ class Item(object):
         self._stream = None
         self._access_point = access_point
         self._loaded = False
-        self._storage_modified = False
-        self._parser_modified = False
+        self.storage_modified = False
+        self.parser_modified = False
         
         self.storage_aliases = dict(access_point.storage_aliases)
         self.parser_aliases = dict(access_point.parser_aliases)
@@ -138,13 +138,13 @@ class Item(object):
                 self.storage_properties.setlist(key, value)
             else:
                 self.storage_properties[key] = value
-            self._storage_modified = True
+            self.storage_modified = True
         else:
             if isinstance(value, list):
                 self.parser_properties.setlist(key, value)
             else:
                 self.parser_properties[key] = value
-            self._parser_modified = True
+            self.parser_modified = True
 
     @staticmethod
     def create_item(access_point, properties):
@@ -247,25 +247,7 @@ class Item(object):
         TODO: documentation
 
         """
-        return self._storage_modified or self._parser_modified
-    
-    @property
-    def storage_modified(self):
-        """Return if content properties have been modified since creation.
-
-        TODO: documentation
-
-        """
-        return self._storage_modified
-    
-    @property
-    def parser_modified(self):
-        """Return if parser properties have been modified since creation.
-
-        TODO: documentation
-
-        """
-        return self._parser_modified
+        return self.storage_modified or self.parser_modified
     
     @property
     def filename(self):
