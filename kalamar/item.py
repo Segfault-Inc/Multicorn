@@ -251,6 +251,10 @@ class Item(object):
         if hasattr(self._access_point, 'filename_for'):
             return self._access_point.filename_for(self)
 
+    def keys(self):
+        """Return properties keys."""
+        return self.properties.keys()
+
     def serialize(self):
         """Return the item serialized into a string."""
         return self._custom_serialize(self.raw_parser_properties)
