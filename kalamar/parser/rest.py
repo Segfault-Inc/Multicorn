@@ -177,7 +177,7 @@ egestas.
             write(u'=' * len(title))
             write(title)
             write(u'=' * len(title))
-            for key in self.keys():
+            for key in self.properties.keys():
                 if key != u'title':
                     write(u':%s: %s' % (key, self[key]))
             write('')
