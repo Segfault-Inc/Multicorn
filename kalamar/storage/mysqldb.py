@@ -143,11 +143,7 @@ else:
             return (self._connection, self._table)
         
         def _get_primary_keys(self):
-            """Return the list of the table primary keys.
-            
-            TODO test (possible?)
-            
-            """
+            """Return the list of the table primary keys."""
             connection, table = self.get_connection()
             cursor = connection.cursor()
             cursor.execute('DESCRIBE %s ;' % table)

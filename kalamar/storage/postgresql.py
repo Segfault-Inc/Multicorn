@@ -71,22 +71,18 @@ else:
             return self._connection, self._table
         
         def _get_primary_keys(self):
-            """Return the list of the table primary keys.
-            
-            TODO test (possible?)
-            
-            """
+            """Return the list of the table primary keys."""
             connection, table = self.get_connection()
             cursor = connection.cursor()
             cursor.execute("""
-                SELECT attr.attname, idx.indisprimary
-                    FROM pg_catalog.pg_class c, pg_catalog.pg_class c2,
-                        pg_catalog.pg_index idx, pg_catalog.pg_attribute attr
-                    WHERE c.oid = idx.indrelid
-                        AND idx.indexrelid = c2.oid
-                        AND attr.attrelid = c.oid
-                        AND attr.attnum = idx.indkey[0]
-                        AND c.relname = %s ;""", [table])
+            SELECT attr.attname, idx.indisprimary
+            FROM pg_catalog.pg_class c, pg_catalog.pg_class c2,
+              pg_catalog.pg_index idx, pg_catalog.pg_attribute attr
+            WHERE c.oid = idx.indrelid
+              AND idx.indexrelid = c2.oid
+              AND attr.attrelid = c.oid
+              AND attr.attnum = idx.indkey[0]
+              AND c.relname = %s ;""", [table])
 
             return [
                 field[0].decode(self._client_encoding) 
