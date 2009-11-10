@@ -133,11 +133,12 @@ else:
                 #kwargs['conv'] = self.conversions
                 kwargs['client_flag'] = CLIENT.FOUND_ROWS
                 
-                self._connection = MySQLdb.connect(**kwargs)
+                self._connection = self.get_db_module().connect(**kwargs)
                 self._connection.set_sql_mode('ANSI')
                 self._connection.set_character_set(
                     # Hack to convert python locale format to MySQL
                     self.default_encoding.replace('-',''))
+
             self._connection.ping(True)
             return (self._connection, self._table)
         

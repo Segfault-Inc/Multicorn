@@ -25,7 +25,7 @@ point.
 
 import warnings
 try:
-    from pg8000 import dbapi as postg
+    from pg8000 import dbapi as postgres
 except ImportError:
     warnings.warn('Cannot import pg8000. '
                   'PostgreSQL support will not be available.',
@@ -40,7 +40,7 @@ else:
         _client_encoding = 'utf-8'
                 
         def get_db_module(self):
-            return postg
+            return postgres
         
         def get_connection(self):
             """Return (``connection``, ``table``)
@@ -68,7 +68,7 @@ else:
             if not hasattr(self, '_connection'):
                 connect()
                 
-            return (self._connection, self._table)
+            return self._connection, self._table
         
         def _get_primary_keys(self):
             """Return the list of the table primary keys.
