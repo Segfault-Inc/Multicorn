@@ -459,12 +459,12 @@ class DBAPIStorage(AccessPoint):
         # becomes an item property (i.e. '_content'), so it is not in the 'keys'
         # list.
         if self.content_column is not None:
-            item['_content'] = item.serialize()
+            item.content = item.serialize()
             colname = self._quote_name(
                 self._sql_escape_quotes(self.content_column))
             request.extend(u'%s=? , ' % colname)
             parameters.append(
-                Parameter(self.content_column, item['_content']))
+                Parameter(self.content_column, item.content))
             
         request.extend(u'%s=? WHERE' %
                        self._quote_name(self._sql_escape_quotes(keys[-1])))
@@ -524,7 +524,7 @@ class DBAPIStorage(AccessPoint):
         """
         
         table = self._sql_escape_quotes(table)
-        item['_content'] = item.serialize()
+        item.content = item.serialize()
         
         request = array('u', u'INSERT INTO %s ( ' % self._quote_name(table))
         
@@ -557,10 +557,10 @@ class DBAPIStorage(AccessPoint):
             parameters.append(Parameter(key, item[key]))
         
         if self.content_column is not None:
-            item['_content'] = item.serialize()
+            item.content = item.serialize()
             request.extend(u'? , ')
             parameters.append(
-                Parameter(self.content_column, item['_content']))
+                Parameter(self.content_column, item.content))
         
         request.extend(u'? ) ;')
         parameters.append(Parameter(keys[-1], item[keys[-1]]))

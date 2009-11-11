@@ -251,6 +251,16 @@ class Item(object):
         if hasattr(self._access_point, 'filename_for'):
             return self._access_point.filename_for(self)
 
+    def _content_getter(self):
+        """Getter for ``self['_content']``."""
+        return self['_content']
+
+    def _content_setter(self, value):
+        """Setter for ``self['_content']``."""
+        self['_content'] = value
+
+    content = property(_content_getter, _content_setter)
+
     def keys(self):
         """Return properties keys."""
         return self.properties.keys()
@@ -318,12 +328,12 @@ class AtomItem(Item):
     format = 'binary'
     
     def read(self):
-        """Alias for item['_content']."""
-        return self['_content']
+        """Alias for item.content."""
+        return self.content
 
     def write(self, value):
-        """Alias for item['_content'] = value."""
-        self['_content'] = value
+        """Alias for item.content = value."""
+        self.content = value
     
     def _custom_parse_data(self):
         """Parse the whole item content."""

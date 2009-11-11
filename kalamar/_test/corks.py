@@ -34,10 +34,10 @@ class CorkItem(Item):
         self['cork_prop'] = 'I am a cork prop'
         self['a'] = 'item\'s a'
         self['b'] = 'item\'s b'
-        self['_content'] = 'item\'s raw data'
+        self.content = 'item\'s raw data'
         
     def serialize(self):
-        return self['_content']
+        return self.content
 
 class CorkAccessPoint:
     parser_aliases = {"I am aliased": "I am not aliased"}
