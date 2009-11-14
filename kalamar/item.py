@@ -92,10 +92,11 @@ class Item(object):
         self.parser_properties = utils.AliasedMultiDict(
             self.raw_parser_properties, self.parser_aliases)
         
-        self.raw_properties = CombinedMultiDict([
-                self.raw_storage_properties, self.raw_parser_properties])
-        self.properties = CombinedMultiDict([
-                self.storage_properties, self.parser_properties])
+        # TODO: actually remove these if they are not needed
+#        self.raw_properties = CombinedMultiDict([
+#                self.raw_storage_properties, self.raw_parser_properties])
+#        self.properties = CombinedMultiDict([
+#                self.storage_properties, self.parser_properties])
 
         self.old_storage_properties = copy(storage_properties)
 
@@ -262,8 +263,10 @@ class Item(object):
     content = property(_content_getter, _content_setter)
 
     def keys(self):
-        """Return properties keys."""
-        return self.properties.keys()
+        """Return the name of all properties."""
+        # Use a set to make keys unique
+        return list(set(self.storage_properties.keys() +
+                        self.parser_properties.keys()))
 
     def serialize(self):
         """Return the item serialized into a string."""
