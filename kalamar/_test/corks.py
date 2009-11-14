@@ -28,16 +28,16 @@ class CorkItem(Item):
     def __init__(self, access_point, opener=None, storage_properties={}):
         super(CorkItem, self).__init__(access_point, opener, storage_properties)
         self.aliases = {"I am aliased": "I am not aliased"}
+        self._raw_content = 'item\'s raw data'
 
     def _parse_data(self):
         self['I am not aliased'] = 'value of: I am not aliased'
         self['cork_prop'] = 'I am a cork prop'
         self['a'] = 'item\'s a'
         self['b'] = 'item\'s b'
-        self.content = 'item\'s raw data'
         
     def serialize(self):
-        return self.content
+        return self._get_content()
 
 class CorkAccessPoint:
     parser_aliases = {"I am aliased": "I am not aliased"}

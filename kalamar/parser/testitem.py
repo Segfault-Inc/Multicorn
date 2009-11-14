@@ -22,9 +22,9 @@ This access point is internally used for testing purpose.
 
 """
 
-from kalamar.parser.textitem import TextItem
+from kalamar.item import Item
 
-class TestItem(TextItem):
+class TestItem(Item):
     """Test access point item."""
     format = 'test_format'
     _keys = ('genre', 'artist', 'album', 'tracknumber', 'title')
@@ -32,7 +32,7 @@ class TestItem(TextItem):
     def _custom_parse_data(self):
         """Parse known properties of the test item."""
         properties = super(TestItem, self)._custom_parse_data()
-        data = properties['_content']
+        data = self._get_content().decode(self.encoding)
         properties.update(dict(zip(self._keys, data.split('\n'))))
         if properties['tracknumber']:
             properties['tracknumber'] = int(properties['tracknumber'])
@@ -42,6 +42,7 @@ class TestItem(TextItem):
         
     def _custom_serialize(self, properties):
         """Return a string of properties representing the test item."""
-        properties['_content'] = u'\n'.join(
-            unicode(properties.get(key, u'')) for key in self._keys)
-        return super(TestItem, self)._custom_serialize(properties)
+        return u'\n'.join(
+            unicode(properties.get(key, u'')) for key in self._keys
+        ).encode(self.encoding)
+

@@ -219,9 +219,6 @@ class TestSiteSave(MyTest):
         self.site.save(item)
         self.site.save(item2)
         
-        properties.pop('_content')
-        properties2.pop('_content')
-        
         if not('fs' in self.access_point_name and
                 'classified' in self.access_point_name or
                 'rest' in self.access_point_name):

@@ -174,11 +174,6 @@ class Item(object):
         # set them manually.
         item._loaded = True
         
-        # Some parsers may need the ``_content`` property in their
-        # ``serialize`` method.
-        if '_content' not in properties:
-            properties['_content'] = ''
-        
         for name, value in properties.items():
             item[name] = value
         
@@ -196,7 +191,7 @@ class Item(object):
         >>> ap.parser_name = 'binary'
         >>> Item.get_item_parser(ap, cork_opener, {'artist': 'muse'})
         ... # doctest: +ELLIPSIS
-        <kalamar.item.AtomItem object at 0x...>
+        <kalamar.item.BinaryItem object at 0x...>
         
         An invalid format will raise a ValueError:
         >>> ap.parser_name = 'I do not exist'
@@ -250,16 +245,6 @@ class Item(object):
         if hasattr(self._access_point, 'filename_for'):
             return self._access_point.filename_for(self)
 
-    def _content_getter(self):
-        """Getter for ``self['_content']``."""
-        return self['_content']
-
-    def _content_setter(self, value):
-        """Setter for ``self['_content']``."""
-        self['_content'] = value
-
-    content = property(_content_getter, _content_setter)
-
     def keys(self):
         """Return the name of all properties."""
         # Use a set to make keys unique
@@ -306,7 +291,7 @@ class Item(object):
         return self._raw_content
 
 
-class AtomItem(Item):
+class BinaryItem(Item):
     """An indivisible block of data.
     
     Give access to the binary data.
@@ -314,23 +299,15 @@ class AtomItem(Item):
     """
     format = 'binary'
     
-    def read(self):
-        """Alias for item.content."""
-        return self.content
-
-    def write(self, value):
-        """Alias for item.content = value."""
-        self.content = value
-    
     def _custom_parse_data(self):
         """Parse the whole item content."""
         properties = super(AtomItem, self)._custom_parse_data()
-        properties['_content'] = self._get_content()
+        properties['data'] = self._get_content()
         return properties
         
     def _custom_serialize(self, properties):
         """Return the item content."""
-        return properties['_content']
+        return properties['data']
 
 
 

@@ -22,23 +22,23 @@ This parser is based on python builtin email module.
 
 """
 
-from kalamar.parser.textitem import TextItem
+from kalamar.item import Item
 import email
 
 
 
-class MessageItem(TextItem):
+class MessageItem(Item):
     """Parse email messages using python builtin email module."""
     format = 'mail'
     
     def _custom_parse_data(self):
         """Parse email headers as properties."""
         properties = super(MessageItem, self)._custom_parse_data()
-        msg = email.message_from_string(properties['_content'])
+        msg = email.message_from_string(self._get_content())
         msg.set_charset('utf-8')
         properties['message'] = msg
         return properties
         
     def _custom_serialize(self, properties):
-        properties['_content'] = properties['message'].as_string()
-        return super(TestItem, self)._custom_serialize(properties)
+        return properties['message'].as_string()
+

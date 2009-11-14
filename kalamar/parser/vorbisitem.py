@@ -32,9 +32,9 @@ except ImportError:
 else:
     from werkzeug import MultiDict
     from tempfile import NamedTemporaryFile
-    from kalamar.item import AtomItem
+    from kalamar.item import Item
 
-    class VorbisItem(AtomItem):
+    class VorbisItem(Item):
         """Ogg/Vorbis parser.
         
         The vorbis format allows a lot of things for tagging. It is possible to
@@ -42,7 +42,7 @@ else:
         Because of that, this module cannot guarantee a set of
         properties. Despite this, here are some common tags you can use:
         - time_length : duration in seconds
-        - _content : raw ogg/vorbis data
+        - ogg_data : raw ogg/vorbis data
         - artist
         - genre
         - track
@@ -53,10 +53,11 @@ else:
         def _custom_parse_data(self):
             """Parse Ogg/Vorbis metadata as properties."""
             properties = super(VorbisItem, self)._custom_parse_data()
+            properties['ogg_data'] = self._get_content()
             
             # Create a real file descriptor, as VorbisFile does not accept a stream
             temporary_file = NamedTemporaryFile()
-            temporary_file.write(self._get_content())
+            temporary_file.write(properties['ogg_data'])
             temporary_file.seek(0)
             vorbis_tags = Open(temporary_file.name)
             
@@ -71,12 +72,14 @@ else:
         
         def _custom_serialize(self, properties):
             """Return the whole file into a bytes string."""
+            data = properties['ogg_data'] if 'ogg_data' in properties \
+                                          else self._get_content()
             temporary_file = NamedTemporaryFile()
-            temporary_file.write(self._get_content())
+            temporary_file.write(data)
             
             vorbis_tags = Open(temporary_file.name)
             for key in self.raw_parser_properties:
-                if key != '_content':
+                if key != 'ogg_data':
                     vorbis_tags[key] = [unicode(element) for element
                                         in self.raw_parser_properties.getlist(key)]
             vorbis_tags.save()

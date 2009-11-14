@@ -23,22 +23,19 @@ new access points for plain text based formats.
 
 """
 
-import sys
-from werkzeug import MultiDict
 
-from kalamar.item import AtomItem
+from kalamar.item import Item
 
-class TextItem(AtomItem):
+class TextItem(Item):
     """Access item data as a unicode string."""
     format = 'text'
     
     def _custom_parse_data(self):
         """Parse and decode data according to encoding."""
         properties = super(TextItem, self)._custom_parse_data()
-        properties['_content'] = properties['_content'].decode(self.encoding)
+        properties['text'] = self._get_content().decode(self.encoding)
         return properties
         
     def _custom_serialize(self, properties):
         """Return an encoded string representing the object."""
-        content = super(TextItem, self)._custom_serialize(properties)
-        return content.encode(self.encoding)
+        return self['text'].encode(self.encoding)
