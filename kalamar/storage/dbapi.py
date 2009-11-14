@@ -31,10 +31,10 @@ from cStringIO import StringIO
 from kalamar.storage.base import AccessPoint
 from kalamar import Item, utils
 
-_opener = lambda content: (
-    lambda: StringIO(content) 
-    if content is not None
-    else None)
+
+def _opener(content):
+    # convert to str as some databases return buffer objects
+    return lambda: str(content)
     
 class Parameter:
     def __init__(self, name, value):

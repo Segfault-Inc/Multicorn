@@ -49,5 +49,5 @@ class CorkAccessPoint:
         return []
     
 def cork_opener():
-    return open(os.path.dirname(__file__) + "/toto")
+    return open(os.path.dirname(__file__) + "/toto").read()
 

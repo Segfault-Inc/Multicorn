@@ -34,6 +34,7 @@ from random import random
 from kalamar import utils
 from kalamar.storage.base import AccessPoint
 
+
 class FileSystemStorage(AccessPoint):
     """Store items in files."""
     protocol = 'file'
@@ -129,6 +130,15 @@ class FileSystemStorage(AccessPoint):
                 if not os.path.exists(real_head):
                     os.makedirs(real_head)
         return open(self._real_filename(filename), mode)
+    
+    def get_file_content(self, filename, real_filename=False):
+        if real_filename:
+            f = open(filename, 'rb')
+        else:
+            f = self.open_file(filename)
+        data = f.read()
+        f.close()
+        return data
         
     def rename(self, source, destination):
         """Rename/move a file from ``source`` to ``detination``.
@@ -249,7 +259,7 @@ class FileSystemStorage(AccessPoint):
                                 filename = self._real_filename(path)
                                 properties[u'_filename'] = filename
                                 yield properties, functools.partial(
-                                    self.open_file, path)
+                                    self.get_file_content, path)
         
         return walk(u'', self.filename_pattern_parts, ())
             
@@ -382,6 +392,8 @@ class FileSystemStorage(AccessPoint):
             return None
 
         properties[u'_filename'] = filename
-        return self._make_item(functools.partial(open, filename, 'rb'),
-                               properties)
+        return self._make_item(
+            functools.partial(self.get_file_content, filename,
+                              real_filename=True),
+            properties)
 
