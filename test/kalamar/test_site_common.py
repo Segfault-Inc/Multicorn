@@ -162,7 +162,8 @@ class TestSiteSave(MyTest):
         if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
                                             'data', 'vorbis_sample.ogg'))
-            item._stream = vorbis_file
+            item._raw_content = vorbis_file.read()
+            vorbis_file.close()
             item._loaded = True # prevent _parse_data from overwriting
                                 # the properties we just set
             
@@ -212,8 +213,8 @@ class TestSiteSave(MyTest):
         if access_point.parser_name == 'audio_vorbis':
             vorbis_file = open(os.path.join(os.path.dirname(__file__),
                                             'data', 'vorbis_sample.ogg'))
-            item._stream = vorbis_file
-            item2._stream = vorbis_file
+            item._raw_content = item2._raw_content = vorbis_file.read()
+            vorbis_file.close()
             
         self.site.save(item)
         self.site.save(item2)

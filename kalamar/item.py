@@ -75,7 +75,7 @@ class Item(object):
         
         """
         self._opener = opener
-        self._stream = None
+        self._raw_content = None
         self._access_point = access_point
         self._loaded = False
         self.storage_modified = False
@@ -285,7 +285,6 @@ class Item(object):
 
     def _parse_data(self):
         """Call ``_custom_parse_data`` and do some stuff to the result."""
-        self._open()
         self.raw_parser_properties.update(self._custom_parse_data())
 
     def _custom_parse_data(self):
@@ -300,26 +299,13 @@ class Item(object):
         """
         return MultiDict()
 
-    def _open(self):
-        """Open the stream when called for the first time.
-        
-        >>> from _test.corks import CorkAccessPoint, cork_opener
-        >>> ap = CorkAccessPoint()
-        >>> item = Item(ap, cork_opener, {'toto': 'ToTo'})
-        
-        >>> item._stream
-        >>> item._open()
-        >>> stream = item._stream
-        >>> print stream # doctest: +ELLIPSIS
-        <open file '...kalamar/_test/toto', mode 'r' at ...>
-        >>> item._open()
-        >>> stream is item._stream
-        True
-        
+    def _get_content(self):
         """
-        if self._stream is None and self._opener is not None:
-            self._stream = self._opener()
-
+        Return the raw content as a bytestring, to be parsed
+        """
+        if self._raw_content is None:
+            self._raw_content = self._opener().read()
+        return self._raw_content
 
 
 class AtomItem(Item):
@@ -341,7 +327,7 @@ class AtomItem(Item):
     def _custom_parse_data(self):
         """Parse the whole item content."""
         properties = super(AtomItem, self)._custom_parse_data()
-        properties['_content'] = self._stream.read()
+        properties['_content'] = self._get_content()
         return properties
         
     def _custom_serialize(self, properties):

@@ -55,9 +55,8 @@ else:
             properties = super(VorbisItem, self)._custom_parse_data()
             
             # Create a real file descriptor, as VorbisFile does not accept a stream
-            self._stream.seek(0)
             temporary_file = NamedTemporaryFile()
-            temporary_file.write(self._stream.read())
+            temporary_file.write(self._get_content())
             temporary_file.seek(0)
             vorbis_tags = Open(temporary_file.name)
             
@@ -72,11 +71,8 @@ else:
         
         def _custom_serialize(self, properties):
             """Return the whole file into a bytes string."""
-            self._open()
-            self._stream.seek(0)
             temporary_file = NamedTemporaryFile()
-            data = self._stream.read()
-            temporary_file.write(data)
+            temporary_file.write(self._get_content())
             
             vorbis_tags = Open(temporary_file.name)
             for key in self.raw_parser_properties:
@@ -87,8 +83,7 @@ else:
             
             temporary_file.file.flush()
             temporary_file.seek(0)
-            self.write(temporary_file.read())
-            
-            return self.read()
+            data = temporary_file.read()
+            temporary_file.close()
+            return data
         
-    del AtomItem

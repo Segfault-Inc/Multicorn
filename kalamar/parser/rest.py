@@ -111,21 +111,15 @@ egestas.
         return fields
 
 
-    class RestMetadataMixin(object):
-        def get_content(self):
-            self._open()
-            self._stream.seek(0)
-            return self._stream.read().decode(self.encoding)
-        
-        def get_metadata(self):
-            """Parse docutils metadata and return a dict."""
-            return extract_metadata(self.get_content())
-        
-    class RestAtom(RestMetadataMixin, TextItem):
+    class RestAtom(TextItem):
         """TODO docstring
 
         """
         format = 'rest'
+        
+        def get_metadata(self):
+            """Parse docutils metadata and return a dict."""
+            return extract_metadata(self._get_content().decode(self.encoding))
         
     class MissingItem(object):
         """Missing ReST item.
@@ -149,12 +143,16 @@ egestas.
             """
             return False
         
-    class RestCapsule(RestMetadataMixin, CapsuleItem):
+    class RestCapsule(CapsuleItem):
         """TODO docstring
 
         """
         format = 'rest_capsule'
         
+        def get_metadata(self):
+            """Parse docutils metadata and return a dict."""
+            return extract_metadata(self._get_content().decode(self.encoding))
+
         def _custom_parse_data(self):
             """Parse docutils metadata as properties."""
             properties = super(RestCapsule, self)._custom_parse_data()
@@ -162,7 +160,8 @@ egestas.
             return properties
 
         def _load_subitems(self):
-            for include in extract_includes(self.get_content()):
+            content = self._get_content().decode(self.encoding)
+            for include in extract_includes(content):
                 filename = os.path.join(
                     os.path.dirname(self[u'_filename']),
                     os.path.normpath(include))
