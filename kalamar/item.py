@@ -87,9 +87,9 @@ class Item(object):
         self.raw_storage_properties = MultiDict(storage_properties)
         self.raw_parser_properties = MultiDict()
 
-        self.storage_properties = AliasedMultiDict(
+        self.storage_properties = utils.AliasedMultiDict(
             self.raw_storage_properties, self.storage_aliases)
-        self.parser_properties = AliasedMultiDict(
+        self.parser_properties = utils.AliasedMultiDict(
             self.raw_parser_properties, self.parser_aliases)
         
         self.raw_properties = CombinedMultiDict([
@@ -404,42 +404,3 @@ class CapsuleItem(Item):
 
 
 
-class AliasedMultiDict(object):
-    """MultiDict-like class using aliased keys.
-
-    AliasedMultiDict is like a MultiDict, but using a dictionary of aliases
-    available as AliasedMultiDict keys (in addition of the standard MultiDict
-    keys).
-
-    >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
-    >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
-    >>> aliasedmultidict = AliasedMultiDict(data, aliases)
-
-    >>> aliasedmultidict['key1']
-    'value1'
-    >>> aliasedmultidict['alias1']
-    'value1'
-    >>> aliasedmultidict['key3']
-    'value3'
-
-    Note that:
-    >>> issubclass(AliasedMultiDict, MultiDict)
-    False
-
-    """
-    # TODO: use the MultiDict power by coding getlist/setlist (or not?)
-    def __init__(self, data, aliases):
-        self.data = data
-        self.aliases = aliases
-
-    def __contains__(self, key):
-        return key in self.keys()
-
-    def __getitem__(self, key):
-        return self.data[self.aliases.get(key, key)]
-
-    def __setitem__(self, key, value):
-        self.data[self.aliases.get(key, key)] = value
-
-    def keys(self):
-        return self.aliases.keys() + self.data.keys()

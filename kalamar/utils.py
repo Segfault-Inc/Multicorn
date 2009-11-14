@@ -27,6 +27,7 @@ import hashlib
 import functools
 import posixpath
 import ntpath
+import werkzeug
 
 def apply_to_result(function):
     """Make a decorator that applies ``function`` to the results.
@@ -141,6 +142,47 @@ class ModificationTrackingList(list):
     sort = modifies('sort')
    
     del modifies
+
+
+class AliasedMultiDict(object):
+    """MultiDict-like class using aliased keys.
+
+    AliasedMultiDict is like a MultiDict, but using a dictionary of aliases
+    available as AliasedMultiDict keys (in addition of the standard MultiDict
+    keys).
+
+    >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+    >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+    >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+    >>> aliasedmultidict['key1']
+    'value1'
+    >>> aliasedmultidict['alias1']
+    'value1'
+    >>> aliasedmultidict['key3']
+    'value3'
+
+    Note that:
+    >>> issubclass(AliasedMultiDict, werkzeug.MultiDict)
+    False
+
+    """
+    # TODO: use the MultiDict power by coding getlist/setlist (or not?)
+    def __init__(self, data, aliases):
+        self.data = data
+        self.aliases = aliases
+
+    def __contains__(self, key):
+        return key in self.keys()
+
+    def __getitem__(self, key):
+        return self.data[self.aliases.get(key, key)]
+
+    def __setitem__(self, key, value):
+        self.data[self.aliases.get(key, key)] = value
+
+    def keys(self):
+        return self.aliases.keys() + self.data.keys()
 
 def simple_cache(function):
     """Decorator that caches function results.
