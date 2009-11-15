@@ -50,9 +50,9 @@ else:
         """
         format = 'audio_vorbis'
         
-        def _custom_parse_data(self):
+        def _parse_data(self):
             """Parse Ogg/Vorbis metadata as properties."""
-            properties = super(VorbisItem, self)._custom_parse_data()
+            properties = super(VorbisItem, self)._parse_data()
             properties['ogg_data'] = self._get_content()
             print self._get_content()
             

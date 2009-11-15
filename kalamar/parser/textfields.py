@@ -51,9 +51,9 @@ class TextFieldsItem(TextItem):
     format = 'textfields'
     _field_name = u'field'
     
-    def _custom_parse_data(self):
+    def _parse_data(self):
         """TODO docstring"""
-        properties = super(TextFieldsItem, self)._custom_parse_data()
+        properties = super(TextFieldsItem, self)._parse_data()
         data = self._get_content().decode(self.encoding)
         for i, field in enumerate(self._from_string(data)):
             properties['%s%i' % (self._field_name, i+1)] = field

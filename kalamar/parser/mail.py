@@ -31,9 +31,9 @@ class MessageItem(Item):
     """Parse email messages using python builtin email module."""
     format = 'mail'
     
-    def _custom_parse_data(self):
+    def _parse_data(self):
         """Parse email headers as properties."""
-        properties = super(MessageItem, self)._custom_parse_data()
+        properties = super(MessageItem, self)._parse_data()
         msg = email.message_from_string(self._get_content())
         msg.set_charset('utf-8')
         properties['message'] = msg

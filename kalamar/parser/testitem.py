@@ -29,9 +29,9 @@ class TestItem(Item):
     format = 'test_format'
     _keys = ('genre', 'artist', 'album', 'tracknumber', 'title')
     
-    def _custom_parse_data(self):
+    def _parse_data(self):
         """Parse known properties of the test item."""
-        properties = super(TestItem, self)._custom_parse_data()
+        properties = super(TestItem, self)._parse_data()
         data = self._get_content().decode(self.encoding)
         if data:
             properties.update(dict(zip(self._keys, data.split('\n'))))

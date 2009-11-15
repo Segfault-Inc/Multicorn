@@ -30,9 +30,9 @@ class TextItem(Item):
     """Access item data as a unicode string."""
     format = 'text'
     
-    def _custom_parse_data(self):
+    def _parse_data(self):
         """Parse and decode data according to encoding."""
-        properties = super(TextItem, self)._custom_parse_data()
+        properties = super(TextItem, self)._parse_data()
         properties['text'] = self._get_content().decode(self.encoding)
         return properties
         

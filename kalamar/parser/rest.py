@@ -153,9 +153,9 @@ egestas.
             """Parse docutils metadata and return a dict."""
             return extract_metadata(self._get_content().decode(self.encoding))
 
-        def _custom_parse_data(self):
+        def _parse_data(self):
             """Parse docutils metadata as properties."""
-            properties = super(RestCapsule, self)._custom_parse_data()
+            properties = super(RestCapsule, self)._parse_data()
             properties.update(self.get_metadata())
             return properties
 

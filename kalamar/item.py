@@ -241,11 +241,7 @@ class Item(object):
         return ''
 
     def _parse_data(self):
-        """Call ``_custom_parse_data`` and do some stuff to the result."""
-        return self._custom_parse_data()
-
-    def _custom_parse_data(self):
-        """Parse properties from data, return a dictionnary.
+        """Parse properties from data, return a dictionnary (MultiDict).
         
         This method has to be extended.
 
@@ -273,9 +269,9 @@ class BinaryItem(Item):
     """
     format = 'binary'
     
-    def _custom_parse_data(self):
+    def _parse_data(self):
         """Parse the whole item content."""
-        properties = super(AtomItem, self)._custom_parse_data()
+        properties = super(AtomItem, self)._parse_data()
         properties['data'] = self._get_content()
         return properties
         
