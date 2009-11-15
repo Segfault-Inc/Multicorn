@@ -169,16 +169,16 @@ egestas.
                 # item is None if no access point has this filename
                 yield item or MissingItem(include)
        
-        def _custom_serialize(self, properties):
+        def serialize(self):
             content = []
             write = content.append
-            title = self[u'title']
+            title = self.raw_parser_properties[u'title']
             write(u'=' * len(title))
             write(title)
             write(u'=' * len(title))
-            for key in self.keys():
+            for key, value in self.raw_parser_properties.iteritems():
                 if key != u'title':
-                    write(u':%s: %s' % (key, self[key]))
+                    write(u':%s: %s' % (key, value))
             write('')
             dirname = os.path.dirname(self.filename)
             for subitem in self.subitems:

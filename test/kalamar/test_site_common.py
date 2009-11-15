@@ -135,6 +135,26 @@ class TestSiteOpen(MyTest):
 
 class TestSiteSave(MyTest):
     
+    _vorbis_sample_data = None
+    
+    @classmethod
+    def _vorbis_sample(cls):
+        if cls._vorbis_sample_data is None:
+            vorbis_file = open(os.path.join(os.path.dirname(__file__),
+                                            'data', 'vorbis_sample.ogg'))
+            cls._vorbis_sample_data = vorbis_file.read()
+            vorbis_file.close()
+        return cls._vorbis_sample_data
+        
+    def _create_item(self, access_point, properties):
+        # Mutagen does not accept to create a VorbisFile
+        # without initial content.
+        if access_point.parser_name == 'audio_vorbis':
+            return Item.create_item(access_point, properties,
+                                    self._vorbis_sample())
+        else:
+            return Item.create_item(access_point, properties)
+                
     def test_new_complete_item(self):
         """New item saved with necessary properties must make it available.
         
@@ -155,17 +175,7 @@ class TestSiteSave(MyTest):
         else:
             properties['piste'] = '2'
                       
-        item = Item.create_item(access_point, properties)
-
-        # Mutagen does not accept to create a VorbisFile
-        # without initial content.
-        if access_point.parser_name == 'audio_vorbis':
-            vorbis_file = open(os.path.join(os.path.dirname(__file__),
-                                            'data', 'vorbis_sample.ogg'))
-            item._raw_content = vorbis_file.read()
-            vorbis_file.close()
-            item._loaded = True # prevent _parse_data from overwriting
-                                # the properties we just set
+        item = self._create_item(access_point, properties)
             
         self.site.save(item)
         
@@ -204,17 +214,9 @@ class TestSiteSave(MyTest):
         else:
             properties['piste'] = '2'
             properties2['piste'] = '3'
-                      
-        item = Item.create_item(access_point, properties)
-        item2 = Item.create_item(access_point, properties2)
         
-        # Mutagen does not accept to create a VorbisFile
-        # without initial content.
-        if access_point.parser_name == 'audio_vorbis':
-            vorbis_file = open(os.path.join(os.path.dirname(__file__),
-                                            'data', 'vorbis_sample.ogg'))
-            item._raw_content = item2._raw_content = vorbis_file.read()
-            vorbis_file.close()
+        item = self._create_item(access_point, properties)
+        item2 = self._create_item(access_point, properties2)
             
         self.site.save(item)
         self.site.save(item2)

@@ -39,7 +39,7 @@ properties they *need* to work well.
 """
 
 from copy import copy
-from werkzeug import MultiDict, CombinedMultiDict
+from werkzeug import MultiDict, CombinedMultiDict, cached_property
     
 from kalamar import parser, utils
 
@@ -75,7 +75,6 @@ class Item(object):
         self._opener = opener or str
         self._raw_content = None
         self._access_point = access_point
-        self._loaded = False
         self.storage_modified = False
         self.parser_modified = False
         
@@ -83,37 +82,34 @@ class Item(object):
         self.parser_aliases = dict(access_point.parser_aliases)
         
         self.raw_storage_properties = MultiDict(storage_properties)
-        self.raw_parser_properties = MultiDict()
 
         self.storage_properties = utils.AliasedMultiDict(
             self.raw_storage_properties, self.storage_aliases)
-        self.parser_properties = utils.AliasedMultiDict(
-            self.raw_parser_properties, self.parser_aliases)
         
-        # TODO: actually remove these if they are not needed
-#        self.raw_properties = CombinedMultiDict([
-#                self.raw_storage_properties, self.raw_parser_properties])
-#        self.properties = CombinedMultiDict([
-#                self.storage_properties, self.parser_properties])
-
         self.old_storage_properties = copy(storage_properties)
+    
+    # parser properties are lazy: only parse when needed
+    @cached_property
+    def raw_parser_properties(self):
+        return self._parse_data()
 
+    @cached_property
+    def parser_properties(self):
+        return utils.AliasedMultiDict(self.raw_parser_properties,
+                                      self.parser_aliases)
+
+
+    def _is_storage_key(self, key):
+        if key in self.storage_aliases:
+            return True
+        if key in self.parser_aliases:
+            return False
+        return key in self.storage_properties
+    
     def __getitem__(self, key):
         """Return the item ``key`` property."""
-        # Lazy load: load item only when needed
-        if key in self.storage_aliases:
-            is_storage = True
-        elif key in self.parser_aliases:
-            is_storage = False
-        else:
-            is_storage = key in self.storage_properties
-
-        if not (is_storage or self._loaded):
-            self._parse_data()
-            self._loaded = True            
-
         try:
-            if is_storage:
+            if self._is_storage_key(key):
                 return self.storage_properties[key]
             else:
                 return self.parser_properties[key]
@@ -122,14 +118,7 @@ class Item(object):
     
     def __setitem__(self, key, value):
         """Set the item ``key`` property to ``value``."""
-        if key in self.storage_aliases:
-            is_storage = True
-        elif key in self.parser_aliases:
-            is_storage = False
-        else:
-            is_storage = key in self.storage_properties
-            
-        if is_storage:
+        if self._is_storage_key(key):
             self.storage_properties[key] = value
             self.storage_modified = True
         else:
@@ -137,7 +126,7 @@ class Item(object):
             self.parser_modified = True
 
     @staticmethod
-    def create_item(access_point, properties):
+    def create_item(access_point, properties=None, initial_content=None):
         """Return a new item instance.
         
         Parameters:
@@ -158,24 +147,20 @@ class Item(object):
         >>> assert isinstance(item, Item)
         
         """
-        parser.load()
-        
         storage_properties = dict((name, None) for name
                                   in access_point.get_storage_properties())
         
         item = Item.get_item_parser(access_point,
-                                    storage_properties = storage_properties)
+                                    storage_properties=storage_properties,
+                                    opener=lambda: initial_content)
         
         # ItemProperties copies storage_properties in old_storage_properties
         # by default, but this is a nonsens in the case of a new item.
         item.old_storage_properties = MultiDict()
                 
-        # Needed because there is no binary data to parse properties from. We
-        # set them manually.
-        item._loaded = True
-        
-        for name, value in properties.items():
-            item[name] = value
+        if properties:
+            for name, value in properties.items():
+                item[name] = value
         
         return item
 
@@ -253,22 +238,11 @@ class Item(object):
 
     def serialize(self):
         """Return the item serialized into a string."""
-        return self._custom_serialize(self.raw_parser_properties)
-    
-    def _custom_serialize(self, properties):
-        """Serialize item from its properties, return a data string.
-
-        This method has to be overriden.
-
-        This method must not worry about aliases, must not modify
-        ``properties``, and must just return a string.
-
-        """
         return ''
 
     def _parse_data(self):
         """Call ``_custom_parse_data`` and do some stuff to the result."""
-        self.raw_parser_properties.update(self._custom_parse_data())
+        return self._custom_parse_data()
 
     def _custom_parse_data(self):
         """Parse properties from data, return a dictionnary.
@@ -287,7 +261,7 @@ class Item(object):
         Return the raw content as a bytestring, to be parsed
         """
         if self._raw_content is None:
-            self._raw_content = self._opener()
+            self._raw_content = self._opener() or ''
         return self._raw_content
 
 
@@ -305,9 +279,9 @@ class BinaryItem(Item):
         properties['data'] = self._get_content()
         return properties
         
-    def _custom_serialize(self, properties):
+    def serialize(self):
         """Return the item content."""
-        return properties['data']
+        return self.raw_parser_properties['data']
 
 
 

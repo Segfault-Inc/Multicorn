@@ -33,16 +33,18 @@ class TestItem(Item):
         """Parse known properties of the test item."""
         properties = super(TestItem, self)._custom_parse_data()
         data = self._get_content().decode(self.encoding)
-        properties.update(dict(zip(self._keys, data.split('\n'))))
-        if properties['tracknumber']:
-            properties['tracknumber'] = int(properties['tracknumber'])
-        else:
-            properties['tracknumber'] = None
+        if data:
+            properties.update(dict(zip(self._keys, data.split('\n'))))
+            if properties['tracknumber']:
+                properties['tracknumber'] = int(properties['tracknumber'])
+            else:
+                properties['tracknumber'] = None
         return properties
         
-    def _custom_serialize(self, properties):
+    def serialize(self):
         """Return a string of properties representing the test item."""
         return u'\n'.join(
-            unicode(properties.get(key, u'')) for key in self._keys
+            unicode(self.raw_parser_properties.get(key, u''))
+            for key in self._keys
         ).encode(self.encoding)
 

@@ -54,6 +54,7 @@ else:
             """Parse Ogg/Vorbis metadata as properties."""
             properties = super(VorbisItem, self)._custom_parse_data()
             properties['ogg_data'] = self._get_content()
+            print self._get_content()
             
             # Create a real file descriptor, as VorbisFile does not accept a stream
             temporary_file = NamedTemporaryFile()
@@ -66,22 +67,22 @@ else:
                 
             temporary_file.close()
             
-            properties['tracknumber'] = int(properties['tracknumber'])
+            if 'tracknumber' in properties:
+                properties['tracknumber'] = int(properties['tracknumber'])
             
             return properties
         
-        def _custom_serialize(self, properties):
+        def serialize(self):
             """Return the whole file into a bytes string."""
-            data = properties['ogg_data'] if 'ogg_data' in properties \
-                                          else self._get_content()
+            data = self.raw_parser_properties.get('ogg_data') \
+                   or self._get_content()
             temporary_file = NamedTemporaryFile()
             temporary_file.write(data)
             
             vorbis_tags = Open(temporary_file.name)
-            for key in self.raw_parser_properties:
+            for key, values in self.raw_parser_properties.iterlists():
                 if key != 'ogg_data':
-                    vorbis_tags[key] = [unicode(element) for element
-                                        in self.raw_parser_properties.getlist(key)]
+                    vorbis_tags[key] = [unicode(value) for value in values]
             vorbis_tags.save()
             
             temporary_file.file.flush()

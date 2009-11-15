@@ -59,17 +59,17 @@ class TextFieldsItem(TextItem):
             properties['%s%i' % (self._field_name, i+1)] = field
         return properties
         
-    def _custom_serialize(self, properties):
+    def serialize(self):
         """TODO docstring"""
         # We need to 
         field_numbers = []
-        for key in properties:
+        for key in self.raw_parser_properties:
             if key[:len(self._field_name)] == self._field_name and \
                key[len(self._field_name):].isdigit():
                 field_numbers.append(int(key[len(self._field_name):]))
         field_numbers.sort()
         field_values = [
-            properties[self._field_name + str(i)]
+            self.raw_parser_properties[self._field_name + str(i)]
             for i in field_numbers]
         
         return self._to_string(field_values).encode(self.encoding)

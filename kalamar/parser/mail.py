@@ -39,6 +39,6 @@ class MessageItem(Item):
         properties['message'] = msg
         return properties
         
-    def _custom_serialize(self, properties):
-        return properties['message'].as_string()
+    def serialize(self):
+        return self.raw_parser_properties['message'].as_string()
 

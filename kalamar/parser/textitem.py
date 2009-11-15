@@ -36,6 +36,6 @@ class TextItem(Item):
         properties['text'] = self._get_content().decode(self.encoding)
         return properties
         
-    def _custom_serialize(self, properties):
+    def serialize(self):
         """Return an encoded string representing the object."""
-        return self['text'].encode(self.encoding)
+        return self.raw_parser_properties['text'].encode(self.encoding)
