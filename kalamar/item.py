@@ -173,7 +173,7 @@ class Item(object):
         Your kalamar distribution should have, at least, a parser for the
         ``binary`` format.
         
-        >>> from _test.corks import CorkAccessPoint, cork_opener
+        >>> from _test.corks import CorkAccessPoint
         >>> ap = CorkAccessPoint()
         >>> ap.parser_name = 'binary'
         >>> Item.find_parser(ap)
