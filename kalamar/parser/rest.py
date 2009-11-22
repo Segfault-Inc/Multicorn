@@ -112,14 +112,19 @@ egestas.
 
 
     class RestAtom(TextItem):
-        """TODO docstring
-
+        """This parser simply exposes ReST metadata as properties.
+        
+        These properties are read-only: your modifications will *not* be saved
+        if you change them. You need to change
         """
         format = 'rest'
         
-        def get_metadata(self):
-            """Parse docutils metadata and return a dict."""
-            return extract_metadata(self._get_content().decode(self.encoding))
+        def _parse_data(self):
+            properties = super(TextItem, self)._parse_data()
+            # assume extract_metadata never return a 'text' property
+            # or the ReST text will be overwritten
+            properties.update(extract_metadata(properties['text']))
+            return properties
         
     class MissingItem(object):
         """Missing ReST item.
@@ -127,6 +132,13 @@ egestas.
         Placeholder in RestCapsule subitems used when an ``include`` directive
         has a filename that matches no item in the current site.
 
+        Instances evaluate to False in a boolean context so that you can
+        easily test whether an Item is “missing”.
+        
+        >>> item = MissingItem('foo')
+        >>> if item: print 'OK'
+        ... else: print 'KO'
+        KO
         """
         def __init__(self, filename):
             self.filename = filename
@@ -135,28 +147,27 @@ egestas.
             return '<%s %r>' % (self.__class__.__name__, self.filename)
         
         def __nonzero__(self):
-            """
-            >>> if MissingItem('foo'): print 1
-            ... else: print 0
-            0
-
-            """
             return False
         
     class RestCapsule(CapsuleItem):
-        """TODO docstring
+        """A ReStructuredText capsule.
+        
+        The ReST document is only made of metadata and :include: directives.
+        Any other content (such as text) is discarded and will be lost when
+        the capsule is saved.
+        
+        Metadata are exposed as properties, and :include:’s as subitems.
+        The filenames are resolved to the actual kalamar items, or a MissingItem
+        if no item matched the filename.
 
         """
         format = 'rest_capsule'
         
-        def get_metadata(self):
-            """Parse docutils metadata and return a dict."""
-            return extract_metadata(self._get_content().decode(self.encoding))
-
         def _parse_data(self):
             """Parse docutils metadata as properties."""
             properties = super(RestCapsule, self)._parse_data()
-            properties.update(self.get_metadata())
+            content = self._get_content().decode(self.encoding)
+            properties.update(extract_metadata(content))
             return properties
 
         def _load_subitems(self):
