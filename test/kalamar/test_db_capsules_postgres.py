@@ -16,7 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-MySQL tests.
+PostgreSQL tests for db_capsules.
 
 """
 
@@ -25,29 +25,30 @@ import sys
 import warnings
 from unittest import TestCase
 
-from _database import TestSite, site_tests
+from _database import TestSite, capsule_tests
 from test.kalamar import Site
 
 try:
-    import MySQLdb
+    import pg8000
 except ImportError:
-    warnings.warn('MySQL access not tested (could not import MySQLdb)',
+    warnings.warn('PostgresSQL access not tested (could not import pg8000)',
                   ImportWarning)
 else:
     site = Site(os.path.join(os.path.dirname(__file__),
-                             'data', 'kalamar_mysql.conf'))
+                             'data', 'kalamar_db_capsules_postgres.conf'))
 
     class TestSite(TestSite): site = site
     
     try:
         site.access_points.values()[0].get_connection()
     except Exception, e:
-        warnings.warn('MySQL access not tested (%s)' % unicode(e))
+        warnings.warn('PostgresSQL access not tested (%s)' % unicode(e))
     else:
         # Magic tricks
         for access_point in site.access_points:
-            for test in site_tests:
-                cls = type('%s_%s' % (test.__name__, access_point),
-                           (TestSite, test, TestCase),
-                           {'access_point_name': access_point})
-                setattr(sys.modules[__name__], cls.__name__, cls)
+            if access_point != 'textes':
+                for test in capsule_tests:
+                    cls = type('%s_%s' % (test.__name__, access_point),
+                               (TestSite, test, TestCase),
+                               {'access_point_name': access_point})
+                    setattr(sys.modules[__name__], cls.__name__, cls)

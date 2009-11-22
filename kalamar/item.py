@@ -161,7 +161,7 @@ class Item(object):
         if properties:
             for name, value in properties.items():
                 item[name] = value
-        
+
         return item
 
     @staticmethod

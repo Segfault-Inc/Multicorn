@@ -97,6 +97,8 @@ class DBAPIStorage(AccessPoint):
         finally:
             cursor.close()
 
+        item.serialize()
+
     def remove(self, item):
         """Remove the item from the database."""
         connection, table = self.get_connection()
