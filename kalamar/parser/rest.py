@@ -185,7 +185,3 @@ egestas.
                 write(u'.. include:: ' + utils.relpath(
                     subitem[u'_filename'], dirname))
             return u'\n'.join(content).encode(self.encoding)
-            
-            
-
-

@@ -98,7 +98,6 @@ class Item(object):
         return utils.AliasedMultiDict(self.raw_parser_properties,
                                       self.parser_aliases)
 
-
     def _is_storage_key(self, key):
         if key in self.storage_aliases:
             return True
@@ -155,7 +154,7 @@ class Item(object):
                                     opener=lambda: initial_content)
         
         # ItemProperties copies storage_properties in old_storage_properties
-        # by default, but this is a nonsens in the case of a new item.
+        # by default, but this is a nonsense in the case of a new item.
         item.old_storage_properties = MultiDict()
                 
         if properties:
