@@ -25,7 +25,7 @@ import sys
 import warnings
 from unittest import TestCase
 
-from _database import TestSite, tests
+from _database import TestSite, site_tests
 from test.kalamar import Site
 
 try:
@@ -45,7 +45,7 @@ else:
         warnings.warn('PostgresSQL access not tested (%s)' % unicode(e))
     else:
         for access_point in site.access_points:
-            for test in tests:
+            for test in site_tests:
                 cls = type('%s_%s' % (test.__name__, access_point),
                            (TestSite, test, TestCase),
                            {'access_point_name': access_point})

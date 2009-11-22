@@ -84,8 +84,9 @@ class AccessPoint(object):
             for part
             in config.get('parser_aliases', '').strip().split('/')
             if part]
-        self.property_names = [name for name, alias
-                               in self.storage_aliases + self.parser_aliases]
+
+        self.property_names = [name for name, alias in
+                               self.storage_aliases + self.parser_aliases]
         self.url = config['url']
         self.basedir = config.get('basedir', '')
             

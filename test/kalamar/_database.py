@@ -44,51 +44,41 @@ class TestSite(object):
         finally:
             cursor.close()
 
-class TestSiteDBCapsule(MyTest):
-    database = None
-
-    def test_consistency(self):
-        # all capsules
-        for bestof in self.site.search('mysql_text_db_capsules'):
-            for track in bestof.subitems:
-                if track:
-                    # check that this tracks belongs to this album
-                    for prop in ('genre', 'artist', 'album'):
-                        self.assertEquals(album[prop],
-                                          track[prop])
-                else:
-                    self.assertEquals(track.filename, 'MISSING.rst')
-                    self.assertEquals(repr(track),
-                                      "<MissingItem u'MISSING.rst'>")
-    
+class TestDBCapsule(MyTest):
     def test_bestof_length(self):
         bestof_length = {}
-        for bestof in self.site.search('rest_capsules'):
+        for bestof in self.site.search(self.access_point_name):
             bestof_length[bestof['title']] = sum(1
                 for track in bestof.subitems if track)
-        self.assertEquals(album_length, {u'Great BestOf': 3,
-                                         u'Best of the Lord': 2})
+        self.assertEquals(bestof_length, {u'Great BestOf': 3,
+                                          u'Best of the Lord': 2})
 
     def test_create(self):
         """
         create a new capsule from stratch, save it, load it back
         and check we get it as expected
         """
-        compilation = self.site.create_item('rest_capsules',
-                                            dict(album='Compilation'))
+        compilation = self.site.create_item(self.access_point_name,
+                                            {'title': 'Compilation'})
+
+        # TODO: fix this, saving may be useless
+        self.site.save(compilation)
+        compilation = self.site.open(self.access_point_name, 'title="Compilation"')
         track_titles = set()
-        for bestof in self.site.search('rest_capsules'):
+        for bestof in self.site.search(self.access_point_name):
             for track in bestof.subitems:
                 if track:
                     compilation.subitems.append(track)
                     track_titles.add(track['title'])
         self.site.save(compilation)
 
-        compilation2 = self.site.open('rest_capsules', '"Compilation"')
+        compilation2 = self.site.open(self.access_point_name, 'title="Compilation"')
         self.assertEquals(track_titles, set(track['title']
             for track in compilation2.subitems))
             
 
 
-tests = (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteDBCapsule,
-         TestSiteRemove, TestSiteGetDescription, TestSiteCreateItem)
+site_tests = (TestSiteSearch, TestSiteOpen, TestSiteSave,
+              TestSiteRemove, TestSiteGetDescription, TestSiteCreateItem)
+
+capsule_tests = (TestDBCapsule, )
