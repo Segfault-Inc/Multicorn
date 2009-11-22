@@ -167,7 +167,8 @@ class AccessPoint(object):
                 yield item
     
     def _make_item(self, opener, properties):
-        return Item.get_item_parser(self, opener, properties)
+        parser = Item.find_parser(self)
+        return parser(self, opener, properties)
     
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).

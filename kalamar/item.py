@@ -136,6 +136,7 @@ class Item(object):
         - ``properties``: dictionnary or MultiDict of the item properties.
           These properties must be coherent with what is defined for the
           access point.
+        - ``initial_content``: some initial content for parsers needing it.
         
         Fixture
         >>> from _test.corks import CorkAccessPoint
@@ -151,9 +152,10 @@ class Item(object):
         storage_properties = dict((name, None) for name
                                   in access_point.get_storage_properties())
         
-        item = Item.get_item_parser(access_point,
-                                    storage_properties=storage_properties,
-                                    opener=lambda: initial_content)
+        parser = Item.find_parser(access_point)
+        item = parser(access_point,
+                      storage_properties=storage_properties,
+                      opener=lambda: initial_content)
         
         # old_storage_properties is meaningless for a new item.
         item.old_storage_properties = MultiDict()
@@ -165,8 +167,8 @@ class Item(object):
         return item
 
     @staticmethod
-    def get_item_parser(access_point, opener=None, storage_properties={}):
-        """Return an appropriate parser instance for the given format.
+    def find_parser(access_point):
+        """Return the parser class set for the given access point in the configuration.
         
         Your kalamar distribution should have, at least, a parser for the
         ``binary`` format.
@@ -174,13 +176,12 @@ class Item(object):
         >>> from _test.corks import CorkAccessPoint, cork_opener
         >>> ap = CorkAccessPoint()
         >>> ap.parser_name = 'binary'
-        >>> Item.get_item_parser(ap, cork_opener, {'artist': 'muse'})
-        ... # doctest: +ELLIPSIS
-        <kalamar.item.BinaryItem object at 0x...>
+        >>> Item.find_parser(ap)
+        <class 'kalamar.item.BinaryItem'>
         
         An invalid format will raise a ValueError:
         >>> ap.parser_name = 'I do not exist'
-        >>> Item.get_item_parser(ap, cork_opener)
+        >>> Item.find_parser(ap)
         Traceback (most recent call last):
         ...
         ParserNotAvailable: Unknown parser: I do not exist
@@ -189,11 +190,11 @@ class Item(object):
         parser.load()
         
         if access_point.parser_name is None:
-            return Item(access_point, None, storage_properties)
+            return Item
         
         for subclass in utils.recursive_subclasses(Item):
             if getattr(subclass, 'format', None) == access_point.parser_name:
-                return subclass(access_point, opener, storage_properties)
+                return subclass
         
         raise utils.ParserNotAvailable('Unknown parser: ' +
                                        access_point.parser_name)
