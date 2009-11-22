@@ -24,6 +24,28 @@ CREATE TABLE textes (
     data bytea);
 ALTER TABLE textes ADD CONSTRAINT textes_pkey PRIMARY KEY (id);
 
+CREATE SEQUENCE seq_capsules_bak;
+CREATE TABLE capsules_bak (
+    id smallint DEFAULT nextval('seq_capsules_bak') NOT NULL,
+    title character varying(50));
+ALTER TABLE capsules ADD CONSTRAINT capsules_bak_pkey PRIMARY KEY (id);
+
+CREATE SEQUENCE seq_capsules START 100;
+CREATE TABLE capsules (
+    id smallint DEFAULT nextval('seq_capsules') NOT NULL,
+    title character varying(50));
+ALTER TABLE capsules ADD CONSTRAINT capsules_pkey PRIMARY KEY (id);
+
+CREATE TABLE capsules_textes_bak (
+    capsules_id smallint NOT NULL,
+    textes_id smallint NOT NULL);
+ALTER TABLE capsules_textes ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (capsules_id, textes_id);
+
+CREATE TABLE capsules_textes (
+    capsules_id smallint NOT NULL,
+    textes_id smallint NOT NULL);
+ALTER TABLE capsules_textes ADD CONSTRAINT capsules_textes_pkey PRIMARY KEY (capsules_id, textes_id);
+
 INSERT INTO textes_bak VALUES(1,'jazz','Birelli Lagrène','manouche swing','swing it !',1,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30310A7377696E6720697420210A','hex'));
 INSERT INTO textes_bak VALUES(2,'jazz','Birelli Lagrène','manouche swing','a remark you made',2,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30320A612072656D61726B20796F75206D6164650A','hex'));
 INSERT INTO textes_bak VALUES(3,'jazz','Birelli Lagrène','manouche swing','tralalaitou',3,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30330A7472616C616C6169746F750A','hex'));
@@ -44,5 +66,14 @@ INSERT INTO textes_bak VALUES(17,'rock','Jesus''harlem','amen','toto was a chris
 INSERT INTO textes_bak VALUES(18,'rock','Jesus''harlem','amen','cross',3,decode('726F636B0A4A65737573276861726C656D0A616D656E0A30330A63726F73730A','hex'));
 INSERT INTO textes_bak VALUES(19,'rock','Water please','S.O.B','may the pënguin be with you',1,decode('726F636B0A576174657220706C656173650A532E4F2E420A30310A6D6179207468652070C3AB6E6775696E206265207769746820796F750A','hex'));
 INSERT INTO textes_bak VALUES(20,'rock','Water please','S.O.B','wazaaaaa !!',2,decode('726F636B0A576174657220706C656173650A532E4F2E420A30320A77617A61616161612021210A','hex'));
+
+INSERT INTO capsules_bak VALUES(1, 'Great BestOf');
+INSERT INTO capsules_bak VALUES(2, 'Best of the Lord');
+
+INSERT INTO capsules_textes_bak VALUES(1, 2);
+INSERT INTO capsules_textes_bak VALUES(1, 3);
+INSERT INTO capsules_textes_bak VALUES(1, 4);
+INSERT INTO capsules_textes_bak VALUES(2, 3);
+INSERT INTO capsules_textes_bak VALUES(2, 19);
 
 COMMIT;
