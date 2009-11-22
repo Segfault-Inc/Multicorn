@@ -36,6 +36,10 @@ class TestSite(object):
             cursor.execute('INSERT INTO textes SELECT * FROM textes_bak;')
             cursor.execute('DELETE FROM morceaux;')
             cursor.execute('INSERT INTO morceaux SELECT * FROM morceaux_bak;')
+            cursor.execute('DELETE FROM capsules;')
+            cursor.execute('INSERT INTO capsules SELECT * FROM capsules_bak;')
+            cursor.execute('DELETE FROM capsules_textes;')
+            cursor.execute('INSERT INTO capsules_textes SELECT * FROM capsules_textes_bak;')
             connection.commit()
         finally:
             cursor.close()
@@ -86,5 +90,5 @@ class TestSiteDBCapsule(MyTest):
             
 
 
-tests = (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteDBCapsule
+tests = (TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteDBCapsule,
          TestSiteRemove, TestSiteGetDescription, TestSiteCreateItem)

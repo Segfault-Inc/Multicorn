@@ -28,7 +28,7 @@ CREATE SEQUENCE seq_capsules_bak;
 CREATE TABLE capsules_bak (
     id smallint DEFAULT nextval('seq_capsules_bak') NOT NULL,
     title character varying(50));
-ALTER TABLE capsules ADD CONSTRAINT capsules_bak_pkey PRIMARY KEY (id);
+ALTER TABLE capsules_bak ADD CONSTRAINT capsules_bak_pkey PRIMARY KEY (id);
 
 CREATE SEQUENCE seq_capsules START 100;
 CREATE TABLE capsules (
@@ -39,7 +39,7 @@ ALTER TABLE capsules ADD CONSTRAINT capsules_pkey PRIMARY KEY (id);
 CREATE TABLE capsules_textes_bak (
     capsules_id smallint NOT NULL,
     textes_id smallint NOT NULL);
-ALTER TABLE capsules_textes ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (capsules_id, textes_id);
+ALTER TABLE capsules_textes_bak ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (capsules_id, textes_id);
 
 CREATE TABLE capsules_textes (
     capsules_id smallint NOT NULL,

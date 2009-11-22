@@ -25,6 +25,7 @@ TODO: documentation.
 """
 
 from kalamar.storage import base
+from kalamar.item import CapsuleItem
 
 class DBCapsule(CapsuleItem):
     """TODO docstring
