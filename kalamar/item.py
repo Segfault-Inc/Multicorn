@@ -152,7 +152,7 @@ class Item(object):
         storage_properties = dict((name, None) for name
                                   in access_point.get_storage_properties())
         
-        parser = Item.find_parser(access_point)
+        parser = Item._find_parser(access_point)
         item = parser(access_point,
                       storage_properties=storage_properties,
                       opener=lambda: initial_content)
@@ -167,7 +167,7 @@ class Item(object):
         return item
 
     @staticmethod
-    def find_parser(access_point):
+    def _find_parser(access_point):
         """Return the parser class set for the given access point in the configuration.
         
         Your kalamar distribution should have, at least, a parser for the
@@ -176,12 +176,12 @@ class Item(object):
         >>> from _test.corks import CorkAccessPoint
         >>> ap = CorkAccessPoint()
         >>> ap.parser_name = 'binary'
-        >>> Item.find_parser(ap)
+        >>> Item._find_parser(ap)
         <class 'kalamar.item.BinaryItem'>
         
         An invalid format will raise a ValueError:
         >>> ap.parser_name = 'I do not exist'
-        >>> Item.find_parser(ap)
+        >>> Item._find_parser(ap)
         Traceback (most recent call last):
         ...
         ParserNotAvailable: Unknown parser: I do not exist

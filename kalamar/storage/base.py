@@ -168,7 +168,7 @@ class AccessPoint(object):
                 yield item
     
     def _make_item(self, opener, properties):
-        parser = Item.find_parser(self)
+        parser = Item._find_parser(self)
         return parser(self, opener, properties)
     
     def get_storage_properties(self):
