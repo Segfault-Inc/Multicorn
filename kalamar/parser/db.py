@@ -48,6 +48,7 @@ class DBCapsule(CapsuleItem):
         
         This function also creates a private access point for the linking
         table.
+
         """
         # TODO: capsule table name and capsule ap name should be different
         # TODO: linking table name/url should be configurable

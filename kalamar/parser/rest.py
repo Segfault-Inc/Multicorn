@@ -18,7 +18,7 @@
 """
 ReStructuredText.
 
-Metadata extraction using docutils is kindda slow, so the results of
+Metadata extraction using docutils is kinda slow, so the results of
 ``extract_metadata`` are cached.
 
 """
@@ -44,7 +44,7 @@ else:
 A test document
 ===============
 :date: 2009-08-04
-:abstract: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+:abstract: Lorem ipsum dolor sit amet, consectetur adipiscing.
            Suspendisse fringilla accumsan sem eget ullamcorper.
            Aliquam erat volutpat.
 
@@ -61,7 +61,7 @@ egestas.
 """
     
     def extract_includes(text):
-        r"""Return a list of included filenames in the given ReST string.
+        """Return a list of included filenames in the given ReST string.
         
         >>> list(extract_includes(_test_document))
         [u'nonexistent.rst', u'foo/bar.rst', u'name with whitespaces.rst']
@@ -75,16 +75,16 @@ egestas.
         
     @utils.simple_cache
     def extract_metadata(text):
-        r"""Return a dict of metadata for the given ReST string.
+        """Return a dict of metadata for the given ReST string.
         
         Search for a docutils.nodes.title and a docutils.nodes.field_list
         element in the docutils document tree.
         
         >>> sorted(extract_metadata(_test_document).items())
         ... # doctest: +NORMALIZE_WHITESPACE
-        [(u'abstract', u'Lorem ipsum dolor sit amet, consectetur 
-                         adipiscing elit.\nSuspendisse fringilla accumsan sem
-                         eget ullamcorper.\nAliquam erat volutpat.'),
+        [(u'abstract', u'Lorem ipsum dolor sit amet, consectetur adipiscing.
+                         Suspendisse fringilla accumsan sem eget ullamcorper.
+                         Aliquam erat volutpat.'),
          (u'date', u'2009-08-04'),
          (u'title', u'A test document')]
 
@@ -92,13 +92,12 @@ egestas.
         tree = docutils.core.publish_doctree(text, settings_overrides={
             'file_insertion_enabled': False, # do not follow includes
             'report_level': 3, # do not warn that they weren’t followed
-            'docinfo_xform': False, # do not interpret bibliographic fields
-            })
+            'docinfo_xform': False}) # do not interpret bibliographic fields
 
         title = None
         fields = {}
         for element in tree:
-            # Search for a title and a field_list.
+            # Search for a title and a field_list
             # Break when we found them both
             if isinstance(element, docutils.nodes.title):
                 title = unicode(element[0])
@@ -111,11 +110,13 @@ egestas.
         return fields
 
 
+
     class RestAtom(TextItem):
         """This parser simply exposes ReST metadata as properties.
         
         These properties are read-only: your modifications will *not* be saved
-        if you change them. You need to change
+        if you change them.
+
         """
         format = 'rest'
         
@@ -126,6 +127,8 @@ egestas.
             properties.update(extract_metadata(properties['text']))
             return properties
         
+
+
     class MissingItem(object):
         """Missing ReST item.
 
@@ -139,6 +142,7 @@ egestas.
         >>> if item: print 'OK'
         ... else: print 'KO'
         KO
+
         """
         def __init__(self, filename):
             self.filename = filename
@@ -149,6 +153,8 @@ egestas.
         def __nonzero__(self):
             return False
         
+
+
     class RestCapsule(CapsuleItem):
         """A ReStructuredText capsule.
         
