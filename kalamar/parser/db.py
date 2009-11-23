@@ -16,11 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-DataBase.
-
-This parser can store capsules in databases without additional access points.
-
-TODO: documentation.
+Parsers for databases.
 
 """
 
@@ -28,61 +24,78 @@ from kalamar.storage import base
 from kalamar.item import CapsuleItem
 
 class DBCapsule(CapsuleItem):
-    """TODO docstring
+    """A capsule format for items stored in databases.
+    
+    This parser can store capsules in databases without additional public
+    access points.
+    
+    A table is needed in the same database as the capsule (but not necessarily
+    in the same database as the subitems). This table is called the linking
+    table, as it links the capsule access point and the item access point.
     
     """
     # TODO: make this capsule ordered
     format = 'db_capsule'
+
+    def __init__(self, access_point, opener=None, storage_properties={}):
+        """DBCapsule instance initialisation."""
+        super(DBCapsule, self).__init__(
+            access_point, opener, storage_properties)
+        self._link_ap = None
     
     def _load_subitems(self):
+        """Load and return capsule subitems.
+        
+        This function also creates a private access point for the linking
+        table.
+        """
+        # TODO: capsule table name and capsule ap name should be different
+        # TODO: linking table name/url should be configurable
+        # TODO: keys in linking table should be configurable
         capsule_url = self._access_point.config['url']
-        capsule_name = capsule_url.split('?')[-1]
-        foreign = self._access_point.config['foreign']
-        ap_name = '_%s_%s' % (capsule_name, foreign)
-        config = {
-            # TODO: 'capsulename_foreign' should be in config
-            'name': ap_name,
-            # TODO: 'capsuleurl_foreign' should be in config
-            'url': '%s_%s' % (capsule_url, foreign)}
-        ap = base.AccessPoint.from_url(**config)
-        self._access_point.site.access_points[ap_name] = ap
+        capsule_table = capsule_url.split('?')[-1]
+        capsule_name = capsule_table
+        foreign_name = self._access_point.config['foreign']
+        link_ap_name = '_%s_%s' % (capsule_name, foreign_name)
 
-        keys = ap.get_storage_properties()
-        capsule_keys = [key for key in keys if key.startswith(capsule_name)]
-        foreign_keys = [key for key in keys if key.startswith(foreign)]
-        request = '/'.join(
-            ['%s=%s' % (key, self[key.split('_', 1)[1]])
-             for key in capsule_keys])
-        items = self._access_point.site.search(ap_name, request)
+        # Create an access point if not already done
+        if not self._link_ap:
+            config = {
+                'name': link_ap_name,
+                'url': '%s_%s' % (capsule_url, foreign_name)}
+            self._link_ap = base.AccessPoint.from_url(**config)
+            self._access_point.site.access_points[link_ap_name] = self._link_ap
+            
+            keys = self._link_ap.get_storage_properties()
+            self.capsule_keys = [
+                key for key in keys if key.startswith(capsule_name)]
+            self.foreign_keys = [
+                key for key in keys if key.startswith(foreign_name)]
 
-        foreign_requests = ['/'.join(
-                ['%s=%s' % (key.split('_', 1)[1], item[key])
-                 for key in foreign_keys]) for item in items]
+        # Search items in link table matching self keys
+        request = '/'.join([
+                '%s=%s' % (key, self[key.split('_', 1)[1]])
+                for key in self.capsule_keys])
+        items = self._access_point.site.search(link_ap_name, request)
 
-        return [self._access_point.site.open(foreign, request)
-                for request in foreign_requests]
-                
+        # Return items in foreign table matching link item keys
+        for item in items:
+            request = '/'.join([
+                    '%s=%s' % (key.split('_', 1)[1], item[key])
+                    for key in self.foreign_keys])
+            yield self._access_point.site.open(foreign_name, request)
+
     def serialize(self):
-        capsule_url = self._access_point.config['url']
-        capsule_name = capsule_url.split('?')[-1]
-        foreign = self._access_point.config['foreign']
-        ap_name = '_%s_%s' % (capsule_name, foreign)
-
-        config = {
-            # TODO: 'capsulename_foreign' should be in config
-            'name': ap_name,
-            # TODO: 'capsuleurl_foreign' should be in config
-            'url': '%s_%s' % (capsule_url, foreign)}
-        ap = base.AccessPoint.from_url(**config)
-        keys = ap.get_storage_properties()
-        capsule_keys = [key for key in keys if key.startswith(capsule_name)]
-        foreign_keys = [key for key in keys if key.startswith(foreign)]
-
+        """Save all subitems in the linking table."""
         for subitem in self.subitems:
             properties = {}
-            for key in capsule_keys:
+
+            for key in self.capsule_keys:
                 properties[key] = self[key.split('_', 1)[1]]
-            for key in foreign_keys:
+            
+            for key in self.foreign_keys:
                 properties[key] = subitem[key.split('_', 1)[1]]
-            item = self._access_point.site.create_item(ap_name, properties)
+
+            item = self._access_point.site.create_item(
+                self._link_ap.config['name'], properties)
             self._access_point.site.save(item)
