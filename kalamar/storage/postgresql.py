@@ -81,7 +81,7 @@ else:
             WHERE c.oid = idx.indrelid
               AND idx.indexrelid = c2.oid
               AND attr.attrelid = c.oid
-              AND attr.attnum = idx.indkey[0]
+              AND attr.attnum = ANY(idx.indkey)
               AND c.relname = %s ;""", [table])
 
             return [
