@@ -333,6 +333,7 @@ class CapsuleItem(Item):
     parser_modified = property(_get_parser_modified, _set_parser_modified)
 
     def _load_subitems(self):
+        """Load and return capsule subitems."""
         raise NotImplementedError('Abstract class')
 
 
