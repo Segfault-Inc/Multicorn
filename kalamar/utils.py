@@ -174,7 +174,7 @@ class AliasedMultiDict(object):
 
     @werkzeug.cached_property
     def reversed_aliases(self):
-        return dict((v,k) for k,v in self.aliases.iteritem())
+        return dict((v,k) for k,v in self.aliases.iteritems())
     
     # Sized
     def __len__(self):
@@ -216,7 +216,7 @@ class AliasedMultiDict(object):
 
     def keys(self):
         # copied from Python 2.6.4’s _abcoll module
-        return list(self)
+        return list(iter(self))
 
     def items(self):
         return list(self.iteritems())
