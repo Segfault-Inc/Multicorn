@@ -75,16 +75,16 @@ egestas.
         
     @utils.simple_cache
     def extract_metadata(text):
-        """Return a dict of metadata for the given ReST string.
+        r"""Return a dict of metadata for the given ReST string.
         
         Search for a docutils.nodes.title and a docutils.nodes.field_list
         element in the docutils document tree.
         
         >>> sorted(extract_metadata(_test_document).items())
         ... # doctest: +NORMALIZE_WHITESPACE
-        [(u'abstract', u'Lorem ipsum dolor sit amet, consectetur adipiscing.
-                         Suspendisse fringilla accumsan sem eget ullamcorper.
-                         Aliquam erat volutpat.'),
+        [(u'abstract', u'Lorem ipsum dolor sit amet, consectetur
+                         adipiscing.\nSuspendisse fringilla accumsan sem eget
+                         ullamcorper.\nAliquam erat volutpat.'),
          (u'date', u'2009-08-04'),
          (u'title', u'A test document')]
 
