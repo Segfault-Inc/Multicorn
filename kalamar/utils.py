@@ -172,17 +172,125 @@ class AliasedMultiDict(object):
         self.data = data
         self.aliases = aliases
 
+    @werkzeug.cached_property
+    def reversed_aliases(self):
+        return dict((v,k) for k,v in self.aliases.iteritem())
+    
+    # Sized
+    def __len__(self):
+        return len(self.keys())
+
+    # Container
     def __contains__(self, key):
-        return key in self.keys()
+        key = self.aliases.get(key, key)
+        return key in self.data
 
+    # Iterable
+    def __iter__(self):
+        for key in self.data:
+            yield self.reversed_aliases.get(key, key)
+
+    # Mapping
     def __getitem__(self, key):
-        return self.data[self.aliases.get(key, key)]
+        key = self.aliases.get(key, key)
+        return self.data[key]
 
-    def __setitem__(self, key, value):
-        self.data[self.aliases.get(key, key)] = value
+    def get(self, key, default=None):
+        # copied from Python 2.6.4’s _abcoll module
+        try:
+            return self[key]
+        except KeyError:
+            return default
+        
+    def iterkeys(self):
+        # copied from Python 2.6.4’s _abcoll module
+        return iter(self)
+
+    def itervalues(self):
+        return self.data.itervalues()
+
+    def iteritems(self):
+        for key, value in self.data.iteritems():
+            key = self.reversed_aliases.get(key, key)
+            yield (key, value)
 
     def keys(self):
-        return self.aliases.keys() + self.data.keys()
+        # copied from Python 2.6.4’s _abcoll module
+        return list(self)
+
+    def items(self):
+        return list(self.iteritems())
+
+    def values(self):
+        return self.data.values()
+
+    def __eq__(self, other):
+        # adapted from Python 2.6.4’s _abcoll module
+        return isinstance(other, AliasedMultiDict) and \
+               dict(self.data) == dict(other.data)
+
+    def __ne__(self, other):
+        # copied from Python 2.6.4’s _abcoll module
+        return not (self == other)
+
+    # MutableMapping
+    def __setitem__(self, key, value):
+        key = self.aliases.get(key, key)
+        self.data[key] = value
+
+    def __delitem__(self, key):
+        key = self.aliases.get(key, key)
+        self.data[key] = value
+
+    __marker = object()
+    def pop(self, key, default=__marker):
+        # copied from Python 2.6.4’s _abcoll module
+        try:
+            value = self[key]
+        except KeyError:
+            if default is self.__marker:
+                raise
+            return default
+        else:
+            del self[key]
+            return value
+
+    def popitem(self):
+        # copied from Python 2.6.4’s _abcoll module
+        try:
+            key = next(iter(self))
+        except StopIteration:
+            raise KeyError
+        value = self[key]
+        del self[key]
+        return key, value
+
+    def clear(self):
+        # copied from Python 2.6.4’s _abcoll module
+        try:
+            while True:
+                self.popitem()
+        except KeyError:
+            pass
+
+    def update(self, other=(), **kwds):
+        # adapted from Python 2.6.4’s _abcoll module
+        if hasattr(other, "keys"):
+            for key in other.keys():
+                self[key] = other[key]
+        else:
+            for key, value in other:
+                self[key] = value
+        for key, value in kwds.items():
+            self[key] = value
+
+    def setdefault(self, key, default=None):
+        # copied from Python 2.6.4’s _abcoll module
+        try:
+            return self[key]
+        except KeyError:
+            self[key] = default
+        return default
 
 def simple_cache(function):
     """Decorator that caches function results.
