@@ -121,7 +121,8 @@ egestas.
         format = 'rest'
         
         def _parse_data(self):
-            properties = super(TextItem, self)._parse_data()
+            # TODO: test
+            properties = super(RestAtom, self)._parse_data()
             # assume extract_metadata never return a 'text' property
             # or the ReST text will be overwritten
             properties.update(extract_metadata(properties['text']))
