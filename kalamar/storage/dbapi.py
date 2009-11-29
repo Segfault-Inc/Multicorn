@@ -83,7 +83,12 @@ class DBAPIStorage(AccessPoint):
         cursor = connection.cursor()
         try:
             cursor.execute(request, parameters)
-    
+            
+            # TODO: this is incorrect: someone might have inserted a row just
+            # now.  Instead, we should have uniqueness constaints in the
+            # database, try an insert firt, and do an update if the database
+            # throws a unique constraint violation.
+            # See http://www.databasesandlife.com/unique-constraints/
             if cursor.rowcount == 0:
                 # Item does not exist, let's do an insert
                 request, parameters = self._build_insert_request(table, item,
