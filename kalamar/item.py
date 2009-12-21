@@ -67,6 +67,9 @@ class Item(object):
         self.storage_modified = False
         self.parser_modified = False
         
+        # Used when an item is contained into a capsule
+        self.association_properties = {}
+        
         self.storage_aliases = dict(access_point.storage_aliases)
         self.parser_aliases = dict(access_point.parser_aliases)
         
