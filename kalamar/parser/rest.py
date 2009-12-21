@@ -68,9 +68,9 @@ egestas.
 
         """
         for match in extract_includes._re.finditer(text):
-            yield match.group(1)
+            yield match.group(1), match.group(2)
 
-    extract_includes._re = re.compile(u'^\s*.. include::\s+(.+?)\s*$',
+    extract_includes._re = re.compile(u'^\s*.. (\w+)::\s+(.+?)\s*$',
                                       re.MULTILINE)
         
     @utils.simple_cache
@@ -179,11 +179,12 @@ egestas.
 
         def _load_subitems(self):
             content = self._get_content().decode(self.encoding)
-            for include in extract_includes(content):
+            for datatype, include in extract_includes(content):
                 filename = os.path.join(
                     os.path.dirname(self[u'_filename']),
                     os.path.normpath(include))
                 item = self._access_point.site.item_from_filename(filename)
+                item.association_properties["type"] = datatype
                 # item is None if no access point has this filename
                 yield item or MissingItem(include)
        
@@ -200,6 +201,8 @@ egestas.
             write('')
             dirname = os.path.dirname(self.filename)
             for subitem in self.subitems:
-                write(u'.. include:: ' + utils.relpath(
-                    subitem[u'_filename'], dirname))
+                write(u'.. %s:: %s' % (
+                    get(subitem.association_properties["type"], "include"),
+                    utils.relpath(subitem[u'_filename'], dirname)
+                ))
             return u'\n'.join(content).encode(self.encoding)
