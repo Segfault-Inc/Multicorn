@@ -64,7 +64,12 @@ egestas.
         """Return a list of included filenames in the given ReST string.
         
         >>> list(extract_includes(_test_document))
-        [u'nonexistent.rst', u'foo/bar.rst', u'name with whitespaces.rst']
+        ... # doctest: +NORMALIZE_WHITESPACE
+        [(u'include', u'nonexistent.rst'),
+         (u'include', u'foo/bar.rst'),
+         (u'include', u'name with whitespaces.rst')]
+
+        # TODO: test other directives
 
         """
         for match in extract_includes._re.finditer(text):
@@ -147,6 +152,7 @@ egestas.
         """
         def __init__(self, filename):
             self.filename = filename
+            self.association_properties = {}
         
         def __repr__(self):
             return '<%s %r>' % (self.__class__.__name__, self.filename)
@@ -184,9 +190,10 @@ egestas.
                     os.path.dirname(self[u'_filename']),
                     os.path.normpath(include))
                 item = self._access_point.site.item_from_filename(filename)
-                item.association_properties["type"] = datatype
                 # item is None if no access point has this filename
-                yield item or MissingItem(include)
+                item = item or MissingItem(include)
+                item.association_properties["type"] = datatype
+                yield item
        
         def serialize(self):
             content = []
@@ -202,7 +209,6 @@ egestas.
             dirname = os.path.dirname(self.filename)
             for subitem in self.subitems:
                 write(u'.. %s:: %s' % (
-                    get(subitem.association_properties["type"], "include"),
-                    utils.relpath(subitem[u'_filename'], dirname)
-                ))
+                    subitem.association_properties.get("type", "include"),
+                    utils.relpath(subitem[u'_filename'], dirname)))
             return u'\n'.join(content).encode(self.encoding)
