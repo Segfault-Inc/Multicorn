@@ -83,21 +83,26 @@ class DBCapsule(CapsuleItem):
                 if key.startswith(self.foreign_access_point_name)
             ]
 
+        # TODO: IMPLEMENT THIS FUCKING PRIMARY KEYS CONFIGURATION !!!!!
         # Search items in link table matching self keys
+        print self.capsule_keys
         request = '/'.join([
-                '%s=%s' % (key, self[key.replace(self.capsule_table_name,'',1)])
+                '%s=%s' % (key, self[key])
                 for key in self.capsule_keys
         ])
+        print [key.replace(self.capsule_table_name,'',1)[1:] for key in self.capsule_keys]
         print request
-        items = self._access_point.site.search(link_access_point_name, request)
         items = self._access_point.site.isearch(link_access_point_name, request)
 
         # Return items in foreign table matching link item keys
         for item in items:
             request = '/'.join([
-                    '%s=%s' % (key.replace(self.foreign_access_point_name,'',1))
-                    for key in self.foreign_keys])
-            print request
+                    '%s=%s' % (
+                        key,
+                        item[key]
+                    )
+                    for key in self.foreign_keys
+            ])
             yield self._access_point.site.open(
                 self.foreign_access_point_name,
                 request
