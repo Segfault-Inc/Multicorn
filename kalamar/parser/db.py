@@ -54,41 +54,48 @@ class DBCapsule(CapsuleItem):
         # TODO: linking table name/url should be configurable
         # TODO: keys in linking table should be configurable
         capsule_url = self._access_point.config['url']
-        capsule_table = capsule_url.split('?')[-1]
-        self.capsule_name = capsule_table
-        self.foreign_name = self._access_point.config['foreign']
-        link_ap_name = '_%s_%s' % (self.capsule_name, self.foreign_name)
+        self.capsule_table_name = capsule_url.split('?')[-1]
+        self.foreign_table_name = self._access_point.config['foreign']
+        self.link_table_name = self._access_point.config['link']
+        link_ap_name = '_%s_%s' % (
+            self.capsule_table_name,
+            self.foreign_table_name
+        )
 
         # Create an access point if not already done
         if not self._link_ap:
             config = {
                 'name': link_ap_name,
-                'url': '%s_%s' % (capsule_url, self.foreign_name)}
+                'url': '%s?%s' % (
+                    capsule_url.split('?')[:-1],
+                    self.link_table_name
+                )
+            }
             self._link_ap = base.AccessPoint.from_url(**config)
             self._access_point.site.access_points[link_ap_name] = self._link_ap
             
             keys = self._link_ap.get_storage_properties()
             self.capsule_keys = [
-                key[len(self.capsule_name) + 1:]
+                key[len(self.capsule_table_name) + 1:]
                 for key in keys 
-                if key.startswith(self.capsule_name + '_')]
+                if key.startswith(self.capsule_table_name + '_')]
             self.foreign_keys = [
-                key[len(self.foreign_name) + 1:]
+                key[len(self.foreign_table_name) + 1:]
                 for key in keys 
-                if key.startswith(self.foreign_name + '_')]
+                if key.startswith(self.foreign_table_name + '_')]
 
         # Search items in link table matching self keys
         request = '/'.join([
-                '%s_%s=%s' % (self.capsule_name, key, key)
+                '%s_%s=%s' % (self.capsule_table_name, key, key)
                 for key in self.capsule_keys])
         items = self._access_point.site.search(link_ap_name, request)
 
         # Return items in foreign table matching link item keys
         for item in items:
             request = '/'.join([
-                    '%s_%s=%s' % (self.foreign_name, key, key)
+                    '%s_%s=%s' % (self.foreign_table_name, key, key)
                     for key in self.foreign_keys])
-            yield self._access_point.site.open(self.foreign_name, request)
+            yield self._access_point.site.open(self.foreign_table_name, request)
 
     def serialize(self):
         """Save all subitems in the linking table."""
@@ -96,10 +103,10 @@ class DBCapsule(CapsuleItem):
             properties = {}
 
             for key in self.capsule_keys:
-                properties[self.capsule_name + '_' + key] = self[key]
+                properties[self.capsule_table_name + '_' + key] = self[key]
             
             for key in self.foreign_keys:
-                properties[self.foreign_name + '_' + key] = self[key]
+                properties[self.foreign_table_name + '_' + key] = self[key]
 
             item = self._access_point.site.create_item(
                 self._link_ap.config['name'], properties)
