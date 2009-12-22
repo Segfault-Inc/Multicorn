@@ -72,6 +72,8 @@ class DBCapsule(CapsuleItem):
                 )
             }
             self._link_ap = base.AccessPoint.from_url(**config)
+
+            keys = self._link_ap.get_storage_properties()
             self._access_point.site.access_points[link_ap_name] = self._link_ap
             self.capsule_keys = [
                 key for key in keys if key.startswith(self.capsule_table_name)]
