@@ -55,13 +55,13 @@ class DBCapsule(CapsuleItem):
         # TODO: keys in linking table should be configurable
         capsule_url = self._access_point.config['url']
         capsule_table_name = capsule_url.split('?')[-1]
-        foreign_access_point_name =
+        foreign_access_point_name =\
             self._access_point.config['foreign_access_point']
         link_access_point_name = self._access_point.config['link_access_point']
 
         # Create an access point if not already done
         if not self._link_ap:
-            self._link_ap = 
+            self._link_ap =\
                 self._access_point.site.access_points[link_access_point_name]
             keys = self._link_ap.get_storage_properties()
             self.capsule_keys = [
@@ -75,7 +75,7 @@ class DBCapsule(CapsuleItem):
         request = '/'.join([
                 '%s=%s' % (key, self[key.split('_', 1)[1]])
                 for key in self.capsule_keys])
-        items = self._access_point.site.search(link_access_point_name, request)
+        items = self._access_point.site.isearch(link_access_point_name, request)
 
         # Return items in foreign table matching link item keys
         for item in items:

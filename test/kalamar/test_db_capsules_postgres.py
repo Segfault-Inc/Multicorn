@@ -46,7 +46,7 @@ else:
     else:
         # Magic tricks
         for access_point in site.access_points:
-            if access_point != 'textes':
+            if access_point != 'textes' and access_point != 'link':
                 for test in capsule_tests:
                     cls = type('%s_%s' % (test.__name__, access_point),
                                (TestSite, test, TestCase),
