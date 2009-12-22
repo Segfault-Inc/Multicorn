@@ -52,13 +52,13 @@ class DBCapsule(CapsuleItem):
         """
         # TODO: keys in linking table should be configurable
         capsule_url = self._access_point.config['url']
-        capsule_table_name = capsule_url.split('?')[-1]
-        foreign_access_point_name =\
+        self.capsule_table_name = capsule_url.split('?')[-1]
+        self.foreign_access_point_name =\
             self._access_point.config['foreign_access_point']
         link_table_name = self._access_point.config['link_table']
         link_access_point_name = '_%s_%s' % (
-            capsule_table_name,
-            foreign_access_point_name
+            self.capsule_table_name,
+            self.foreign_access_point_name
         )
 
         # Create an access point if not already done
@@ -76,26 +76,30 @@ class DBCapsule(CapsuleItem):
             self._access_point.site.access_points[link_access_point_name] =\
                 self._link_ap
             self.capsule_keys = [
-                key for key in keys if key.startswith(capsule_table_name)
+                key for key in keys if key.startswith(self.capsule_table_name)
             ]
             self.foreign_keys = [
-                key for key in keys if key.startswith(foreign_access_point_name)
+                key for key in keys
+                if key.startswith(self.foreign_access_point_name)
             ]
 
         # Search items in link table matching self keys
         request = '/'.join([
-                '%s=%s' % (key, self[key.split('_', 1)[1]])
-                for key in self.capsule_keys])
+                '%s=%s' % (key, self[key.replace(self.capsule_table_name,'',1)])
+                for key in self.capsule_keys
+        ])
+        print request
         items = self._access_point.site.search(link_access_point_name, request)
         items = self._access_point.site.isearch(link_access_point_name, request)
 
         # Return items in foreign table matching link item keys
         for item in items:
             request = '/'.join([
-                    '%s=%s' % (key.split('_', 1)[1], item[key])
+                    '%s=%s' % (key.replace(self.foreign_access_point_name,'',1))
                     for key in self.foreign_keys])
+            print request
             yield self._access_point.site.open(
-                foreign_access_point_name,
+                self.foreign_access_point_name,
                 request
             )
 
