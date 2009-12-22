@@ -2,8 +2,16 @@
 *.pyc
 *.pyo
 *.egg
-.coverage
-build
-dist
-Dyko.egg-info
-profile_results
+/.coverage
+/build
+/dist
+/Dyko.egg-info
+/profile_results
+
+# zc.buildout
+/.installed.cfg
+/bin
+/develop-eggs
+/eggs
+/parts
+
