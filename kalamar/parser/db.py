@@ -67,7 +67,7 @@ class DBCapsule(CapsuleItem):
                 'name': link_access_point_name,
                 'url': '%s?%s' % (
                     capsule_url.split('?')[0],
-                    self.link_table_name
+                    link_table_name
                 )
             }
             self._link_ap = base.AccessPoint.from_url(**config)
