@@ -67,7 +67,7 @@ class DBCapsule(CapsuleItem):
             config = {
                 'name': link_ap_name,
                 'url': '%s?%s' % (
-                    capsule_url.split('?')[:-1],
+                    capsule_url.split('?')[0],
                     self.link_table_name
                 )
             }
@@ -76,24 +76,20 @@ class DBCapsule(CapsuleItem):
             
             keys = self._link_ap.get_storage_properties()
             self.capsule_keys = [
-                key[len(self.capsule_table_name) + 1:]
-                for key in keys 
-                if key.startswith(self.capsule_table_name + '_')]
+                key for key in keys if key.startswith(self.capsule_table_name)]
             self.foreign_keys = [
-                key[len(self.foreign_table_name) + 1:]
-                for key in keys 
-                if key.startswith(self.foreign_table_name + '_')]
+                key for key in keys if key.startswith(self.foreign_table_name)]
 
         # Search items in link table matching self keys
         request = '/'.join([
-                '%s_%s=%s' % (self.capsule_table_name, key, key)
+                '%s=%s' % (key, self[key.split('_', 1)[1]])
                 for key in self.capsule_keys])
         items = self._access_point.site.search(link_ap_name, request)
 
         # Return items in foreign table matching link item keys
         for item in items:
             request = '/'.join([
-                    '%s_%s=%s' % (self.foreign_table_name, key, key)
+                    '%s=%s' % (key.split('_', 1)[1], item[key])
                     for key in self.foreign_keys])
             yield self._access_point.site.open(self.foreign_table_name, request)
 
@@ -103,10 +99,10 @@ class DBCapsule(CapsuleItem):
             properties = {}
 
             for key in self.capsule_keys:
-                properties[self.capsule_table_name + '_' + key] = self[key]
+                properties[key] = self[key.split('_', 1)[1]]
             
             for key in self.foreign_keys:
-                properties[self.foreign_table_name + '_' + key] = self[key]
+                properties[key] = subitem[key.split('_', 1)[1]]
 
             item = self._access_point.site.create_item(
                 self._link_ap.config['name'], properties)
