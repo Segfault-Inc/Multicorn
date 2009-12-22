@@ -73,8 +73,6 @@ class DBCapsule(CapsuleItem):
             }
             self._link_ap = base.AccessPoint.from_url(**config)
             self._access_point.site.access_points[link_ap_name] = self._link_ap
-            
-            keys = self._link_ap.get_storage_properties()
             self.capsule_keys = [
                 key for key in keys if key.startswith(self.capsule_table_name)]
             self.foreign_keys = [
@@ -85,6 +83,7 @@ class DBCapsule(CapsuleItem):
                 '%s=%s' % (key, self[key.split('_', 1)[1]])
                 for key in self.capsule_keys])
         items = self._access_point.site.search(link_ap_name, request)
+        items = self._access_point.site.isearch(link_ap_name, request)
 
         # Return items in foreign table matching link item keys
         for item in items:
