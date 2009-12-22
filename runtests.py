@@ -27,10 +27,10 @@ def run_tests(packages='kalamar,koral,kraken,test', verbose=('v', False),
     if todo:
         test.print_TODOs(packages)
 
-def main(*args):
+def main():
     """Run the main test server with given args."""
     werkzeug.script.run(namespace={'test': run_tests}, action_prefix='',
-                        args=['test'] + list(args))
+                        args=['test'] + list(sys.argv[1:]))
 
 if __name__ == '__main__':
-    main(*sys.argv[1:])
+    main()
