@@ -71,17 +71,16 @@ else:
             """
             compilation = self.site.create_item('rest_capsules', 
                                                 dict(album='Compilation'))
-            track_titles = set()
+            track_titles = []
             for album in self.site.search('rest_capsules'):
                 for track in album.subitems:
                     if track:
                         compilation.subitems.append(track)
-                        track_titles.add(track['title'])
+                        track_titles.append(track['title'])
             self.site.save(compilation)
-            
 
             compilation2 = self.site.open('rest_capsules', '"Compilation"')
-            self.assertEquals(track_titles, set(track['title']
-                for track in compilation2.subitems))
+            self.assertEquals(track_titles, [track['title']
+                for track in compilation2.subitems])
             
 
