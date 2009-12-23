@@ -61,9 +61,11 @@ class TestDBCapsule(MyTest):
         compilation = self.site.create_item(self.access_point_name,
                                             {'title': 'Compilation'})
 
-        # TODO: fix this, saving may be useless
+        # Save and load back so that we get the database-generated ID
         self.site.save(compilation)
         compilation = self.site.open(self.access_point_name, 'title="Compilation"')
+        
+        # Make a capsule with every track
         track_titles = set()
         for bestof in self.site.search(self.access_point_name):
             for track in bestof.subitems:
