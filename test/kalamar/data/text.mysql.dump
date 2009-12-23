@@ -33,12 +33,12 @@ CREATE TABLE my_beloved_capsules (
     PRIMARY KEY (id));
 
 CREATE TABLE capsules_textes_bak (
-    capsules_id INTEGER(4) NOT NULL,
+    my_beloved_capsules_id INTEGER(4) NOT NULL,
     textes_id INTEGER(4) NOT NULL,
     PRIMARY KEY (capsules_id, textes_id));
 
 CREATE TABLE capsules_textes (
-    capsules_id INTEGER(4) NOT NULL,
+    my_beloved_capsules_id INTEGER(4) NOT NULL,
     textes_id INTEGER(4) NOT NULL,
     PRIMARY KEY (capsules_id, textes_id));
 
