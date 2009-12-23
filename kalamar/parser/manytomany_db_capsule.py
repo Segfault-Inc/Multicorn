@@ -89,7 +89,11 @@ class ManyToManyDBCapsule(CapsuleItem):
         ])
         items = self._access_point.site.search(link_access_point_name, request)
         items.sort(key=lambda x: x[self.link_sort_key])
-
+        
+        # Used in self.serialize to know wich subitems have been removed from 
+        # the capsule
+        self._old_link_items = items[:]
+        
         # Return items in foreign table matching link item keys
         for item in items:
             request = '/'.join([
@@ -107,9 +111,10 @@ class ManyToManyDBCapsule(CapsuleItem):
 
     def serialize(self):
         """Save all subitems in the linking table."""
-        for number, subitem in enumerate(self.subitems):
+        for number, subitem
+        in enumerate(self.subitems):
             properties = {}
-
+            
             for capsule_key, link_capsule_key \
             in zip(self.capsule_keys,self.link_capsule_keys):
                 properties[link_capsule_key] = self[capsule_key]
@@ -117,7 +122,7 @@ class ManyToManyDBCapsule(CapsuleItem):
             for foreign_key, link_foreign_key \
             in zip(self.foreign_keys, self.link_foreign_keys):
                 properties[link_foreign_key] = subitem[foreign_key]
-
+            
             item = self._access_point.site.create_item(
                 self._link_ap.config['name'], properties
             )
