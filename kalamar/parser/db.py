@@ -34,7 +34,6 @@ class DBCapsule(CapsuleItem):
     table, as it links the capsule access point and the item access point.
     
     """
-    # TODO: make this capsule ordered
     format = 'db_capsule'
 
     def __init__(self, access_point, opener=None, storage_properties={}):
