@@ -83,6 +83,12 @@ class TestDBCapsule(MyTest):
         create a new capsule from stratch, save it, load it back
         and check we get it as expected
         """
+
+        # if you get this error:
+        # [..., u'tralalaitou', u'tralalaitou', ...] != [..., u'tralalaitou', ...]
+        # Make sure the SQL middle table has no UNIQUE constraint on 
+        # (capsule_id, item_id)
+        # ie we want the same item more than once in a given casule
         compilation = self.site.create_item(self.access_point_name,
                                             {'title': 'Compilation'})
 
@@ -91,17 +97,17 @@ class TestDBCapsule(MyTest):
         compilation = self.site.open(self.access_point_name, 'title="Compilation"')
         
         # Make a capsule with every track
-        track_titles = set()
+        track_titles = []
         for bestof in self.site.search(self.access_point_name):
             for track in bestof.subitems:
                 if track:
                     compilation.subitems.append(track)
-                    track_titles.add(track['title'])
+                    track_titles.append(track['title'])
         self.site.save(compilation)
 
         compilation2 = self.site.open(self.access_point_name, 'title="Compilation"')
-        self.assertEquals(track_titles, set(track['title']
-            for track in compilation2.subitems))
+        self.assertEquals(track_titles, [track['title']
+            for track in compilation2.subitems])
             
 
 
