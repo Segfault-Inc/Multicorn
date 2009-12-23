@@ -23,7 +23,7 @@ Parsers for databases.
 from kalamar.storage import base
 from kalamar.item import CapsuleItem
 
-class OneToMany_DB_capsule(CapsuleItem):
+class OneToManyDBCapsule(CapsuleItem):
     """TODO doc
     
     """
