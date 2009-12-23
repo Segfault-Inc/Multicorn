@@ -62,8 +62,8 @@ class TestDBCapsule(MyTest):
         """
         compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
         
-        items = compil.subitems
-        compil.subitems = [items[2]] + items[:2]
+        last = compil.subitems.pop(-1)
+        compil.subitems.insert(0, last)
         self.site.save(compil)
         
         compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
@@ -83,7 +83,7 @@ class TestDBCapsule(MyTest):
         
         compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
         self.assertEquals(
-            ['tralalaitou', 'alleluia'],
+            ['a remark you made', 'tralalaitou'],
             [item['title'] for item in compil.subitems]
         )
         

@@ -22,6 +22,7 @@ Parsers for databases.
 
 from kalamar.storage import base
 from kalamar.item import CapsuleItem
+from kalamar.utils import Condition, operators
 
 class ManyToManyDBCapsule(CapsuleItem):
     """A capsule format for items stored in databases.
@@ -82,45 +83,56 @@ class ManyToManyDBCapsule(CapsuleItem):
                 self._link_ap
 
         # Search items in link table matching self keys
-        request = '/'.join([
-                '%s=%s' % (link_capsule_key, self[capsule_key])
-                for capsule_key, link_capsule_key
-                in zip(self.capsule_keys, self.link_capsule_keys)
-        ])
+        request = [
+            Condition(link_capsule_key, operators['='], self[capsule_key])
+            for capsule_key, link_capsule_key
+            in zip(self.capsule_keys, self.link_capsule_keys)
+        ]
         items = self._access_point.site.search(link_access_point_name, request)
         items.sort(key=lambda x: x[self.link_sort_key])
         
         # Used in self.serialize to know wich subitems have been removed from 
         # the capsule
-        self._old_link_items = items[:]
+        #self._old_link_items = items[:]
         
+
         # Return items in foreign table matching link item keys
         for item in items:
-            request = '/'.join([
-                    '%s=%s' % (
-                        foreign_key,
-                        item[link_foreign_key]
-                    )
-                    for foreign_key, link_foreign_key
-                    in zip(self.foreign_keys, self.link_foreign_keys)
-            ])
-            yield self._access_point.site.open(
+            request = [
+                Condition(foreign_key, operators['='], item[link_foreign_key])
+                for foreign_key, link_foreign_key
+                in zip(self.foreign_keys, self.link_foreign_keys)
+            ]
+            item = self._access_point.site.open(
                 self.foreign_access_point_name,
                 request
             )
+            yield item
 
     def serialize(self):
         """Save all subitems in the linking table."""
-        for number, subitem
-        in enumerate(self.subitems):
+        self.subitems # trigger _load_subitems
+        
+        # Search items in link table matching self keys
+        request = [
+            Condition(link_capsule_key, operators['='], self[capsule_key])
+            for capsule_key, link_capsule_key
+            in zip(self.capsule_keys, self.link_capsule_keys)
+        ]
+        self._access_point.site.remove_many(self._link_ap.config['name'],
+                                            request)
+        
+        for number, subitem in enumerate(self.subitems):
             properties = {}
             
-            for capsule_key, link_capsule_key \
-            in zip(self.capsule_keys,self.link_capsule_keys):
+            for capsule_key, link_capsule_key in zip(
+                self.capsule_keys,self.link_capsule_keys
+            ):
                 properties[link_capsule_key] = self[capsule_key]
             
-            for foreign_key, link_foreign_key \
-            in zip(self.foreign_keys, self.link_foreign_keys):
+            for foreign_key, link_foreign_key in zip(
+                self.foreign_keys, self.link_foreign_keys
+            ):
                 properties[link_foreign_key] = subitem[foreign_key]
             
             item = self._access_point.site.create_item(
