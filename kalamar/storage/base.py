@@ -208,6 +208,12 @@ class AccessPoint(object):
         """
         raise NotImplementedError('Abstract method')
 
+    def remove_many(self, conditions):
+        """Remove all items matching the request
+        """
+        for item in self.search(conditions):
+            self.remove(item)
+
     def item_from_filename(self, filename):
         """Search for an item matching this filename.
         

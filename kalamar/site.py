@@ -133,6 +133,13 @@ class Site(object):
         """Remove/delete the item from the backend storage."""
         return item._access_point.remove(item)
     
+    def remove_many(self, access_point, request):
+        """Remove all items matching the request
+        """
+        conditions = self.parse_request(request or [])
+        return self.access_points[access_point].remove_many(conditions)
+
+    
     def create_item(self, access_point_name, properties):
         """Return an item.
         
