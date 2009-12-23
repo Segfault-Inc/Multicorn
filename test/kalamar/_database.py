@@ -60,7 +60,7 @@ class TestDBCapsule(MyTest):
         
         items = compil.subitems
 	print items
-        compil.subitems[:] = [items[2]] + items[:2]
+        compil.subitems = [items[2]] + items[:2]
         self.site.save(compil)
         
         compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
