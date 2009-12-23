@@ -40,13 +40,13 @@ CREATE TABLE capsules_textes_bak (
     my_beloved_capsules_id smallint NOT NULL,
     textes_id smallint NOT NULL,
     no smallint NOT NULL);
-ALTER TABLE capsules_textes_bak ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id);
+ALTER TABLE capsules_textes_bak ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id, no);
 
 CREATE TABLE capsules_textes (
     my_beloved_capsules_id smallint NOT NULL,
     textes_id smallint NOT NULL,
     no smallint NOT NULL);
-ALTER TABLE capsules_textes ADD CONSTRAINT capsules_textes_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id);
+ALTER TABLE capsules_textes ADD CONSTRAINT capsules_textes_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id, no);
 
 INSERT INTO textes_bak VALUES(1,'jazz','Birelli Lagrène','manouche swing','swing it !',1,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30310A7377696E6720697420210A','hex'));
 INSERT INTO textes_bak VALUES(2,'jazz','Birelli Lagrène','manouche swing','a remark you made',2,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30320A612072656D61726B20796F75206D6164650A','hex'));

@@ -47,7 +47,9 @@ class TestSite(object):
 class TestDBCapsule(MyTest):
     
     def test_order(self):
-        """Test if items in a capsule are correctly ordered"""
+        """
+        Test if items in a capsule are correctly ordered
+        """
         compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
         self.assertEquals(
             ['alleluia', 'a remark you made', 'tralalaitou'],
@@ -55,11 +57,12 @@ class TestDBCapsule(MyTest):
         )
     
     def test_reorder(self):
-        """Change order and check if the new order is saved correctly"""
+        """
+        Change order and check if the new order is saved correctly
+        """
         compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
         
         items = compil.subitems
-	print items
         compil.subitems = [items[2]] + items[:2]
         self.site.save(compil)
         
@@ -68,6 +71,22 @@ class TestDBCapsule(MyTest):
             ['tralalaitou', 'alleluia', 'a remark you made'],
             [item['title'] for item in compil.subitems]
         )
+    
+    def test_remove(self):
+        """
+        Remove a subitem from the capsule, save the capsule and check
+        """
+        compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
+        
+        compil.subitems.pop(0)
+        self.site.save(compil)
+        
+        compil=self.site.open(self.access_point_name, 'title="Great BestOf"')
+        self.assertEquals(
+            ['tralalaitou', 'alleluia'],
+            [item['title'] for item in compil.subitems]
+        )
+        
     
     def test_bestof_length(self):
         bestof_length = {}
