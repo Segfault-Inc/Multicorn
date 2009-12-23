@@ -4,6 +4,7 @@ import codecs
 import doctest
 import unittest
 import functools
+import time
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -86,18 +87,26 @@ class FakeStdout(object):
     def write(self, data):
         self.buffer.append(data)
     
-class CapturingStdoutTextTestResult(unittest._TextTestResult):
+class MyTestResult(unittest._TextTestResult):
+    def __init__(self, *args, **kwargs):
+        unittest._TextTestResult.__init__(self, *args, **kwargs)
+        self._time_for_test = {}
+        
     def startTest(self, test):
         unittest._TextTestResult.startTest(self, test)
         self._real_stdout = sys.stdout
         self._captured_output = FakeStdout()
-        #sys.stdout = codecs.getwriter('utf8')(self._captured_output)
         sys.stdout = self._captured_output
+        self._start_time = time.time()
 
     def stopTest(self, test):
         unittest._TextTestResult.stopTest(self, test)
         sys.stdout = self._real_stdout
         del self._captured_output
+        time_taken = time.time() - self._start_time
+        self._time_for_test[str(test)] = time_taken
+        if self.showAll:
+            print "   ran in %.3fs" % time_taken
 
     def _exc_info_to_string(self, err, test):
         info = [unittest._TextTestResult._exc_info_to_string(self, err, test)]
@@ -111,13 +120,25 @@ class CapturingStdoutTextTestResult(unittest._TextTestResult):
             info.append("*** End of captured output.")
         return ''.join(info)
 
-class CapturingStdoutTextTestRunner(unittest.TextTestRunner):
+class MyTestRunner(unittest.TextTestRunner):
     def _makeResult(self):
-        return CapturingStdoutTextTestResult(self.stream, self.descriptions,
-                                             self.verbosity)
-
-def run_tests(packages, verbosity=1):
-    CapturingStdoutTextTestRunner(verbosity=verbosity).run(get_tests(packages))
+        return MyTestResult(self.stream, self.descriptions, self.verbosity)
+        
+    def run(self, test, print_n_longest=0):
+        result = unittest.TextTestRunner.run(self, test)
+        if print_n_longest:
+            print
+            print print_n_longest, 'longest tests:'
+            times = [(time, test) for test, time in
+                     result._time_for_test.iteritems()]
+            times.sort(reverse=True)
+            for time, test in times[:print_n_longest]:
+                print "   %.3fs" % time, test
+        return result
+        
+def run_tests(packages, verbosity=1, print_n_longest=0):
+    MyTestRunner(verbosity=verbosity, ).run(get_tests(packages),
+                                            print_n_longest=print_n_longest)
 
 def run_with_coverage(function, packages):
     import coverage
@@ -157,22 +178,26 @@ def main(args=None):
     
     import optparse
     parser = optparse.OptionParser()
+    parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
+                      help='Increase verbosity')
+    parser.add_option('-l', '--longest', dest='longest', type='int',
+                      default=0, metavar='N',
+                      help='List the N longest tests (in time taken)')
     parser.add_option('-c', '--coverage', dest='coverage', action='store_true',
-                      help='Print a test coverage report')
+                      help='Print a test coverage report',)
     parser.add_option('-p', '--profile', dest='profile', action='store_true',
                       help='Run the tests with cProfile and save profile'
                            'data in ./profile_results')
     parser.add_option('-t', '--todo', dest='todo', action='store_true',
                       help='Print the number of occurences of "TODO"')
-    parser.add_option("-q", "--quiet",
-                      action="store_false", dest="verbose", default=True,
-                      help="don't print status messages to stdout")
 
     (options, packages) = parser.parse_args(args)
     packages = [remove_py_suffix(name).replace(os.sep, '.').rstrip('.')
                 for name in packages or ['kalamar', 'koral', 'kraken', 'test']]
     
-    run = functools.partial(run_tests, packages)
+    verbosity = 2 if options.verbose else 1
+    run = functools.partial(run_tests, packages, verbosity=verbosity,
+            print_n_longest=options.longest)
     if options.profile:
         run = functools.partial(profile, run, 'profile_results')
     if options.coverage:
