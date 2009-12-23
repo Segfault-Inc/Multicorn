@@ -50,15 +50,20 @@ class DBCapsule(CapsuleItem):
         table.
 
         """
-        # TODO: keys in linking table should be configurable
         capsule_url = self._access_point.config['url']
-        capsule_table_name = capsule_url.split('?')[-1]
-        foreign_access_point_name =\
+        self.capsule_table_name = capsule_url.split('?')[-1]
+        self.foreign_access_point_name =\
             self._access_point.config['foreign_access_point']
         link_table_name = self._access_point.config['link_table']
+        self.capsule_keys = self._access_point.config['capsule_keys'].split('/')
+        self.foreign_keys = self._access_point.config['foreign_keys'].split('/')
+        self.link_capsule_keys =\
+            self._access_point.config['link_capsule_keys'].split('/')
+        self.link_foreign_keys =\
+            self._access_point.config['link_foreign_keys'].split('/')
         link_access_point_name = '_%s_%s' % (
-            capsule_table_name,
-            foreign_access_point_name
+            self.capsule_table_name,
+            self.foreign_access_point_name
         )
 
         # Create an access point if not already done
@@ -75,27 +80,27 @@ class DBCapsule(CapsuleItem):
             keys = self._link_ap.get_storage_properties()
             self._access_point.site.access_points[link_access_point_name] =\
                 self._link_ap
-            self.capsule_keys = [
-                key for key in keys if key.startswith(capsule_table_name)
-            ]
-            self.foreign_keys = [
-                key for key in keys if key.startswith(foreign_access_point_name)
-            ]
 
         # Search items in link table matching self keys
         request = '/'.join([
-                '%s=%s' % (key, self[key.split('_', 1)[1]])
-                for key in self.capsule_keys])
-        items = self._access_point.site.search(link_access_point_name, request)
+                '%s=%s' % (link_capsule_key, self[capsule_key])
+                for capsule_key, link_capsule_key
+                in zip(self.capsule_keys, self.link_capsule_keys)
+        ])
         items = self._access_point.site.isearch(link_access_point_name, request)
 
         # Return items in foreign table matching link item keys
         for item in items:
             request = '/'.join([
-                    '%s=%s' % (key.split('_', 1)[1], item[key])
-                    for key in self.foreign_keys])
+                    '%s=%s' % (
+                        foreign_key,
+                        item[link_foreign_key]
+                    )
+                    for foreign_key, link_foreign_key
+                    in zip(self.foreign_keys, self.link_foreign_keys)
+            ])
             yield self._access_point.site.open(
-                foreign_access_point_name,
+                self.foreign_access_point_name,
                 request
             )
 
@@ -104,12 +109,15 @@ class DBCapsule(CapsuleItem):
         for subitem in self.subitems:
             properties = {}
 
-            for key in self.capsule_keys:
-                properties[key] = self[key.split('_', 1)[1]]
+            for capsule_key, link_capsule_key \
+            in zip(self.capsule_keys,self.link_capsule_keys):
+                properties[link_capsule_key] = self[capsule_key]
             
-            for key in self.foreign_keys:
-                properties[key] = subitem[key.split('_', 1)[1]]
+            for foreign_key, link_foreign_key \
+            in zip(self.foreign_keys, self.link_foreign_keys):
+                properties[link_foreign_key] = subitem[foreign_key]
 
             item = self._access_point.site.create_item(
-                self._link_ap.config['name'], properties)
+                self._link_ap.config['name'], properties
+            )
             self._access_point.site.save(item)

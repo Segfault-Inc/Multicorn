@@ -22,25 +22,25 @@ CREATE TABLE textes (
     data BLOB, 
     PRIMARY KEY (id));
 
-CREATE TABLE capsules_bak (
+CREATE TABLE my_beloved_capsules_bak (
     id INTEGER(4) NOT NULL auto_increment,
     title VARCHAR(50),
     PRIMARY KEY (id));
 
-CREATE TABLE capsules (
+CREATE TABLE my_beloved_capsules (
     id INTEGER(4) NOT NULL auto_increment,
     title VARCHAR(50),
     PRIMARY KEY (id));
 
 CREATE TABLE capsules_textes_bak (
-    capsules_id INTEGER(4) NOT NULL,
+    my_beloved_capsules_id INTEGER(4) NOT NULL,
     textes_id INTEGER(4) NOT NULL,
-    PRIMARY KEY (capsules_id, textes_id));
+    PRIMARY KEY (my_beloved_capsules_id, textes_id));
 
 CREATE TABLE capsules_textes (
-    capsules_id INTEGER(4) NOT NULL,
+    my_beloved_capsules_id INTEGER(4) NOT NULL,
     textes_id INTEGER(4) NOT NULL,
-    PRIMARY KEY (capsules_id, textes_id));
+    PRIMARY KEY (my_beloved_capsules_id, textes_id));
 
 INSERT INTO textes_bak VALUES(1,'jazz','Birelli Lagrène','manouche swing','swing it !',1,X'6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30310A7377696E6720697420210A');
 INSERT INTO textes_bak VALUES(2,'jazz','Birelli Lagrène','manouche swing','a remark you made',2,X'6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30320A612072656D61726B20796F75206D6164650A');
@@ -63,8 +63,8 @@ INSERT INTO textes_bak VALUES(18,'rock','Jesus''harlem','amen','cross',3,X'726F6
 INSERT INTO textes_bak VALUES(19,'rock','Water please','S.O.B','may the pënguin be with you',1,X'726F636B0A576174657220706C656173650A532E4F2E420A30310A6D6179207468652070C3AB6E6775696E206265207769746820796F750A');
 INSERT INTO textes_bak VALUES(20,'rock','Water please','S.O.B','wazaaaaa !!',2,X'726F636B0A576174657220706C656173650A532E4F2E420A30320A77617A61616161612021210A');
 
-INSERT INTO capsules_bak VALUES(1, 'Great BestOf');
-INSERT INTO capsules_bak VALUES(2, 'Best of the Lord');
+INSERT INTO my_beloved_capsules_bak VALUES(1, 'Great BestOf');
+INSERT INTO my_beloved_capsules_bak VALUES(2, 'Best of the Lord');
 
 INSERT INTO capsules_textes_bak VALUES(1, 2);
 INSERT INTO capsules_textes_bak VALUES(1, 3);
