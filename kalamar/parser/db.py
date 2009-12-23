@@ -34,7 +34,6 @@ class DBCapsule(CapsuleItem):
     table, as it links the capsule access point and the item access point.
     
     """
-    # TODO: make this capsule ordered
     format = 'db_capsule'
 
     def __init__(self, access_point, opener=None, storage_properties={}):
@@ -61,6 +60,7 @@ class DBCapsule(CapsuleItem):
             self._access_point.config['link_capsule_keys'].split('/')
         self.link_foreign_keys =\
             self._access_point.config['link_foreign_keys'].split('/')
+        self.link_sort_key = self._access_point.config['order_by']
         link_access_point_name = '_%s_%s' % (
             self.capsule_table_name,
             self.foreign_access_point_name
@@ -87,7 +87,8 @@ class DBCapsule(CapsuleItem):
                 for capsule_key, link_capsule_key
                 in zip(self.capsule_keys, self.link_capsule_keys)
         ])
-        items = self._access_point.site.isearch(link_access_point_name, request)
+        items = self._access_point.site.search(link_access_point_name, request)
+        items.sort(key=lambda x: x[self.link_sort_key])
 
         # Return items in foreign table matching link item keys
         for item in items:
@@ -106,7 +107,7 @@ class DBCapsule(CapsuleItem):
 
     def serialize(self):
         """Save all subitems in the linking table."""
-        for subitem in self.subitems:
+        for number, subitem in enumerate(self.subitems):
             properties = {}
 
             for capsule_key, link_capsule_key \
@@ -120,4 +121,5 @@ class DBCapsule(CapsuleItem):
             item = self._access_point.site.create_item(
                 self._link_ap.config['name'], properties
             )
+            item[self.link_sort_key] = number
             self._access_point.site.save(item)

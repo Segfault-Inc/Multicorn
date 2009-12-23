@@ -38,12 +38,14 @@ ALTER TABLE my_beloved_capsules ADD CONSTRAINT my_beloved_capsules_pkey PRIMARY 
 
 CREATE TABLE capsules_textes_bak (
     my_beloved_capsules_id smallint NOT NULL,
-    textes_id smallint NOT NULL);
+    textes_id smallint NOT NULL,
+    no smallint NOT NULL);
 ALTER TABLE capsules_textes_bak ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id);
 
 CREATE TABLE capsules_textes (
     my_beloved_capsules_id smallint NOT NULL,
-    textes_id smallint NOT NULL);
+    textes_id smallint NOT NULL,
+    no smallint NOT NULL);
 ALTER TABLE capsules_textes ADD CONSTRAINT capsules_textes_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id);
 
 INSERT INTO textes_bak VALUES(1,'jazz','Birelli Lagrène','manouche swing','swing it !',1,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30310A7377696E6720697420210A','hex'));
@@ -70,10 +72,10 @@ INSERT INTO textes_bak VALUES(20,'rock','Water please','S.O.B','wazaaaaa !!',2,d
 INSERT INTO my_beloved_capsules_bak VALUES(1, 'Great BestOf');
 INSERT INTO my_beloved_capsules_bak VALUES(2, 'Best of the Lord');
 
-INSERT INTO capsules_textes_bak VALUES(1, 2);
-INSERT INTO capsules_textes_bak VALUES(1, 3);
-INSERT INTO capsules_textes_bak VALUES(1, 4);
-INSERT INTO capsules_textes_bak VALUES(2, 3);
-INSERT INTO capsules_textes_bak VALUES(2, 19);
+INSERT INTO capsules_textes_bak VALUES(1, 2, 2);
+INSERT INTO capsules_textes_bak VALUES(1, 3, 3);
+INSERT INTO capsules_textes_bak VALUES(1, 4, 1);
+INSERT INTO capsules_textes_bak VALUES(2, 3, 1);
+INSERT INTO capsules_textes_bak VALUES(2, 19, 2);
 
 COMMIT;
