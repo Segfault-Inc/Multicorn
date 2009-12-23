@@ -171,7 +171,6 @@ def main(args=None):
     (options, packages) = parser.parse_args(args)
     packages = [remove_py_suffix(name).replace(os.sep, '.').rstrip('.')
                 for name in packages or ['kalamar', 'koral', 'kraken', 'test']]
-    print packages
     
     run = functools.partial(run_tests, packages)
     if options.profile:
