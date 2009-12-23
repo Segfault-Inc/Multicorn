@@ -2,6 +2,7 @@ import sys
 import codecs
 import doctest
 import unittest
+import functools
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -139,4 +140,38 @@ def profile(function, filename):
     import cProfile
     cProfile.runctx('function()', {}, locals(), filename)
     print "Profile results saved in '%s'" % filename
+
+
+def main(args=None):
+    """Run all doctests and unittests found in ``packages``."""
+    if args is None:
+        args = sys.argv[1:]
+    
+    import optparse
+    parser = optparse.OptionParser()
+    parser.add_option('-c', '--coverage', dest='coverage', action='store_true',
+                      help='Print a test coverage report')
+    parser.add_option('-p', '--profile', dest='profile', action='store_true',
+                      help='Run the tests with cProfile and save profile'
+                           'data in ./profile_results')
+    parser.add_option('-t', '--todo', dest='todo', action='store_true',
+                      help='Print the number of occurences of "TODO"')
+    parser.add_option("-q", "--quiet",
+                      action="store_false", dest="verbose", default=True,
+                      help="don't print status messages to stdout")
+
+    (options, packages) = parser.parse_args(args)
+    packages = packages or ['kalamar', 'koral', 'kraken', 'test']
+    
+    import test    
+    run = functools.partial(test.run_tests, packages)
+    if options.profile:
+        run = functools.partial(test.profile, run, 'profile_results')
+    if options.coverage:
+        run = functools.partial(test.run_with_coverage, run, packages)
+        
+    run()
+    
+    if options.todo:
+        test.print_TODOs(packages)
 
