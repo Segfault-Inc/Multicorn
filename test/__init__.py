@@ -1,4 +1,5 @@
 import sys
+import os
 import codecs
 import doctest
 import unittest
@@ -142,6 +143,13 @@ def profile(function, filename):
     print "Profile results saved in '%s'" % filename
 
 
+def remove_py_suffix(filename):
+    if filename.endswith('.py'):
+        return filename[:-3]
+    if filename.endswith('.pyc') or filename.endswith('.pyo'):
+        return filename[:-4]
+    return filename
+
 def main(args=None):
     """Run all doctests and unittests found in ``packages``."""
     if args is None:
@@ -161,14 +169,15 @@ def main(args=None):
                       help="don't print status messages to stdout")
 
     (options, packages) = parser.parse_args(args)
-    packages = packages or ['kalamar', 'koral', 'kraken', 'test']
+    packages = [remove_py_suffix(name).replace(os.sep, '.').rstrip('.')
+                for name in packages or ['kalamar', 'koral', 'kraken', 'test']]
+    print packages
     
-    import test    
-    run = functools.partial(test.run_tests, packages)
+    run = functools.partial(run_tests, packages)
     if options.profile:
-        run = functools.partial(test.profile, run, 'profile_results')
+        run = functools.partial(profile, run, 'profile_results')
     if options.coverage:
-        run = functools.partial(test.run_with_coverage, run, packages)
+        run = functools.partial(run_with_coverage, run, packages)
         
     run()
     
