@@ -304,13 +304,19 @@ class CapsuleItem(Item):
             access_point, opener, storage_properties)
         self._parser_modified = False
 
-    @property
-    def subitems(self):
+    
+    def _get_subitems(self):
         """List of the capsule subitems."""
         if not hasattr(self, '_subitems'):
             self._subitems = utils.ModificationTrackingList(
                 self._load_subitems())
         return self._subitems
+    
+    def _set_subitems(self, new_list):
+        self._subitems = utils.ModificationTrackingList(new_list)
+        self._subitems.modified = True
+    
+    subitems = property(_get_subitems, _set_subitems)
         
     def _get_parser_modified(self):
         """Capsule parser_modified getter.
