@@ -58,9 +58,9 @@ class DBCapsule(CapsuleItem):
         self.capsule_keys = self._access_point.config['capsule_keys'].split('/')
         self.foreign_keys = self._access_point.config['foreign_keys'].split('/')
         self.link_capsule_keys =\
-            self._access_point.config['capsule_keys'].split('/')
+            self._access_point.config['link_capsule_keys'].split('/')
         self.link_foreign_keys =\
-            self._access_point.config['foreign_keys'].split('/')
+            self._access_point.config['link_foreign_keys'].split('/')
         link_access_point_name = '_%s_%s' % (
             self.capsule_table_name,
             self.foreign_access_point_name
@@ -85,7 +85,7 @@ class DBCapsule(CapsuleItem):
         request = '/'.join([
                 '%s=%s' % (link_capsule_key, self[capsule_key])
                 for capsule_key, link_capsule_key
-                in zip(self.capsule_keys, self.link_capsule_key)
+                in zip(self.capsule_keys, self.link_capsule_keys)
         ])
         items = self._access_point.site.isearch(link_access_point_name, request)
 
@@ -97,7 +97,7 @@ class DBCapsule(CapsuleItem):
                         item[link_foreign_key]
                     )
                     for foreign_key, link_foreign_key
-                    in zip(self.foreign_keys, self.link_foreign_key)
+                    in zip(self.foreign_keys, self.link_foreign_keys)
             ])
             yield self._access_point.site.open(
                 self.foreign_access_point_name,
@@ -110,11 +110,11 @@ class DBCapsule(CapsuleItem):
             properties = {}
 
             for capsule_key, link_capsule_key \
-            in zip(self.capsule_keys,self.link_capsule_key):
+            in zip(self.capsule_keys,self.link_capsule_keys):
                 properties[link_capsule_key] = self[capsule_key]
             
             for foreign_key, link_foreign_key \
-            in zip(self.foreign_keys, self.link_foreign_key):
+            in zip(self.foreign_keys, self.link_foreign_keys):
                 properties[link_foreign_key] = subitem[foreign_key]
 
             item = self._access_point.site.create_item(

@@ -28,18 +28,18 @@ CREATE SEQUENCE seq_my_beloved_capsules_bak;
 CREATE TABLE my_beloved_capsules_bak (
     id smallint DEFAULT nextval('seq_my_beloved_capsules_bak') NOT NULL,
     title character varying(50));
-ALTER TABLE my_beloved_capsules_bak ADD CONSTRAINT my_beloved_capsules_bak_pkey PRIMARY KEY (my_beloved_capsules_id);
+ALTER TABLE my_beloved_capsules_bak ADD CONSTRAINT my_beloved_capsules_bak_pkey PRIMARY KEY (id);
 
 CREATE SEQUENCE seq_my_beloved_capsules START 100;
 CREATE TABLE my_beloved_capsules (
     id smallint DEFAULT nextval('seq_my_beloved_capsules') NOT NULL,
     title character varying(50));
-ALTER TABLE my_beloved_capsules ADD CONSTRAINT my_beloved_capsules_pkey PRIMARY KEY (my_beloved_capsules_id);
+ALTER TABLE my_beloved_capsules ADD CONSTRAINT my_beloved_capsules_pkey PRIMARY KEY (id);
 
 CREATE TABLE capsules_textes_bak (
     my_beloved_capsules_id smallint NOT NULL,
     textes_id smallint NOT NULL);
-ALTER TABLE capsules_textes_bak ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (capsules_id, textes_id);
+ALTER TABLE capsules_textes_bak ADD CONSTRAINT capsules_textes_bak_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id);
 
 CREATE TABLE capsules_textes (
     my_beloved_capsules_id smallint NOT NULL,
