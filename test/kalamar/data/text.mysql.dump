@@ -47,14 +47,14 @@ CREATE TABLE capsules_textes (
 CREATE TABLE textes_onetomany_bak (
     id INTEGER(4) NOT NULL auto_increment, 
     title VARCHAR(50),
-    my_beloved_capsules_id INTEGER(4) NOT NULL, -- REFERENCES ...
+    my_beloved_capsules_id INTEGER(4), -- REFERENCES ...
     num INTEGER(2), -- position in capsule
     PRIMARY KEY (id));
 
 CREATE TABLE textes_onetomany (
     id INTEGER(4) NOT NULL auto_increment, 
     title VARCHAR(50),
-    my_beloved_capsules_id INTEGER(4) NOT NULL, -- REFERENCES ...
+    my_beloved_capsules_id INTEGER(4), -- REFERENCES ...
     num INTEGER(2), -- position in capsule
     PRIMARY KEY (id));
 

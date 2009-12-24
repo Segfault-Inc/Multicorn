@@ -113,7 +113,8 @@ class ManyToManyDBCapsule(CapsuleItem):
         """Save all subitems in the linking table."""
         self.subitems # trigger _load_subitems
         
-        # Search items in link table matching self keys
+        # Remove all items in link table matching self keys
+        # TODO: this can be optimised
         request = [
             Condition(link_capsule_key, operators['='], self[capsule_key])
             for capsule_key, link_capsule_key

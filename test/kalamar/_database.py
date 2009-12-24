@@ -40,6 +40,8 @@ class TestSite(object):
             cursor.execute('INSERT INTO my_beloved_capsules SELECT * FROM my_beloved_capsules_bak;')
             cursor.execute('DELETE FROM capsules_textes;')
             cursor.execute('INSERT INTO capsules_textes SELECT * FROM capsules_textes_bak;')
+            cursor.execute('DELETE FROM textes_onetomany;')
+            cursor.execute('INSERT INTO textes_onetomany SELECT * FROM textes_onetomany_bak;')
             connection.commit()
         finally:
             cursor.close()
