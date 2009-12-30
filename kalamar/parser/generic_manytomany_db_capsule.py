@@ -24,7 +24,7 @@ from kalamar.storage import base
 from kalamar.item import CapsuleItem
 from kalamar.utils import Condition, operators
 
-class ManyToManyDBCapsule(CapsuleItem):
+class GenericManyToManyDBCapsule(CapsuleItem):
     """A capsule format for items stored in databases.
     
     This parser can store capsules in databases without additional public
@@ -39,7 +39,7 @@ class ManyToManyDBCapsule(CapsuleItem):
 
     def __init__(self, access_point, opener=None, storage_properties={}):
         """DBCapsule instance initialisation."""
-        super(ManyToManyDBCapsule, self).__init__(
+        super(GenericManyToManyDBCapsule, self).__init__(
             access_point, opener, storage_properties)
         self._link_ap = None
     
@@ -52,19 +52,17 @@ class ManyToManyDBCapsule(CapsuleItem):
         """
         capsule_url = self._access_point.config['url']
         self.capsule_table_name = capsule_url.split('?')[-1]
-        self.foreign_access_point_name =\
-            self._access_point.config['foreign_access_point']
         link_table_name = self._access_point.config['link_table']
         self.capsule_keys = self._access_point.config['capsule_keys'].split('/')
-        self.foreign_keys = self._access_point.config['foreign_keys'].split('/')
-        self.link_capsule_keys =\
+        self.link_capsule_keys = \
             self._access_point.config['link_capsule_keys'].split('/')
-        self.link_foreign_keys =\
-            self._access_point.config['link_foreign_keys'].split('/')
         self.link_sort_key = self._access_point.config['order_by']
+        self.access_point_key = self._access_point.config['access_point_key']
+        self.request_key = self._access_point.config['request_key']
+        
         link_access_point_name = '_%s_%s' % (
             self.capsule_table_name,
-            self.foreign_access_point_name
+            link_table_name
         )
 
         # Create an access point if not already done
@@ -96,17 +94,18 @@ class ManyToManyDBCapsule(CapsuleItem):
         #self._old_link_items = items[:]
         
 
-        # Return items in foreign table matching link item keys
-        for item in items:
-            request = [
-                Condition(foreign_key, operators['='], item[link_foreign_key])
-                for foreign_key, link_foreign_key
-                in zip(self.foreign_keys, self.link_foreign_keys)
-            ]
+        # Return items in foreign access points matching link item keys
+        for link_item in items:
+            request = link_item[self.request_key]
+            access_point_name = link_item[self.access_point_key]
+            
             item = self._access_point.site.open(
-                self.foreign_access_point_name,
+                access_point_name,
                 request
             )
+            item.association_properties["access_point_name"] = access_point_name
+            item.association_properties["request"] = request
+            
             yield item
 
     def serialize(self):
@@ -122,22 +121,23 @@ class ManyToManyDBCapsule(CapsuleItem):
         ]
         self._access_point.site.remove_many(self._link_ap.config['name'],
                                             request)
-        
+        # Save all link items
         for number, subitem in enumerate(self.subitems):
             properties = {}
             
-            for capsule_key, link_capsule_key in zip(
-                self.capsule_keys,self.link_capsule_keys
-            ):
+            for capsule_key, link_capsule_key \
+            in zip(self.capsule_keys,self.link_capsule_keys):
                 properties[link_capsule_key] = self[capsule_key]
             
-            for foreign_key, link_foreign_key in zip(
-                self.foreign_keys, self.link_foreign_keys
-            ):
-                properties[link_foreign_key] = subitem[foreign_key]
+            association_properties = subitem.association_properties
             
-            item = self._access_point.site.create_item(
+            access_point_name = association_properties['access_point_name']
+            properties[self.access_point_key] = access_point_name
+            request = association_properties['request']
+            properties[self.request_key] = request
+            
+            link_item = self._access_point.site.create_item(
                 self._link_ap.config['name'], properties
             )
-            item[self.link_sort_key] = number
-            self._access_point.site.save(item)
+            link_item[self.link_sort_key] = number
+            self._access_point.site.save(link_item)

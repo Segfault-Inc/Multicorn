@@ -129,10 +129,10 @@ INSERT INTO capsules_textes_bak VALUES(1, 4, 1);
 INSERT INTO capsules_textes_bak VALUES(2, 3, 1);
 INSERT INTO capsules_textes_bak VALUES(2, 19, 2);
 
-INSERT INTO generic_capsule_link_bak VALUES(1, 'sgbd', 'artiste="Birelli Lagrène"/titre="swing it !"', 2);
-INSERT INTO generic_capsule_link_bak VALUES(1, 'filesystem', 'artiste="Jesus''harlem"/titre="mary"', 1);
-INSERT INTO generic_capsule_link_bak VALUES(2, 'sgbd', 'artiste="Birelli Lagrène"/titre="a remark you made"', 2);
-INSERT INTO generic_capsule_link_bak VALUES(2, 'filesystem', 'artiste="Water please"/titre="wazaaaaa !!"', 1);
-INSERT INTO generic_capsule_link_bak VALUES(2, 'filesystem', 'artiste="Jesus''harlem"/titre="cross"', 3);
+INSERT INTO generic_capsule_link_bak VALUES(1, 'textes', 'artiste="Birelli Lagrène"/titre="a remark you made"', 2);
+INSERT INTO generic_capsule_link_bak VALUES(1, 'filesystem', 'artiste="Birelli Lagrène"/titre="tralalaitou"', 3);
+INSERT INTO generic_capsule_link_bak VALUES(1, 'textes', 'artiste="Jesus''harlem"/titre="alleluia"', 1);
+INSERT INTO generic_capsule_link_bak VALUES(2, 'filesystem', 'artiste="Birelli Lagrène"/titre="tralalaitou"', 1);
+INSERT INTO generic_capsule_link_bak VALUES(2, 'textes', 'artiste="Water please"/titre="may the pënguin be with you"', 2);
 
 COMMIT;

@@ -20,6 +20,8 @@ Database tests helpers.
 
 """
 
+from pprint import pprint
+
 from test_site_common import \
     TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove,\
     TestSiteGetDescription, TestSiteCreateItem, MyTest
@@ -42,13 +44,15 @@ class TestSite(object):
             cursor.execute('INSERT INTO capsules_textes SELECT * FROM capsules_textes_bak;')
             cursor.execute('DELETE FROM textes_onetomany;')
             cursor.execute('INSERT INTO textes_onetomany SELECT * FROM textes_onetomany_bak;')
+            cursor.execute('DELETE FROM generic_capsule_link;')
+            cursor.execute('INSERT INTO generic_capsule_link SELECT * FROM generic_capsule_link_bak;')
             connection.commit()
         finally:
             cursor.close()
 
 class TestDBCapsule(MyTest):
     
-    def test_order(self):
+    def test_ordered(self):
         """
         Test if items in a capsule are correctly ordered
         """
@@ -119,15 +123,18 @@ class TestDBCapsule(MyTest):
         
         # Make a capsule with every track
         track_titles = []
-        for bestof in self.site.search(self.access_point_name):
-            for track in bestof.subitems:
-                if track:
-                    compilation.subitems.append(track)
-                    track_titles.append(track['title'])
+        track_association_properties = []
+        for track in self.site.search('textes'):
+            compilation.subitems.append(track)
+            track_titles.append(track['title'])
+            track_association_properties.append(track.association_properties)
         self.site.save(compilation)
 
         compilation2 = self.site.open(self.access_point_name, 'title="Compilation"')
+        
         self.assertEquals(track_titles, [track['title']
+            for track in compilation2.subitems])
+        self.assertEquals(track_association_properties, [track.association_properties
             for track in compilation2.subitems])
             
 

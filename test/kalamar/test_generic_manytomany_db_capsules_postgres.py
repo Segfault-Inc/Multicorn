@@ -55,7 +55,7 @@ else:
     else:
         # Magic tricks
         for access_point in site.access_points:
-            if access_point != 'sgbd' and access_point != 'filesystem':
+            if access_point != 'textes' and access_point != 'filesystem':
                 for test in capsule_tests + (TestGenericManyToManyDBCapsule,):
                     cls = type('%s_%s' % (test.__name__, access_point),
                                (TestSite, test, TestCase),
