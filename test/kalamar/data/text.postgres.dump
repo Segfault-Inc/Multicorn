@@ -48,6 +48,22 @@ CREATE TABLE capsules_textes (
     no smallint NOT NULL);
 ALTER TABLE capsules_textes ADD CONSTRAINT capsules_textes_pkey PRIMARY KEY (my_beloved_capsules_id, textes_id, no);
 
+CREATE SEQUENCE seq_textes_onetomany_bak;
+CREATE TABLE textes_onetomany_bak (
+    id smallint DEFAULT nextval('seq_textes_onetomany_bak') NOT NULL,
+    title character varying(50),
+    my_beloved_capsules_id smallint, -- REFERENCES ...
+    num smallint); -- position in capsule
+ALTER TABLE textes_onetomany_bak ADD CONSTRAINT textes_onetomany_bak_pkey PRIMARY KEY (id);
+
+CREATE SEQUENCE seq_textes_onetomany;
+CREATE TABLE textes_onetomany (
+    id smallint DEFAULT nextval('seq_textes_onetomany') NOT NULL,
+    title character varying(50),
+    my_beloved_capsules_id smallint, -- REFERENCES ...
+    num smallint); -- position in capsule
+ALTER TABLE textes_onetomany ADD CONSTRAINT textes_onetomany_pkey PRIMARY KEY (id);
+
 INSERT INTO textes_bak VALUES(1,'jazz','Birelli Lagrène','manouche swing','swing it !',1,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30310A7377696E6720697420210A','hex'));
 INSERT INTO textes_bak VALUES(2,'jazz','Birelli Lagrène','manouche swing','a remark you made',2,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30320A612072656D61726B20796F75206D6164650A','hex'));
 INSERT INTO textes_bak VALUES(3,'jazz','Birelli Lagrène','manouche swing','tralalaitou',3,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30330A7472616C616C6169746F750A','hex'));
@@ -68,6 +84,27 @@ INSERT INTO textes_bak VALUES(17,'rock','Jesus''harlem','amen','toto was a chris
 INSERT INTO textes_bak VALUES(18,'rock','Jesus''harlem','amen','cross',3,decode('726F636B0A4A65737573276861726C656D0A616D656E0A30330A63726F73730A','hex'));
 INSERT INTO textes_bak VALUES(19,'rock','Water please','S.O.B','may the pënguin be with you',1,decode('726F636B0A576174657220706C656173650A532E4F2E420A30310A6D6179207468652070C3AB6E6775696E206265207769746820796F750A','hex'));
 INSERT INTO textes_bak VALUES(20,'rock','Water please','S.O.B','wazaaaaa !!',2,decode('726F636B0A576174657220706C656173650A532E4F2E420A30320A77617A61616161612021210A','hex'));
+
+-- INSERT INTO textes_onetomany_bak VALUES(1,'swing it !');
+INSERT INTO textes_onetomany_bak VALUES(2,'a remark you made',1,2);
+INSERT INTO textes_onetomany_bak VALUES(3,'tralalaitou',1,3);
+INSERT INTO textes_onetomany_bak VALUES(4,'alleluia',1,1);
+-- INSERT INTO textes_onetomany_bak VALUES(5,'david');
+-- INSERT INTO textes_onetomany_bak VALUES(6,'holy star');
+INSERT INTO textes_onetomany_bak VALUES(7,'juda',2,1);
+-- INSERT INTO textes_onetomany_bak VALUES(8,'solomon');
+-- INSERT INTO textes_onetomany_bak VALUES(9,'satan');
+-- INSERT INTO textes_onetomany_bak VALUES(10,'jesus');
+-- INSERT INTO textes_onetomany_bak VALUES(11,'mary');
+-- INSERT INTO textes_onetomany_bak VALUES(12,'sophomore');
+-- INSERT INTO textes_onetomany_bak VALUES(13,'heaven''s swing');
+-- INSERT INTO textes_onetomany_bak VALUES(14,'mechanical blues');
+-- INSERT INTO textes_onetomany_bak VALUES(15,'a fistful of sins');
+-- INSERT INTO textes_onetomany_bak VALUES(16,'rockstar grace');
+-- INSERT INTO textes_onetomany_bak VALUES(17,'toto was a christian');
+-- INSERT INTO textes_onetomany_bak VALUES(18,'cross');
+INSERT INTO textes_onetomany_bak VALUES(19,'may the pënguin be with you',2,2);
+-- INSERT INTO textes_onetomany_bak VALUES(20,'wazaaaaa !!');
 
 INSERT INTO my_beloved_capsules_bak VALUES(1, 'Great BestOf');
 INSERT INTO my_beloved_capsules_bak VALUES(2, 'Best of the Lord');
