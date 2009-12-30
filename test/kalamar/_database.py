@@ -109,7 +109,7 @@ class TestDBCapsule(MyTest):
         # [..., u'tralalaitou', u'tralalaitou', ...] != [..., u'tralalaitou', ...]
         # Make sure the SQL middle table has no UNIQUE constraint on 
         # (capsule_id, item_id)
-        # ie we want the same item more than once in a given casule
+        # ie we want the same item more than once in a given capsule
         compilation = self.site.create_item(self.access_point_name,
                                             {'title': 'Compilation'})
 

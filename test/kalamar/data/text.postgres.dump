@@ -64,6 +64,20 @@ CREATE TABLE textes_onetomany (
     num smallint); -- position in capsule
 ALTER TABLE textes_onetomany ADD CONSTRAINT textes_onetomany_pkey PRIMARY KEY (id);
 
+CREATE TABLE generic_capsule_link_bak (
+    my_beloved_capsules_id smallint NOT NULL, -- REFERENCES ...
+    access_point character varying(50),
+    request character varying(100),
+    no smallint NOT NULL); -- position in capsule
+ALTER TABLE generic_capsule_link_bak ADD CONSTRAINT generic_capsule_link_bak_pkey PRIMARY KEY (my_beloved_capsules_id, access_point, request, no);
+
+CREATE TABLE generic_capsule_link (
+    my_beloved_capsules_id smallint NOT NULL, -- REFERENCES ...
+    access_point character varying(50),
+    request character varying(100),
+    no smallint NOT NULL); -- position in capsule
+ALTER TABLE generic_capsule_link ADD CONSTRAINT generic_capsule_link_pkey PRIMARY KEY (my_beloved_capsules_id, access_point, request, no);
+
 INSERT INTO textes_bak VALUES(1,'jazz','Birelli Lagrène','manouche swing','swing it !',1,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30310A7377696E6720697420210A','hex'));
 INSERT INTO textes_bak VALUES(2,'jazz','Birelli Lagrène','manouche swing','a remark you made',2,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30320A612072656D61726B20796F75206D6164650A','hex'));
 INSERT INTO textes_bak VALUES(3,'jazz','Birelli Lagrène','manouche swing','tralalaitou',3,decode('6A617A7A0A426972656C6C69204C616772C3A86E650A6D616E6F75636865207377696E670A30330A7472616C616C6169746F750A','hex'));
@@ -114,5 +128,11 @@ INSERT INTO capsules_textes_bak VALUES(1, 3, 3);
 INSERT INTO capsules_textes_bak VALUES(1, 4, 1);
 INSERT INTO capsules_textes_bak VALUES(2, 3, 1);
 INSERT INTO capsules_textes_bak VALUES(2, 19, 2);
+
+INSERT INTO generic_capsule_link_bak VALUES(1, 'sgbd', 'artiste="Birelli Lagrène"/titre="swing it !"', 2);
+INSERT INTO generic_capsule_link_bak VALUES(1, 'filesystem', 'artiste="Jesus''harlem"/titre="mary"', 1);
+INSERT INTO generic_capsule_link_bak VALUES(2, 'sgbd', 'artiste="Birelli Lagrène"/titre="a remark you made"', 2);
+INSERT INTO generic_capsule_link_bak VALUES(2, 'filesystem', 'artiste="Water please"/titre="wazaaaaa !!"', 1);
+INSERT INTO generic_capsule_link_bak VALUES(2, 'filesystem', 'artiste="Jesus''harlem"/titre="cross"', 3);
 
 COMMIT;
