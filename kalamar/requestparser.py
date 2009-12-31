@@ -19,6 +19,13 @@ def parse(data):
     """
     return list(iparse(data))
 
+def reverse_convert_value(value):
+    if isinstance(value, (unicode, str)):
+        return "'%s'" % unicode(value).replace("'", r"\'")
+    elif isinstance(value, (int,float)):
+        return value
+    raise Exception("This type cannot be converted back: %s" % type(value))
+
 class RequestSyntaxError(ValueError): pass
 
 class Parser(object):
