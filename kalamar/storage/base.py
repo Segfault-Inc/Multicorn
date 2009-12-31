@@ -222,4 +222,15 @@ class AccessPoint(object):
 
         """
         return NotImplemented
+    
+    def _get_primary_keys(self):
+        """Return a list of primary keys names.
+        
+        Here, "primary key" must be understood as "a sufficient set of keys to
+        make a request returning 0 or 1 object".
+        
+        This method must be overriden.
+
+        """
+        raise NotImplementedError('Abstract method')
 

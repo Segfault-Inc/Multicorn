@@ -66,6 +66,10 @@ class FileSystemStorage(AccessPoint):
         """
         stars = self.filename_format.count('*')
         return ['path%i' % (i + 1) for i in xrange(stars)]
+            
+    def _get_primary_keys(self):
+        """Return the path* keys"""
+        return self.get_storage_properties()
     
     def _real_filename(self, filename):
         """Return a filesystem filename from a slash-separated path relative 
@@ -396,4 +400,5 @@ class FileSystemStorage(AccessPoint):
             functools.partial(self.get_file_content, filename,
                               real_filename=True),
             properties)
+        
 

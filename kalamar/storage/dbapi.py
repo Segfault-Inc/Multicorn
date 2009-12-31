@@ -719,11 +719,3 @@ class DBAPIStorage(AccessPoint):
         
         """
         return u'"%s"' % name
-    
-    def _get_primary_keys(self):
-        """Return a list of primary keys names.
-
-        This method must be overriden.
-
-        """
-        raise NotImplementedError('Abstract method')
