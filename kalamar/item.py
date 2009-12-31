@@ -36,6 +36,8 @@ from werkzeug import MultiDict, CombinedMultiDict, cached_property
     
 from kalamar import parser, utils
 
+from kalamar.requestparser import reverse_convert_value
+
 class Item(object):
     """Base class for parsers.
     
@@ -63,12 +65,16 @@ class Item(object):
         """
         self._opener = opener or str
         self._raw_content = None
+        self._raw_content_mimetype = None
         self._access_point = access_point
+        self._access_point_name = None
         self.storage_modified = False
         self.parser_modified = False
+        self._request = None
         
         # Used when an item is contained into a capsule
         self.association_properties = {}
+        
         
         self.storage_aliases = dict(access_point.storage_aliases)
         self.parser_aliases = dict(access_point.parser_aliases)
@@ -233,6 +239,25 @@ class Item(object):
         """
         if hasattr(self._access_point, 'filename_for'):
             return self._access_point.filename_for(self)
+    
+    @property
+    def request(self):
+        """Return a request sufficient to find this item and only this one."""
+        if self._request is None:
+            conditions = [
+                u"%s=%s" % (key, reverse_convert_value(self[key]))
+                for key in self._access_point._get_primary_keys()
+            ]
+            self._request = "/".join(conditions)
+        print self._request
+        return self._request
+    
+    @property
+    def access_point_name(self):
+        """Return a request sufficient to find this item and only this one."""
+        if self._access_point_name is None:
+            self._access_point_name = self._access_point.name
+        return self._access_point_name
 
     def keys(self):
         """Return the name of all properties."""
