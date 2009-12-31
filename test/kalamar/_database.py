@@ -134,8 +134,6 @@ class TestDBCapsule(MyTest):
         
         self.assertEquals(track_titles, [track['title']
             for track in compilation2.subitems])
-        self.assertEquals(track_association_properties, [track.association_properties
-            for track in compilation2.subitems])
             
 
 

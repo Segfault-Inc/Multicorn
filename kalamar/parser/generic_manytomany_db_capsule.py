@@ -102,10 +102,7 @@ class GenericManyToManyDBCapsule(CapsuleItem):
             item = self._access_point.site.open(
                 access_point_name,
                 request
-            )
-            item.association_properties["access_point_name"] = access_point_name
-            item.association_properties["request"] = request
-            
+            )            
             yield item
 
     def serialize(self):
@@ -129,12 +126,8 @@ class GenericManyToManyDBCapsule(CapsuleItem):
             in zip(self.capsule_keys,self.link_capsule_keys):
                 properties[link_capsule_key] = self[capsule_key]
             
-            association_properties = subitem.association_properties
-            
-            access_point_name = association_properties['access_point_name']
-            properties[self.access_point_key] = access_point_name
-            request = association_properties['request']
-            properties[self.request_key] = request
+            properties[self.access_point_key] = subitem.access_point_name
+            properties[self.request_key] = subitem.request
             
             link_item = self._access_point.site.create_item(
                 self._link_ap.config['name'], properties
