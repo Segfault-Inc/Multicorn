@@ -83,7 +83,9 @@ class Site(object):
          Condition(u'c', <built-in function ge>, u'3')]
 
         """
-        if isinstance(request, basestring):
+        if isinstance(request, int) or isinstance(request, float):
+            return requestparser.iparse(str(request))
+        elif isinstance(request, basestring):
             return requestparser.iparse(request)
         else:
             return request
