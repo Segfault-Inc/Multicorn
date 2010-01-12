@@ -70,6 +70,7 @@ class ManyToManyDBCapsule(CapsuleItem):
         # Create an access point if not already done
         if not self._link_ap:
             config = {
+                'basedir': self._access_point.basedir,
                 'name': link_access_point_name,
                 'url': '%s?%s' % (
                     capsule_url.split('?')[0],
