@@ -128,7 +128,6 @@ class StaticFileResponse(Response):
     
     def __call__(self, environ, start_response):
         """Return the file and set the response headers."""
-        super(StaticFileResponse, self).__init__(environ, start_response)
         stat = os.stat(self.filename)
         etag = '%s,%s,%s' % (self.filename, stat.st_size, stat.st_mtime)
         etag = '"%s"' % hashlib.md5(etag).hexdigest()
