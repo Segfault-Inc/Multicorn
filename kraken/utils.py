@@ -113,7 +113,7 @@ class Response(werkzeug.Response):
     pass
 
 
-class StaticFileResponse(object):
+class StaticFileResponse(Response):
     """Respond with the a static file.
 
     Respond with a static file, guessing the mimitype from the filename,
@@ -123,10 +123,12 @@ class StaticFileResponse(object):
     
     def __init__(self, filename):
         """Create the response with the ``filename`` static file."""
+        super(StaticFileResponse, self).__init__(filename)
         self.filename = filename
     
     def __call__(self, environ, start_response):
         """Return the file and set the response headers."""
+        super(StaticFileResponse, self).__init__(environ, start_response)
         stat = os.stat(self.filename)
         etag = '%s,%s,%s' % (self.filename, stat.st_size, stat.st_mtime)
         etag = '"%s"' % hashlib.md5(etag).hexdigest()
