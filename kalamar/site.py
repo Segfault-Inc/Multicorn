@@ -96,7 +96,7 @@ class Site(object):
         See ``Site.parse_request`` for the syntax of the ``request`` string.
 
         """
-        conditions = self.parse_request(request or [])
+        conditions = list(self.parse_request(request or []))
         return self.access_points[access_point].search(conditions)
     
     def search(self, access_point, request=None):

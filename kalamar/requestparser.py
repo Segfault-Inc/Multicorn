@@ -101,6 +101,14 @@ class Parser(object):
     Strings
     -------
 
+    >>> p = Parser(ur'''""''')
+    >>> p.parse() # doctest: +NORMALIZE_WHITESPACE
+    [Condition(None, None, u'')]
+
+    >>> p = Parser(ur'''"a"''')
+    >>> p.parse() # doctest: +NORMALIZE_WHITESPACE
+    [Condition(None, None, u'a')]
+
     >>> p = Parser(ur'''"aa"/'bb'/"cc"''')
     >>> p.parse() # doctest: +NORMALIZE_WHITESPACE
     [Condition(None, None, u'aa'),
@@ -191,6 +199,10 @@ class Parser(object):
     >>> p = Parser(ur"a>=1")
     >>> p.parse()
     [Condition(u'a', <built-in function ge>, 1)]
+
+    >>> p = Parser(ur"a=''")
+    >>> p.parse()
+    [Condition(u'a', <built-in function eq>, u'')]
 
     >>> p = Parser(ur"'a'='b'")
     >>> p.parse()
@@ -296,7 +308,7 @@ class Parser(object):
     def __init__(self, data):
         self.data = unicode(data)
         
-        self.strings = ['']
+        self.strings = [u'']
         
         self._quote_char = u''
     
@@ -392,7 +404,7 @@ class Parser(object):
 #                                            self._start = True
 #                                            self._finish = False
 #                                            self._mode = 'operator'
-#                                            self.strings.append('')
+#                                            self.strings.append(u'')
 #                                        else:
 #                                            raise RequestSyntaxError(
 #                                                "Got %s but expected %s."
@@ -424,7 +436,7 @@ class Parser(object):
                                     self._finish = False
                                     self._mode = 'operator'
                                     self.strings[-1] = self.strings[-1].strip(self.stripped_chars)
-                                    self.strings.append('')
+                                    self.strings.append(u'')
                                 else:
                                     raise RequestSyntaxError(
                                         "Got %s but expected %s."
@@ -446,19 +458,19 @@ class Parser(object):
                     else:
                         if self.is_operator_seq(self.strings[-1]):
                             self._mode = 'value'
-                            self.strings.append('')
+                            self.strings.append(u'')
                         else:
                             raise RequestSyntaxError(
                                 "Invalid operator %s." % repr(self.strings[-1]))
                 
-            if len(self.strings[-1]) > 0:
+            if len(self.strings[-1]) > 0 or self._quoted:
                 value = self.convert_value(self.strings[-1])
                 if self._mode == 'begin':
                     yield Condition(None, None, value)
                 elif self._mode == 'value':
                     operator = self.get_operator(self.strings[-2])
                     yield Condition(self.strings[-3], operator, value)
-                self.strings = ['']
+                self.strings = [u'']
         
 #    def is_ok(self, c):
 ##        if self._quoted and (self._mode == 'begin' or self._mode == 'value'):
@@ -484,15 +496,15 @@ class Parser(object):
     def convert_value(self, value):
         if self._quoted:
             new_value = value
-        elif self.strings[-1] == 'None':
+        elif value == 'None':
             new_value = None
-        elif self.strings[-1] == 'Now':
+        elif value == 'Now':
             new_value = datetime.datetime.now()
-        elif self.strings[-1] == 'Today':
+        elif value == 'Today':
             new_value = datetime.date.today()
-        elif self.strings[-1] == 'True':
+        elif value == 'True':
             new_value = True
-        elif self.strings[-1] == 'False':
+        elif value == 'False':
             new_value = False
         elif re.match(r"^0x[abcdef\d]+$|^[\d]+$|^\d+\.?\d+$", value, re.IGNORECASE):
             new_value = eval(value)
@@ -502,7 +514,6 @@ class Parser(object):
             new_value = iso8601.parse_date(value)
         else:
             raise RequestSyntaxError("Failed to convert value: %s." % repr(value))
-        
         return new_value
 
 #if __name__ == '__main__':
