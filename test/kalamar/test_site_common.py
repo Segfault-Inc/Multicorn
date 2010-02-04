@@ -117,6 +117,15 @@ class TestSiteOpen(MyTest):
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
     
+    def test_no_result_empty_string(self):
+        """
+        Opening an non-existing item (empty string) must raise
+        ``ObjectDoesNotExist``.
+        """
+        request = u'genre=""'
+        self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
+                          self.access_point_name, request)
+    
     def test_one_result(self):
         """Trying to open an unique item must return the corresponding item."""
         request = u'genre="rock"/artiste="Jesus\'harlem"' \
