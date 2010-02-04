@@ -125,14 +125,16 @@ class StaticFileResponse(Response):
         """Create the response with the ``filename`` static file."""
         super(StaticFileResponse, self).__init__(filename)
         self.filename = filename
+        self.file_obj = open(self.filename, 'rb')
+        self.file_stat = os.stat(self.filename)
     
     def __call__(self, environ, start_response):
         """Return the file and set the response headers."""
-        stat = os.stat(self.filename)
-        etag = '%s,%s,%s' % (self.filename, stat.st_size, stat.st_mtime)
+        etag = '%s,%s,%s' % (self.filename, self.file_stat.st_size,
+                             self.file_stat.st_mtime)
         etag = '"%s"' % hashlib.md5(etag).hexdigest()
         headers = [('Date', werkzeug.http_date()), ('Etag', etag)]
-        mtime = datetime.datetime.utcfromtimestamp(stat.st_mtime)
+        mtime = datetime.datetime.utcfromtimestamp(self.file_stat.st_mtime)
         if not werkzeug.is_resource_modified(environ, etag=etag,
                                              last_modified=mtime):
             start_response('304 Not Modified', headers)
@@ -141,10 +143,10 @@ class StaticFileResponse(Response):
         mime_type, encoding = mimetypes.guess_type(self.filename)
         headers.extend((
             ('Content-Type', mime_type or 'application/octet-stream'),
-            ('Content-Length', str(stat.st_size)),
-            ('Last-Modified', werkzeug. http_date(stat.st_mtime))))
+            ('Content-Length', str(self.file_stat.st_size)),
+            ('Last-Modified', werkzeug. http_date(self.file_stat.st_mtime))))
         start_response('200 OK', headers)
-        return werkzeug.wrap_file(environ, open(self.filename, 'rb'))
+        return werkzeug.wrap_file(environ, self.file_obj)
 
 def arg_count(function):
     """Return the nubmer of explicit arguments the function takes.
