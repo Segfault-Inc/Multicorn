@@ -72,23 +72,33 @@ class Site(object):
     
     @staticmethod
     def parse_request(request):
-        """Convert a ``request`` string to Condition objects.
+        """Convert a ``request`` to a list of Condition objects.
 
-        If ``request`` is not a string, it is returned unmodified.
+        If ``request`` is a string, parse it with our query language.
+        If it’s a number, parse it’s string representation.
+        If it’s a dict, assume equality for all operators.
         
-        >>> list(Site.parse_request(u"/'1'/b='42'/c>='3'/"))
+        >>> Site.parse_request(u"/'1'/b='42'/c>='3'/")
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         [Condition(None, None, u'1'),
          Condition(u'b', <built-in function eq>, u'42'),
          Condition(u'c', <built-in function ge>, u'3')]
 
+        >>> Site.parse_request({u'a': 1, u'b': None})
+        ...                                  # doctest: +NORMALIZE_WHITESPACE
+        [Condition(u'a', <built-in function eq>, 1),
+         Condition(u'b', <built-in function eq>, None)]
+
         """
-        if isinstance(request, int) or isinstance(request, float):
-            return requestparser.iparse(str(request))
+        if isinstance(request, dict):
+            return [utils.Condition(key, utils.operators[u'='], value)
+                    for key, value in request.iteritems()]
+        elif isinstance(request, int) or isinstance(request, float):
+            return requestparser.parse(str(request))
         elif isinstance(request, basestring):
-            return requestparser.iparse(request)
+            return requestparser.parse(request)
         else:
-            return request
+            return list(request)
         
     def isearch(self, access_point, request=None):
         """Return a generator of items in ``access_point`` matching ``request``.
@@ -96,7 +106,7 @@ class Site(object):
         See ``Site.parse_request`` for the syntax of the ``request`` string.
 
         """
-        conditions = list(self.parse_request(request or []))
+        conditions = self.parse_request(request or [])
         return self.access_points[access_point].search(conditions)
     
     def search(self, access_point, request=None):

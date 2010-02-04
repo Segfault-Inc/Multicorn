@@ -256,8 +256,8 @@ class TestSiteSave(MyTest):
         This test needs the open method to work.
 
         """
-        request = u'genre="rock"/artiste="Jesus\'harlem"/' \
-                  u'album="amen"/titre="mechanical blues"'
+        request = dict(genre=u"rock", artiste=u"Jesus'harlem",
+                       album=u"amen", titre=u"mechanical blues")
         item = self.site.open(self.access_point_name, request)
         self.assertEqual(item.storage_modified, False)
         self.assertEqual(item.parser_modified, False)
