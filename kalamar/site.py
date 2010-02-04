@@ -77,6 +77,7 @@ class Site(object):
         If ``request`` is a string, parse it with our query language.
         If it’s a number, parse it’s string representation.
         If it’s a dict, assume equality for all operators.
+        Otherwise, assume it’s a list of values
         
         >>> Site.parse_request(u"/'1'/b='42'/c>='3'/")
         ...                                  # doctest: +NORMALIZE_WHITESPACE
@@ -86,19 +87,21 @@ class Site(object):
 
         >>> Site.parse_request({u'a': 1, u'b': None})
         ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [Condition(u'a', <built-in function eq>, 1),
-         Condition(u'b', <built-in function eq>, None)]
+        [Condition(u'a', None, 1),
+         Condition(u'b', None, None)]
 
         """
         if isinstance(request, dict):
-            return [utils.Condition(key, utils.operators[u'='], value)
+            return [utils.Condition(key, None, value)
                     for key, value in request.iteritems()]
         elif isinstance(request, int) or isinstance(request, float):
             return requestparser.parse(str(request))
         elif isinstance(request, basestring):
             return requestparser.parse(request)
         else:
-            return list(request)
+            return [v if isinstance(v, utils.Condition)
+                    else utils.Condition(None, None, value)
+                    for value in request]
         
     def isearch(self, access_point, request=None):
         """Return a generator of items in ``access_point`` matching ``request``.
