@@ -23,8 +23,9 @@ new access points for plain text based formats.
 
 """
 
-
 from kalamar.item import Item
+
+
 
 class TextItem(Item):
     """Access item data as a unicode string."""

@@ -28,19 +28,21 @@ from kalamar.item import Item
 from kalamar import parser
 from kalamar import storage
 
+
+
 class AccessPoint(object):
     """Abstract class for all storage backends.
     
     Attributes:
-        - config: a dictionnary of the access point configuration.
-        - default_encoding: default character encoding used if the parser does
-          not have one. Read-only attribute.
-        - property_names: properties defined in the access_point configuration.
-        - url: where the data is available.
-        - basedir: directory from where relatives pathes should start.
+
+    - config: a dictionnary of the access point configuration.
+    - default_encoding: default character encoding used if the parser does
+      not have one. Read-only attribute.
+    - property_names: properties defined in the access_point configuration.
+    - url: where the data is available.
+    - basedir: directory from where relatives pathes should start.
     
     """
-    
     @classmethod
     def from_url(cls, **config):
         """Return an instance of the appropriate class according to the URL.
@@ -114,8 +116,8 @@ class AccessPoint(object):
          Condition('d', <built-in function ge>, 4)]
 
         """
-        for n, cond in enumerate(conditions):
-            yield utils.Condition(cond.property_name or self.property_names[n],
+        for i, cond in enumerate(conditions):
+            yield utils.Condition(cond.property_name or self.property_names[i],
                                   cond.operator or utils.operator.eq,
                                   cond.value)
     
@@ -168,8 +170,8 @@ class AccessPoint(object):
                 yield item
     
     def _make_item(self, opener, properties):
-        parser = Item._find_parser(self)
-        return parser(self, opener, properties)
+        item_parser = Item._find_parser(self)
+        return item_parser(self, opener, properties)
     
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).
@@ -209,8 +211,7 @@ class AccessPoint(object):
         raise NotImplementedError('Abstract method')
 
     def remove_many(self, conditions):
-        """Remove all items matching the request
-        """
+        """Remove all items matching the request."""
         for item in self.search(conditions):
             self.remove(item)
 
@@ -219,6 +220,8 @@ class AccessPoint(object):
         
         Storage that do not store items in files should leave this
         implementation that return the NotImplemented constant.
+
+        Else, this method has to be overriden.
 
         """
         return NotImplemented
@@ -229,7 +232,7 @@ class AccessPoint(object):
         Here, "primary key" must be understood as "a sufficient set of keys to
         make a request returning 0 or 1 object".
         
-        This method must be overriden.
+        This method has to be overriden.
 
         """
         raise NotImplementedError('Abstract method')

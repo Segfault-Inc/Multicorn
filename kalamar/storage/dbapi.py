@@ -24,22 +24,24 @@ points.
 """
 
 from array import array
-from copy import deepcopy
-from itertools import izip
-from cStringIO import StringIO
 
 from kalamar.storage.base import AccessPoint
-from kalamar import Item, utils
+from kalamar import utils
+
 
 
 def _opener(content):
-    # convert to str as some databases return buffer objects
+    #convert to str as some databases return buffer objects
     return lambda: str(content)
     
+
+
 class Parameter:
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+
 
 class DBAPIStorage(AccessPoint):
     """Base class for SQL SGBD Storage.
@@ -48,6 +50,7 @@ class DBAPIStorage(AccessPoint):
     ``get_db_module`` and ``protocol``.
 
     It may be useful to also redefine the following methods or attributes:
+
     - ``_quote_name``
     - ``_sql_escape_quotes``
     - ``sql_operators``
@@ -55,9 +58,6 @@ class DBAPIStorage(AccessPoint):
     """
     protocol = None
     
-    class UnsupportedParameterStyleError(Exception): pass
-    class ManyItemsUpdatedError(Exception): pass
-        
     # Provided to ensure compatibility with as many SGDB as possible.
     # This may be modified by a descendant.
     sql_operators = {
@@ -67,10 +67,15 @@ class DBAPIStorage(AccessPoint):
         '>=': '>=',
         '<': '<',
         '<=': '<='}
+
+    class UnsupportedParameterStyleError(Exception):
+        """Unavailable style for parameter."""
     
     def __init__(self, *args, **kwargs):
         super(DBAPIStorage, self).__init__(*args, **kwargs)
         self.content_column = self.config.get('content_column', None)
+        self._connection = None
+        self._table = None
     
     def save(self, item):
         """Save item in the database."""
@@ -91,8 +96,8 @@ class DBAPIStorage(AccessPoint):
             # See http://www.databasesandlife.com/unique-constraints/
             if cursor.rowcount == 0:
                 # Item does not exist, let's do an insert
-                request, parameters = self._build_insert_request(table, item,
-                                                                 style)
+                request, parameters = \
+                    self._build_insert_request(table, item, style)
                 #1/0
                 cursor.execute(request, parameters)
             else:
@@ -140,10 +145,6 @@ class DBAPIStorage(AccessPoint):
         """
         raise NotImplementedError('Abstract method')
     
-    def close_connection(self):
-        """TODO documentation"""
-        raise NotImplementedError('Abstract method')
-    
     def get_db_module(self):
         """Return a DB-API implementation module.
         
@@ -154,7 +155,7 @@ class DBAPIStorage(AccessPoint):
     
     def get_storage_properties(self):
         """Return the list of the storage properties."""
-        connection, table = self.get_connection()
+        connection = self.get_connection()[0]
         cursor = connection.cursor()
         request = 'SELECT * FROM %s WHERE 1=2;' % self._quote_name(self._table)
         cursor.execute(request)
@@ -169,7 +170,7 @@ class DBAPIStorage(AccessPoint):
     
     def get_table_description(self):
         """Return field description as a dictionnary."""
-        connection, table = self.get_connection()
+        connection = self.get_connection()[0]
         cursor = connection.cursor()
         cursor.execute('SELECT * FROM %s WHERE 1=0;'
                        % self._quote_name(self._table))
@@ -213,18 +214,6 @@ class DBAPIStorage(AccessPoint):
         
         # Filter result and yield tuples (properties, value)
         filtered = list(self._filter_result(dict_lines, python_condition))
-        
-        # Convert all properties to strings
-        # TODO change this. See http://trac.dyko.org/ticket/4
-    #        def lines_to_string(lines):
-    #            for line in lines:
-    #                for key in line:
-    #                    if key != self.content_column \
-    #                    and not isinstance(line[key], unicode):
-    #                        line[key] = str(line[key]).decode(self.default_encoding)
-    #                yield line
-        
-    #        for line in lines_to_string(filtered):
         for line in filtered:
             data = line.get(self.content_column, None)
             
@@ -238,7 +227,8 @@ class DBAPIStorage(AccessPoint):
 
         cursor.close()
     
-    def _generate_lines_from_cursor(self, cursor):
+    @staticmethod
+    def _generate_lines_from_cursor(cursor):
         result = cursor.fetchmany()
         while result:
             for line in result:
@@ -264,7 +254,8 @@ class DBAPIStorage(AccessPoint):
         """
         for line in dict_lines:
             for condition in conditions:
-                if not condition.operator(line[condition.property_name], condition.value):
+                if not condition.operator(
+                    line[condition.property_name], condition.value):
                     break
             else:
                 yield line
@@ -442,7 +433,6 @@ class DBAPIStorage(AccessPoint):
             'pk_val1', 'pk_val2')
         
         """
-        
         table = self._sql_escape_quotes(table)
         
         primary_keys = self._get_primary_keys()
@@ -529,7 +519,6 @@ class DBAPIStorage(AccessPoint):
             ('sto_val', 'pk_val2', 'pk_val1', "item's raw data", 'sto_val2')
 
         """
-        
         table = self._sql_escape_quotes(table)
         
         request = array('u', u'INSERT INTO %s ( ' % self._quote_name(table))
@@ -639,10 +628,7 @@ class DBAPIStorage(AccessPoint):
         UnsupportedParameterStyleError: nonexistant
 
         """
-        
         parameters = list(self._convert_parameters(parameters))
-        description = self.get_table_description()
-        
         parts = request.split('?')
         
         if style == 'qmark':
@@ -663,15 +649,12 @@ class DBAPIStorage(AccessPoint):
             named = [
                 '%s:%s%i' % (part, param.name, i)
                 for i, (part, param)
-                in enumerate(zip(parts[:-1], parameters))
-            ]
+                in enumerate(zip(parts[:-1], parameters))]
             named.append(parts[-1])
             request = u''.join(named)
             parameters = dict(
-                             (u'%s%i' % (p.name, i), p.value)
-                             for i, p
-                             in enumerate(parameters)
-                         )
+                (u'%s%i' % (p.name, i), p.value)
+                for i, p in enumerate(parameters))
             
         elif style == 'format':
             # ... WHERE a=%s AND b=%d
@@ -689,8 +672,7 @@ class DBAPIStorage(AccessPoint):
                 code = u's'
                 request += u'%%(%s%i)%c%s' % (param.name, i, code, part)
             parameters = dict((u'%s%i' % (p.name, i), p.value)
-                              for i, p
-                              in enumerate(parameters))
+                              for i, p in enumerate(parameters))
 
         else:
             raise DBAPIStorage.UnsupportedParameterStyleError(style)

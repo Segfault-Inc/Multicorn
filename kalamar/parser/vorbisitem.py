@@ -30,7 +30,6 @@ except ImportError:
                   'VorbisItem will not be available.',
                   ImportWarning)
 else:
-    from werkzeug import MultiDict
     from tempfile import NamedTemporaryFile
     from kalamar.item import Item
 
@@ -56,7 +55,7 @@ else:
             properties['ogg_data'] = self._get_content()
             print self._get_content()
             
-            # Create a real file descriptor, as VorbisFile does not accept a stream
+            # Create real file descriptor, as VorbisFile does not accept stream
             temporary_file = NamedTemporaryFile()
             temporary_file.write(properties['ogg_data'])
             temporary_file.seek(0)

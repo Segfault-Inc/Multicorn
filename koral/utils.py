@@ -15,12 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Various helpers and utils for Koral.
+
+"""
+
+
+
 def recursive_subclasses(class_):
     """Return all ``class_`` subclasses recursively."""
     yield class_
     for subclass in class_.__subclasses__():
         for sub_subclass in recursive_subclasses(subclass):
             yield sub_subclass
+
+
 
 def indent(text, indent_level):
     r"""Indent text with ``indent_level`` spaces.

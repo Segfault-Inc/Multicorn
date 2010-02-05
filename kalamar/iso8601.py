@@ -68,6 +68,8 @@ class ParseError(Exception):
     """Exception raised when there is a problem parsing a date string."""
     pass
 
+
+
 # Yoinked from python docs
 class Utc(tzinfo):
     """UTC timezone information.
@@ -82,15 +84,20 @@ class Utc(tzinfo):
     datetime.timedelta(0)
     
     """
-    def utcoffset(self, dt):
+    def utcoffset(self, _):
+        """Return offset of local time from UTC, in minutes east of UTC."""
         return ZERO
 
-    def tzname(self, dt):
+    def tzname(self, _):
+        """Return the time zone name as a string."""
         return 'UTC'
 
-    def dst(self, dt):
+    def dst(self, _):
+        """Return daylight saving time adjustment, in minutes east of UTC."""
         return ZERO
 UTC = Utc()
+
+
 
 class FixedOffset(tzinfo):
     """Fixed offset in hours and minutes from UTC.
@@ -106,20 +113,28 @@ class FixedOffset(tzinfo):
     
     """
     def __init__(self, offset_hours, offset_minutes, name):
+        """Initialize timezone information with given offsets and name."""
+        super(FixedOffset, self).__init__(offset_hours, offset_minutes, name)
         self.__offset = timedelta(hours=offset_hours, minutes=offset_minutes)
         self.__name = name
 
-    def utcoffset(self, dt):
+    def utcoffset(self, _):
+        """Return offset of local time from UTC, in minutes east of UTC."""
         return self.__offset
 
-    def tzname(self, dt):
+    def tzname(self, _):
+        """Return the time zone name as a string."""
         return self.__name
 
-    def dst(self, dt):
+    def dst(self, _):
+        """Return daylight saving time adjustment, in minutes east of UTC."""
         return ZERO
     
     def __repr__(self):
+        """Return pythonic representation of timezone information."""
         return '<FixedOffset %r>' % self.__name
+
+
 
 def parse_timezone(tzstring, default_timezone=UTC):
     """Parse ISO 8601 timezone specs into tzinfo offsets."""
@@ -137,6 +152,8 @@ def parse_timezone(tzstring, default_timezone=UTC):
         hours, minutes = -hours, -minutes
     return FixedOffset(hours, minutes, tzstring)
 
+
+
 def parse_datetime(datestring, default_timezone=UTC):
     """Parses ISO 8601 dates into datetime objects
     
@@ -152,7 +169,8 @@ def parse_datetime(datestring, default_timezone=UTC):
     if not match:
         raise ParseError('Unable to parse datetime string %r' % datestring)
     groups = match.groupdict()
-    tz = parse_timezone(groups['timezone'], default_timezone=default_timezone)
+    timezone = parse_timezone(groups['timezone'],
+                              default_timezone=default_timezone)
     if groups['fraction'] is None:
         groups['fraction'] = 0
     else:
@@ -160,9 +178,11 @@ def parse_datetime(datestring, default_timezone=UTC):
     return datetime(
         int(groups['year']), int(groups['month']), int(groups['day']),
         int(groups['hour']), int(groups['minute']), int(groups['second']),
-        int(groups['fraction']), tz)
+        int(groups['fraction']), timezone)
         
-def parse_date(datestring, default_timezone=UTC):
+
+
+def parse_date(datestring):
     """Parses ISO 8601 dates into date objects."""
     if not isinstance(datestring, basestring):
         raise ParseError('Expecting a string instead of %r' % datestring)

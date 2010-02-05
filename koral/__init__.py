@@ -23,4 +23,3 @@ Koral - Templates Management Library
 """
 
 from koral.site import Site
-

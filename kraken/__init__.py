@@ -25,4 +25,3 @@ Kraken - HTTP Requests Dispatcher
 
 from kraken.site import Site
 from kraken.utils import *
-

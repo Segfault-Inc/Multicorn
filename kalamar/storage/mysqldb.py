@@ -31,16 +31,13 @@ except ImportError:
                   'MySQL support will not be available.',
                   ImportWarning)
 else:
-    from MySQLdb.constants import FIELD_TYPE, FLAG, CLIENT
+    from MySQLdb.constants import FIELD_TYPE, CLIENT
     from MySQLdb import converters
     from copy import copy
-    import types
-    import array
-    import decimal
-    import urlparse
-    import os
 
-    from dbapi import DBAPIStorage
+    from kalamar.storage.dbapi import DBAPIStorage
+
+
 
     class MySQLdbStorage(DBAPIStorage):
         """MySQLdb access point"""
@@ -111,11 +108,12 @@ else:
         def get_connection(self):
             """Return (``connection``, ``table``).
             
-            Need 'url' in the configuration in the following format:
-                mysql://user:password@host[:port]/base?table
+            Need 'url' in the configuration in the following format::
+
+              mysql://user:password@host[:port]/base?table
             
             """
-            if not getattr(self, '_connection', None):
+            if not self._connection:
                 kwargs = {}
                 parts = self.config['url'].split('/')
                 
@@ -140,7 +138,7 @@ else:
                     self.default_encoding.replace('-',''))
 
             self._connection.ping(True)
-            return (self._connection, self._table)
+            return self._connection, self._table
         
         def _get_primary_keys(self):
             """Return the list of the table primary keys."""

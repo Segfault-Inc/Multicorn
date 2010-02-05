@@ -34,7 +34,9 @@ else:
     import urlparse
     import os
 
-    from dbapi import DBAPIStorage
+    from kalamar.storage.dbapi import DBAPIStorage
+
+
 
     class SQLiteStorage(DBAPIStorage):
         """SQLite 3 access point"""
@@ -54,14 +56,14 @@ else:
                 sqlite://:memory:?table
             
             """
-            if not getattr(self, '_connection', None):
+            if not self._connection:
                 url = self.config['url']
                 url_dict = urlparse.urlsplit(url)
                 splitted_path = url_dict.path.split('?', 1)
-                file = splitted_path[0][2:]
+                filename = splitted_path[0][2:]
                 self._table = splitted_path[1]
-                file = os.path.join(self.config['basedir'], file)
-                self._connection = sqlite3.connect(file)
+                filename = os.path.join(self.config['basedir'], filename)
+                self._connection = sqlite3.connect(filename)
 
             return (self._connection, self._table)
         

@@ -31,12 +31,12 @@ See BinaryItem for a very simple example.
 
 """
 
-from copy import copy
-from werkzeug import MultiDict, CombinedMultiDict, cached_property
+from werkzeug import MultiDict, cached_property
     
 from kalamar import parser, utils
-
 from kalamar.requestparser import reverse_convert_value
+
+
 
 class Item(object):
     """Base class for parsers.
@@ -87,7 +87,6 @@ class Item(object):
         self.storage_properties = utils.AliasedMultiDict(
             self.raw_storage_properties, self.storage_aliases)
         
-    
     @cached_property
     def raw_parser_properties(self):
         """The “parser” counterpart of raw_storage_properties. A MultiDict.
@@ -98,8 +97,7 @@ class Item(object):
 
     @cached_property
     def parser_properties(self):
-        """
-        The “parser” counterpart of storage_properties.
+        """The “parser” counterpart of storage_properties.
         
         This is also a cached_property because we need the actual
         raw_parser_properties MultiDict to instanciate it.
@@ -108,8 +106,7 @@ class Item(object):
                                       self.parser_aliases)
 
     def _is_storage_key(self, key):
-        """Determine wether this key is a storage property or a parser property.
-        """
+        """Determine wether this key is storage property or parser property."""
         if key in self.storage_aliases:
             return True
         if key in self.parser_aliases:
@@ -161,10 +158,10 @@ class Item(object):
         storage_properties = dict((name, None) for name
                                   in access_point.get_storage_properties())
         
-        parser = Item._find_parser(access_point)
-        item = parser(access_point,
-                      storage_properties=storage_properties,
-                      opener=lambda: initial_content)
+        item_parser = Item._find_parser(access_point)
+        item = item_parser(access_point,
+                           storage_properties=storage_properties,
+                           opener=lambda: initial_content)
         
         # old_storage_properties is meaningless for a new item.
         item.old_storage_properties = MultiDict()
@@ -177,7 +174,7 @@ class Item(object):
 
     @staticmethod
     def _find_parser(access_point):
-        """Return the parser class set for the given access point in the configuration.
+        """Return the parser class set for the given access point.
         
         Your kalamar distribution should have, at least, a parser for the
         ``binary`` format.
@@ -245,10 +242,9 @@ class Item(object):
         """Return a request sufficient to find this item and only this one."""
         if self._request is None:
             conditions = [
-                u"%s=%s" % (key, reverse_convert_value(self[key]))
-                for key in self._access_point._get_primary_keys()
-            ]
-            self._request = "/".join(conditions)
+                u'%s=%s' % (key, reverse_convert_value(self[key]))
+                for key in self._access_point._get_primary_keys()]
+            self._request = '/'.join(conditions)
         print self._request
         return self._request
     
@@ -290,6 +286,7 @@ class Item(object):
         return self._raw_content
 
 
+
 class BinaryItem(Item):
     """A simple parser that gives access to the raw, binary content as the
     ``data`` property.
@@ -328,7 +325,6 @@ class CapsuleItem(Item):
         super(CapsuleItem, self).__init__(
             access_point, opener, storage_properties)
         self._parser_modified = False
-
     
     def _get_subitems(self):
         """List of the capsule subitems."""
@@ -338,6 +334,7 @@ class CapsuleItem(Item):
         return self._subitems
     
     def _set_subitems(self, new_list):
+        """Set the list of the capsule subitems."""
         self._subitems = utils.ModificationTrackingList(new_list)
         self._subitems.modified = True
     
@@ -369,6 +366,3 @@ class CapsuleItem(Item):
     def _load_subitems(self):
         """Load and return capsule subitems."""
         raise NotImplementedError('Abstract class')
-
-
-

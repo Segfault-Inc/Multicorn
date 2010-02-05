@@ -24,6 +24,8 @@ This access point is internally used for testing purpose.
 
 from kalamar.item import Item
 
+
+
 class TestItem(Item):
     """Test access point item."""
     format = 'test_format'
@@ -45,6 +47,5 @@ class TestItem(Item):
         """Return a string of properties representing the test item."""
         return u'\n'.join(
             unicode(self.raw_parser_properties.get(key, u''))
-            for key in self._keys
-        ).encode(self.encoding)
+            for key in self._keys).encode(self.encoding)
 

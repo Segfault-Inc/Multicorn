@@ -15,9 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Jinja2 engine support for Koral.
+
+"""
+
 import warnings
 
 from koral.engine.base import BaseEngine
+
+
 
 try:
     from jinja2 import Environment, FileSystemLoader
@@ -41,12 +48,11 @@ else:
         name = 'jinja2'
         
         def __init__(self, *args, **kwargs):
-            """Jinja 2 engine initialisation."""
+            """Jinja2 engine initialisation."""
             super(Jinja2Engine, self).__init__(*args, **kwargs)
             self._env = Environment(loader=FileSystemLoader(self.path_to_root))
             
         def render(self, template_name, values={}, lang=None, modifiers=None):
-            """Render Jinja 2 template."""
+            """Render Jinja2 template."""
             template = self._env.get_template(template_name)
             return template.render(**values)
-

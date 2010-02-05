@@ -1,4 +1,30 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# This file is part of Dyko
+# Copyright © 2008-2009 Kozea
+#
+# This library is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Dyko.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+TODO: write docstring
+
+"""
+
+# TODO: use a real "debug mode" if needed, instead of comments and #!
+# TODO: iparse should be split in smaller functions
+# TODO: then comment all these functions
+# TODO: then check that lines are not longer than 80 characters
+# TODO: and then finally use names longer than c, s or p
 
 import re
 import datetime
@@ -7,9 +33,13 @@ import datetime
 from kalamar import iso8601, utils
 from kalamar.utils import Condition
 
+
+
 def iparse(data):
     p = Parser(data)
     return p.iparse()
+
+
 
 def parse(data):
     """
@@ -19,14 +49,21 @@ def parse(data):
     """
     return list(iparse(data))
 
+
+
 def reverse_convert_value(value):
     if isinstance(value, (unicode, str)):
         return "'%s'" % unicode(value).replace("'", r"\'")
-    elif isinstance(value, (int,float)):
+    elif isinstance(value, (int, float)):
         return value
     raise Exception("This type cannot be converted back: %s" % type(value))
 
-class RequestSyntaxError(ValueError): pass
+
+
+class RequestSyntaxError(ValueError):
+    """Syntax error found in request."""
+
+
 
 class Parser(object):
     ur"""
@@ -282,7 +319,6 @@ class Parser(object):
     RequestSyntaxError: Failed to convert value: u'1a'.
 
     """
-    
     quote_chars = u'\'"'
     escape_char = u'\\'
     escaped_chars = u'\'"\\'
@@ -368,7 +404,7 @@ class Parser(object):
                         try:
                             c = self._idata.next()
                         except StopIteration:
-                                self._stop_parsing = True
+                            self._stop_parsing = True
                     elif self._finish:
                         if self.is_blank(c):
                             # ignore trailing blanks
@@ -381,14 +417,14 @@ class Parser(object):
                                 self.strings.append(c)
                             else:
                                 raise RequestSyntaxError(
-                                    "Got %s but expected %s."
-                                    % (repr(c), repr(self.break_char)))
+                                    "Got %s but expected %s." %
+                                    (repr(c), repr(self.break_char)))
                         elif c == self.break_char:
                             self._stop_condition = True
                         else:
                             raise RequestSyntaxError(
-                                "Got %s but expected operator or %s."
-                                % (repr(c), repr(self.break_char)))
+                                "Got %s but expected operator or %s." %
+                                (repr(c), repr(self.break_char)))
                         try:
                             c = self._idata.next()
                         except StopIteration:
@@ -407,16 +443,15 @@ class Parser(object):
 #                                            self.strings.append(u'')
 #                                        else:
 #                                            raise RequestSyntaxError(
-#                                                "Got %s but expected %s."
-#                                                % (repr(c), repr(self.break_char))
-#                                            )
+#                                                "Got %s but expected %s." %
+#                                                (repr(c),
+#                                                 repr(self.break_char)))
 #                                    elif c == self.break_char:
 #                                        self._stop_condition = True
 #                                    else:
 #                                        raise RequestSyntaxError(
-#                                            "Got %s but expected operator or %s."
-#                                            % (repr(c), repr(self.break_char))
-#                                        )
+#                                            "Got %s but expected op or %s." %
+#                                            (repr(c), repr(self.break_char)))
                                 except StopIteration:
                                     self._stop_parsing = True
                             else:
@@ -439,8 +474,8 @@ class Parser(object):
                                     self.strings.append(u'')
                                 else:
                                     raise RequestSyntaxError(
-                                        "Got %s but expected %s."
-                                        % (repr(c), repr(self.break_char)))
+                                        "Got %s but expected %s." %
+                                        (repr(c), repr(self.break_char)))
                             else:
                                 self.strings[-1] += c
                                 try:

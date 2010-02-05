@@ -15,14 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Some corks used for testing."""
+"""
+Some corks used for testing.
+
+"""
 
 import os
-from werkzeug import MultiDict, CombinedMultiDict
 
-from ..item import Item
+from kalamar import Item
+
+
 
 class CorkItem(Item):
+    """Testing item."""
     format = "cork_item"
     
     def __init__(self, access_point, opener=None, storage_properties={}):
@@ -39,7 +44,10 @@ class CorkItem(Item):
     def serialize(self):
         return self._get_content()
 
+
+
 class CorkAccessPoint:
+    """Testing access point."""
     parser_aliases = {"I am aliased": "I am not aliased"}
     storage_aliases = {}
     default_encoding = "utf-8"
@@ -48,6 +56,8 @@ class CorkAccessPoint:
     def get_storage_properties(self):
         return []
     
-def cork_opener():
-    return open(os.path.dirname(__file__) + "/toto").read()
 
+
+def cork_opener():
+    """Open and return testing file."""
+    return open(os.path.dirname(__file__) + "/toto").read()

@@ -22,8 +22,6 @@ Create one for each independent site.
 
 """
 
-import os
-
 from koral import engine, utils
 
 
@@ -40,13 +38,12 @@ class Site(object):
             if getattr(subclass, 'name', None):
                 self.engines[subclass.name] = subclass(self.path_to_root)
     
-    def render(self, engine, template_name, values={}, lang=None,
+    def render(self, site_engine, template_name, values={}, lang=None,
                modifiers=None):
         """Shorthand to the engine render method.
         
         TODO test & doc
 
         """
-        return self.engines[engine].render(
+        return self.engines[site_engine].render(
             template_name, values, lang, modifiers)
-

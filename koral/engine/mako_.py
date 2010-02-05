@@ -15,10 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Mako engine support for Koral.
+
+"""
+
 import warnings
-import os
 
 from koral.engine.base import BaseEngine
+
+
 
 try:
     from mako.lookup import TemplateLookup
@@ -42,15 +48,12 @@ else:
         name = 'mako'
         
         def __init__(self, *args, **kwargs):
+            """Mako engine initialisation."""
             super(MakoEngine, self).__init__(*args, **kwargs)
             self._loader = TemplateLookup(directories=[self.path_to_root])
             
         def render(self, template_name, values={}, lang=None, modifiers=None):
-            values = self.make_values(values)
+            """Render mako template."""
+            values = dict(values)
             template = self._loader.get_template(template_name)
             return template.render_unicode(**values)
-        
-        def make_values(self, values):
-            return dict(values)
-        
-

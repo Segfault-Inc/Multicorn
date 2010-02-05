@@ -29,12 +29,21 @@ import warnings
 from kalamar.storage import base
 from kalamar import Item, requestparser, utils
 
+
+
 class Site(object):
     """Kalamar site."""
-    class NotOneObjectReturned(Exception): pass
-    class MultipleObjectsReturned(NotOneObjectReturned): pass
-    class ObjectDoesNotExist(NotOneObjectReturned): pass
-    class FileNotFoundError(Exception): pass
+    class NotOneObjectReturned(Exception):
+        """Not one object has been returned."""
+
+    class MultipleObjectsReturned(NotOneObjectReturned):
+        """More than one object have been returned."""
+
+    class ObjectDoesNotExist(NotOneObjectReturned):
+        """No object has been returned."""
+
+    class FileNotFoundError(Exception):
+        """File not found on filesystem."""
     
     def __init__(self, config_filename=None, fail_on_inexistent_parser=True):
         """Create a kalamar site from a configuration file.
@@ -60,15 +69,15 @@ class Site(object):
                 kwargs = dict(config.items(section), basedir=basedir, site=self)
                 kwargs['name'] = section
                 if fail_on_inexistent_parser:
-                    ap = base.AccessPoint.from_url(**kwargs)
+                    access_point = base.AccessPoint.from_url(**kwargs)
                 else:
                     try:
-                        ap = base.AccessPoint.from_url(**kwargs)
-                    except utils.ParserNotAvailable, e:
-                        warnings.warn('The access point %r was ignored. (%s)'
-                                      % (section, e.args[0]))
+                        access_point = base.AccessPoint.from_url(**kwargs)
+                    except utils.ParserNotAvailable, exception:
+                        warnings.warn('The access point %r was ignored. (%s)' %
+                                      (section, exception.args[0]))
                         continue
-                self.access_points[section] = ap
+                self.access_points[section] = access_point
     
     @staticmethod
     def parse_request(request):
@@ -140,11 +149,13 @@ class Site(object):
         else:
             raise self.MultipleObjectsReturned
     
-    def save(self, item):
+    @staticmethod
+    def save(item):
         """Update or add the item."""
         return item._access_point.save(item)
 
-    def remove(self, item):
+    @staticmethod
+    def remove(item):
         """Remove/delete the item from the backend storage."""
         return item._access_point.remove(item)
     
@@ -181,8 +192,8 @@ class Site(object):
 
         """
         filename = os.path.normpath(filename)
-        for ap in self.access_points.values():
-            item = ap.item_from_filename(filename)
+        for access_point in self.access_points.values():
+            item = access_point.item_from_filename(filename)
             if item and item is not NotImplemented:
                 return item
 

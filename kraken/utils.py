@@ -30,7 +30,8 @@ import werkzeug
 import urlparse
 import posixpath
 from werkzeug.contrib.securecookie import SecureCookie
-from werkzeug.exceptions import NotFound, Forbidden
+
+
 
 def make_absolute_url(request, url):
     """Return a clean absolute URL from ``request`` and ``url``.
@@ -77,6 +78,8 @@ def make_absolute_url(request, url):
         new_url += '/'
     return new_url
 
+
+
 def redirect(request, url, status=302):
     """Redirect client to relative or absolute ``url`` with ``status``.
 
@@ -95,6 +98,8 @@ def redirect(request, url, status=302):
     """
     return werkzeug.redirect(make_absolute_url(request, url), status)
 
+
+
 class Request(werkzeug.Request):
     """TODO docstring."""
     def __init__(self, environ, session_secret_key=None):
@@ -108,9 +113,11 @@ class Request(werkzeug.Request):
         return SecureCookie.load_cookie(
             self, secret_key=self.session_secret_key)
 
+
+
 class Response(werkzeug.Response):
     """TODO docstring."""
-    pass
+
 
 
 class StaticFileResponse(Response):
@@ -148,6 +155,8 @@ class StaticFileResponse(Response):
         start_response('200 OK', headers)
         return werkzeug.wrap_file(environ, self.file_obj)
 
+
+
 def arg_count(function):
     """Return the nubmer of explicit arguments the function takes.
     
@@ -161,8 +170,10 @@ def arg_count(function):
     2
 
     """
-    args, varargs, varkw, defaults = inspect.getargspec(function)
+    args = inspect.getargspec(function)[0]
     return len(args)
+
+
 
 def runserver(site, args=None):
     """Run a developpement server for the given Kraken ``site``.
@@ -196,7 +207,5 @@ def runserver(site, args=None):
         lambda: site,
         # Files for the reloader to watch
         extra_files=[site.kalamar_site.config_filename]
-            if site and site.kalamar_site.config_filename else []
-    )
+        if site and site.kalamar_site.config_filename else [])
     werkzeug.script.run(args=args)
-

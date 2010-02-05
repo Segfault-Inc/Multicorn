@@ -20,6 +20,8 @@ Kalamar various utils.
 
 """
 
+# TODO: this file is magic and poorly documented
+
 import os.path
 import operator
 import re
@@ -28,6 +30,8 @@ import functools
 import posixpath
 import ntpath
 import werkzeug
+
+
 
 def apply_to_result(function):
     """Make a decorator that applies ``function`` to the results.
@@ -42,20 +46,26 @@ def apply_to_result(function):
     ['bar']
 
     """
-    def _decorator(f):
-        @functools.wraps(f)
+    def _decorator(decorated_function):
+        @functools.wraps(decorated_function)
         def _decorated(*args, **kwargs):
-            return function(f(*args, **kwargs))
+            return function(decorated_function(*args, **kwargs))
         return _decorated
     return _decorator
+
+
 
 def re_match(string, pattern):
     """Return if ``string`` matches ``pattern``."""
     return bool(re.search(pattern, string))
 
+
+
 def re_not_match(string, pattern):
     """Return if ``string" does not match ``pattern``."""
     return not re.search(pattern, string)
+
+
 
 operators = {
     u'=': operator.eq,
@@ -66,11 +76,9 @@ operators = {
     u'<=': operator.le,
     u'~=': re_match,
     u'~!=': re_not_match}
+operators_rev = dict((value, key) for key, value in operators.items())
 
-operators_rev = dict((value, key) for (key, value) in operators.items())
 
-class OperatorNotAvailable(ValueError): pass
-class ParserNotAvailable(ValueError): pass
 
 def recursive_subclasses(class_):
     """Return all ``class_`` subclasses recursively."""
@@ -79,11 +87,23 @@ def recursive_subclasses(class_):
         for sub_subclass in recursive_subclasses(subclass):
             yield sub_subclass
 
+
+
+class OperatorNotAvailable(ValueError):
+    """Operator unavailable in operators."""
+
+
+
+class ParserNotAvailable(ValueError):
+    """Parser unavailable in parsers."""
+
+
+
 class Condition(object):
-    """A contener for property_name, operator, value."""
-    def __init__(self, property_name, operator, value):
+    """A contener for property_name, condition_operator, value."""
+    def __init__(self, property_name, condition_operator, value):
         self.property_name = property_name
-        self.operator = operator
+        self.operator = condition_operator
         self.value = value
     
     def __call__(self, item):
@@ -93,6 +113,7 @@ class Condition(object):
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__, self.property_name,
                                    self.operator, self.value)
+
                                 
 
 class ModificationTrackingList(list):
@@ -111,7 +132,6 @@ class ModificationTrackingList(list):
     True
     
     """
-    
     def __init__(self, *args, **kwargs):
         super(ModificationTrackingList, self).__init__(*args, **kwargs)
         self.modified = False
@@ -174,7 +194,7 @@ class AliasedMultiDict(object):
 
     @werkzeug.cached_property
     def reversed_aliases(self):
-        return dict((v,k) for k,v in self.aliases.iteritems())
+        return dict((value, key) for key, value in self.aliases.iteritems())
     
     # Sized
     def __len__(self):
@@ -275,7 +295,7 @@ class AliasedMultiDict(object):
 
     def update(self, other=(), **kwds):
         # adapted from Python 2.6.4’s _abcoll module
-        if hasattr(other, "keys"):
+        if hasattr(other, 'keys'):
             for key in other.keys():
                 self[key] = other[key]
         else:
@@ -291,6 +311,8 @@ class AliasedMultiDict(object):
         except KeyError:
             self[key] = default
         return default
+
+
 
 def simple_cache(function):
     """Decorator that caches function results.
@@ -332,6 +354,8 @@ def simple_cache(function):
     _wrapped.cache = cache
     return _wrapped
 
+
+
 # Python 2.5 compatibility
 try:
     # Use the stdlib one if available (Python >=2.6)
@@ -362,14 +386,14 @@ except ImportError:
         start_list = ntpath.abspath(start).split(ntpath.sep)
         path_list = ntpath.abspath(path).split(ntpath.sep)
         if start_list[0].lower() != path_list[0].lower():
-            unc_path, rest = ntpath.splitunc(path)
-            unc_start, rest = ntpath.splitunc(start)
+            unc_path = ntpath.splitunc(path)[0]
+            unc_start = ntpath.splitunc(start)[0]
             if bool(unc_path) ^ bool(unc_start):
                 raise ValueError("Cannot mix UNC and non-UNC paths "
                                  "(%s and %s)" % (path, start))
             else:
-                raise ValueError("Path is on drive %s, start on drive %s"
-                                 % (path_list[0], start_list[0]))
+                raise ValueError("Path is on drive %s, start on drive %s" %
+                                 (path_list[0], start_list[0]))
 
         # Work out how much of the filepath is shared by start and path.
         for i in range(min(len(start_list), len(path_list))):
@@ -388,4 +412,3 @@ except ImportError:
     elif os.path is ntpath:
         relpath = _nt_relpath
     # macpath and os2emxpath do not seem to have a relpath function
-

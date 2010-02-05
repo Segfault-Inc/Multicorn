@@ -15,9 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Genshi engine support for Koral.
+
+"""
+
 import warnings
-import os
+
 from koral.engine.base import BaseEngine
+
+
 
 try:
     from genshi.template import TemplateLoader
@@ -54,11 +61,6 @@ else:
             
         def render(self, template_name, values={}, lang=None, modifiers=None):
             """Render genshi template."""
-            values = self.make_values(values)
+            values = dict(values, XML=genshi.input.XML)
             stream = self._loader.load(template_name).generate(**values)
             return stream.render(method='xhtml', encoding=None, doctype='xhtml')
-        
-        def make_values(self, values):
-            return dict(values, XML=genshi.input.XML)
-            
-

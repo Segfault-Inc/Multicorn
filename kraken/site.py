@@ -23,7 +23,7 @@ independent site with its own configuration.
 
 """
 
-import os.path
+import os
 import collections
 import mimetypes
 import types
@@ -41,7 +41,7 @@ from kraken.cached_kalamar import CachedKalamarSite
 class Site(object):
     """WSGI application from a site root and a kalamar configuration file."""
     def __init__(self, site_root, kalamar_conf=None, secret_key=None,
-                 fail_on_inexistent_kalamar_parser=True):
+                 fail_on_inexistent_parser=True):
         """Initialize the Site.
 
         ``site_root``: dirname of the root of the site
@@ -55,7 +55,7 @@ class Site(object):
         self.koral_site = koral.Site(self.site_root)
         self.kalamar_site = kalamar.Site(
             os.path.expanduser(unicode(kalamar_conf)) if kalamar_conf else None,
-            fail_on_inexistent_parser=fail_on_inexistent_kalamar_parser)
+            fail_on_inexistent_parser=fail_on_inexistent_parser)
         self._module_cache = {}
     
     def __call__(self, environ, start_response):
@@ -63,9 +63,9 @@ class Site(object):
         request = self.make_request(environ)
         try:
             response = self.handle_request(request)
-        except HTTPException, e:
+        except HTTPException, exception:
             # e is also a WSGI application
-            return e(environ, start_response)
+            return exception(environ, start_response)
 
         response = self.process_response(request, response)
         return response(environ, start_response)
@@ -107,7 +107,8 @@ class Site(object):
             
         return response
 
-    def handle_trailing_slash(self, request):
+    @staticmethod
+    def handle_trailing_slash(request):
         """Redirect if ``request.path`` has no trailing slash."""    
         if not request.path.endswith(u'/'):
             # Add the missing trailing slash
@@ -161,7 +162,8 @@ class Site(object):
                     # (ie the redirect doesn’t lead to a "404 Not Found")
                     if u'/.' in request.path:
                         raise Forbidden
-                    request.module_directory = os.path.dirname(module_path).strip('/')
+                    request.module_directory = \
+                        os.path.dirname(module_path).strip('/')
                     self.handle_trailing_slash(request)
                     return handler(request)
         
@@ -182,7 +184,8 @@ class Site(object):
                             if part.startswith(u'.'):
                                 raise Forbidden
                         self.handle_trailing_slash(request)
-                        request.module_directory = os.path.dirname(module_path).strip('/')
+                        request.module_directory = \
+                            os.path.dirname(module_path).strip('/')
                         return handler(request, u'/'.join(path_info))
             # exit loop here and not with the while condition so that
             # the previous code is executed with script_name == []
@@ -253,7 +256,7 @@ class Site(object):
             engine = match.group(2)
         
         # Handle a simple template
-        mimetype, encoding = mimetypes.guess_type(u'_.' + str(extension))
+        mimetype = mimetypes.guess_type(u'_.' + str(extension))[0]
         if not values:
             values = {}
         values.update(self.simple_template_context(request))
@@ -262,8 +265,10 @@ class Site(object):
     
     def simple_template_context(self, request):
         """TODO docstring."""
-        class Site: pass
-        site = Site()
+        class FakeSite:
+            """TODO docstring."""
+
+        site = FakeSite()
         # request.kalamar is a CachedKalamarSite
         # use the same instance so that they share the cache
         site.kalamar = request.kalamar
@@ -331,7 +336,7 @@ class Site(object):
         if name == 'koral':
             return self.koral_site
         if name == 'kalamar':
-            # XXX ideally we would return request.kalamar here
+            # TODO ideally we would return request.kalamar here
             # (a CachedKalamarSite instance) but we don’t have a reference
             # to the request
             return self.kalamar_site

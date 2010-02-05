@@ -24,15 +24,14 @@ work on all platforms.
 """
 
 import os
-import glob
 import re
-import itertools
 import functools
 import werkzeug
 from random import random
 
 from kalamar import utils
 from kalamar.storage.base import AccessPoint
+
 
 
 class FileSystemStorage(AccessPoint):
@@ -119,7 +118,7 @@ class FileSystemStorage(AccessPoint):
         root.
         
         If opening for writing (ie. 'w' in mode), create parent directories
-        as needed. TODO: test this
+        as needed.
         
         >>> dirname, basename = os.path.split(__file__)
         >>> ap = AccessPoint.from_url(url='file://%s' % dirname)
@@ -128,20 +127,21 @@ class FileSystemStorage(AccessPoint):
 
         """
         if 'w' in mode and '/' in filename:
-            head, tail = filename.rsplit('/', 1)
+            head = filename.rsplit('/', 1)[0]
             if head:
                 real_head = self._real_filename(head)
+                # TODO: test parent directories creation
                 if not os.path.exists(real_head):
                     os.makedirs(real_head)
         return open(self._real_filename(filename), mode)
     
     def get_file_content(self, filename, real_filename=False):
         if real_filename:
-            f = open(filename, 'rb')
+            file_descriptor = open(filename, 'rb')
         else:
-            f = self.open_file(filename)
-        data = f.read()
-        f.close()
+            file_descriptor = self.open_file(filename)
+        data = file_descriptor.read()
+        file_descriptor.close()
         return data
         
     def rename(self, source, destination):
@@ -199,8 +199,6 @@ class FileSystemStorage(AccessPoint):
         ...                           filename_format='*/*.py')
         >>> from kalamar.site import Site
         >>> request = list(Site.parse_request('path1="storage"/path2~!="^__"'))
-        
-        # TODO: seems to fail on python 2.5 ??
         >>> len([1 for properties, opener in ap._storage_search(request)
         ...      if properties['path2'].startswith('__')])
         0
@@ -267,7 +265,6 @@ class FileSystemStorage(AccessPoint):
         
         return walk(u'', self.filename_pattern_parts, ())
             
-    
     def _path_from_properties(self, properties):
         """Rebuild a path from a dict of properties.
 
@@ -291,7 +288,6 @@ class FileSystemStorage(AccessPoint):
 
         return ''.join(path_parts())
 
-        
     def save(self, item):
         """Add/update/move an item."""
         if item.old_storage_properties:
@@ -314,9 +310,9 @@ class FileSystemStorage(AccessPoint):
                     self.remove(item)
 
                 # Add or update: …and write it
-                fd = self.open_file(new_path, mode='wb')
-                fd.write(content)
-                fd.close()
+                file_descriptor = self.open_file(new_path, mode='wb')
+                file_descriptor.write(content)
+                file_descriptor.close()
 
     def remove(self, item):
         """Remove ``item`` from the backend storage."""
@@ -397,8 +393,8 @@ class FileSystemStorage(AccessPoint):
 
         properties[u'_filename'] = filename
         return self._make_item(
-            functools.partial(self.get_file_content, filename,
-                              real_filename=True),
+            functools.partial(
+                self.get_file_content, filename, real_filename=True),
             properties)
         
 

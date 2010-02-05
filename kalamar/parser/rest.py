@@ -60,6 +60,8 @@ egestas.
 
 """
     
+
+
     def extract_includes(text):
         """Return a list of included filenames in the given ReST string.
         
@@ -78,6 +80,8 @@ egestas.
     extract_includes._re = re.compile(u'^\s*.. (\w+)::\s+(.+?)\s*$',
                                       re.MULTILINE)
         
+
+
     @utils.simple_cache
     def extract_metadata(text):
         r"""Return a dict of metadata for the given ReST string.

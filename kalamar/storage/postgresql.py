@@ -31,7 +31,9 @@ except ImportError:
                   'PostgreSQL support will not be available.',
                   ImportWarning)
 else:
-    from dbapi import DBAPIStorage
+    from kalamar.storage.dbapi import DBAPIStorage
+
+
 
     class PostgreSQLStorage(DBAPIStorage):
         """PostgreSQL access point"""
@@ -65,7 +67,7 @@ else:
                 
                 self._connection = self.get_db_module().connect(**kwargs)
             
-            if not hasattr(self, '_connection'):
+            if not self._connection:
                 connect()
                 
             return self._connection, self._table
@@ -86,8 +88,7 @@ else:
 
             return [
                 field[0].decode(self._client_encoding) 
-                for field in cursor.fetchall()
-                if field[1]]
+                for field in cursor.fetchall() if field[1]]
         
         def _convert_parameters(self, parameters):
             module = self.get_db_module()
@@ -144,7 +145,8 @@ else:
             pg8000 needs to encode requests according to the client encoding.
 
             """
-            request, parameters = super(PostgreSQLStorage, self)._format_request(
-                request, parameters, style)
+            parent_class = super(PostgreSQLStorage, self)
+            request, parameters = \
+                parent_class._format_request(request, parameters, style)
             request = request.encode(self._client_encoding)
             return request, parameters
