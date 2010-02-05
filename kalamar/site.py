@@ -99,7 +99,7 @@ class Site(object):
         elif isinstance(request, basestring):
             return requestparser.parse(request)
         else:
-            return [v if isinstance(v, utils.Condition)
+            return [value if isinstance(value, utils.Condition)
                     else utils.Condition(None, None, value)
                     for value in request]
         
