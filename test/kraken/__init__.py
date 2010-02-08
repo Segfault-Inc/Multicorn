@@ -12,7 +12,7 @@ def make_site(secret_key=None):
                                   'kalamar', 'data',
                                   'kalamar_fs_and_sqlite.conf'),
         secret_key=secret_key,
-        fail_on_inexistent_kalamar_parser=False,
+        fail_on_inexistent_parser=False,
     )
 
 class KrakenSiteMixin(object):
