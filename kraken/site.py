@@ -325,7 +325,7 @@ class Site(object):
         >>> site.import_('kraken') # doctest: +ELLIPSIS
         <kraken.site.Site object at 0x...>
         >>> site.import_('kalamar') # doctest: +ELLIPSIS
-        <kalamar.site.Site object at 0x...>
+        <kraken.utils.KalamarSiteForKraken object at 0x...>
         >>> site.import_('koral') # doctest: +ELLIPSIS
         <koral.site.Site object at 0x...>
 
