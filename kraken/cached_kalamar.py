@@ -33,7 +33,7 @@ class CachedKalamarSite(object):
     
     >>> class FakeKalamar(object):
     ...     y = 1
-    ...     def search(self, x):
+    ...     def search(self, x, y=None):
     ...         print 'search', x
     ...         return x + self.y
     ...     def save(self, y):
@@ -60,35 +60,60 @@ class CachedKalamarSite(object):
         self.kalamar_site = kalamar_site
         self._cache = {}
     
-    def _cached_method(method_name):
-        """TODO docstring"""
-        def _wrapper(self, *args, **kwargs):
-            """TODO docstring"""
-            key = (method_name, args, tuple(sorted(kwargs.items())))
-            try:
-                # TODO all args and kwargs must be hashable
-                # (use tuples instead of lists)
-                return self._cache[key]
-            except KeyError:
-                value = getattr(self.kalamar_site, method_name)(*args, **kwargs)
-                self._cache[key] = value
-            return value
-        _wrapper.__name__ = method_name
-        return _wrapper
+    def isearch(self, access_point, request=None):
+        return iter(self.search(access_point, request))
     
-    isearch = _cached_method('isearch')
-    search = _cached_method('search')
-    open = _cached_method('open')
-    item_from_filename = _cached_method('item_from_filename')
-    del _cached_method
+    def search(self, access_point, request=None):
+        if isinstance(request, list):
+            request = tuple(request) # make it useable as a dict key
+            
+        key = ('search', access_point, request)
+        try:
+            return self._cache[key]
+        except KeyError:
+            value = self.kalamar_site.search(access_point, request)
+            self._cache[key] = value
+            return value
+    
+    def item_from_filename(self, filename):
+        key = ('item_from_filename', filename)
+        try:
+            return self._cache[key]
+        except KeyError:
+            value = self.kalamar_site.item_from_filename(filename)
+            self._cache[key] = value
+            return value
+    
+    def open(self, access_point, request=None):
+        """Return the item in access_point matching request.
+        
+        If there is no result, raise ``Site.ObjectDoesNotExist``.
+        If there are more than 1 result, raise ``Site.MultipleObjectsReturned``.
+        
+        """
+        search = iter(self.isearch(access_point, request))
+        try:
+            item = search.next()
+        except StopIteration:
+            raise self.kalamar_site.ObjectDoesNotExist
+        
+        try:
+            search.next()
+        except StopIteration:
+            return item
+        else:
+            raise self.kalamar_site.MultipleObjectsReturned
+
     
     def save(self, *args, **kwargs):
         """TODO docstring"""
+        # This changes the data. Flush the whole cache
         self._cache = {}
         return self.kalamar_site.save(*args, **kwargs)
         
     def remove(self, *args, **kwargs):
         """TODO docstring"""
+        # This changes the data. Flush the whole cache
         self._cache = {}
         return self.kalamar_site.remove(*args, **kwargs)
 
