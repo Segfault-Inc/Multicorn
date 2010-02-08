@@ -30,6 +30,9 @@ import werkzeug
 import urlparse
 import posixpath
 from werkzeug.contrib.securecookie import SecureCookie
+from werkzeug.exceptions import NotFound
+
+import kalamar.site
 
 
 
@@ -156,6 +159,12 @@ class StaticFileResponse(Response):
         return werkzeug.wrap_file(environ, self.file_obj)
 
 
+class KalamarSiteForKraken(kalamar.site.Site):
+    def open_or_404(self, *args, **kwargs):
+        try:
+            return self.open(*args, **kwargs)
+        except self.ObjectDoesNotExist:
+            raise NotFound
 
 def arg_count(function):
     """Return the nubmer of explicit arguments the function takes.

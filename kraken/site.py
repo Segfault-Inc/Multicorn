@@ -31,7 +31,6 @@ import re
 import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 
-import kalamar
 import koral
 from kraken import utils
 from kraken.cached_kalamar import CachedKalamarSite
@@ -53,7 +52,7 @@ class Site(object):
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(self.site_root)
-        self.kalamar_site = kalamar.Site(
+        self.kalamar_site = utils.KalamarSiteForKraken(
             os.path.expanduser(unicode(kalamar_conf)) if kalamar_conf else None,
             fail_on_inexistent_parser=fail_on_inexistent_parser)
         self._module_cache = {}
