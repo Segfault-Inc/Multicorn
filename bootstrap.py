@@ -35,7 +35,15 @@ parser.add_option("-d", "--distribute",
                    action="store_true", dest="distribute", default=False,
                    help="Use Disribute rather than Setuptools.")
 
+parser.add_option("-c", None, action="store", dest="config_file",
+                   help=("Specify the path to the buildout configuration "
+                         "file to be used."))
+
 options, args = parser.parse_args()
+
+# if -c was provided, we push it back into args for buildout' main function
+if options.config_file is not None:
+    args += ['-c', options.config_file]
 
 if options.version is not None:
     VERSION = '==%s' % options.version
@@ -60,7 +68,7 @@ except ImportError:
     else:
         exec urllib2.urlopen('http://peak.telecommunity.com/dist/ez_setup.py'
                              ).read() in ez
-        ez['use_setuptools'](to_dir=tmpeggs, download_delay=0, version='0.6c9')
+        ez['use_setuptools'](to_dir=tmpeggs, download_delay=0)
 
     if to_reload:
         reload(pkg_resources)
