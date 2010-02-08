@@ -30,7 +30,8 @@ import werkzeug
 import urlparse
 import posixpath
 from werkzeug.contrib.securecookie import SecureCookie
-from werkzeug.exceptions import NotFound
+# Forbidden is not used here but is made available for sites
+from werkzeug.exceptions import NotFound, Forbidden
 
 import kalamar.site
 
