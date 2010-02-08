@@ -91,18 +91,12 @@ class CachedKalamarSite(object):
         If there are more than 1 result, raise ``Site.MultipleObjectsReturned``.
         
         """
-        search = iter(self.isearch(access_point, request))
-        try:
-            item = search.next()
-        except StopIteration:
+        results = self.search(access_point, request)
+        if not results:
             raise self.kalamar_site.ObjectDoesNotExist
-        
-        try:
-            search.next()
-        except StopIteration:
-            return item
-        else:
+        if len(results) > 1:
             raise self.kalamar_site.MultipleObjectsReturned
+        return results[0]
 
     
     def save(self, *args, **kwargs):
