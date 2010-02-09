@@ -105,7 +105,7 @@ else:
             """Return a DB-API implementation module."""
             return MySQLdb
         
-        def get_connection(self):
+        def _get_connection(self):
             """Return (``connection``, ``table``).
             
             Need 'url' in the configuration in the following format::
@@ -113,32 +113,30 @@ else:
               mysql://user:password@host[:port]/base?table
             
             """
-            if not self._connection:
-                kwargs = {}
-                parts = self.config['url'].split('/')
-                
-                user_part, host_part = parts[2].split('@')
-                kwargs['user'], kwargs['passwd'] = user_part.split(':')
-                
-                host_port = host_part.split(':')
-                kwargs['host'] = host_port[0]
-                if len(host_port) == 2:
-                    kwargs['port'] = int(host_port[1])
-                
-                kwargs['db'], self._table = parts[3].split('?')
-                
-                kwargs['use_unicode'] = True
-                #kwargs['conv'] = self.conversions
-                kwargs['client_flag'] = CLIENT.FOUND_ROWS
-                
-                self._connection = self.get_db_module().connect(**kwargs)
-                self._connection.set_sql_mode('ANSI')
-                self._connection.set_character_set(
-                    # Hack to convert python locale format to MySQL
-                    self.default_encoding.replace('-',''))
+            kwargs = {}
+            parts = self.config['url'].split('/')
+            
+            user_part, host_part = parts[2].split('@')
+            kwargs['user'], kwargs['passwd'] = user_part.split(':')
+            
+            host_port = host_part.split(':')
+            kwargs['host'] = host_port[0]
+            if len(host_port) == 2:
+                kwargs['port'] = int(host_port[1])
+            
+            kwargs['db'], table = parts[3].split('?')
+            
+            kwargs['use_unicode'] = True
+            #kwargs['conv'] = self.conversions
+            kwargs['client_flag'] = CLIENT.FOUND_ROWS
+            
+            connection = self.get_db_module().connect(**kwargs)
+            connection.set_sql_mode('ANSI')
+            connection.set_character_set(
+                # Hack to convert python locale format to MySQL
+                self.default_encoding.replace('-',''))
 
-            self._connection.ping(True)
-            return self._connection, self._table
+            return connection, table
         
         def _get_primary_keys(self):
             """Return the list of the table primary keys."""

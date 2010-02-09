@@ -24,6 +24,7 @@ points.
 """
 
 from array import array
+import thread
 
 from kalamar.storage.base import AccessPoint
 from kalamar import utils
@@ -74,8 +75,7 @@ class DBAPIStorage(AccessPoint):
     def __init__(self, *args, **kwargs):
         super(DBAPIStorage, self).__init__(*args, **kwargs)
         self.content_column = self.config.get('content_column', None)
-        self._connection = None
-        self._table = None
+        self._connections = {}
     
     def save(self, item):
         """Save item in the database."""
@@ -136,15 +136,36 @@ class DBAPIStorage(AccessPoint):
         """Return a DB-API connection object and the table name in a tuple.
         
         If connection is broken, get_connection will try to get a new one.
-        
-        This method must be overriden.
 
         This method can use config['url'] to connect and may keep connection in
         cache for later calls.
         
         """
-        raise NotImplementedError('Abstract method')
+        if self.get_db_module().threadsafety >= 2:
+            # threads can share connections
+            key = None
+        else:
+            # one connection per thread
+            key = thread.get_ident()
+        try:
+            return self._connections[key]
+        except KeyError:
+            connection, table = self._get_connection()
+            self._connections[key] = connection, table
+            if hasattr(connection, 'ping'):
+                # In MySQLdb: check if the connection is alive and try to
+                # reconnect if it's not
+                connection.ping(True)
+            return connection, table
+            
     
+    def _get_connection(self):
+        """The actual, database-dependent implementation of get_connection.
+        
+        This method must be overriden by contrete subclasses.
+        """
+        raise NotImplementedError('Abstract method')
+        
     def get_db_module(self):
         """Return a DB-API implementation module.
         
@@ -155,9 +176,9 @@ class DBAPIStorage(AccessPoint):
     
     def get_storage_properties(self):
         """Return the list of the storage properties."""
-        connection = self.get_connection()[0]
+        connection, table = self.get_connection()
         cursor = connection.cursor()
-        request = 'SELECT * FROM %s WHERE 1=2;' % self._quote_name(self._table)
+        request = 'SELECT * FROM %s WHERE 1=2;' % self._quote_name(table)
         cursor.execute(request)
         properties_names = [prop[0] for prop in cursor.description]
         
@@ -170,10 +191,10 @@ class DBAPIStorage(AccessPoint):
     
     def get_table_description(self):
         """Return field description as a dictionnary."""
-        connection = self.get_connection()[0]
+        connection, table = self.get_connection()
         cursor = connection.cursor()
         cursor.execute('SELECT * FROM %s WHERE 1=0;'
-                       % self._quote_name(self._table))
+                       % self._quote_name(table))
         fields_names = (desc_values[0] for desc_values in cursor.description)
         desc_names = ('type_code', 
                       'display_size',

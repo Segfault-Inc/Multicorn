@@ -44,33 +44,29 @@ else:
         def get_db_module(self):
             return postgres
         
-        def get_connection(self):
+        def _get_connection(self):
             """Return (``connection``, ``table``)
             
             Need 'url' in the configuration in the following format:
                 postgres://user:password@host[:port]/base?table
             
             """
-            def connect():
-                kwargs = {}
-                parts = self.config['url'].split('/')
-                
-                user_part, host_part = parts[2].split('@')
-                kwargs['user'], kwargs['password'] = user_part.split(':')
-                
-                host_and_port = host_part.split(':')
-                kwargs['host'] = host_and_port[0]
-                if len(host_and_port) == 2:
-                    kwargs['port'] = int(host_and_port[1])
-                
-                kwargs['database'], self._table = parts[3].split('?')
-                
-                self._connection = self.get_db_module().connect(**kwargs)
+            kwargs = {}
+            parts = self.config['url'].split('/')
             
-            if not self._connection:
-                connect()
-                
-            return self._connection, self._table
+            user_part, host_part = parts[2].split('@')
+            kwargs['user'], kwargs['password'] = user_part.split(':')
+            
+            host_and_port = host_part.split(':')
+            kwargs['host'] = host_and_port[0]
+            if len(host_and_port) == 2:
+                kwargs['port'] = int(host_and_port[1])
+            
+            kwargs['database'], table = parts[3].split('?')
+            
+            connection = self.get_db_module().connect(**kwargs)
+                            
+            return connection, table
         
         def _get_primary_keys(self):
             """Return the list of the table primary keys."""

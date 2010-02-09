@@ -45,7 +45,7 @@ else:
         def get_db_module(self):
             return sqlite3
         
-        def get_connection(self):
+        def _get_connection(self):
             """Return (``connection``, ``table``).
             
             Need 'url' in the configuration in the following format:
@@ -56,16 +56,15 @@ else:
                 sqlite://:memory:?table
             
             """
-            if not self._connection:
-                url = self.config['url']
-                url_dict = urlparse.urlsplit(url)
-                splitted_path = url_dict.path.split('?', 1)
-                filename = splitted_path[0][2:]
-                self._table = splitted_path[1]
-                filename = os.path.join(self.config['basedir'], filename)
-                self._connection = sqlite3.connect(filename)
+            url = self.config['url']
+            url_dict = urlparse.urlsplit(url)
+            splitted_path = url_dict.path.split('?', 1)
+            filename = splitted_path[0][2:]
+            table = splitted_path[1]
+            filename = os.path.join(self.config['basedir'], filename)
+            connection = sqlite3.connect(filename)
 
-            return (self._connection, self._table)
+            return connection, table
         
         def _get_primary_keys(self):
             """Return the list of the table primary keys.
