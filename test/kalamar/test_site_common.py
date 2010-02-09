@@ -2,8 +2,24 @@
 
 import os
 import time
+import threading
 from kalamar import Item
 from kalamar.storage.dbapi import DBAPIStorage
+
+
+def threaded_call(function, *args, **kwargs):
+    def _wrapper():
+        try:
+            thread.result = function(*args, **kwargs)
+        except Exception, e:
+            thread.exception = e
+    thread = threading.Thread(target=_wrapper)
+    thread.exception = None
+    thread.start()
+    thread.join() # wait for it to finish
+    if thread.exception is not None:
+        raise thread.exception
+    return thread.result
 
 class MyTest(object):
     """This class is meant to work if co-inherited with unittest.TestCase.
@@ -135,6 +151,20 @@ class TestSiteOpen(MyTest):
         self.assertEqual(item['artiste'], u'Jesus\'harlem')
         self.assertEqual(item['album'], u'amen')
         self.assertEqual(item['titre'], u'mechanical blues')
+    
+    def test_threaded(self):
+        """Trying to open an item in another thread."""
+        request = u'genre="rock"/artiste="Jesus\'harlem"' \
+                  u'/album="amen"/titre="mechanical blues"'
+        # make a request in the current thread and then in a new one
+        for item in (
+            self.site.open(self.access_point_name, request),
+            threaded_call(self.site.open, self.access_point_name, request),
+        ):
+            self.assertEqual(item['genre'], u'rock')
+            self.assertEqual(item['artiste'], u'Jesus\'harlem')
+            self.assertEqual(item['album'], u'amen')
+            self.assertEqual(item['titre'], u'mechanical blues')
     
     def test_many_results(self):
         """Try to open many item must raise 'MultiObjectsReturned'."""
