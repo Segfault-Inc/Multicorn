@@ -245,7 +245,6 @@ class Item(object):
                 u'%s=%s' % (key, reverse_convert_value(self[key]))
                 for key in self._access_point._get_primary_keys()]
             self._request = '/'.join(conditions)
-        print self._request
         return self._request
     
     @property

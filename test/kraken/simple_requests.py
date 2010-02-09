@@ -107,7 +107,6 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
 class TestSession(KrakenSiteMixin, TestCase):
     def setUp(self):
         self.site_secret_key = os.urandom(20)
-        print repr(self.site_secret_key)
         super(TestSession, self).setUp()
 
     def test_session(self):

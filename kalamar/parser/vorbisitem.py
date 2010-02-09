@@ -53,7 +53,6 @@ else:
             """Parse Ogg/Vorbis metadata as properties."""
             properties = super(VorbisItem, self)._parse_data()
             properties['ogg_data'] = self._get_content()
-            print self._get_content()
             
             # Create real file descriptor, as VorbisFile does not accept stream
             temporary_file = NamedTemporaryFile()

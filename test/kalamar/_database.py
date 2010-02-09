@@ -20,8 +20,6 @@ Database tests helpers.
 
 """
 
-from pprint import pprint
-
 from test_site_common import \
     TestSiteSearch, TestSiteOpen, TestSiteSave, TestSiteRemove,\
     TestSiteGetDescription, TestSiteCreateItem, MyTest
