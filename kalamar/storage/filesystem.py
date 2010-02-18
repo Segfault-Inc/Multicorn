@@ -359,7 +359,7 @@ class FileSystemStorage(AccessPoint):
         
         >>> item = search(os.path.join(dirname, 'storage', 'filesystem.py'))
         >>> item # doctest: +ELLIPSIS
-        <kalamar.parser.textitem.TextItem object at 0x...>
+        <TextItem(u"path1='storage'/path2='filesystem'" @ None)>
         >>> item['path1']
         'storage'
         >>> item['path2']

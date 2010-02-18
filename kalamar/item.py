@@ -135,9 +135,46 @@ class Item(object):
     def __eq__(self, item):
         """Test if ``item`` is the same as this item."""
         if isinstance(item, Item):
-            return item.request == self.request and \
-                item.access_point_name == self.access_point_name
+            return item.request == self.request
         return NotImplemented
+
+    def __repr__(self):
+        #TODO test
+        values = (
+            self.__class__.__name__,
+            repr(self.request),
+            repr(self.access_point_name)
+        )
+        return '<%s(%s @ %s)>' % values
+    
+    # TODO: is this method really useful ?
+    #TODO test
+    def __cmp__(self, item):
+        """Compare two items.
+        
+        Useful in some algorithms.
+        DO NOT USE UNLESS YOU KNOW WHAT YOU'RE DOING !
+        
+        """
+        
+        if isinstance(item, Item):
+            str1 = self.access_point_name + self.request
+            str2 = item.access_point_name + item.request
+            return cmp(str1, str2)
+        return NotImplemented
+    
+    def __hash__(self):
+        """Return a hash of the item.
+        
+        Beware that items are mutables so the hash could change !
+        
+        This hash value is useful in some algorithms (eg in sets) and it
+        permits a huge gain of performance. However, DON'T USE THIS HASH UNLESS
+        YOU KNOW WHAT YOU'RE DOING.
+        
+        """
+        
+        return hash(self.access_point_name + self.request)
 
     @staticmethod
     def create_item(access_point, properties=None, initial_content=None):

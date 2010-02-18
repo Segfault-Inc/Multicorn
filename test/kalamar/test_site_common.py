@@ -170,6 +170,23 @@ class TestSiteOpen(MyTest):
         item2 = self.site.open(self.access_point_name, request2)
         self.assertNotEqual(item1, item2)
     
+    def test_item_hashability(self):
+        """Try to intersect two sets of items and check result."""
+        set1 = set(self.site.isearch(self.access_point_name, "album~='[ga]$'"))
+        set2 = set(self.site.isearch(self.access_point_name, "artiste~='m$'"))
+        
+        inter = set1.intersection(set2)
+        set3 = set(self.site.isearch(
+            self.access_point_name, "artiste~='m$'/album~='[ga]$'"))
+        
+        # Make sure that we make effective test of different sets.
+        self.assertNotEqual(set1,set2)
+        self.assertNotEqual(set1,set3)
+        self.assertNotEqual(set2,set3)
+        
+        # This is what we want to be tested.
+        self.assertEqual(inter,set3)
+    
     def test_threaded(self):
         """Trying to open an item in another thread."""
         request = u'genre="rock"/artiste="Jesus\'harlem"' \
