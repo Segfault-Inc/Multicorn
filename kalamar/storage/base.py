@@ -231,6 +231,9 @@ class AccessPoint(object):
         
         Here, "primary key" must be understood as "a sufficient set of keys to
         make a request returning 0 or 1 object".
+
+        This list must be ordered and stable for a given access point, in order
+        to construct canonical requests for items.
         
         This method has to be overriden.
 
