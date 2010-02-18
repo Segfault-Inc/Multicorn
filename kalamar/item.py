@@ -132,6 +132,12 @@ class Item(object):
             self.parser_properties[key] = value
             self.parser_modified = True
 
+    def __eq__(self, item):
+        """Test if ``item`` is the same as this item."""
+        if isinstance(item, Item):
+            return item.request == self.request
+        return NotImplemented
+
     @staticmethod
     def create_item(access_point, properties=None, initial_content=None):
         """Return a new item instance.
@@ -239,7 +245,15 @@ class Item(object):
     
     @property
     def request(self):
-        """Return a request sufficient to find this item and only this one."""
+        """Return a request sufficient to find this item and only this one.
+
+        This ``request`` must be canonical. As a consequence, opening an item
+        twice should give the same ``request``, even if the request used for
+        opening the items are not the same.
+
+        This property is used for testing item equality.
+
+        """
         if self._request is None:
             conditions = [
                 u'%s=%s' % (key, reverse_convert_value(self[key]))

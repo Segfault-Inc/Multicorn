@@ -152,6 +152,24 @@ class TestSiteOpen(MyTest):
         self.assertEqual(item['album'], u'amen')
         self.assertEqual(item['titre'], u'mechanical blues')
     
+    def test_item_equality(self):
+        """Trying to open an item twice, and testing equality."""
+        request1 = u'genre="rock"/artiste="Jesus\'harlem"' \
+                   u'/album="amen"/titre="mechanical blues"'
+        request2 = u'titre="mechanical blues"/genre="rock"'
+        item1 = self.site.open(self.access_point_name, request1)
+        item2 = self.site.open(self.access_point_name, request2)
+        self.assertEqual(item1, item2)
+    
+    def test_item_inequality(self):
+        """Trying to open two different items, and testing inequality."""
+        request1 = u'genre="rock"/artiste="Jesus\'harlem"' \
+                   u'/album="amen"/titre="mechanical blues"'
+        request2 = u'genre="rock"/album="alleluia"/titre="solomon"'
+        item1 = self.site.open(self.access_point_name, request1)
+        item2 = self.site.open(self.access_point_name, request2)
+        self.assertNotEqual(item1, item2)
+    
     def test_threaded(self):
         """Trying to open an item in another thread."""
         request = u'genre="rock"/artiste="Jesus\'harlem"' \

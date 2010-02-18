@@ -54,7 +54,7 @@ def parse(data):
 def reverse_convert_value(value):
     if isinstance(value, (unicode, str)):
         return "'%s'" % unicode(value).replace("'", r"\'")
-    elif isinstance(value, (int, float)):
+    elif isinstance(value, (int, float, long)):
         return value
     raise Exception("This type cannot be converted back: %s" % type(value))
 
