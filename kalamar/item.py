@@ -135,7 +135,8 @@ class Item(object):
     def __eq__(self, item):
         """Test if ``item`` is the same as this item."""
         if isinstance(item, Item):
-            return item.request == self.request
+            return item.request == self.request and \
+                item.access_point_name == self.access_point_name
         return NotImplemented
 
     @staticmethod
