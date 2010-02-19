@@ -28,7 +28,6 @@ class MyTest(object):
     parents list (i.e. sth like ChildClass(..., MyTest, ...,TestCase, ...))
     
     """
-    
     def shortDescription(self):
         """Override unittest.TestCase.shortDescription
         
@@ -43,7 +42,6 @@ class MyTest(object):
             return None
 
 class TestSiteSearch(MyTest):
-    
     def test_non_ascii(self):
         """Request with non ascii characters must be handled correctly."""
         request = u'artiste="Birelli Lagrène"'
@@ -115,6 +113,7 @@ class TestSiteSearch(MyTest):
         self.assertEqual(albums, set([u'manouche swing',
                                       u'S.O.B', u'alleluia',
                                       u'amen']))
+
     def test_regexp(self):
         """The regexp operator must behave like re.search in python."""
         request = u'titre ~= "a.*s$"'
@@ -126,7 +125,6 @@ class TestSiteSearch(MyTest):
             self.assertEqual(item['titre'][-1], 's')
 
 class TestSiteOpen(MyTest):
-    
     def test_no_result(self):
         """Opening an non-existing item must raise ``ObjectDoesNotExist``."""
         request = u'genre="doesnt_exist"'
@@ -134,10 +132,7 @@ class TestSiteOpen(MyTest):
                           self.access_point_name, request)
     
     def test_no_result_empty_string(self):
-        """
-        Opening an non-existing item (empty string) must raise
-        ``ObjectDoesNotExist``.
-        """
+        """Opening an non-existing item must raise ``ObjectDoesNotExist``."""
         request = u'genre=""'
         self.assertRaises(self.site.ObjectDoesNotExist, self.site.open,
                           self.access_point_name, request)
@@ -172,23 +167,23 @@ class TestSiteOpen(MyTest):
     
     def test_item_hashability(self):
         """Try to intersect two sets of items and check result."""
-        set1 = set(self.site.isearch(self.access_point_name, "album~='[ga]$'"))
-        set2 = set(self.site.isearch(self.access_point_name, "artiste~='m$'"))
+        set1 = set(self.site.isearch(self.access_point_name, 'album~="[ga]$"'))
+        set2 = set(self.site.isearch(self.access_point_name, 'artiste~="m$"'))
         
         inter = set1.intersection(set2)
         set3 = set(self.site.isearch(
-            self.access_point_name, "artiste~='m$'/album~='[ga]$'"))
+            self.access_point_name, 'artiste~="m$"/album~="[ga]$"'))
         
         # Make sure that we make effective tests on different sets.
-        self.assertNotEqual(set1,set2)
-        self.assertNotEqual(set1,set3)
-        self.assertNotEqual(set2,set3)
+        self.assertNotEqual(set1, set2)
+        self.assertNotEqual(set1, set3)
+        self.assertNotEqual(set2, set3)
         
         # If the intersection is empty, we would better choose another request
-        self.assertNotEqual(set(),inter)
+        self.assertNotEqual(set(), inter)
         
         # This is what we want to be tested.
-        self.assertEqual(inter,set3)
+        self.assertEqual(inter, set3)
     
     def test_threaded(self):
         """Trying to open an item in another thread."""
@@ -197,8 +192,7 @@ class TestSiteOpen(MyTest):
         # make a request in the current thread and then in a new one
         for item in (
             self.site.open(self.access_point_name, request),
-            threaded_call(self.site.open, self.access_point_name, request),
-        ):
+            threaded_call(self.site.open, self.access_point_name, request)):
             self.assertEqual(item['genre'], u'rock')
             self.assertEqual(item['artiste'], u'Jesus\'harlem')
             self.assertEqual(item['album'], u'amen')
@@ -211,7 +205,6 @@ class TestSiteOpen(MyTest):
                           self.access_point_name, request)
 
 class TestSiteSave(MyTest):
-    
     _vorbis_sample_data = None
     
     @classmethod
@@ -339,7 +332,6 @@ class TestSiteSave(MyTest):
         This test needs the open method to work.
 
         """
-        
         # !! This test needs the "fs_text_mixed" access point defined in
         # $test$/kalamar/data/kalamar_fs_and_sqlite.conf
         request = u'genre="rock"/album="alleluia"/titre="solomon"'

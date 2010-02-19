@@ -47,6 +47,8 @@ class Item(object):
     The _access_point attribute represents where, in kalamar, the item is
     stored. It is an instance of AccessPoint.
 
+    Items are hashable and mutable.
+
     """
     # TODO: use the MultiDict power by coding getlist/setlist (or not?)
     format = None
@@ -92,6 +94,7 @@ class Item(object):
         """The “parser” counterpart of raw_storage_properties. A MultiDict.
         
         Parser properties are lazy: only parse when needed.
+
         """
         return MultiDict(self._parse_data())
 
@@ -101,6 +104,7 @@ class Item(object):
         
         This is also a cached_property because we need the actual
         raw_parser_properties MultiDict to instanciate it.
+
         """
         return utils.AliasedMultiDict(self.raw_parser_properties,
                                       self.parser_aliases)
@@ -135,45 +139,26 @@ class Item(object):
     def __eq__(self, item):
         """Test if ``item`` is the same as this item."""
         if isinstance(item, Item):
-            return item.request == self.request
+            return hash(item) == hash(self)
         return NotImplemented
 
     def __repr__(self):
-        #TODO test
-        values = (
-            self.__class__.__name__,
-            repr(self.request),
-            repr(self.access_point_name)
-        )
+        """Return a user-friendly representation of item."""
+        values = (self.__class__.__name__,
+                  repr(self.request),
+                  repr(self.access_point_name))
         return '<%s(%s @ %s)>' % values
     
-    # TODO: is this method really useful ?
-    #TODO test
-    def __cmp__(self, item):
-        """Compare two items.
-        
-        Useful in some algorithms.
-        DO NOT USE UNLESS YOU KNOW WHAT YOU'RE DOING !
-        
-        """
-        
-        if isinstance(item, Item):
-            str1 = self.access_point_name + self.request
-            str2 = item.access_point_name + item.request
-            return cmp(str1, str2)
-        return NotImplemented
-    
     def __hash__(self):
-        """Return a hash of the item.
+        """Return a hash of item.
         
-        Beware that items are mutables so the hash could change !
+        Do not forget that items are mutable, so the hash could change!
         
         This hash value is useful in some algorithms (eg in sets) and it
         permits a huge gain of performance. However, DON'T USE THIS HASH UNLESS
         YOU KNOW WHAT YOU'RE DOING.
         
         """
-        
         return hash(self.access_point_name + self.request)
 
     @staticmethod
