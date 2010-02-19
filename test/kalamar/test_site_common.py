@@ -179,10 +179,13 @@ class TestSiteOpen(MyTest):
         set3 = set(self.site.isearch(
             self.access_point_name, "artiste~='m$'/album~='[ga]$'"))
         
-        # Make sure that we make effective test of different sets.
+        # Make sure that we make effective tests on different sets.
         self.assertNotEqual(set1,set2)
         self.assertNotEqual(set1,set3)
         self.assertNotEqual(set2,set3)
+        
+        # If the intersection is empty, we would better choose another request
+        self.assertNotEqual(set(),inter)
         
         # This is what we want to be tested.
         self.assertEqual(inter,set3)
