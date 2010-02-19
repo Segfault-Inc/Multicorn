@@ -66,8 +66,9 @@ class FileSystemStorage(AccessPoint):
         stars = self.filename_format.count('*')
         return ['path%i' % (i + 1) for i in xrange(stars)]
             
-    def _get_primary_keys(self):
-        """Return the path* keys"""
+    @property
+    def primary_keys(self):
+        """List of path* keys."""
         return self.get_storage_properties()
     
     def _real_filename(self, filename):

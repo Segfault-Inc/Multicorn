@@ -66,8 +66,9 @@ else:
 
             return connection, table
         
-        def _get_primary_keys(self):
-            """Return the list of the table primary keys.
+        @property
+        def primary_keys(self):
+            """List of the table primary keys.
             
             Fixture
             >>> from kalamar._test import fill_sqlite_db
@@ -76,7 +77,7 @@ else:
             >>> fill_sqlite_db(connection)
             
             Test
-            >>> storage._get_primary_keys()
+            >>> storage.primary_keys
             [u'key']
             
             """

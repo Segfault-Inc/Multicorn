@@ -280,7 +280,7 @@ class Item(object):
         if self._request is None:
             conditions = [
                 u'%s=%s' % (key, reverse_convert_value(self[key]))
-                for key in self._access_point._get_primary_keys()]
+                for key in self._access_point.primary_keys]
             self._request = '/'.join(conditions)
         return self._request
     

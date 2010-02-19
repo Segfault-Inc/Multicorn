@@ -47,7 +47,7 @@ class Parameter:
 class DBAPIStorage(AccessPoint):
     """Base class for SQL SGBD Storage.
     
-    Descendant class must override ``get_connection``, ``_get_primary_keys``,
+    Descendant class must override ``get_connection``, ``primary_keys``,
     ``get_db_module`` and ``protocol``.
 
     It may be useful to also redefine the following methods or attributes:
@@ -115,13 +115,12 @@ class DBAPIStorage(AccessPoint):
         table = self._sql_escape_quotes(table)
         request = array('u', u"DELETE FROM %s WHERE " % self._quote_name(table))
         
-        primary_keys = self._get_primary_keys()
         parameters = []
         
         parameters.extend(Parameter(key, item[key])
-                          for key in primary_keys)
+                          for key in self.primary_keys)
         request.extend(" AND ".join("%s=?" % self._quote_name(key)
-                                    for key in primary_keys))
+                                    for key in self.primary_keys))
         
         paramstyle = self.get_db_module().paramstyle
         request, parameters = self._format_request(request.tounicode(),
@@ -420,23 +419,10 @@ class DBAPIStorage(AccessPoint):
         """Return update request as a string and parameters as a list.
         
         Fixture
-        >>> from kalamar._test.corks import CorkItem
-        >>> table = u'table'
-        >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
-        ...                        content_column = 'content_col')
-        >>> storage._get_primary_keys = lambda: ['pk1', 'pk2']
-        >>> class db_mod:
-        ...     BINARY = 1
-        ...     DATETIME = 1
-        ...     def Binary(self, data):
-        ...         return data
-        >>> storage.get_db_module = lambda: db_mod()
-        >>> storage.get_table_description = lambda: {
-        ...     'sto_prop': {'type_code': 1},
-        ...     'sto_prop2': {'type_code': 1},
-        ...     'pk1': {'type_code': 1},
-        ...     'pk2': {'type_code': 1},
-        ...     'content_col': {'type_code': 1}}
+        >>> from kalamar._test.corks import CorkItem, CorkDBAPIStorage
+        >>> table = 'table'
+        >>> storage = CorkDBAPIStorage(url = 'toto', basedir = 'tata',
+        ...                            content_column = 'content_col')
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': 'sto_val2',
@@ -456,13 +442,12 @@ class DBAPIStorage(AccessPoint):
         """
         table = self._sql_escape_quotes(table)
         
-        primary_keys = self._get_primary_keys()
         keys = item.raw_storage_properties.keys()
         
         # All not primary keys and all primary keys not None.
         keys = [
             key for key in keys if 
-            key not in primary_keys or item[key] is not None]
+            key not in self.primary_keys or item[key] is not None]
 
         request = array('u', u'UPDATE %s SET ' % self._quote_name(table))
         
@@ -488,15 +473,15 @@ class DBAPIStorage(AccessPoint):
                        self._quote_name(self._sql_escape_quotes(keys[-1])))
         parameters.append(Parameter(keys[-1], item[keys[-1]]))
         
-        for key in primary_keys[:-1]:
+        for key in self.primary_keys[:-1]:
             request.extend(
                 u' %s=? AND' % self._quote_name(self._sql_escape_quotes(key)))
             parameters.append(Parameter(key, item[key]))
         request.extend(
             u' %s=? ;' % self._quote_name(
-                self._sql_escape_quotes(primary_keys[-1])))
+                self._sql_escape_quotes(self.primary_keys[-1])))
         parameters.append(
-            Parameter(primary_keys[-1], item[primary_keys[-1]]))
+            Parameter(self.primary_keys[-1], item[self.primary_keys[-1]]))
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
@@ -506,24 +491,10 @@ class DBAPIStorage(AccessPoint):
         """Return insert request as a unciode string.
         
         Fixture
-        >>> from kalamar._test.corks import CorkItem
+        >>> from kalamar._test.corks import CorkItem, CorkDBAPIStorage
         >>> table = 'table'
-        >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
-        ...                        content_column = 'content_col')
-        >>> class db_mod:
-        ...     BINARY = 1
-        ...     DATETIME = 1
-        ...     def Binary(self, data):
-        ...         return data
-        >>> storage.get_db_module = lambda: db_mod()
-        >>> storage._get_primary_keys = lambda: ['pk1', 'pk2']
-        >>> storage.get_table_description = lambda: {
-        ...     'sto_prop': {'type_code': 1},
-        ...     'sto_prop2': {'type_code': 1},
-        ...     'pk1': {'type_code': 1},
-        ...     'pk2': {'type_code': 1},
-        ...     'content_col': {'type_code': 1}
-        ... }
+        >>> storage = CorkDBAPIStorage(url = 'toto', basedir = 'tata',
+        ...                            content_column = 'content_col')
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': 'sto_val2',
@@ -544,11 +515,10 @@ class DBAPIStorage(AccessPoint):
         
         request = array('u', u'INSERT INTO %s ( ' % self._quote_name(table))
         
-        primary_keys = self._get_primary_keys()
         keys = item.raw_storage_properties.keys()
         keys = [
             key for key in keys if 
-            key not in primary_keys or item[key] is not None]
+            key not in self.primary_keys or item[key] is not None]
         
         parameters = []
         

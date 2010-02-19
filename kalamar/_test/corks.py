@@ -23,6 +23,30 @@ Some corks used for testing.
 import os
 
 from kalamar import Item
+from kalamar.storage.dbapi import DBAPIStorage
+
+
+class CorkDBAPIStorage(DBAPIStorage):
+    class db_mod(object):
+        BINARY = 1
+        DATETIME = 1
+        def Binary(self, data):
+            return data
+
+    @property
+    def primary_keys(self):
+        return ['pk1', 'pk2']
+
+    def get_db_module(self):
+        return self.db_mod()
+
+    def get_table_description(self):
+        return {
+            'sto_prop': {'type_code': 1},
+            'sto_prop2': {'type_code': 1},
+            'pk1': {'type_code': 1},
+            'pk2': {'type_code': 1},
+            'content_col': {'type_code': 1}}
 
 
 

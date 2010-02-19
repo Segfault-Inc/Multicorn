@@ -41,7 +41,7 @@ class AccessPoint(object):
     - property_names: properties defined in the access_point configuration.
     - url: where the data is available.
     - basedir: directory from where relatives pathes should start.
-    
+
     """
     @classmethod
     def from_url(cls, **config):
@@ -91,7 +91,7 @@ class AccessPoint(object):
                                self.storage_aliases + self.parser_aliases]
         self.url = config['url']
         self.basedir = config.get('basedir', '')
-            
+
     def expand_syntaxic_sugar(self, conditions):
         """Expand syntaxic sugar in requests.
         
@@ -225,9 +225,10 @@ class AccessPoint(object):
 
         """
         return NotImplemented
-    
-    def _get_primary_keys(self):
-        """Return a list of primary keys names.
+
+    @property
+    def primary_keys(self):
+        """List of primary keys names.
         
         Here, "primary key" must be understood as "a sufficient set of keys to
         make a request returning 0 or 1 object".
@@ -235,8 +236,7 @@ class AccessPoint(object):
         This list must be ordered and stable for a given access point, in order
         to construct canonical requests for items.
         
-        This method has to be overriden.
+        This property has to be overriden.
 
         """
         raise NotImplementedError('Abstract method')
-
