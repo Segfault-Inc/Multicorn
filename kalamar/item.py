@@ -142,6 +142,20 @@ class Item(object):
             return hash(item) == hash(self)
         return NotImplemented
 
+    # TODO test
+    def __cmp__(self, item):
+        """Compare two items.
+        
+        Useful in some algorithms (sorting by key, for example).
+        DO NOT USE UNLESS YOU KNOW WHAT YOU'RE DOING!
+        
+        """
+        if isinstance(item, Item):
+            str1 = hash(self)
+            str2 = hash(item)
+            return cmp(str1, str2)
+        return NotImplemented
+
     def __repr__(self):
         """Return a user-friendly representation of item."""
         values = (self.__class__.__name__,
