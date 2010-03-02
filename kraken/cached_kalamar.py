@@ -64,13 +64,19 @@ class CachedKalamarSite(object):
         return iter(self.search(access_point, request))
     
     def search(self, access_point, request=None):
-        if isinstance(request, list):
-            request = tuple(request) # make it useable as a dict key
-            
+        # We use here the given request as part of a key to find item in cache
+        # if this search has already been done. If the request is not hashable,
+        # create a hashable object from request.
+        if isinstance(request, dict):
+            request = '/'.join(['%s=%s' % (key, repr(value))
+                                for key, value in request.items()])
+        elif isinstance(request, list):
+            request = tuple(request)
+
         key = ('search', access_point, request)
-        try:
+        if key in self._cache:
             return self._cache[key]
-        except KeyError:
+        else:
             value = self.kalamar_site.search(access_point, request)
             self._cache[key] = value
             return value
