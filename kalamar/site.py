@@ -84,7 +84,7 @@ class Site(object):
         """Convert a ``request`` to a list of Condition objects.
 
         If ``request`` is a string, parse it with our query language.
-        If it’s a number, parse it’s string representation.
+        If it’s a number, parse its string representation.
         If it’s a dict, assume equality for all operators.
         Otherwise, assume it’s a list of values
         
@@ -99,10 +99,13 @@ class Site(object):
         [Condition(u'a', None, 1),
          Condition(u'b', None, None)]
 
+        >>> Site.parse_request(1)            # doctest: +NORMALIZE_WHITESPACE
+        [Condition(None, None, 1)]
+
         """
         if isinstance(request, dict):
             return [utils.Condition(key, None, value)
-                    for key, value in request.iteritems()]
+                    for key, value in request.items()]
         elif isinstance(request, int) or isinstance(request, float):
             return requestparser.parse(str(request))
         elif isinstance(request, basestring):
