@@ -19,10 +19,10 @@
 Base classes to create kalamar items.
 
 Parsers must:
- - inherit from Item
- - have a ``format`` class attribute as a string,
- - extend or override the _parse_data method,
- - override the serialize method.
+- inherit from Item
+- have a ``format`` class attribute as a string,
+- extend or override the _parse_data method,
+- override the serialize method.
 
 The ``format`` string is used to identify the parser in configuration files
 and must be unique.
@@ -47,7 +47,7 @@ class Item(object):
     The _access_point attribute represents where, in kalamar, the item is
     stored. It is an instance of AccessPoint.
 
-    Items are hashable and mutable.
+    Items are hashable but mutable, use hash with caution.
 
     """
     # TODO: use the MultiDict power by coding getlist/setlist (or not?)
@@ -321,10 +321,7 @@ class Item(object):
         return MultiDict()
 
     def serialize(self):
-        """Serialize ``self.raw_parser_properties`` and return the raw content
-        as a bytestring.
-        
-        """
+        """Return raw content as bytestring."""
         return ''
 
     def test_condition(self, condition):
@@ -333,9 +330,7 @@ class Item(object):
             self[condition.property_name], condition.value)
 
     def _get_content(self):
-        """Return the raw content as a bytestring, to be parsed.
-        """
-        
+        """Return the raw content as a bytestring, to be parsed."""
         if self._raw_content is None:
             self._raw_content = self._opener() or ''
         return self._raw_content
@@ -343,10 +338,7 @@ class Item(object):
 
 
 class BinaryItem(Item):
-    """A simple parser that gives access to the raw, binary content as the
-    ``data`` property.
-    
-    """
+    """Simple parser giving access to raw content as ``data`` property."""
     format = 'binary'
     
     def _parse_data(self):
