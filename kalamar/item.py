@@ -327,6 +327,11 @@ class Item(object):
         """
         return ''
 
+    def test_condition(self, condition):
+        """Return True if item properties matches this condition."""
+        return condition.operator(
+            self[condition.property_name], condition.value)
+
     def _get_content(self):
         """Return the raw content as a bytestring, to be parsed.
         """

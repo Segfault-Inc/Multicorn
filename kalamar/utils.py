@@ -106,15 +106,11 @@ class Condition(object):
         self.operator = condition_operator
         self.value = value
     
-    def __call__(self, item):
-        """Return True if this dict of properties matches this condition."""
-        return self.operator(item[self.property_name], self.value)
-    
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__, self.property_name,
                                    self.operator, self.value)
 
-                                
+
 
 class ModificationTrackingList(list):
     """List with a ``modified`` attribute becoming True when the list changes.
