@@ -166,7 +166,7 @@ egestas.
         
 
 
-    class RestCapsule(CapsuleItem):
+    class RestCapsule(CapsuleItem, RestAtom):
         """A ReStructuredText capsule.
         
         The ReST document is only made of metadata and :include: directives.
