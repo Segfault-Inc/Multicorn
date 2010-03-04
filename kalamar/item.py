@@ -372,14 +372,46 @@ class CapsuleItem(Item):
         super(CapsuleItem, self).__init__(
             access_point, opener, storage_properties)
         self._parser_modified = False
+
+    def __getitem__(self, key):
+        """Return the item ``key`` property.
+
+        If ``key`` is an integer, return the ``subitems[key]`` value. Else,
+        return the atom ``key`` property.
+
+        """
+        if isinstance(key, int):
+            return self.subitems[key]
+        else:
+            return super(CapsuleItem, self).__getitem__(key)
+
+    def __setitem__(self, key, value):
+        """Set the item ``key`` property to ``value``.
+
+        If ``key`` is an integer, set the ``subitems[key]`` to value. Else,
+        set the atom ``key`` property to ``value``.
+
+        """
+        if isinstance(key, int):
+            return self.subitems[key]
+        else:
+            return super(CapsuleItem, self).__setitem__(key, value)
     
+    def __len__(self):
+        """Get capsule length."""
+        return len(self.subitems)
+
+    def __contains__(self, item):
+        """Return True if ``item`` is in capsule."""
+        return item in self.subitems
+
     def _get_subitems(self):
         """List of the capsule subitems."""
         if not hasattr(self, '_subitems'):
             self._subitems = utils.ModificationTrackingList(
                 self._load_subitems())
         return self._subitems
-    
+
     def _set_subitems(self, new_list):
         """Set the list of the capsule subitems."""
         self._subitems = utils.ModificationTrackingList(new_list)
