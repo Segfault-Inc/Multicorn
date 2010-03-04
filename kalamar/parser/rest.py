@@ -48,6 +48,8 @@ A test document
            Suspendisse fringilla accumsan sem eget ullamcorper.
            Aliquam erat volutpat.
 
+.. contents::
+
 .. include:: nonexistent.rst
 
 Etiam a turpis erat, ac scelerisque nisl. Pellentesque habitant
@@ -77,8 +79,9 @@ egestas.
         for match in extract_includes._re.finditer(text):
             yield match.group(1), match.group(2)
 
-    extract_includes._re = re.compile(u'^\s*.. (\w+)::\s+(.+?)\s*$',
-                                      re.MULTILINE)
+    extract_includes._re = re.compile(
+        u'^\s*.. (include)::\s+(.+?)\s*$',
+        re.MULTILINE)
         
 
 
