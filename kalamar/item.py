@@ -380,7 +380,7 @@ class CapsuleItem(Item):
         return the atom ``key`` property.
 
         """
-        if isinstance(key, int):
+        if isinstance(key, (int, slice)):
             return self.subitems[key]
         else:
             return super(CapsuleItem, self).__getitem__(key)
