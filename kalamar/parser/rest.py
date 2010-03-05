@@ -210,7 +210,7 @@ egestas.
             write(title)
             write(u'=' * len(title))
             for key, value in self.raw_parser_properties.iteritems():
-                if key != u'title':
+                if key not in (u'title', u'text'):
                     write(u':%s: %s' % (key, value))
             write('')
             dirname = os.path.dirname(self.filename)
