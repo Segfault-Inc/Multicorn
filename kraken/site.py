@@ -29,6 +29,7 @@ import collections
 import mimetypes
 import types
 import re
+import warnings
 import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 
@@ -233,7 +234,13 @@ class Site(object):
         site.kalamar = request.kalamar
         site.koral = self.koral_site
         site.kraken = self
-        return dict(request = request, site = site, import_ = self.import_)
+        def import_(name):
+            warnings.warn('Using import_ from the site is deprecated. It may '
+                          'be removed for template contexts in the future.',
+                          DeprecationWarning,
+                          stacklevel=2)
+            return self.import_(name)
+        return dict(request=request, site=site, import_=import_)
     
     def import_(self, name):
         """Helper for python controllers to "import" other controllers.
