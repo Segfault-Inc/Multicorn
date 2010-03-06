@@ -1,8 +1,9 @@
 
 from kraken.utils import Response
 
-def handle_request(request, remaining_path):
-    result = request.kalamar.search(u'fs_text_mixed', remaining_path)
+def handle_request(request):
+    kalamar_request = request.query_string.decode('utf8')
+    result = request.kalamar.search(u'fs_text_mixed', kalamar_request)
     return Response(u'\n'.join(sorted(
         repr(dict(
             (key, item[key])

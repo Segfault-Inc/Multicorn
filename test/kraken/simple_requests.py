@@ -17,13 +17,15 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         r = self.client.get('/__logo/.hidden_file')
         self.assertEqual(r.status_code, 403)
 
-    def test_hidden_python(self):
-        r = self.client.get('/.hidden_python')
-        self.assertEqual(r.status_code, 403)
+    # with the new import, . in the URL is replace by a _, so python files
+    # with a . (other than .py) can never be accessed
+#    def test_hidden_python(self):
+#        r = self.client.get('/.hidden_python')
+#        self.assertEqual(r.status_code, 403)
 
-    def test_hidden_dir_python(self):
-        r = self.client.get('/.hidden_dir/blah')
-        self.assertEqual(r.status_code, 403)
+#    def test_hidden_dir_python(self):
+#        r = self.client.get('/.hidden_dir/blah')
+#        self.assertEqual(r.status_code, 403)
 
     def test_hidden_template(self):
         r = self.client.get('/.hidden_template')
@@ -113,15 +115,15 @@ class TestSession(KrakenSiteMixin, TestCase):
         # get the default value
         r1 = self.client.get('/session/')
         self.assertEqual(r1.status_code, 200)
-        self.assertEqual(r1.data, repr(u'(no value)'))
+        self.assertEqual(r1.data, '(no value)')
 
         # set the value
-        r2 = self.client.get('/session/blah/')
+        r2 = self.client.get('/session/?blah')
         self.assertEqual(r2.status_code, 200)
 
         # get again and check
         r3 = self.client.get('/session/')
         self.assertEqual(r3.status_code, 200)
-        self.assertEqual(r3.data, repr(u'blah'))
+        self.assertEqual(r3.data, 'blah')
         
 
