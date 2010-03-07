@@ -156,7 +156,7 @@ def run_with_coverage(function, packages):
     function()
     c.stop()
     c.report([werkzeug.import_string(name).__file__ 
-              for name in find_all_modules(p for p in packages if p != 'test')])
+              for name in find_all_modules(packages)])
 
 def profile(function, filename):
     import cProfile
