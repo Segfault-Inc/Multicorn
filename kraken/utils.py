@@ -145,7 +145,8 @@ class StaticFileResponse(Response):
                              self.file_stat.st_mtime)
         etag = '"%s"' % hashlib.md5(etag).hexdigest()
         headers = [('Date', werkzeug.http_date()), ('Etag', etag)]
-        mtime = datetime.datetime.utcfromtimestamp(self.file_stat.st_mtime)
+        # round to 1 second precision: no more than the HTTP header
+        mtime = datetime.datetime.utcfromtimestamp(int(self.file_stat.st_mtime))
         if not werkzeug.is_resource_modified(environ, etag=etag,
                                              last_modified=mtime):
             start_response('304 Not Modified', headers)

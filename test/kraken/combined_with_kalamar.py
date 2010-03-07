@@ -6,7 +6,7 @@ from test.kraken import KrakenSiteMixin
 
 class TestKrakenWithKalamar(KrakenSiteMixin, TestCase):
     def test_search(self):
-        r = self.client.get('/kalamar/artiste="Birelli Lagrène"/')
+        r = self.client.get('/kalamar_search/?artiste="Birelli Lagrène"')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
         self.assertEqual(r.data,
@@ -19,8 +19,8 @@ class TestKrakenWithKalamar(KrakenSiteMixin, TestCase):
         )
 
     def test_open(self):
-        r = self.client.get('/kalamar_open/artiste="Birelli Lagrène"'
-                            '/titre="swing it !"/')
+        r = self.client.get('/kalamar_open/?artiste="Birelli Lagrène"'
+                            '/titre="swing it !"')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
         self.assertEqual(r.data,
@@ -29,7 +29,7 @@ class TestKrakenWithKalamar(KrakenSiteMixin, TestCase):
         )
 
     def test_open_404(self):
-        r = self.client.get('/kalamar_open/artiste="Nonexistent"/')
+        r = self.client.get('/kalamar_open/?artiste="Nonexistent"')
         self.assertEqual(r.status_code, 404)
 
 

@@ -24,10 +24,12 @@ independent site with its own configuration.
 """
 
 import os
+import sys
 import collections
 import mimetypes
 import types
 import re
+import warnings
 import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 
@@ -55,7 +57,16 @@ class Site(object):
         self.kalamar_site = utils.KalamarSiteForKraken(
             os.path.expanduser(unicode(kalamar_conf)) if kalamar_conf else None,
             fail_on_inexistent_parser=fail_on_inexistent_parser)
-        self._module_cache = {}
+        
+        # create a virtual package in sys.modules so that we can import 
+        # python modules in the site
+        self.package_name = 'kraken_site_%i' % id(self)
+        module = types.ModuleType(self.package_name)
+        module.__path__ = [self.site_root]
+        module.kraken = self
+        module.koral = self.koral_site
+        module.kalamar = self.kalamar_site
+        sys.modules[self.package_name] = module
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
@@ -135,67 +146,17 @@ class Site(object):
     def handle_python(self, request):
         """Try handling a ``request`` with a python controller.
 
-        Return a Response object or raise NotFound.
-        
-        Exemple:
-            If request.path is u'/foo/bar', this method tries the following,
-            in the given order:
-                - handle_request(request) in foo/bar.py
-                - handle_request(request) in foo/bar/index.py
-                - handle_request(request, u'') in foo/bar.py
-                - handle_request(request, u'') in foo/bar/index.py
-                - handle_request(request, u'bar') in foo.py
-                - handle_request(request, u'bar') in foo/index.py
-                - handle_request(request, u'foo/bar') in index.py
-
-        """
-        # search for foo/bar.py or foo/bar/index.py
-        for suffix in (u'', u'/index'):
-            module_path = request.path.strip(u'/') + suffix
-            module = self.load_python_module(module_path)
-            if hasattr(module, 'handle_request'):
-                handler = module.handle_request
-                # the 2 parameters case is handled later
-                if utils.arg_count(handler) == 1:
-                    # only if the controller exists
-                    # (ie the redirect doesn’t lead to a "404 Not Found")
-                    if u'/.' in request.path:
-                        raise Forbidden
-                    request.module_directory = \
-                        os.path.dirname(module_path).strip('/')
-                    self.handle_trailing_slash(request)
-                    return handler(request)
-        
-        # slash-separated parts of the URL
-        script_name = [u''] + [part for part in request.path.split(u'/')
-                       if part and part != u'..']
-        path_info = collections.deque()
-        while True:
-            for suffix in (u'', u'/index'):
-                module_path = u'/'.join(script_name) + suffix
-                module = self.load_python_module(module_path)
-                if hasattr(module, 'handle_request'):
-                    handler = module.handle_request
-                    if utils.arg_count(handler) > 1:
-                        # only if the controller exists
-                        # (ie the redirect doesn’t lead to a "404 Not Found")
-                        for part in script_name:
-                            if part.startswith(u'.'):
-                                raise Forbidden
-                        self.handle_trailing_slash(request)
-                        request.module_directory = \
-                            os.path.dirname(module_path).strip('/')
-                        return handler(request, u'/'.join(path_info))
-            # exit loop here and not with the while condition so that
-            # the previous code is executed with script_name == []
-            # (ie. index.py at the root of the site)
-            # TODO: test this case
-            if not script_name:
-                break
-            # take the right-most part of script_name and push it to the
-            # left of path_info
-            path_info.appendleft(script_name.pop())
-
+        Return a Response object or raise NotFound."""
+        parts = (part for part in request.path.replace('.', '_').split(u'/')
+                      if part and part != u'..')
+        name = '.'.join(parts)
+        try:
+            module = self.import_(name)
+        except ImportError:
+            raise NotFound
+        if hasattr(module, 'handle_request'):
+            self.handle_trailing_slash(request)
+            return module.handle_request(request)
         raise NotFound
         
     def handle_simple_template(self, request):
@@ -273,36 +234,13 @@ class Site(object):
         site.kalamar = request.kalamar
         site.koral = self.koral_site
         site.kraken = self
-        return dict(request = request, site = site, import_ = self.import_)
-
-    def load_python_module(self, name):
-        """Return a dictionary of everything defined in the module ``name``.
-        
-        The path is a slash-separated path relative to the site root, without
-        the extension.
-
-        Return an empy dictionnary if the module does not exist.
-
-        """
-        parts = [part for part in name.split(u'/') if part and part != u'..']
-        filename = os.path.join(self.site_root, *parts) + u'.py'
-        if not os.path.isfile(filename):
-            return None
-        mtime = os.stat(filename).st_mtime
-        try:
-            module, old_mtime = self._module_cache[filename]
-            if mtime == old_mtime:
-                return module
-        except KeyError:
-            pass
-
-        name = 'kraken.site.' + name.encode('utf8')
-        module = types.ModuleType(name)
-        module.__file__ = filename.encode('utf8')
-        module.import_ = self.import_
-        execfile(filename, module.__dict__)
-        self._module_cache[filename] = (module, mtime)
-        return module
+        def import_(name):
+            warnings.warn('Using import_ from the site is deprecated. It may '
+                          'be removed for template contexts in the future.',
+                          DeprecationWarning,
+                          stacklevel=2)
+            return self.import_(name)
+        return dict(request=request, site=site, import_=import_)
     
     def import_(self, name):
         """Helper for python controllers to "import" other controllers.
@@ -311,40 +249,25 @@ class Site(object):
 
         >>> import test.kraken
         >>> site = test.kraken.make_site()
-        >>> module = site.import_('inexistent') # doctest: +ELLIPSIS
+        >>> module = site.import_('inexistent')
         Traceback (most recent call last):
             ...
-        ImportError: No module named inexistent in u'...test/kraken/site'
+        ImportError: No module named inexistent
 
-        >>> site.import_('lorem/ipsum') # doctest: +ELLIPSIS
+        >>> site.import_('lorem.ipsum') # doctest: +ELLIPSIS
         ...                             # doctest: +NORMALIZE_WHITESPACE
-        <module 'kraken.site.lorem/ipsum' 
-            from '...test/kraken/site/lorem/ipsum.py'>
-            
-        Special names:
-        >>> site.import_('kraken') # doctest: +ELLIPSIS
-        <kraken.site.Site object at 0x...>
-        >>> site.import_('kalamar') # doctest: +ELLIPSIS
-        <kraken.utils.KalamarSiteForKraken object at 0x...>
-        >>> site.import_('koral') # doctest: +ELLIPSIS
-        <koral.site.Site object at 0x...>
-
+        <module 'kraken_site_....lorem.ipsum' 
+            from '...test/kraken/site/lorem/ipsum.py...'>
         """
-        if name == 'kraken':
-            return self
-        if name == 'koral':
-            return self.koral_site
-        if name == 'kalamar':
-            # TODO ideally we would return request.kalamar here
-            # (a CachedKalamarSite instance) but we don’t have a reference
-            # to the request
-            return self.kalamar_site
-        
-        module = self.load_python_module(name)
-        if module is None:
-            raise ImportError('No module named %s in %r' % (name,
-                                                           	self.site_root))
+        name = self.package_name + '.' + name
+        # example: with name = 'kraken_site_42.views.main', __import__(name)
+        # returns the kraken_site_42 module with the views package
+        # as an attribute, etc.
+        module = __import__(name)
+        for attr in name.split('.')[1:]:
+            module = getattr(module, attr)
         return module
+        
         
     def find_template(self, path):
         """Find the template at ``path``.
