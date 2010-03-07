@@ -194,24 +194,76 @@ class AliasedMultiDict(object):
     
     # Sized
     def __len__(self):
+        """Get dict length.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> len(aliasedmultidict)
+        3
+        """
         return len(self.keys())
 
     # Container
     def __contains__(self, key):
+        """Test if key is in aliased and not aliased keys.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> 'alias1' in aliasedmultidict
+        True
+        >>> 'key2' in aliasedmultidict
+        True
+        >>> 'key3' in aliasedmultidict
+        True
+        >>> 'key10' in aliasedmultidict
+        False
+
+        """
         key = self.aliases.get(key, key)
         return key in self.data
 
     # Iterable
     def __iter__(self):
+        """Return an iterator of keys.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> for key in sorted(aliasedmultidict): print key
+        alias1
+        alias2
+        key3
+
+        """
         for key in self.data:
             yield self.reversed_aliases.get(key, key)
 
     # Mapping
     def __getitem__(self, key):
+        """Get dict item."""
         key = self.aliases.get(key, key)
         return self.data[key]
 
     def get(self, key, default=None):
+        """Return ``self[key]`` if ``key`` in ``self``, else ``default``.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> aliasedmultidict.get('key1', 'test')
+        'value1'
+        >>> aliasedmultidict.get('alias1', 'test')
+        'value1'
+        >>> aliasedmultidict.get('alias8', 'test')
+        'test'
+
+        """
         # copied from Python 2.6.4’s _abcoll module
         try:
             return self[key]
@@ -219,47 +271,145 @@ class AliasedMultiDict(object):
             return default
         
     def iterkeys(self):
+        """Return an iterator of high-level keys.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> sorted([key for key in aliasedmultidict.iterkeys()])
+        ['alias1', 'alias2', 'key3']
+
+        """
         # copied from Python 2.6.4’s _abcoll module
         return iter(self)
 
     def itervalues(self):
+        """Return an iterator of values.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> sorted([value for value in aliasedmultidict.itervalues()])
+        ['value1', 'value2', 'value3']
+
+        """
         return self.data.itervalues()
 
     def iteritems(self):
+        """Return an iterator of high-level (key, value) tuples.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> sorted([
+        ...     (key, value) for (key, value) in aliasedmultidict.iteritems()])
+        [('alias1', 'value1'), ('alias2', 'value2'), ('key3', 'value3')]
+
+        """
         for key, value in self.data.iteritems():
             key = self.reversed_aliases.get(key, key)
             yield (key, value)
 
     def keys(self):
+        """Return high-level keys.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> sorted(aliasedmultidict)
+        ['alias1', 'alias2', 'key3']
+
+        """
         # copied from Python 2.6.4’s _abcoll module
         return list(iter(self))
 
     def items(self):
+        """Return high-level (key, value) tuples.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> sorted(aliasedmultidict.items())
+        [('alias1', 'value1'), ('alias2', 'value2'), ('key3', 'value3')]
+
+        """
         return list(self.iteritems())
 
     def values(self):
+        """Return a list of values.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> sorted(aliasedmultidict.values())
+        ['value1', 'value2', 'value3']
+
+        """
         return self.data.values()
 
     def __eq__(self, other):
+        """Test if ``other`` and ``self`` are the same.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict1 = AliasedMultiDict(data, aliases)
+        >>> aliasedmultidict2 = AliasedMultiDict(data, aliases)
+
+        >>> aliasedmultidict1 == aliasedmultidict2
+        True
+
+        >>> data3 = {'key1': 'value4', 'key2': 'value5', 'key3': 'value6'}
+        >>> aliasedmultidict3 = AliasedMultiDict(data3, aliases)
+        
+        >>> aliasedmultidict1 == aliasedmultidict3
+        False
+
+        """
         # adapted from Python 2.6.4’s _abcoll module
         return isinstance(other, AliasedMultiDict) and \
                dict(self.data) == dict(other.data)
 
     def __ne__(self, other):
+        """Test if ``other`` and ``self`` are not the same.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict1 = AliasedMultiDict(data, aliases)
+        >>> aliasedmultidict2 = AliasedMultiDict(data, aliases)
+
+        >>> aliasedmultidict1 != aliasedmultidict2
+        False
+
+        >>> data3 = {'key1': 'value4', 'key2': 'value5', 'key3': 'value6'}
+        >>> aliasedmultidict3 = AliasedMultiDict(data3, aliases)
+        
+        >>> aliasedmultidict1 != aliasedmultidict3
+        True
+
+        """
         # copied from Python 2.6.4’s _abcoll module
         return not (self == other)
 
     # MutableMapping
     def __setitem__(self, key, value):
+        """Set ``self[key]`` to ``value``."""
         key = self.aliases.get(key, key)
         self.data[key] = value
 
     def __delitem__(self, key):
+        """Delete ``self[key]``."""
         key = self.aliases.get(key, key)
-        self.data[key] = value
+        del self.data[key]
 
     __marker = object()
     def pop(self, key, default=__marker):
+        """Pop ``self[key]``."""
         # copied from Python 2.6.4’s _abcoll module
         try:
             value = self[key]
@@ -272,9 +422,10 @@ class AliasedMultiDict(object):
             return value
 
     def popitem(self):
+        """Pop next item."""
         # copied from Python 2.6.4’s _abcoll module
         try:
-            key = next(iter(self))
+            key = iter(self).next()
         except StopIteration:
             raise KeyError
         value = self[key]
@@ -282,6 +433,17 @@ class AliasedMultiDict(object):
         return key, value
 
     def clear(self):
+        """Empty ``self``.
+
+        >>> aliases = {'alias1': 'key1', 'alias2': 'key2'}
+        >>> data = {'key1': 'value1', 'key2': 'value2', 'key3': 'value3'}
+        >>> aliasedmultidict = AliasedMultiDict(data, aliases)
+
+        >>> aliasedmultidict.clear()
+        >>> aliasedmultidict.items()
+        []
+
+        """
         # copied from Python 2.6.4’s _abcoll module
         try:
             while True:
@@ -290,6 +452,7 @@ class AliasedMultiDict(object):
             pass
 
     def update(self, other=(), **kwds):
+        """Update ``self`` with given ``other`` values."""
         # adapted from Python 2.6.4’s _abcoll module
         if hasattr(other, 'keys'):
             for key in other.keys():
@@ -299,14 +462,6 @@ class AliasedMultiDict(object):
                 self[key] = value
         for key, value in kwds.items():
             self[key] = value
-
-    def setdefault(self, key, default=None):
-        # copied from Python 2.6.4’s _abcoll module
-        try:
-            return self[key]
-        except KeyError:
-            self[key] = default
-        return default
 
 
 
