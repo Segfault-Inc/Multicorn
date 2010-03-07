@@ -13,9 +13,7 @@ except ImportError:
                   ImportWarning,
                   stacklevel=2)
 else:
-
     class TestCapsules(TestCase):
-        
         def setUp(self):
             self.temp_dir = TestData.get_temp_dir()
             self.site = Site(os.path.join(self.temp_dir, 'rest_capsules.conf'))
@@ -41,6 +39,19 @@ else:
                     for track in album.subitems if track)
             self.assertEquals(album_length, {u'manouche swing': 3, u'amen': 8,
                                              u'alleluia': 7, u'S.O.B': 2})
+
+        def test_album_length_with_missing(self):
+            album_length = {}
+            for album in self.site.search('rest_capsules'):
+                album_length[album['album']] = len(album)
+            self.assertEquals(album_length, {u'manouche swing': 4, u'amen': 8,
+                                             u'alleluia': 7, u'S.O.B': 2})
+
+        def test_contains(self):
+            item = self.site.open('fs_text_messed_up',
+                                  {'album': 'alleluia', 'title': 'juda'})
+            album = self.site.open('rest_capsules', {'album': 'alleluia'})
+            self.assert_(item in album)
 
         def test_remove_last(self):
             for album in self.site.search('rest_capsules'):
@@ -83,4 +94,16 @@ else:
             self.assertEquals(track_titles, [track['title']
                 for track in compilation2.subitems])
             
+        def test_set_subitems(self):
+            compilation = self.site.create_item('rest_capsules', 
+                                                dict(album='Compilation'))
+            track_titles = []
+            for album in self.site.search('rest_capsules'):
+                for track in album:
+                    if track:
+                        track_titles.append(track)
+            compilation.subitems = track_titles
+            self.site.save(compilation)
 
+            compilation2 = self.site.open('rest_capsules', ['Compilation'])
+            self.assertEquals(track_titles, [item for item in compilation2])

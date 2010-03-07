@@ -11,6 +11,12 @@ class TestMails(TestCase):
         self.temp_dir = TestData.get_temp_dir()
         self.site = Site(os.path.join(self.temp_dir, 'mails.conf'))
 
+    def test_keys(self):
+        mail = self.site.open('mails', ['mail'])
+        keys = mail.keys()
+        for key in ('From', 'To', 'Subject', 'Date', 'Message-ID', 'id'):
+            self.assert_(key in keys)
+
     def test_properties(self):
         mail = self.site.open('mails', ['mail'])
         for key, value in {

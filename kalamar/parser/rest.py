@@ -199,7 +199,7 @@ egestas.
                 item = self._access_point.site.item_from_filename(filename)
                 # item is None if no access point has this filename
                 item = item or MissingItem(include)
-                item.association_properties["type"] = datatype
+                item.association_properties['type'] = datatype
                 yield item
        
         def serialize(self):
@@ -216,6 +216,6 @@ egestas.
             dirname = os.path.dirname(self.filename)
             for subitem in self.subitems:
                 write(u'.. %s:: %s' % (
-                    subitem.association_properties.get("type", "include"),
+                    subitem.association_properties.get('type', 'include'),
                     utils.relpath(subitem[u'_filename'], dirname)))
             return u'\n'.join(content).encode(self.encoding)
