@@ -36,9 +36,11 @@ class MessageItem(Item):
         properties = super(MessageItem, self)._parse_data()
         msg = email.message_from_string(self._get_content())
         msg.set_charset('utf-8')
+        for key, value in msg.items():
+            properties[key] = value
         properties['message'] = msg
         return properties
         
     def serialize(self):
+        """Return mail message."""
         return self.raw_parser_properties['message'].as_string()
-
