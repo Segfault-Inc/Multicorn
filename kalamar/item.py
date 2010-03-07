@@ -142,7 +142,6 @@ class Item(object):
             return hash(item) == hash(self)
         return NotImplemented
 
-    # TODO test
     def __cmp__(self, item):
         """Compare two items.
         
@@ -393,9 +392,9 @@ class CapsuleItem(Item):
 
         """
         if isinstance(key, int):
-            return self.subitems[key]
+            self.subitems[key] = value
         else:
-            return super(CapsuleItem, self).__setitem__(key, value)
+            super(CapsuleItem, self).__setitem__(key, value)
     
     def __len__(self):
         """Get capsule length."""

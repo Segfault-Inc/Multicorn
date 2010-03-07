@@ -1,6 +1,7 @@
 # coding: utf8
 
 import os
+import random
 import time
 import threading
 from kalamar import Item
@@ -164,6 +165,17 @@ class TestSiteOpen(MyTest):
         item1 = self.site.open(self.access_point_name, request1)
         item2 = self.site.open(self.access_point_name, request2)
         self.assertNotEqual(item1, item2)
+
+    def test_item_comparison(self):
+        """Test if the comparison between items is stable."""
+        # This feature is highly strange, testing this is a bit difficult
+        request = u'genre="rock"/artiste="Jesus\'harlem"'
+        items = self.site.search(self.access_point_name, request)
+        sorted_items = sorted(items)
+        for i in range(10):
+            test_items = [item for item in items]
+            random.shuffle(test_items)
+            self.assertEqual(sorted_items, sorted(test_items))
     
     def test_item_hashability(self):
         """Try to intersect two sets of items and check result."""
