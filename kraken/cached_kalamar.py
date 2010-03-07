@@ -25,7 +25,7 @@ class CachedKalamarSite(object):
     """Kalamar cache wrapper.
 
     Wrapper for kalamar that caches results of the following methods:
-        ``isearch``, ``search``, ``open``, ``item_from_filenames``
+        ``isearch``, ``search``, ``open``, ``item_from_filename``
     All cached entries are removed when the following methods are called:
         ``save``, ``remove``
 
@@ -35,24 +35,62 @@ class CachedKalamarSite(object):
     ...     y = 1
     ...     def search(self, x, y=None):
     ...         print 'search', x
-    ...         return x + self.y
+    ...         if isinstance(x, int):
+    ...             return [x + self.y]
+    ...         elif x == '*':
+    ...             return [1, 2, 3]
     ...     def save(self, y):
     ...         print 'save', y
     ...         self.y = y
+    ...     def remove(self, y):
+    ...         print 'remove', y
+    ...     def item_from_filename(self, z):
+    ...         print 'filename', z
+    ...         return int(z) + self.y
+    ...     def test(self):
+    ...         print 'test', self.y
+    ...     ObjectDoesNotExist = StandardError('Object does not exist')
+    ...     MultipleObjectsReturned = StandardError('Multiple objects')
     >>> kalamar = CachedKalamarSite(FakeKalamar())
     >>> kalamar.search(2)
     search 2
-    3
+    [3]
     >>> kalamar.search(5)
     search 5
-    6
+    [6]
     >>> kalamar.search(2) # result is cached: FakeKalamar.search is not called
+    [3]
+    >>> for i in kalamar.isearch(2): print i # result is cached too with isearch
     3
     >>> kalamar.save(-1)
     save -1
     >>> kalamar.search(2) # cache has been invalidated
     search 2
-    1
+    [1]
+    >>> kalamar.search(2) # result is cached
+    [1]
+    >>> kalamar.remove(2)
+    remove 2
+    >>> kalamar.search(2) # cache has been invalidated
+    search 2
+    [1]
+    >>> kalamar.item_from_filename('6')
+    filename 6
+    5
+    >>> kalamar.item_from_filename('6') # result is cached
+    5
+    >>> kalamar.search('2') # '2' is no int, return nothing
+    search 2
+    >>> kalamar.open('2') # '2' is no int, raise Error
+    Traceback (most recent call last):
+    ...
+    StandardError: Object does not exist
+    >>> kalamar.open('*') # '*' means [1,2,3], raise Error
+    Traceback (most recent call last):
+    ...
+    StandardError: Multiple objects
+    >>> kalamar.test()
+    test -1
 
     """
     def __init__(self, kalamar_site):
@@ -104,7 +142,6 @@ class CachedKalamarSite(object):
             raise self.kalamar_site.MultipleObjectsReturned
         return results[0]
 
-    
     def save(self, *args, **kwargs):
         """TODO docstring"""
         # This changes the data. Flush the whole cache
