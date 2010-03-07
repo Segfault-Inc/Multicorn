@@ -56,7 +56,6 @@ def reverse_convert_value(value):
         return "'%s'" % unicode(value).replace("'", r"\'")
     elif isinstance(value, (int, float, long)):
         return value
-    raise Exception("This type cannot be converted back: %s" % type(value))
 
 
 
