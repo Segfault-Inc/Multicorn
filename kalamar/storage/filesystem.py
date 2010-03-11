@@ -260,7 +260,6 @@ class FileSystemStorage(AccessPoint):
                                 # This is a file and the filename
                                 # pattern is completed
                                 filename = self._real_filename(path)
-                                properties[u'_filename'] = filename
                                 yield properties, functools.partial(
                                     self.get_file_content, path)
         
@@ -365,9 +364,10 @@ class FileSystemStorage(AccessPoint):
         'storage'
         >>> item['path2']
         'filesystem'
-        >>> item['_filename'] == \
+        >>> item.filename == \
                 os.path.normpath(os.path.splitext(__file__)[0] + '.py')
         True
+
         """
         absolute_filename = os.path.abspath(filename)
         root = os.path.abspath(self.root)
@@ -392,7 +392,6 @@ class FileSystemStorage(AccessPoint):
         if not os.path.isfile(filename):
             return None
 
-        properties[u'_filename'] = filename
         return self._make_item(
             functools.partial(
                 self.get_file_content, filename, real_filename=True),

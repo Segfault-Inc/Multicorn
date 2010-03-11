@@ -194,7 +194,7 @@ egestas.
             content = self._get_content().decode(self.encoding)
             for datatype, include in extract_includes(content):
                 filename = os.path.join(
-                    os.path.dirname(self[u'_filename']),
+                    os.path.dirname(self.filename),
                     os.path.normpath(include))
                 item = self._access_point.site.item_from_filename(filename)
                 # item is None if no access point has this filename
@@ -217,5 +217,5 @@ egestas.
             for subitem in self.subitems:
                 write(u'.. %s:: %s' % (
                     subitem.association_properties.get('type', 'include'),
-                    utils.relpath(subitem[u'_filename'], dirname)))
+                    utils.relpath(subitem.filename, dirname)))
             return u'\n'.join(content).encode(self.encoding)
