@@ -106,7 +106,9 @@ class CachedKalamarSite(object):
         # if this search has already been done. If the request is not hashable,
         # create a hashable object from request.
         if isinstance(request, dict):
-            request = '/'.join(['%s=%s' % (key, repr(value))
+            # TODO: test this!
+            # lstrip('u') removes the leading 'u' in front of unicode values
+            request = '/'.join(['%s=%s' % (key, repr(value).lstrip('u'))
                                 for key, value in request.items()])
         elif isinstance(request, list):
             request = tuple(request)
