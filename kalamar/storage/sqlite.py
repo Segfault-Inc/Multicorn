@@ -59,6 +59,10 @@ else:
             url = self.config['url']
             url_dict = urlparse.urlsplit(url)
             splitted_path = url_dict.path.split('?', 1)
+            if not splitted_path[0]:
+                # urlparse.urlsplit behaviour changed in python 2.6.5
+                # See http://bugs.python.org/issue7904
+                splitted_path[0] = '//%s' % url_dict.netloc
             filename = splitted_path[0][2:]
             table = splitted_path[1]
             filename = os.path.join(self.config['basedir'], filename)
