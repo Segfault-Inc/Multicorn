@@ -141,7 +141,8 @@ class StaticFileResponse(Response):
     
     def __call__(self, environ, start_response):
         """Return the file and set the response headers."""
-        etag = '%s,%s,%s' % (self.filename, self.file_stat.st_size,
+        etag = '%s,%s,%s' % (self.filename.encode('utf-8'),
+                             self.file_stat.st_size,
                              self.file_stat.st_mtime)
         etag = '"%s"' % hashlib.md5(etag).hexdigest()
         headers = [('Date', werkzeug.http_date()), ('Etag', etag)]
