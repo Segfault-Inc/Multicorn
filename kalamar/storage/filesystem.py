@@ -31,6 +31,7 @@ from random import random
 
 from kalamar import utils
 from kalamar.storage.base import AccessPoint
+from kalamar.item import Item
 
 
 
@@ -54,7 +55,7 @@ class FileSystemStorage(AccessPoint):
             self.url[len(self.__class__.protocol + '://'):]))
 
         self.filename_format = config.get('filename_format', '*')
-    
+
     def get_storage_properties(self):
         """Return a list of the properties used for the storage.
 
@@ -290,6 +291,11 @@ class FileSystemStorage(AccessPoint):
 
     def save(self, item):
         """Add/update/move an item."""
+        # Storage properties must be unicode strings
+        for name in self.get_storage_properties():
+            if item[name] is not None:
+                item[name] = unicode(item[name])
+
         if item.old_storage_properties:
             old_path = self._path_from_properties(item.old_storage_properties)
         else:
@@ -396,5 +402,3 @@ class FileSystemStorage(AccessPoint):
             functools.partial(
                 self.get_file_content, filename, real_filename=True),
             properties)
-        
-
