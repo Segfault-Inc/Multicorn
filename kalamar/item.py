@@ -342,7 +342,7 @@ class BinaryItem(Item):
     
     def _parse_data(self):
         """Parse the whole item content."""
-        return MultiDict(data=self._get_content())
+        return MultiDict({'data': self._get_content()})
         
     def serialize(self):
         """Return the item content."""
