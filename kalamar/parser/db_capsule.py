@@ -58,13 +58,12 @@ class OneToManyDBCapsule(CapsuleItem):
         
         self.subitems # trigger _load_subitems
 
-        # TODO: do this only for items that are not in self.subitems anymore
-        # To do that we probably need the "primary keys" of the subitems,
-        # but that only makes sense in a database
+        # Remove all subitems not in ``self.subitems``
         for subitem in self._old_subitems:
-            for foreign_key, capsule_key in keys:
-                subitem[foreign_key] = None
-            self._access_point.site.save(subitem)
+            if subitem not in self.subitems:
+                for foreign_key, capsule_key in keys:
+                    subitem[foreign_key] = None
+                self._access_point.site.save(subitem)
 
         for number, subitem in enumerate(self.subitems):
             number += 1 # enumerate counts from 0, we want numbers from 1
@@ -73,8 +72,6 @@ class OneToManyDBCapsule(CapsuleItem):
             for foreign_key, capsule_key in keys:
                 subitem[foreign_key] = self[capsule_key]
             self._access_point.site.save(subitem)
-
-
 
 class ManyToManyDBCapsule(CapsuleItem):
     """A capsule format for items stored in databases.
