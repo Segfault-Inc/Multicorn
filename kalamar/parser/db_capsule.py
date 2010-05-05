@@ -66,8 +66,6 @@ class OneToManyDBCapsule(CapsuleItem):
                 self._access_point.site.save(subitem)
 
         for number, subitem in enumerate(self.subitems):
-            number += 1 # enumerate counts from 0, we want numbers from 1
-            
             subitem[sorting_column] = number
             for foreign_key, capsule_key in keys:
                 subitem[foreign_key] = self[capsule_key]
