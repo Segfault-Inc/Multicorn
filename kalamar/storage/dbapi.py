@@ -591,7 +591,7 @@ class DBAPIStorage(AccessPoint):
         >>> storage._format_request(request, parameters, 'qmark')
         ... #doctest:+NORMALIZE_WHITESPACE
         (u'DO STHG INTO TABLE ? WHERE toto=? AND tata IS NULL ;',
-         ('table', 1)
+         ('table', 1))
          
         >>> storage._format_request(request, parameters, 'numeric')
         ... #doctest:+NORMALIZE_WHITESPACE
@@ -619,6 +619,19 @@ class DBAPIStorage(AccessPoint):
         UnsupportedParameterStyleError: nonexistant
 
         """
+        # Change '=?' by ' IS NULL' when parameter value is ``None``
+        parts = request.split('?')
+        request = ''
+        for part, parameter in zip(parts, parameters):
+            if parameter.value is None:
+                request += '%s IS NULL' % part.rstrip('<>=')
+            else:
+                request += '%s?' % part
+        request += parts[-1]
+        parameters = [parameter for parameter in parameters
+                      if parameter.value is not None]
+
+        # Update request according to ``style``
         parameters = list(self._convert_parameters(parameters))
         parts = request.split('?')
         
