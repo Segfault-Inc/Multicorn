@@ -574,8 +574,8 @@ class DBAPIStorage(AccessPoint):
         Fixture
         >>> request = "DO STHG INTO TABLE ? WHERE toto=? AND tata=? ;"
         >>> parameters = [Parameter('name', 'table'),
-        ...               Parameter('other_name', 1),
-        ...               Parameter('yet_a_name', None)]
+        ...               Parameter('other_name', 'toto'),
+        ...               Parameter('yet_a_name', 'tata')]
         >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
         ...                        content_column = 'content_col')
         >>> class db_mod:
@@ -590,28 +590,28 @@ class DBAPIStorage(AccessPoint):
         Test
         >>> storage._format_request(request, parameters, 'qmark')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'DO STHG INTO TABLE ? WHERE toto=? AND tata IS NULL ;',
-         ('table', 1))
+        (u'DO STHG INTO TABLE ? WHERE toto=? AND tata=? ;',
+         ('table', 'toto', 'tata'))
          
         >>> storage._format_request(request, parameters, 'numeric')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'DO STHG INTO TABLE :1 WHERE toto=:2 AND tata IS NULL ;',
-         ('table', 1))
+        (u'DO STHG INTO TABLE :1 WHERE toto=:2 AND tata=:3 ;',
+         ('table', 'toto', 'tata'))
          
         >>> storage._format_request(request, parameters, 'named')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'DO STHG INTO TABLE :name0 WHERE toto=:other_name1 AND tata IS NULL ;',
-        {u'other_name1': 1, u'name0': 'table'})
+        (u'DO STHG INTO TABLE :name0 WHERE toto=:other_name1 AND tata=:yet_a_name2 ;',
+        {u'other_name1': 'toto', u'name0': 'table', u'yet_a_name2': 'tata'})
         
         >>> storage._format_request(request, parameters, 'format')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'DO STHG INTO TABLE %s WHERE toto=%s AND tata IS NULL ;',
-         ('table', 1))
+        (u'DO STHG INTO TABLE %s WHERE toto=%s AND tata=%s ;',
+         ('table', 'toto', 'tata'))
          
         >>> storage._format_request(request, parameters, 'pyformat')
         ... #doctest:+NORMALIZE_WHITESPACE
-        (u'DO STHG INTO TABLE %(name0)s WHERE toto=%(other_name1)s AND tata IS NULL ;',
-        {u'other_name1': 1, u'name0': 'table'})
+        (u'DO STHG INTO TABLE %(name0)s WHERE toto=%(other_name1)s AND tata=%(yet_a_name2)s ;',
+        {u'other_name1': 'toto', u'name0': 'table', u'yet_a_name2': 'tata'})
          
         >>> storage._format_request(request, parameters, 'nonexistant')
         Traceback (most recent call last):
@@ -619,19 +619,6 @@ class DBAPIStorage(AccessPoint):
         UnsupportedParameterStyleError: nonexistant
 
         """
-        # Change '=?' by ' IS NULL' when parameter value is ``None``
-        parts = request.split('?')
-        request = ''
-        for part, parameter in zip(parts, parameters):
-            if parameter.value is None:
-                request += '%s IS NULL' % part.rstrip('<>=')
-            else:
-                request += '%s?' % part
-        request += parts[-1]
-        parameters = [parameter for parameter in parameters
-                      if parameter.value is not None]
-
-        # Update request according to ``style``
         parameters = list(self._convert_parameters(parameters))
         parts = request.split('?')
         
