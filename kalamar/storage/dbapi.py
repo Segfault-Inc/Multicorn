@@ -32,8 +32,33 @@ from kalamar import utils
 
 
 def _opener(content):
-    #convert to str as some databases return buffer objects
+    """Convert ``content`` to ``str`` as some databases return buffers."""
     return lambda: str(content)
+
+
+def _clean_where_condition(property_name, operator, value):
+    """Return a DBAPI WHERE condition according to given parameters.
+
+    >>> _clean_where_condition(u'"key"', '=', u'value')
+    u'"key"=?'
+
+    >>> _clean_where_condition('test_key', '>=', 0)
+    u'test_key>=?'
+
+    >>> _clean_where_condition(u'test_key', '=', None)
+    u'test_key IS NULL'
+
+    >>> _clean_where_condition('"key"', u'!=', None)
+    u'"key" IS NOT NULL'
+
+    """
+    if value is None:
+        if operator == '=':
+            return u'%s IS NULL' % property_name
+        else:
+            return u'%s IS NOT NULL' % property_name
+    else:
+        return u'%s%s?' % (property_name, operator)
     
 
 
@@ -98,7 +123,6 @@ class DBAPIStorage(AccessPoint):
                 # Item does not exist, let's do an insert
                 request, parameters = \
                     self._build_insert_request(table, item, style)
-                #1/0
                 cursor.execute(request, parameters)
             else:
                 assert cursor.rowcount == 1
@@ -156,7 +180,6 @@ class DBAPIStorage(AccessPoint):
                 # reconnect if it's not
                 connection.ping(True)
             return connection, table
-            
     
     def _get_connection(self):
         """The actual, database-dependent implementation of get_connection.
@@ -384,19 +407,10 @@ class DBAPIStorage(AccessPoint):
         
         def named_conditions(conditions):
             for condition in conditions:
-                operator = utils.operators_rev[condition.operator]
-                if condition.value is None:
-                    if operator == '=':
-                        yield self._quote_name(condition.property_name) + \
-                              ' IS NULL'
-                    elif operator == '!=':
-                        yield self._quote_name(condition.property_name) + \
-                              ' IS NOT NULL'
-                    # else: nothing to do since others operators are handled in
-                    # python for None properties (see _process_conditions).
-                else:
-                    yield self._quote_name(condition.property_name) + \
-                          self.sql_operators[operator] + '?'
+                operator = self.sql_operators[utils.operators_rev[condition.operator]]
+                property_name = self._quote_name(condition.property_name)
+                yield _clean_where_condition(
+                    property_name, operator, condition.value)
         
         request = u' AND '.join(named_conditions(conditions))
         
@@ -425,7 +439,7 @@ class DBAPIStorage(AccessPoint):
         ...                            content_column = 'content_col')
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
-        ...                                     'sto_prop2': 'sto_val2',
+        ...                                     'sto_prop2': None,
         ...                                     'pk1': 'pk_val1',
         ...                                     'pk2': 'pk_val2'})
         
@@ -436,7 +450,7 @@ class DBAPIStorage(AccessPoint):
           "sto_prop"=? , "pk2"=? , "pk1"=? , "content_col"=? , "sto_prop2"=?
           WHERE "pk1"=? AND "pk2"=? ;'
         >>> param #doctest: +NORMALIZE_WHITESPACE
-           ('sto_val', 'pk_val2', 'pk_val1', "item's raw data", 'sto_val2',
+           ('sto_val', 'pk_val2', 'pk_val1', "item's raw data", None,
             'pk_val1', 'pk_val2')
         
         """
@@ -469,19 +483,17 @@ class DBAPIStorage(AccessPoint):
             parameters.append(
                 Parameter(self.content_column, content))
             
-        request.extend(u'%s=? WHERE' %
+        request.extend(u'%s=? WHERE ' %
                        self._quote_name(self._sql_escape_quotes(keys[-1])))
         parameters.append(Parameter(keys[-1], item[keys[-1]]))
         
-        for key in self.primary_keys[:-1]:
-            request.extend(
-                u' %s=? AND' % self._quote_name(self._sql_escape_quotes(key)))
-            parameters.append(Parameter(key, item[key]))
-        request.extend(
-            u' %s=? ;' % self._quote_name(
-                self._sql_escape_quotes(self.primary_keys[-1])))
-        parameters.append(
-            Parameter(self.primary_keys[-1], item[self.primary_keys[-1]]))
+        where_conditions = []
+        for key in self.primary_keys:
+            quoted_key = self._quote_name(self._sql_escape_quotes(key))
+            where_conditions.append(_clean_where_condition(quoted_key, '=', item[key]))
+            if item[key] is not None:
+                parameters.append(Parameter(key, item[key]))
+        request.extend(u'%s ;' % u' AND '.join(where_conditions))
         
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, style)
