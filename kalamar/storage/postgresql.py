@@ -32,6 +32,7 @@ except ImportError:
                   ImportWarning)
 else:
     from kalamar.storage.dbapi import DBAPIStorage
+    from kalamar.iso8601 import parse_date
 
 
 
@@ -92,15 +93,15 @@ else:
             conv_dict = {
                 16: bool,
                 17: module.Binary,
-                #19: unicode,
-                #20: long,
-                #21: int,
-                #23: int,
-                #25: unicode,
+                19: unicode,
+                20: long,
+                21: int,
+                23: int,
+                25: unicode,
                 #26: {'txt_in': <function numeric_in at 0x976217c>},
-                #700: float,
-                #701: float,
-                #829: unicode,
+                700: float,
+                701: float,
+                829: unicode,
                 #1000: {'bin_in': <function array_recv at 0x97623e4>},
                 #1003: {'bin_in': <function array_recv at 0x97623e4>},
                 #1005: {'bin_in': <function array_recv at 0x97623e4>},
@@ -111,9 +112,9 @@ else:
                 #1016: {'bin_in': <function array_recv at 0x97623e4>},
                 #1021: {'bin_in': <function array_recv at 0x97623e4>},
                 #1022: {'bin_in': <function array_recv at 0x97623e4>},
-                #1042: unicode,
-                #1043: unicode,
-                #1082: kalamar.iso8601.parse_date,
+                1042: unicode,
+                1043: unicode,
+                1082: parse_date,
                 #1083: {'txt_in': <function time_in at 0x976210c>},
                 #1114: {'bin_in': <function timestamp_recv at 0x9760f7c>},
                 #1184: {'bin_in': <function timestamptz_recv at 0x9760fb4>},
@@ -121,7 +122,7 @@ else:
                 #1231: {'bin_in': <function array_recv at 0x97623e4>},
                 #1263: {'bin_in': <function array_recv at 0x97623e4>},
                 #1700: {'bin_in': <function numeric_recv at 0x97621b4>},
-                #2275: unicode,
+                2275: unicode,
             }
             
             description = self.get_table_description()
