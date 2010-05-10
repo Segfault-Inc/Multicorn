@@ -56,19 +56,25 @@ class OneToManyDBCapsule(CapsuleItem):
             self._access_point.config['children_foreign_keys'].split('/'),
             self._access_point.config['capsule_keys'].split('/'))
         
-        self.subitems # trigger _load_subitems
-
-        # Remove all subitems not in ``self.subitems``
         for subitem in self._old_subitems:
-            if subitem not in self.subitems:
+            # Delete old item from physical storage before doing anything else
+            # to avoid data collision when saving data
+            self._access_point.site.remove(subitem)
+            if subitem in self.subitems:
+                # Update order and foreign keys in kalamar item
+                subitem[sorting_column] = self.subitems.index(subitem)
+                for foreign_key, capsule_key in keys:
+                    subitem[foreign_key] = self[capsule_key]
+            else:
+                # Remove all subitems not in ``self.subitems``
                 for foreign_key, capsule_key in keys:
                     subitem[foreign_key] = None
-                self._access_point.site.save(subitem)
+                    # TODO: setting an unused rank is useful here not to erase
+                    #       older data using the same primary key
+                    self._access_point.site.save(subitem)
 
-        for number, subitem in enumerate(self.subitems):
-            subitem[sorting_column] = number
-            for foreign_key, capsule_key in keys:
-                subitem[foreign_key] = self[capsule_key]
+        # Save all subitems
+        for subitem in self.subitems:
             self._access_point.site.save(subitem)
 
 class ManyToManyDBCapsule(CapsuleItem):
