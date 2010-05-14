@@ -30,8 +30,15 @@ class OneToManyDBCapsule(CapsuleItem):
     """TODO doc
     
     """
-    # TODO: make this capsule ordered
     format = 'onetomany_db_capsule'
+
+    @property
+    def _old_subitems(self):
+        """List of subitems present when the capsule was created or saved."""
+        if not hasattr(self, '__old_subitems'):
+            # First call to ``_old_subitems``, initialize ``subitems``
+            return self.subitems
+        return self.__old_subitems
     
     def _load_subitems(self):
         """Load and return capsule subitems."""
@@ -46,7 +53,7 @@ class OneToManyDBCapsule(CapsuleItem):
             self._access_point.config['children_access_point'], request)
         sorting_column = self._access_point.config['children_storting_column']
         items.sort(key=lambda item: item[sorting_column])
-        self._old_subitems = items
+        self.__old_subitems = items
         return items
 
     def serialize(self):
