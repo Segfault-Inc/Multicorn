@@ -51,14 +51,14 @@ class OneToManyDBCapsule(CapsuleItem):
                 
         items = self._access_point.site.search(
             self._access_point.config['children_access_point'], request)
-        sorting_column = self._access_point.config['children_storting_column']
+        sorting_column = self._access_point.config['children_sorting_column']
         items.sort(key=lambda item: item[sorting_column])
         self.__old_subitems = items
         return items
 
     def serialize(self):
         """Save all subitems in the linking table."""
-        sorting_column = self._access_point.config['children_storting_column']
+        sorting_column = self._access_point.config['children_sorting_column']
         keys = zip(
             self._access_point.config['children_foreign_keys'].split('/'),
             self._access_point.config['capsule_keys'].split('/'))
