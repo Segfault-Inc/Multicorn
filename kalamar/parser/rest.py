@@ -197,6 +197,7 @@ egestas.
                         output += item['fulltext'] or item['text']
                     else:
                         output += line
+                return output
             else:
                 return super(RestCapsule, self).__getitem__(key)
 
