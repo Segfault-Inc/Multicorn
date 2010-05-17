@@ -183,12 +183,22 @@ egestas.
         """
         format = 'rest_capsule'
         
-        def _parse_data(self):
-            """Parse docutils metadata as properties."""
-            properties = super(RestCapsule, self)._parse_data()
-            content = self._get_content().decode(self.encoding)
-            properties.update(extract_metadata(content))
-            return properties
+        def __getitem__(self, key):
+            if key == 'fulltext':
+                text = self['text']
+                output = ''
+                for line in text.splitlines():
+                    if line.startswith('.. include::'):
+                        filename = line.split('.. include::')[1].strip()
+                        filename = os.path.join(
+                            os.path.dirname(self.filename),
+                            os.path.normpath(filename))
+                        item = self._access_point.site.item_from_filename(filename)
+                        output += item['fulltext'] or item['text']
+                    else:
+                        output += line
+            else:
+                return super(RestCapsule, self).__getitem__(key)
 
         def _load_subitems(self):
             content = self._get_content().decode(self.encoding)
