@@ -44,7 +44,7 @@ class AccessPoint(object):
 
     """
     @classmethod
-    def from_url(cls, **config):
+    def from_url(cls, config):
         """Return an instance of the appropriate class according to the URL.
         
         >>> AccessPoint.from_url(url='nonexistent-protocol://…')
@@ -53,18 +53,19 @@ class AccessPoint(object):
         ValueError: Unknown protocol: nonexistent-protocol
 
         """
-        protocol = config['url'].split(':', 1)[0]
+        protocol = config.url.split(':', 1)[0]
         storage.load()
         for subclass in utils.recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:
-                return subclass(**config)
+                print subclass
+                return subclass(config)
         raise ValueError('Unknown protocol: ' + protocol)
     
-    def __init__(self, **config):
+    def __init__(self, config):
         """Common instance initialisation."""
         self.config = config
-        self.name = config.get('name')
-        self.parser_name = config.get('parser', None)
+        self.name = config.name
+        self.parser_name = config.parser
         # check that this parser exists
         parser.load()
         for subclass in utils.recursive_subclasses(Item):
@@ -74,23 +75,16 @@ class AccessPoint(object):
             raise utils.ParserNotAvailable('Unknown parser: ' +
                                            self.parser_name)
                                        
-        self.site = config.get('site')
-        self.default_encoding = config.get('default_encoding', 'utf-8')
-        self.storage_aliases = [
-            tuple(part.split('=', 1)) if '=' in part else (part, part)
-            for part
-            in config.get('storage_aliases', '').strip().split('/')
-            if part]
-        self.parser_aliases = [
-            tuple(part.split('=', 1)) if '=' in part else (part, part)
-            for part
-            in config.get('parser_aliases', '').strip().split('/')
-            if part]
-
+        self.site = config.site
+        self.default_encoding = config.default_encoding
+        self.storage_aliases = config.additional_properties.get('storage_aliases', [])
+        self.parser_aliases = config.additional_properties.get('parser_aliases', [])
+        print self.storage_aliases
+        print self.parser_aliases 
         self.property_names = [name for name, alias in
                                self.storage_aliases + self.parser_aliases]
-        self.url = config['url']
-        self.basedir = config.get('basedir', '')
+        self.url = config.url
+        self.basedir = config.basedir
 
     def expand_syntaxic_sugar(self, conditions):
         """Expand syntaxic sugar in requests.

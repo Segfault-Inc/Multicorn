@@ -45,39 +45,26 @@ class Site(object):
     class FileNotFoundError(Exception):
         """File not found on filesystem."""
     
-    def __init__(self, config_filename=None, fail_on_inexistent_parser=True):
+    def __init__(self, configs, fail_on_inexistent_parser=True):
         """Create a kalamar site from a configuration file.
         
-        >>> Site(config_filename='nonexistent')
-        Traceback (most recent call last):
-            ...
-        FileNotFoundError: nonexistent
 
         """
-        self.config_filename = config_filename
-
-        config = ConfigParser.RawConfigParser()
-        
         self.access_points = {}
-        
+        for config in configs:
+            config.site = self
+            if fail_on_inexistent_parser:
+                access_point = base.AccessPoint.from_url(config.url)
+            else:
+                try:
+                    access_point = base.AccessPoint.from_url(config)
+                except utils.ParserNotAvailable, exception:
+                    warnings.warn('The access point %r was ignored. (%s)' %
+                                  (config.name, exception.args[0]))
+                    continue
+            self.access_points[config.name] = access_point
+                        
         # If no configuration file, no access_point !
-        if config_filename:
-            if not config.read(config_filename):
-                raise self.FileNotFoundError(config_filename)
-            basedir = os.path.dirname(config_filename)
-            for section in config.sections():
-                kwargs = dict(config.items(section), basedir=basedir, site=self)
-                kwargs['name'] = section
-                if fail_on_inexistent_parser:
-                    access_point = base.AccessPoint.from_url(**kwargs)
-                else:
-                    try:
-                        access_point = base.AccessPoint.from_url(**kwargs)
-                    except utils.ParserNotAvailable, exception:
-                        warnings.warn('The access point %r was ignored. (%s)' %
-                                      (section, exception.args[0]))
-                        continue
-                self.access_points[section] = access_point
     
     @staticmethod
     def parse_request(request):

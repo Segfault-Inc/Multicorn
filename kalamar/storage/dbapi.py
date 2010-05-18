@@ -99,7 +99,7 @@ class DBAPIStorage(AccessPoint):
     
     def __init__(self, *args, **kwargs):
         super(DBAPIStorage, self).__init__(*args, **kwargs)
-        self.content_column = self.config.get('content_column', None)
+        self.content_column = self.config.additional_properties.get('content_column', None)
         self._connections = {}
     
     def save(self, item):

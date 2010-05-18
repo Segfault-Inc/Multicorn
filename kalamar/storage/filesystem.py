@@ -39,7 +39,7 @@ class FileSystemStorage(AccessPoint):
     """Store items in files."""
     protocol = 'file'
     
-    def __init__(self, **config):
+    def __init__(self, config):
         """Initialize the storage according to the given configuration.
 
         >>> ap = AccessPoint.from_url(basedir='/foo', url='file://bar')
@@ -48,13 +48,13 @@ class FileSystemStorage(AccessPoint):
         >>> assert ap.root == os.path.normpath('/foo/bar')
 
         """
-        super(FileSystemStorage, self).__init__(**config)
+        super(FileSystemStorage, self).__init__(config)
 
         self.root = os.path.normpath(os.path.join(
             self.basedir,
             self.url[len(self.__class__.protocol + '://'):]))
 
-        self.filename_format = config.get('filename_format', '*')
+        self.filename_format = config.additional_properties.get('filename_format', '*')
 
     def get_storage_properties(self):
         """Return a list of the properties used for the storage.

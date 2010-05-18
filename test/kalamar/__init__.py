@@ -1,11 +1,10 @@
-#from kraken.cached_kalamar import CachedKalamarSite
-#import kalamar
+from kalamar import site
+from kalamar.config import baseparser
 
-#def Site(*args, **kwargs):
-#    """
-#    Wrap the kalamar.Site instance in a CachedKalamarSite
-#    This should be transparent
-#    """
-#    return CachedKalamarSite(kalamar.Site(*args, **kwargs))
 
-from kalamar.site import Site
+class Site(site.Site):
+    
+    def __init__(self,filename,**kwargs):
+        super(Site,self).__init__(baseparser.parse(filename),**kwargs)
+
+
