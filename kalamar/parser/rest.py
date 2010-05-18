@@ -196,7 +196,7 @@ egestas.
                         item = self._access_point.site.item_from_filename(filename)
                         output += item['fulltext'] or item['text']
                     else:
-                        output += line
+                        output += line + '\n'
                 return output
             else:
                 return super(RestCapsule, self).__getitem__(key)
