@@ -45,6 +45,29 @@ else:
         def get_db_module(self):
             return sqlite3
         
+        @staticmethod
+        def url_to_filename_table(basedir, url):
+            """Return the filename and the table to use for the SQLite DB
+            from a kalamar access point url.
+            
+            >>> f = SQLiteStorage.url_to_filename_table
+            >>> f('/base', 'sqlite://./test.db?table')
+            ('/base/test.db', 'table')
+            >>> f('/base', 'sqlite:///path/to/test.db?table')
+            ('/path/to/test.db', 'table')
+            """
+            url_dict = urlparse.urlsplit(url)
+            splitted_path = url_dict.path.split('?', 1)
+            if not splitted_path[0]:
+                # urlparse.urlsplit behaviour changed in python 2.6.5
+                # See http://bugs.python.org/issue7904
+                splitted_path[0] = '//%s' % url_dict.netloc
+            filename = splitted_path[0][2:]
+            table = splitted_path[1]
+            filename = os.path.join(basedir, filename)
+            return filename, table
+            
+        
         def _get_connection(self):
             """Return (``connection``, ``table``).
             
@@ -56,18 +79,9 @@ else:
                 sqlite://:memory:?table
             
             """
-            url = self.config['url']
-            url_dict = urlparse.urlsplit(url)
-            splitted_path = url_dict.path.split('?', 1)
-            if not splitted_path[0]:
-                # urlparse.urlsplit behaviour changed in python 2.6.5
-                # See http://bugs.python.org/issue7904
-                splitted_path[0] = '//%s' % url_dict.netloc
-            filename = splitted_path[0][2:]
-            table = splitted_path[1]
-            filename = os.path.join(self.config['basedir'], filename)
+            filename, table = self.url_to_filename_table(self.config['basedir'],
+                                                         self.config['url'])
             connection = sqlite3.connect(filename)
-
             return connection, table
         
         @property
