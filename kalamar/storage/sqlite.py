@@ -31,7 +31,6 @@ except ImportError:
                   'SQLite3 support will not be available.',
                   ImportWarning)
 else:
-    import urlparse
     import os
 
     from kalamar.storage.dbapi import DBAPIStorage
@@ -51,19 +50,14 @@ else:
             from a kalamar access point url.
             
             >>> f = SQLiteStorage.url_to_filename_table
-            >>> f('/base', 'sqlite://./test.db?table')
+            >>> f('/base', 'sqlite://test.db?table')
             ('/base/test.db', 'table')
-            >>> f('/base', 'sqlite:///path/to/test.db?table')
+            >>> f('/base', 'sqlite:///path/to/test.db?table') # one more slash
             ('/path/to/test.db', 'table')
             """
-            url_dict = urlparse.urlsplit(url)
-            splitted_path = url_dict.path.split('?', 1)
-            if not splitted_path[0]:
-                # urlparse.urlsplit behaviour changed in python 2.6.5
-                # See http://bugs.python.org/issue7904
-                splitted_path[0] = '//%s' % url_dict.netloc
-            filename = splitted_path[0][2:]
-            table = splitted_path[1]
+            protocal, remainder = url.split(':', 1)
+            assert remainder.startswith('//')
+            filename, table = remainder[2:].split('?', 1)
             filename = os.path.join(basedir, filename)
             return filename, table
             
