@@ -65,7 +65,8 @@ def suite(packages=None):
     return suite
 
 def main():
-    unittest2.main(defaultTest='test.suite', catchbreak=True, buffer=True)
+    unittest2.main(defaultTest='test.suite', testLoader=DoctestLoader(),
+                   exit=False, catchbreak=True, buffer=True)
 
 def main_coverage():
     print "Running tests with coverage."
