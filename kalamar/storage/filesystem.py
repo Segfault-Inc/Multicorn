@@ -42,24 +42,29 @@ class FileSystemStorage(AccessPoint):
     def __init__(self, config):
         """Initialize the storage according to the given configuration.
 
-        >>> ap = AccessPoint.from_url(basedir='/foo', url='file://bar')
-        >>> assert isinstance(ap, FileSystemStorage)
+
+        Fixture
         >>> import os.path
+        >>> from kalamar.config import Config
+        >>> ap = AccessPoint.from_url(Config('file://bar','',{}, basedir='/foo'))
+        
+        Test
         >>> assert ap.root == os.path.normpath('/foo/bar')
+        >>> assert isinstance(ap, FileSystemStorage)
 
         """
         super(FileSystemStorage, self).__init__(config)
 
         self.root = os.path.normpath(os.path.join(
-            self.basedir,
+            self.basedir or '',
             self.url[len(self.__class__.protocol + '://'):]))
 
         self.filename_format = config.additional_properties.get('filename_format', '*')
 
     def get_storage_properties(self):
         """Return a list of the properties used for the storage.
-
-        >>> ap = FileSystemStorage(filename_format='*/* - *.mp3', url='file://')
+        >>> from kalamar.config import Config
+        >>> ap = FileSystemStorage(Config('file://','',{'filename_format':'*/* - *.mp3'}))
         >>> ap.get_storage_properties()
         ['path1', 'path2', 'path3']
 
@@ -78,7 +83,8 @@ class FileSystemStorage(AccessPoint):
 
         >>> dirname, basename = os.path.split(__file__)
         >>> dirname, subdir = os.path.split(dirname)
-        >>> ap = AccessPoint.from_url(url='file://%s' % dirname)
+        >>> from kalamar.config import Config
+        >>> ap = AccessPoint.from_url(Config('file://%s' % dirname,'',{}))
         >>> path = '%s/%s' % (subdir, basename)
         >>> assert ap._real_filename(path) == os.path.normpath(__file__)
 
@@ -87,12 +93,13 @@ class FileSystemStorage(AccessPoint):
 
     def listdir(self, dirname):
         """List files and directories in ``dirname``.
-        
+    
         ``dirname`` is a slash-separated path relative to the access point
         root.
         
+        >>> from kalamar.config import Config
         >>> dirname, basename = os.path.split(__file__)
-        >>> ap = AccessPoint.from_url(url='file://' + dirname)
+        >>> ap = AccessPoint.from_url(Config('file://' + dirname,'',{}))
         >>> assert basename in ap.listdir(u'/')
         >>> assert isinstance(ap.listdir(u'/')[0], unicode)
 
@@ -104,10 +111,10 @@ class FileSystemStorage(AccessPoint):
         
         ``dirname`` is a slash-separated path relative to the access point
         root.
-        
+        >>> from kalamar.config import Config
         >>> dirname, basename = os.path.split(__file__)
         >>> dirname, basename = os.path.split(dirname)
-        >>> ap = AccessPoint.from_url(url='file://%s' % dirname)
+        >>> ap = AccessPoint.from_url(Config('file://%s' % dirname,'',{}))
         >>> assert ap.isdir(basename)
 
         """
@@ -121,9 +128,9 @@ class FileSystemStorage(AccessPoint):
         
         If opening for writing (ie. 'w' in mode), create parent directories
         as needed.
-        
+        >>> from kalamar.config import Config
         >>> dirname, basename = os.path.split(__file__)
-        >>> ap = AccessPoint.from_url(url='file://%s' % dirname)
+        >>> ap = AccessPoint.from_url(Config('file://%s' % dirname,'',{}))
         >>> # This test searches for itself
         >>> assert 'BdM6Zm62gpYFvGlHuNoS' in ap.open_file(basename).read()
 
@@ -194,11 +201,10 @@ class FileSystemStorage(AccessPoint):
     
     def _storage_search(self, conditions):
         """Generate (properties, file_opener) for all files matching conditions.
-
+        >>> from kalamar.config import Config
         >>> dirname, module = os.path.split(__file__)
         >>> dirname, package = os.path.split(dirname)
-        >>> ap = AccessPoint.from_url(url='file://%s' % dirname,
-        ...                           filename_format='*/*.py')
+        >>> ap = AccessPoint.from_url(Config('file://%s' % dirname,'',{'filename_format':'*/*.py'}))
         >>> from kalamar.site import Site
         >>> request = list(Site.parse_request('path1="storage"/path2~!="^__"'))
         >>> len([1 for properties, opener in ap._storage_search(request)
@@ -271,7 +277,8 @@ class FileSystemStorage(AccessPoint):
 
         The path is as accepted by AccessPoint.open_file.
         
-        >>> ap = AccessPoint.from_url(url=u'file://', filename_format=u'*/*.py')
+        >>> from kalamar.config import Config
+        >>> ap = AccessPoint.from_url(Config(u'file://','',{"filename_format":u'*/*.py'}))
         >>> ap._path_from_properties({u'path1': u'storage', u'path2': u'fs'})
         u'storage/fs.py'
 
@@ -343,14 +350,14 @@ class FileSystemStorage(AccessPoint):
         Search for an item matching this ``filename``.
         ``filename`` has to be os.normpath’d.
 
+        >>> from kalamar.config import Config
         >>> dirname, module = os.path.split(__file__)
         >>> dirname, package = os.path.split(dirname)
         >>> dirname = os.path.normpath(dirname)
         
         ``dirname`` is the path to the kalamar package.
         
-        >>> ap = AccessPoint.from_url(url='file://%s' % dirname,
-        ...                           filename_format='*/*.py', parser='text')
+        >>> ap = AccessPoint.from_url(Config('file://%s' % dirname,'',{'filename_format':'*/*.py'},parser='text'))
         >>> search = ap.item_from_filename
         
         # all these should return None

@@ -46,8 +46,8 @@ class AccessPoint(object):
     @classmethod
     def from_url(cls, config):
         """Return an instance of the appropriate class according to the URL.
-        
-        >>> AccessPoint.from_url(url='nonexistent-protocol://…')
+        >>> from kalamar.config import Config 
+        >>> AccessPoint.from_url(Config('nonexistent-protocol://…',"nonexistent",{}))
         Traceback (most recent call last):
             ...
         ValueError: Unknown protocol: nonexistent-protocol
@@ -76,7 +76,7 @@ class AccessPoint(object):
                                        
         self.site = config.site
         self.default_encoding = config.default_encoding
-        self.storage_aliases = config.additional_properties.get('storage_aliases', [])
+        self.storage_aliases = [a if len(a) == 2 else [a[0],a[0]] for a in config.additional_properties.get('storage_aliases',[])] 
         self.parser_aliases = [a if len(a) == 2 else [a[0],a[0]] for a in config.additional_properties.get('parser_aliases',[])] 
         self.property_names = [name for name, alias in
                                self.storage_aliases + self.parser_aliases]
@@ -84,7 +84,7 @@ class AccessPoint(object):
         self.basedir = config.basedir
 
     def expand_syntaxic_sugar(self, conditions):
-        """Expand syntaxic sugar in requests.
+        """Expand syntactic sugar in requests.
         
         ``conditions`` is a list of (property_name, operator, value) tuples
         as returned by kalamar.site.Site.parse_request.
@@ -94,7 +94,12 @@ class AccessPoint(object):
         If ``property_name`` is None in the n-th condition, set it to 
         the n-th property of this access point.
         
-        >>> ap = AccessPoint(url='', storage_aliases='a=p1/b=p2/c=p3')
+        Fixture
+        >>> from kalamar.config import Config 
+        >>> conf = Config('','',{"storage_aliases":[("a","p1"),("b","p2"),("c","p3")]})
+        >>> ap = AccessPoint(conf)
+        
+        Test
         >>> list(ap.expand_syntaxic_sugar([
         ...     utils.Condition(None, None,              1),
         ...     utils.Condition(None, utils.operator.gt, 2),

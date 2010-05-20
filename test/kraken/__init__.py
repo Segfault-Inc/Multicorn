@@ -1,6 +1,7 @@
 
 import os.path
 import werkzeug
+from kalamar.config import baseparser
 
 
 def make_site(secret_key=None):
@@ -8,9 +9,9 @@ def make_site(secret_key=None):
     import kraken
     return kraken.Site(
         site_root=os.path.join(os.path.dirname(__file__), 'site'),
-        kalamar_conf=os.path.join(os.path.dirname(__file__), '..',
+        kalamar_conf=baseparser.parse(os.path.join(os.path.dirname(__file__), '..',
                                   'kalamar', 'data',
-                                  'kalamar_fs_and_sqlite.conf'),
+                                  'kalamar_fs_and_sqlite.conf')),
         secret_key=secret_key,
         fail_on_inexistent_parser=False,
     )

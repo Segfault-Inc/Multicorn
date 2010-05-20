@@ -54,8 +54,7 @@ class Site(object):
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(self.site_root)
-        self.kalamar_site = utils.KalamarSiteForKraken(
-            os.path.expanduser(unicode(kalamar_conf)) if kalamar_conf else None,
+        self.kalamar_site = utils.KalamarSiteForKraken(kalamar_conf if kalamar_conf else None,
             fail_on_inexistent_parser=fail_on_inexistent_parser)
         
         # create a virtual package in sys.modules so that we can import 

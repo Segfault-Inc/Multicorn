@@ -309,7 +309,8 @@ class DBAPIStorage(AccessPoint):
         """Return ``sql_conditions``, ``python_conditions``.
         
         Fixture
-        >>> storage = DBAPIStorage(url='toto', basedir='tata')
+        >>> from kalamar.config import Config
+        >>> storage = DBAPIStorage(Config('toto','',{'content_column' : 'content_col'},basedir = 'tata'))
         >>> conditions = (
         ...     utils.Condition(u'name', utils.operators[u'='], u'toto'),
         ...     utils.Condition(u'number', utils.operators[u'<'], 42),
@@ -361,11 +362,11 @@ class DBAPIStorage(AccessPoint):
         to the database parameters style.
         
         Fixture
+        >>> from kalamar.config import Config
         >>> conditions = (
         ...     utils.Condition(u'toto', utils.operators[u'='], u'tata'),
         ...     utils.Condition(u'the_answer', utils.operators[u'>='], 42))
-        >>> storage = DBAPIStorage(url='toto', basedir='tata',
-        ...                        content_column = 'content_col')
+        >>> storage = DBAPIStorage(Config('toto','',{'content_column' : 'content_col'},basedir = 'tata'))
         >>> class db_mod:
         ...     BINARY = 1
         ...     DATETIME = 1
@@ -436,9 +437,9 @@ class DBAPIStorage(AccessPoint):
         
         Fixture
         >>> from kalamar._test.corks import CorkItem, CorkDBAPIStorage
+        >>> from kalamar.config import Config
         >>> table = 'table'
-        >>> storage = CorkDBAPIStorage(url = 'toto', basedir = 'tata',
-        ...                            content_column = 'content_col')
+        >>> storage = CorkDBAPIStorage(Config('toto','',{'content_column' : 'content_col'},basedir = 'tata'))
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': None,
@@ -506,9 +507,9 @@ class DBAPIStorage(AccessPoint):
         
         Fixture
         >>> from kalamar._test.corks import CorkItem, CorkDBAPIStorage
+        >>> from kalamar.config import Config
         >>> table = 'table'
-        >>> storage = CorkDBAPIStorage(url = 'toto', basedir = 'tata',
-        ...                            content_column = 'content_col')
+        >>> storage = CorkDBAPIStorage(Config('toto','',{'content_column' : 'content_col'},basedir = 'tata'))
         >>> item = CorkItem(storage,
         ...                 storage_properties={'sto_prop': 'sto_val',
         ...                                     'sto_prop2': 'sto_val2',
@@ -586,12 +587,12 @@ class DBAPIStorage(AccessPoint):
         ``parameters`` must be ordered according to the request.
         
         Fixture
+        >>> from kalamar.config import Config
         >>> request = "DO STHG INTO TABLE ? WHERE toto=? AND tata=? ;"
         >>> parameters = [Parameter('name', 'table'),
         ...               Parameter('other_name', 'toto'),
         ...               Parameter('yet_a_name', 'tata')]
-        >>> storage = DBAPIStorage(url = 'toto', basedir = 'tata',
-        ...                        content_column = 'content_col')
+        >>> storage = DBAPIStorage(Config('toto','',{'content_column' : 'content_col'},basedir = 'tata'))
         >>> class db_mod:
         ...     BINARY = 1
         ...     DATETIME = 1
