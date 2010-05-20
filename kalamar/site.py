@@ -23,10 +23,10 @@ Create one for each independent site with its own configuration.
 """
 
 import os
-import ConfigParser
 import warnings
 
 from kalamar.storage import base
+from kalamar.config import baseparser
 from kalamar import Item, requestparser, utils
 
 
@@ -186,5 +186,11 @@ class Site(object):
             item = access_point.item_from_filename(filename)
             if item and item is not NotImplemented:
                 return item
+
+
+class SiteFromConf(Site):
+
+    def __init__(self,filename=None,fail_on_inexistent_parser=True):
+        super(SiteFromConf,self).__init__(baseparser.parse(filename),fail_on_inexistent_parser)
 
 
