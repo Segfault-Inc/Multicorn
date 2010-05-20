@@ -17,6 +17,5 @@ def parse(config_filename):
         for attr in ["parser_aliases" , "storage_aliases"]:
             if attr in items:
                 items[attr] = [name.split("=",1) for name in items[attr].split("/") if name]
-            configs.append(Config(url,section,items,parser,basedir))
-    
+        configs.append(Config(url,section,items,parser,basedir))
     return configs
