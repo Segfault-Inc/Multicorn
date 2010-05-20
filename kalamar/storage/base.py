@@ -35,7 +35,7 @@ class AccessPoint(object):
     
     Attributes:
 
-    - config: a dictionnary of the access point configuration.
+    - config: a kalamar.Config instance
     - default_encoding: default character encoding used if the parser does
       not have one. Read-only attribute.
     - property_names: properties defined in the access_point configuration.
@@ -45,7 +45,7 @@ class AccessPoint(object):
     """
     @classmethod
     def from_url(cls, config):
-        """Return an instance of the appropriate class according to the URL.
+        """Return an instance of the appropriate class according to the Config instance
         >>> from kalamar.config import Config 
         >>> AccessPoint.from_url(Config('nonexistent-protocol://…',"nonexistent",{}))
         Traceback (most recent call last):
