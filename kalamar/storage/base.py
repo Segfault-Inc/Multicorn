@@ -57,7 +57,6 @@ class AccessPoint(object):
         storage.load()
         for subclass in utils.recursive_subclasses(cls):
             if getattr(subclass, 'protocol', None) == protocol:
-                print subclass
                 return subclass(config)
         raise ValueError('Unknown protocol: ' + protocol)
     
@@ -78,9 +77,7 @@ class AccessPoint(object):
         self.site = config.site
         self.default_encoding = config.default_encoding
         self.storage_aliases = config.additional_properties.get('storage_aliases', [])
-        self.parser_aliases = config.additional_properties.get('parser_aliases', [])
-        print self.storage_aliases
-        print self.parser_aliases 
+        self.parser_aliases = [a if len(a) == 2 else [a[0],a[0]] for a in config.additional_properties.get('parser_aliases',[])] 
         self.property_names = [name for name, alias in
                                self.storage_aliases + self.parser_aliases]
         self.url = config.url

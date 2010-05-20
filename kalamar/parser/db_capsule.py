@@ -23,7 +23,7 @@ Parsers for databases.
 from kalamar.storage import base
 from kalamar.item import CapsuleItem
 from kalamar.utils import Condition, operators
-
+from kalamar.config import Config
 
 
 class OneToManyDBCapsule(CapsuleItem):
@@ -46,22 +46,22 @@ class OneToManyDBCapsule(CapsuleItem):
         request = [
             Condition(foreign_key, operators['='], self[capsule_key])
             for foreign_key, capsule_key in zip(
-                self._access_point.config['children_foreign_keys'].split('/'),
-                self._access_point.config['capsule_keys'].split('/'))]
+                self._access_point.config.additional_properties['children_foreign_keys'].split('/'),
+                self._access_point.config.additional_properties['capsule_keys'].split('/'))]
                 
         items = self._access_point.site.search(
-            self._access_point.config['children_access_point'], request)
-        sorting_column = self._access_point.config['children_storting_column']
+            self._access_point.config.additional_properties['children_access_point'], request)
+        sorting_column = self._access_point.config.additional_properties['children_storting_column']
         items.sort(key=lambda item: item[sorting_column])
         self.__old_subitems = items
         return items
 
     def serialize(self):
         """Save all subitems in the linking table."""
-        sorting_column = self._access_point.config['children_storting_column']
+        sorting_column = self._access_point.config.additional_properties['children_storting_column']
         keys = zip(
-            self._access_point.config['children_foreign_keys'].split('/'),
-            self._access_point.config['capsule_keys'].split('/'))
+            self._access_point.config.additional_properties['children_foreign_keys'].split('/'),
+            self._access_point.config.additional_properties['capsule_keys'].split('/'))
         
         for subitem in self._old_subitems:
             # Delete old item from physical storage before doing anything else
@@ -97,6 +97,14 @@ class ManyToManyDBCapsule(CapsuleItem):
     """
     format = 'manytomany_db_capsule'
 
+
+    def make_config(self,capsule_url,link_access_point_name,link_table_name):
+        url = '%s?%s' % (capsule_url.split('?')[0], link_table_name)
+        config = Config(url,link_access_point_name,{},None,self._access_point.basedir)
+        config.site = self._access_point.site
+        return config
+
+
     def __init__(self, access_point, opener=None, storage_properties={}):
         """DBCapsule instance initialisation."""
         super(ManyToManyDBCapsule, self).__init__(
@@ -110,30 +118,25 @@ class ManyToManyDBCapsule(CapsuleItem):
         table.
 
         """
-        capsule_url = self._access_point.config['url']
+        capsule_url = self._access_point.config.url
         self.capsule_table_name = capsule_url.split('?')[-1]
         self.foreign_access_point_name = \
-            self._access_point.config['foreign_access_point']
-        link_table_name = self._access_point.config['link_table']
-        self.capsule_keys = self._access_point.config['capsule_keys'].split('/')
-        self.foreign_keys = self._access_point.config['foreign_keys'].split('/')
+            self._access_point.config.additional_properties['foreign_access_point']
+        link_table_name = self._access_point.config.additional_properties['link_table']
+        self.capsule_keys = self._access_point.config.additional_properties['capsule_keys'].split('/')
+        self.foreign_keys = self._access_point.config.additional_properties['foreign_keys'].split('/')
         self.link_capsule_keys = \
-            self._access_point.config['link_capsule_keys'].split('/')
+            self._access_point.config.additional_properties['link_capsule_keys'].split('/')
         self.link_foreign_keys = \
-            self._access_point.config['link_foreign_keys'].split('/')
-        self.link_sort_key = self._access_point.config['order_by']
+            self._access_point.config.additional_properties['link_foreign_keys'].split('/')
+        self.link_sort_key = self._access_point.config.additional_properties['order_by']
         link_access_point_name = '_%s_%s' % (
             self.capsule_table_name, self.foreign_access_point_name)
 
         # Create an access point if not already done
         if not self._link_ap:
-            config = {
-                'basedir': self._access_point.basedir,
-                'name': link_access_point_name,
-                'url': '%s?%s' % (
-                    capsule_url.split('?')[0],
-                    link_table_name)}
-            self._link_ap = base.AccessPoint.from_url(**config)
+            config = self.make_config(capsule_url,link_access_point_name,link_table_name)
+            self._link_ap = base.AccessPoint.from_url(config)
             self._access_point.site.access_points[link_access_point_name] = \
                 self._link_ap
 
@@ -166,7 +169,7 @@ class ManyToManyDBCapsule(CapsuleItem):
             for capsule_key, link_capsule_key
             in zip(self.capsule_keys, self.link_capsule_keys)]
         self._access_point.site.remove_many(
-            self._link_ap.config['name'], request)
+            self._link_ap.config.name, request)
         
         for number, subitem in enumerate(self.subitems):
             properties = {}
@@ -180,7 +183,7 @@ class ManyToManyDBCapsule(CapsuleItem):
                 properties[link_foreign_key] = subitem[foreign_key]
             
             item = self._access_point.site.create_item(
-                self._link_ap.config['name'], properties)
+                self._link_ap.config.name, properties)
             item[self.link_sort_key] = number
             self._access_point.site.save(item)
 
@@ -204,6 +207,12 @@ class GenericManyToManyDBCapsule(CapsuleItem):
         super(GenericManyToManyDBCapsule, self).__init__(
             access_point, opener, storage_properties)
         self._link_ap = None
+
+    def make_config(self,capsule_url,link_access_point_name,link_table_name):
+        url = '%s?%s' % (capsule_url.split('?')[0], link_table_name)
+        config = Config(url,link_access_point_name,{},None,self._access_point.basedir)
+        config.site = self._access_point.site
+        return config
     
     def _load_subitems(self):
         """Load and return capsule subitems.
@@ -212,26 +221,23 @@ class GenericManyToManyDBCapsule(CapsuleItem):
         table.
 
         """
-        capsule_url = self._access_point.config['url']
+        capsule_url = self._access_point.config.url
         self.capsule_table_name = capsule_url.split('?')[-1]
-        link_table_name = self._access_point.config['link_table']
-        self.capsule_keys = self._access_point.config['capsule_keys'].split('/')
+        link_table_name = self._access_point.config.additional_properties['link_table']
+        self.capsule_keys = self._access_point.config.additional_properties['capsule_keys'].split('/')
         self.link_capsule_keys = \
-            self._access_point.config['link_capsule_keys'].split('/')
-        self.link_sort_key = self._access_point.config['order_by']
-        self.access_point_key = self._access_point.config['access_point_key']
-        self.request_key = self._access_point.config['request_key']
+            self._access_point.config.additional_properties['link_capsule_keys'].split('/')
+        self.link_sort_key = self._access_point.config.additional_properties['order_by']
+        self.access_point_key = self._access_point.config.additional_properties['access_point_key']
+        self.request_key = self._access_point.config.additional_properties['request_key']
         
         link_access_point_name = '_%s_%s' % (
             self.capsule_table_name, link_table_name)
 
         # Create an access point if not already done
         if not self._link_ap:
-            config = {
-                'basedir': self._access_point.basedir,
-                'name': link_access_point_name,
-                'url': '%s?%s' % (capsule_url.split('?')[0], link_table_name)}
-            self._link_ap = base.AccessPoint.from_url(**config)
+            config = self.make_config(capsule_url,link_access_point_name,link_table_name)
+            self._link_ap = base.AccessPoint.from_url(config)
             self._access_point.site.access_points[link_access_point_name] = \
                 self._link_ap
 
@@ -263,7 +269,7 @@ class GenericManyToManyDBCapsule(CapsuleItem):
             for capsule_key, link_capsule_key
             in zip(self.capsule_keys, self.link_capsule_keys)]
         self._access_point.site.remove_many(
-            self._link_ap.config['name'], request)
+            self._link_ap.config.name, request)
 
         # Save all link items
         for number, subitem in enumerate(self.subitems):
@@ -277,6 +283,6 @@ class GenericManyToManyDBCapsule(CapsuleItem):
             properties[self.request_key] = subitem.request
             
             link_item = self._access_point.site.create_item(
-                self._link_ap.config['name'], properties)
+                self._link_ap.config.name, properties)
             link_item[self.link_sort_key] = number
             self._access_point.site.save(link_item)

@@ -2,14 +2,16 @@
 
 import os
 from unittest import TestCase
+from kalamar import Site
+from kalamar.config import baseparser
 import kalamar.utils
 import warnings
 
 
 
 class TestInexistentParser(TestCase):
-    conf = os.path.join(os.path.dirname(__file__), 'data',
-                       'inexistent_parser.conf')
+    conf = baseparser.parse(os.path.join(os.path.dirname(__file__), 'data',
+                       'inexistent_parser.conf'))
 
     def test_fail_on_inexistent_parser(self):
         self.assertRaises(kalamar.utils.ParserNotAvailable,

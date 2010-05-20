@@ -97,8 +97,8 @@ class DBAPIStorage(AccessPoint):
     class UnsupportedParameterStyleError(Exception):
         """Unavailable style for parameter."""
     
-    def __init__(self, *args, **kwargs):
-        super(DBAPIStorage, self).__init__(*args, **kwargs)
+    def __init__(self, config):
+        super(DBAPIStorage, self).__init__(config)
         self.content_column = self.config.additional_properties.get('content_column', None)
         self._connections = {}
     
@@ -202,6 +202,8 @@ class DBAPIStorage(AccessPoint):
         cursor = connection.cursor()
         request = 'SELECT * FROM %s WHERE 1=2;' % self._quote_name(table)
         cursor.execute(request)
+                       
+
         properties_names = [prop[0] for prop in cursor.description]
         
         # If a content_column has been declared in kalamar configuration, it

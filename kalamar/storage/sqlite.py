@@ -56,7 +56,7 @@ else:
                 sqlite://:memory:?table
             
             """
-            url = self.config['url']
+            url = self.config.url
             url_dict = urlparse.urlsplit(url)
             splitted_path = url_dict.path.split('?', 1)
             if not splitted_path[0]:
@@ -65,7 +65,7 @@ else:
                 splitted_path[0] = '//%s' % url_dict.netloc
             filename = splitted_path[0][2:]
             table = splitted_path[1]
-            filename = os.path.join(self.config['basedir'], filename)
+            filename = os.path.join(self.config.basedir, filename)
             connection = sqlite3.connect(filename)
 
             return connection, table

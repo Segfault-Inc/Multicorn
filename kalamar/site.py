@@ -54,7 +54,7 @@ class Site(object):
         for config in configs:
             config.site = self
             if fail_on_inexistent_parser:
-                access_point = base.AccessPoint.from_url(config.url)
+                access_point = base.AccessPoint.from_url(config)
             else:
                 try:
                     access_point = base.AccessPoint.from_url(config)
