@@ -11,9 +11,5 @@ def parse(config_filename):
         url = config.pop("url")
         name = config.pop("name")
         parser = config.pop("parser") if "parser" in config else None
-        tempconf = Config(url,name,config,parser=parser,basedir=basedir)
-        configs.append(tempconf)
+        configs.append(Config(url,name,config,parser=parser,basedir=basedir))
     return configs
-
-#parse("../../test/kalamar/data/kalamar_postgres.json")
-
