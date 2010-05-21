@@ -357,7 +357,7 @@ class FileSystemStorage(AccessPoint):
         
         ``dirname`` is the path to the kalamar package.
         
-        >>> ap = AccessPoint.from_url(Config('file://%s' % dirname,'',{'filename_format':'*/*.py'},parser='text'))
+        >>> ap = AccessPoint.from_url(Config('file://%s' % dirname,None,{'filename_format':'*/*.py'},parser='text'))
         >>> search = ap.item_from_filename
         
         # all these should return None
