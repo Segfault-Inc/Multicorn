@@ -26,7 +26,8 @@ import warnings
 from unittest import TestCase
 
 from _database import TestSite, capsule_tests
-from test.kalamar import Site
+from kalamar.site import Site
+from kalamar.config import baseparser
 
 try:
     import MySQLdb
@@ -34,8 +35,8 @@ except ImportError:
     warnings.warn('MySQL access not tested (could not import MySQLdb)',
                   ImportWarning)
 else:
-    site = Site(os.path.join(os.path.dirname(__file__),
-                        'data', 'kalamar_manytomany_db_capsules_mysql.conf'))
+    site = Site(baseparser.parse(os.path.join(os.path.dirname(__file__),
+                        'data', 'kalamar_manytomany_db_capsules_mysql.conf')))
 
     class TestSite(TestSite): site = site
     

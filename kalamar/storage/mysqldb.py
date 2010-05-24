@@ -101,7 +101,7 @@ else:
             
             """
             kwargs = {}
-            parts = self.config['url'].split('/')
+            parts = self.config.url.split('/')
             
             user_part, host_part = parts[2].split('@')
             kwargs['user'], kwargs['passwd'] = user_part.split(':')
