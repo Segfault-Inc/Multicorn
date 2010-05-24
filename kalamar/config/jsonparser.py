@@ -1,6 +1,9 @@
-import json
 import os
 from kalamar.config import Config
+try:
+        import json
+except ImportError:
+        import simplejson as json
 
 def parse(config_filename):
     """ Parses a kalamar config file in Json format."""
