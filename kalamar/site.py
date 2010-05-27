@@ -187,6 +187,11 @@ class Site(object):
         """
         access_point = self.access_points[access_point_name]
         return access_point.property_names
+
+    def generate_primary_values(self, access_point_name):
+        """Return dict of primary keys and values for ``access_point_name``."""
+        access_point = self.access_points[access_point_name]
+        return access_point.generate_primary_values()
     
     def item_from_filename(self, filename):
         """Search all access points for an item matching ``filename``.

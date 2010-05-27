@@ -240,3 +240,15 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError('Abstract method')
+
+    def generate_primary_values(self):
+        """Generate a dict with primary keys and unused values.
+
+        This function is particularly useful to create new items on a storage
+        unable to automatically generate meaningless primary keys (such as
+        filesystems, or databases without sequences).
+
+        This property has to be overriden.
+
+        """
+        raise NotImplementedError('Abstract method')
