@@ -286,10 +286,13 @@ class DBAPIStorage(AccessPoint):
                     value = _generator.random_bool()
                 elif key_type == 'DATETIME':
                     value = _generator.random_timestamp()
-                else:
-                    # Try to return a number, can be casted in anything
+                else key_type == 'NUMBER':
                     maximum = 10 ** key_precision if key_precision else None
                     value = _generator.random_long(maximum)
+                else:
+                    # Try to return a small integer, can be casted in anything
+                    maximum = 10 ** 8
+                    value = _generator.random_int(maximum)
                 primary_values[key] = value
 
             if True:
