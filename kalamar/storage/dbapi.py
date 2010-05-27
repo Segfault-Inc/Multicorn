@@ -284,19 +284,17 @@ class DBAPIStorage(AccessPoint):
                     value = _generator.random_str(key_precision)
                 elif key_type == 'BINARY':
                     value = _generator.random_bool()
-                elif key_type == 'NUMBER':
-                    maximum = 10 ** key_precision
-                    value = _generator.random_long(maximum)
                 elif key_type == 'DATETIME':
                     value = _generator.random_timestamp()
                 else:
-                    raise NotImplementedError(
-                        'Primary keys of type %s are not supported' % key_type)
+                    # Try to return a number, can be casted in anything
+                    maximum = 10 ** key_precision if key_precision else None
+                    value = _generator.random_long(maximum)
                 primary_values[key] = value
 
-                if True:
-                    # TODO: test if primary values are not already used
-                    break
+            if True:
+                # TODO: test if primary values are not already used
+                break
 
         return primary_values
 
