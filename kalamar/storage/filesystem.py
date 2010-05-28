@@ -32,6 +32,7 @@ from random import random
 from kalamar import utils
 from kalamar.storage.base import AccessPoint
 from kalamar.item import Item
+from . import _generator
 
 
 
@@ -72,6 +73,20 @@ class FileSystemStorage(AccessPoint):
         """List of path* keys."""
         return self.get_storage_properties()
     
+    def generate_primary_values(self):
+        """Generate a dict with primary keys and unused values."""
+        primary_values = {}
+
+        while True:
+            for key in self.primary_keys:
+                primary_values[key] = _generator.random_str(key_precision)
+
+            if True:
+                # TODO: test if primary values are not already used
+                break
+
+        return primary_values
+
     def _real_filename(self, filename):
         """Return a filesystem filename from a slash-separated path relative 
         to the access point root.
