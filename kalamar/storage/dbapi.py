@@ -286,7 +286,7 @@ class DBAPIStorage(AccessPoint):
                     value = _generator.random_bool()
                 elif key_type == 'DATETIME':
                     value = _generator.random_timestamp()
-                else key_type == 'NUMBER':
+                elif key_type == 'NUMBER':
                     maximum = 10 ** key_precision if key_precision else None
                     value = _generator.random_long(maximum)
                 else:
