@@ -79,7 +79,7 @@ class FileSystemStorage(AccessPoint):
 
         while True:
             for key in self.primary_keys:
-                primary_values[key] = _generator.random_str(key_precision)
+                primary_values[key] = _generator.random_str()
 
             if True:
                 # TODO: test if primary values are not already used
