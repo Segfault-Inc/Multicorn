@@ -28,6 +28,7 @@ import thread
 
 from kalamar.storage.base import AccessPoint
 from kalamar import utils
+from . import _generator
 
 
 
@@ -272,6 +273,36 @@ class DBAPIStorage(AccessPoint):
 
         cursor.close()
     
+    def generate_primary_values(self):
+        """Generate a dict with primary keys and unused values."""
+        description = self.get_table_description()
+        primary_values = {}
+
+        while True:
+            for key in self.primary_keys:
+                key_type = description[key]['type_code']
+                key_precision = description[key]['precision']
+                if key_type == 'STRING':
+                    value = _generator.random_str(key_precision)
+                elif key_type == 'BINARY':
+                    value = _generator.random_bool()
+                elif key_type == 'DATETIME':
+                    value = _generator.random_timestamp()
+                elif key_type == 'NUMBER':
+                    maximum = 10 ** key_precision if key_precision else None
+                    value = _generator.random_long(maximum)
+                else:
+                    # Try to return a small integer, can be casted in anything
+                    maximum = 10 ** 8
+                    value = _generator.random_int(maximum)
+                primary_values[key] = value
+
+            if True:
+                # TODO: test if primary values are not already used
+                break
+
+        return primary_values
+
     @staticmethod
     def _generate_lines_from_cursor(cursor):
         result = cursor.fetchmany()
