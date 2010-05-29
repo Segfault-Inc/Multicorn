@@ -2,12 +2,13 @@
 import sys
 import os
 import doctest
+import unittest
 import unittest2
 
 # These packages are tested by default
 DYKO_PACKAGES = ['kalamar', 'koral', 'kraken', 'test']
 
-def run_with_coverage(function, packages):
+def run_with_coverage(suite):
     import coverage
     try:
         # Coverage v3 API
@@ -20,12 +21,9 @@ def run_with_coverage(function, packages):
     c.exclude('raise NotImplementedError')
     c.exclude('except ImportError:')
     c.start()
-    function()
-    # TODO: it seems the execution doesn’t get here.
+    run_suite(suite)
     c.stop()
-#    c.report([werkzeug.import_string(name).__file__ 
-#              for name in find_all_modules(packages)])
-    c.report()
+    c.report(list(set(filenames_from_tests(suite))))
 
 
 def profile(function, filename):
@@ -55,7 +53,7 @@ def make_suite(names=None):
     project_dir = os.path.dirname(os.path.dirname(__file__))
     suite = unittest2.TestSuite()
     loader = DoctestLoader()
-    for name in names or DYKO_PACKAGES:
+    for name in names or sys.argv[1:] or DYKO_PACKAGES:
         # Try unittest2’s discovery
         try:
             suite.addTest(loader.discover(name, '*.py', project_dir))
@@ -64,18 +62,33 @@ def make_suite(names=None):
             suite.addTest(loader.loadTestsFromName(name))
     return suite
 
-def main():
-    suite = make_suite(sys.argv[1:])
-    # Same as --catch :
+def filenames_from_tests(test):
+    if isinstance(test, (unittest2.TestSuite, unittest.TestSuite)):
+        for t in test._tests:
+            for filename in filenames_from_tests(t):
+                yield filename
+    elif isinstance(test, doctest.DocTestCase):
+        yield test._dt_test.filename
+    elif hasattr(type(test), '__file__'):
+        # Assume a TestCase subclass instance
+        yield type(test).__file__
+
+def run_suite(suite):
     # Control-C during the test run waits for the current test to end and then
+    # Same as --catch :
     # reports all the results so far. A second control-C raises the normal
     # KeyboardInterrupt  exception.
     unittest2.installHandler()
+    
     unittest2.TextTestRunner(buffer=True).run(suite)
+    
+def main():
+    run_suite(make_suite())
 
 def main_coverage():
     print "Running tests with coverage."
-    run_with_coverage(main, DYKO_PACKAGES)
+    suite = make_suite()
+    run_with_coverage(suite)
 
 def main_profile(filename='./profile_results'):
     print "Profiling tests."
