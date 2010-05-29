@@ -23,7 +23,7 @@ PostgreSQL tests for db_capsules.
 import os
 import sys
 import warnings
-from unittest import TestCase
+from unittest2 import TestCase
 
 from _database import TestSite, capsule_tests
 from test.kalamar import Site

@@ -5,7 +5,7 @@ import sys
 import shutil
 import tempfile
 import atexit
-from unittest import TestCase
+from unittest2 import TestCase
 from test_site_common import TestSiteSearch,\
                              TestSiteOpen,\
                              TestSiteSave,\

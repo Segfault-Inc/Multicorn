@@ -1,7 +1,7 @@
 # coding: utf8
 
 import os
-from unittest import TestCase
+from unittest2 import TestCase
 from test.kalamar import Site
 from test.kalamar.test_site_fs_and_sqlite import TestData
 
