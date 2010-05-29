@@ -15,20 +15,19 @@ DYKO_PACKAGES = ['kalamar', 'koral', 'kraken', 'test']
 def run_with_coverage(run_function):
     import coverage
     import werkzeug
-    c = coverage.coverage()
-    c.exclude('return NotImplemented')
-    c.exclude('raise NotImplementedError')
-    c.exclude('except ImportError:')
-    c.start()
+    coverage.exclude('return NotImplemented')
+    coverage.exclude('raise NotImplementedError')
+    coverage.exclude('except ImportError:')
+    coverage.start()
     run_function()
-    c.stop()
+    coverage.stop()
     filenames = []
     for package in DYKO_PACKAGES:
         for module in werkzeug.find_modules(package, include_packages=True,
                                             recursive=True):
             __import__(module)
             filenames.append(sys.modules[module].__file__)
-    c.report(filenames)
+    coverage.report(filenames)
 
 
 def profile(function, filename):
