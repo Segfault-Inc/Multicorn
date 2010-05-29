@@ -21,7 +21,7 @@ def run_with_coverage(function, packages):
     c.exclude('except ImportError:')
     c.start()
     function()
-	# TODO: it seems the execution doesn’t get here.
+    # TODO: it seems the execution doesn’t get here.
     c.stop()
 #    c.report([werkzeug.import_string(name).__file__ 
 #              for name in find_all_modules(packages)])
@@ -37,7 +37,6 @@ class DoctestLoader(unittest2.TestLoader):
     A test loader that also loads doctests.
     """
     def loadTestsFromModule(self, module, use_load_tests=True):
-#        print module.__name__,
         suite = unittest2.TestLoader.loadTestsFromModule(self, module,
                                                          use_load_tests)
         try:
@@ -48,25 +47,31 @@ class DoctestLoader(unittest2.TestLoader):
                 raise
         else:
             suite.addTest(doctests)
-#        print '.py'
         return suite
-        
-    def _find_tests(self, start_dir, pattern):
-#        print start_dir
-        return unittest2.TestLoader._find_tests(self, start_dir, pattern)
 
-def suite(packages=None):
-    """Build a test suite by running the test discovery in each package."""
+def make_suite(names=None):
+    """Build a test suite each from each package, module, 
+    test case class or method name."""
     project_dir = os.path.dirname(os.path.dirname(__file__))
     suite = unittest2.TestSuite()
     loader = DoctestLoader()
-    for package in packages or DYKO_PACKAGES:
-        suite.addTest(loader.discover(package, '*.py', project_dir))
+    for name in names or DYKO_PACKAGES:
+        # Try unittest2’s discovery
+        try:
+            suite.addTest(loader.discover(name, '*.py', project_dir))
+        except ImportError:
+            # name could be a class or a method
+            suite.addTest(loader.loadTestsFromName(name))
     return suite
 
 def main():
-    unittest2.main(defaultTest='test.suite', testLoader=DoctestLoader(),
-                   exit=False, catchbreak=True, buffer=True)
+    suite = make_suite(sys.argv[1:])
+    # Same as --catch :
+    # Control-C during the test run waits for the current test to end and then
+    # reports all the results so far. A second control-C raises the normal
+    # KeyboardInterrupt  exception.
+    unittest2.installHandler()
+    unittest2.TextTestRunner(buffer=True).run(suite)
 
 def main_coverage():
     print "Running tests with coverage."
