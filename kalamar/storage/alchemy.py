@@ -32,18 +32,10 @@ from sqlalchemy import String,Integer,Date
 from sqlalchemy import and_ as sql_and
 
 class SqlAlchemyTypes:
- string_type = {"sql-type" : "character varying",
-                "alchemy-type" : String}
- integer_type = {"sql-type" : "integer",
-                "alchemy-type" : Integer}
- date_type = {"sql-type" : "date",
-              "alchemy-type" : Date}
- id_type = {"sql-type" : "serial"
-              ,"alchemy-type" : Integer
-              ,"foreign-type" : "integer"}
  types = {"string" : String,
           "date"   : Date,
-           "id"    : Integer}
+          "id"    : Integer,
+          "integer" : Integer}
 
 
 class AlchemyAccessPoint(AccessPoint):
@@ -78,42 +70,70 @@ class AlchemyAccessPoint(AccessPoint):
 
 
     def __init__(self, config):
+        """ Init the accesspoint with the table definitions contained in the config.a
+
+        """
         super(AlchemyAccessPoint, self).__init__(config)
         metadata  = self.get_metadata()
         self.pks = []
+        self.db_mapping = {}
         table_name = self.config.url.split('?')[1]
         self.columns = {} 
+        self.property_names = []
         for name,props in config.additional_properties['properties'].items():
             alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
             column_name = props.get('dbcolumn',name)
+            self.property_names.append(name)
+            if not column_name == name :
+                self.db_mapping[column_name] = name
             if props.get("is_primary",None) == "true":
                 self.pks.append(str(name))
-                column = Column(column_name, alchemy_type, primary_key = True)
+                column = Column(column_name, alchemy_type, primary_key = True, key = name)
             elif props.get("foreign-key",None):
-                column = Column(column_name,alchemy_type,ForeignKey(props.get("foreign-key")))
+                column = Column(column_name,alchemy_type,ForeignKey(props.get("foreign-key")),key = name)
             else:
-                column = Column(column_name,alchemy_type)
+                column = Column(column_name,alchemy_type,key = name)
             self.columns[name]=column
         self.table = Table(table_name,metadata,*self.columns.values())
+        self.property_names += [name for name in self.storage_aliases]
     
     def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and y):
+        """ Convert a kalamar item object to a dictionary for sqlalchemy.
+            
+            Optionnaly, a function can be provided to filter the item properties.
+        """
         temp = {} 
-        for name in self.get_storage_properties():
+        for name in self.get_storage_properties() :
             if ffunction(name,item[name]):
-                temp[self.columns[name].name] = item[name]
+                temp[name] = item[name]
         return temp
     
     def _extract_primary_key_value(self,item):
+        """ Extract a dictionary containing the primary key values from an item.
+
+        """
         return self._convert_item_to_table_dict(item,ffunction = (lambda name,value: name in self.pks))
 
     def _process_conditions(self,conditions):
-        return [self.table.c[cond.property_name].op(cond.operator)(cond.value) for cond in conditions]
+        """ Extract sqlalchemy expressions from a Condition iterable.
+
+        """
+        return [self.columns[cond.property_name].op(AlchemyAccessPoint.sql_operators[cond.operator])(cond.value) for cond in conditions]
     
     def _values_to_where_clause(self,properties):
-        return sql_and(*[(self.table.c[prop] == value) for prop,value in properties.items()])
+        """ From a dictionary, constructs sqlalchemy 'where' expression.
+
+        """
+        return sql_and(*[(self.columns[prop] == value) for prop,value in properties.items()])
     
     def _where_clause_from_pk(self,item):
+        """From an item, constructs an sqlalchemy 'where' expression on its pks.
+
+        """
         return self._values_to_where_clause(self._extract_primary_key_value(item)) 
+
+    def _transform_aliased_properties(self,line):
+        return dict([(self.db_mapping.get(name,name),value) for name,value in line.items()])
 
     def _storage_search(self, conditions):
         """Return a sequence of tuple (properties, file_opener)"""
@@ -123,16 +143,13 @@ class AlchemyAccessPoint(AccessPoint):
             select.append_whereclause(cond)
         result = select.execute()
         for line in result:
-            yield (line.items(),"")
+            yield (self._transform_aliased_properties(line),"")
 
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).
 
-        This method has to be overriden.
-
         """
         return self.columns.keys()
-    
     
 
     def save(self, item):
@@ -142,12 +159,13 @@ class AlchemyAccessPoint(AccessPoint):
 
         """
         kwargs = self._convert_item_to_table_dict(item)
-        transaction = self.table.bind.connect()
-        trans = transaction.begin()
+        conn = self.table.bind.connect()
+        trans = conn.begin()
         try:
             ids = self.table.insert().values(**kwargs).execute().inserted_primary_key
             for (id, pk) in zip(ids, self.pks):
                 item[pk] = id
+            trans.commit()
             return item
         except :
             try:
@@ -158,6 +176,9 @@ class AlchemyAccessPoint(AccessPoint):
                 trans.commit()
             except:
                 trans.rollback()
+        finally:
+            conn.close()
+            
 
     def remove(self, item):
         """Remove/delete the item from the backend storage.
@@ -178,8 +199,6 @@ class AlchemyAccessPoint(AccessPoint):
         This list must be ordered and stable for a given access point, in order
         to construct canonical requests for items.
         
-        This property has to be overriden.
-
         """
         return self.pks
 
