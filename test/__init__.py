@@ -12,37 +12,9 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(__file__))
 DYKO_PACKAGES = ['kalamar', 'koral', 'kraken', 'test']
 
 
-def monkeypatch_coverage():
-    """
-    coverage can blacklist some filename prefixes, but we want to whitelist
-    our project directory (and exclude everything else).
-    Monkey-patch an internal function in coverage to do that.
-    """
-    
-    from coverage.report import Reporter
-    
-    if hasattr(Reporter, '__original_find_code_units'):
-        # Safeguard so that this runs only once.
-        # Monkey-patching multiple times won’t break anything but will do the
-        # filtering multiple times uselessly
-        return
-    
-    Reporter.__original_find_code_units = Reporter.find_code_units
-    
-    def patched_find_code_units(self, *args, **kwargs):
-        self.__original_find_code_units(*args, **kwargs)
-        self.code_units = [
-            cu for cu in self.code_units
-            if cu.filename.startswith(PROJECT_DIR) and not
-               # exclude buildout-installed dependencies
-               cu.filename.startswith(os.path.join(PROJECT_DIR, 'eggs'))
-        ]
-    
-    Reporter.find_code_units = patched_find_code_units
-
 def run_with_coverage(run_function):
-    monkeypatch_coverage()
     import coverage
+    import werkzeug
     c = coverage.coverage()
     c.exclude('return NotImplemented')
     c.exclude('raise NotImplementedError')
@@ -50,7 +22,13 @@ def run_with_coverage(run_function):
     c.start()
     run_function()
     c.stop()
-    c.report()
+    filenames = []
+    for package in DYKO_PACKAGES:
+        for module in werkzeug.find_modules(package, include_packages=True,
+                                            recursive=True):
+            __import__(module)
+            filenames.append(sys.modules[module].__file__)
+    c.report(filenames)
 
 
 def profile(function, filename):
