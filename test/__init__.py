@@ -56,7 +56,7 @@ def make_suite(names=None):
     test case class or method name."""
     suite = unittest2.TestSuite()
     loader = DoctestLoader()
-    for name in names or sys.argv[1:] or DYKO_PACKAGES:
+    for name in names or DYKO_PACKAGES:
         # Try unittest2’s discovery
         try:
             suite.addTest(loader.discover(name, '*.py', PROJECT_DIR))
@@ -66,7 +66,7 @@ def make_suite(names=None):
     return suite
 
 
-def run_suite(suite):
+def run_suite(suite, verbose):
     """
     Run a test suite with output buferring and ctrl-C catching
     """
@@ -76,10 +76,15 @@ def run_suite(suite):
     # KeyboardInterrupt  exception.
     unittest2.installHandler()
     
-    unittest2.TextTestRunner(buffer=True).run(suite)
+    verbosity = 2 if verbose else 1
+    unittest2.TextTestRunner(buffer=True, verbosity=verbosity).run(suite)
     
 def main():
-    run_suite(make_suite())
+    args = sys.argv[1:]
+    verbose = '-v' in args
+    if verbose:
+        args.remove('-v')
+    run_suite(make_suite(args), verbose)
 
 def main_coverage():
     print "Running tests with coverage."
