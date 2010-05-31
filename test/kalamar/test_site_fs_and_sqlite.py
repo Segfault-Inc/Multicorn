@@ -5,7 +5,7 @@ import sys
 import shutil
 import tempfile
 import atexit
-from unittest2 import TestCase
+from unittest2 import TestCase, TestSuite
 from test_site_common import TestSiteSearch,\
                              TestSiteOpen,\
                              TestSiteSave,\
@@ -82,9 +82,12 @@ site = Site(os.path.join(os.path.dirname(__file__), 'data',
                          'kalamar_fs_and_sqlite.conf'), 
             fail_on_inexistent_parser=False)
 
-for access_point in site.access_points:
-    for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
-                 TestSiteRemove, TestSiteGetDescription, TestSiteCreateItem):
-        cls = type(test.__name__+'_'+access_point, (TestSite, test, TestCase),
-                   {"access_point_name": access_point})
-        setattr(sys.modules[__name__], cls.__name__, cls)
+def load_tests(loader, tests, pattern):
+    for access_point in site.access_points:
+        for test in (TestSiteSearch, TestSiteOpen, TestSiteSave,
+                     TestSiteRemove, TestSiteGetDescription, TestSiteCreateItem):
+            cls = type(test.__name__+'_'+access_point, (TestSite, test, TestCase),
+                       {"access_point_name": access_point})
+            tests.addTest(loader.loadTestsFromTestCase(cls))
+    return tests
+

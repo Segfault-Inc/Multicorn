@@ -53,11 +53,13 @@ else:
     except Exception, e:
         warnings.warn('PostgresSQL access not tested (%s)' % unicode(e))
     else:
-        # Magic tricks
-        for access_point in site.access_points:
-            if access_point != 'textes' and access_point != 'filesystem':
-                for test in capsule_tests + (TestGenericManyToManyDBCapsule,):
-                    cls = type('%s_%s' % (test.__name__, access_point),
-                               (TestSite, test, TestCase),
-                               {'access_point_name': access_point})
-                    setattr(sys.modules[__name__], cls.__name__, cls)
+        def load_tests(loader, tests, pattern):
+            for access_point in site.access_points:
+                if access_point != 'textes' and access_point != 'filesystem':
+                    for test in capsule_tests + (TestGenericManyToManyDBCapsule,):
+                        cls = type('%s_%s' % (test.__name__, access_point),
+                                   (TestSite, test, TestCase),
+                                   {'access_point_name': access_point})
+                        tests.addTest(loader.loadTestsFromTestCase(cls))
+            return tests
+
