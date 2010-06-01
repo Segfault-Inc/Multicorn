@@ -1,9 +1,9 @@
 # coding: utf8
 
 import os
-from unittest import TestCase
 from kalamar import Site
 from kalamar.config import baseparser
+from unittest2 import TestCase
 import kalamar.utils
 import warnings
 

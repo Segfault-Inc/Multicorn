@@ -1,6 +1,6 @@
 
 import os
-from unittest import TestCase
+from unittest2 import TestCase
 
 from test.kraken import KrakenSiteMixin
 

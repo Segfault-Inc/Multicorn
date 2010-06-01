@@ -23,7 +23,7 @@ MySQL tests for db_capsules.
 import os
 import sys
 import warnings
-from unittest import TestCase
+from unittest2 import TestCase
 
 from _database import TestSite, capsule_tests
 from kalamar.site import Site
@@ -45,11 +45,13 @@ else:
     except Exception, e:
         warnings.warn('MySQL access not tested (%s)' % unicode(e))
     else:
-        # Magic tricks
-        for access_point in site.access_points:
-            if access_point != 'textes' and access_point != 'link':
-                for test in capsule_tests:
-                    cls = type('%s_%s' % (test.__name__, access_point),
-                               (TestSite, test, TestCase),
-                               {'access_point_name': access_point})
-                    setattr(sys.modules[__name__], cls.__name__, cls)
+        def load_tests(loader, tests, pattern):
+            for access_point in site.access_points:
+                if access_point != 'textes' and access_point != 'link':
+                    for test in capsule_tests:
+                        cls = type('%s_%s' % (test.__name__, access_point),
+                                   (TestSite, test, TestCase),
+                                   {'access_point_name': access_point})
+                        tests.addTest(loader.loadTestsFromTestCase(cls))
+            return tests
+

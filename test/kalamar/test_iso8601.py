@@ -17,9 +17,9 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 from kalamar import iso8601
-import unittest
+import unittest2
 
-class TestISO8601(unittest.TestCase):
+class TestISO8601(unittest2.TestCase):
 
     def test_iso8601_regex_datetime(self):
         assert iso8601.ISO8601_REGEX_DATETIME.match("2006-10-11T00:14:33Z")
