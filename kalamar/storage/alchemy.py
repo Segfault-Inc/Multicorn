@@ -53,6 +53,7 @@ class AlchemyAccessPoint(AccessPoint):
         utils.re_match : '~',
         utils.re_not_match : '!~'}
 
+
     def get_metadata(self):
         """Returns a sql-alchemy metadata, associated with an engine
         
@@ -79,11 +80,14 @@ class AlchemyAccessPoint(AccessPoint):
         self.db_mapping = {}
         table_name = self.config.url.split('?')[1]
         self.columns = {} 
-        self.property_names = []
-        for name,props in config.additional_properties['properties'].items():
+        self.prop_names = []
+        self.remote_props = {}
+        for name, props in config.properties.items() :
             alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
             column_name = props.get('dbcolumn',name)
-            self.property_names.append(name)
+            self.prop_names.append(name)
+            if 'foreign_ap' in props :
+                self.remote_props[name] = props['foreign_ap' ]
             if not column_name == name :
                 self.db_mapping[column_name] = name
             if props.get("is_primary",None) == "true":
@@ -95,7 +99,7 @@ class AlchemyAccessPoint(AccessPoint):
                 column = Column(column_name,alchemy_type,key = name)
             self.columns[name]=column
         self.table = Table(table_name,metadata,*self.columns.values())
-        self.property_names += [name for name in self.storage_aliases]
+        self.prop_names += [name for name in self.storage_aliases]
     
     def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and y):
         """ Convert a kalamar item object to a dictionary for sqlalchemy.
@@ -105,7 +109,16 @@ class AlchemyAccessPoint(AccessPoint):
         temp = {} 
         for name in self.get_storage_properties() :
             if ffunction(name,item[name]):
-                temp[name] = item[name]
+                if name in self.remote_properties:
+                    if item.is_loaded(name):
+                        remote_ap = self.site.access_points[self.remote_properties[name]]
+                        remote_pk = remote_ap.primary_keys
+                        #TODO : Consider the case when a remote_ap has more than one primary key.
+                        temp[name] = item[name][remote_pk[0]]
+                    else:
+                        temp[name] = item[name]
+                else:
+                    temp[name] = item[name]
         return temp
     
     def _extract_primary_key_value(self,item):
@@ -143,15 +156,20 @@ class AlchemyAccessPoint(AccessPoint):
             select.append_whereclause(cond)
         result = select.execute()
         for line in result:
-            yield (self._transform_aliased_properties(line),"")
+            yield (self._transform_aliased_properties(line),"",self.remote_properties)
 
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).
 
         """
         return self.columns.keys()
-    
+   
 
+
+    def load(self,property_name, item, ref):
+        if property_name in self.remote_properties:
+            return self.site.open(self.remote_properties[property_name], [ref])
+    
     def save(self, item):
         """Update or add the item.
 
@@ -201,4 +219,12 @@ class AlchemyAccessPoint(AccessPoint):
         
         """
         return self.pks
+
+    @property
+    def remote_properties(self):
+        return self.remote_props
+    
+    @property
+    def property_names(self):
+        return self.prop_names
 

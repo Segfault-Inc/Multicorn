@@ -4,11 +4,12 @@ import os
 class Config(object):
     """Data class containing the configuration for a calamar access-point.""" 
 
-    def __init__(self, url, name, additional_properties, parser=None, basedir=None,
+    def __init__(self, url, name,properties,additional_properties, parser=None, basedir=None,
             default_encoding="utf-8"):
         self.url = url
         self.site = None
         self.name = name
+        self.properties = properties
         self.additional_properties = additional_properties 
         self.parser = parser
         self.basedir = basedir
@@ -23,6 +24,9 @@ class Config(object):
         strvalue += "\t additional_props: \n"
         for prop in self.additional_properties:
             strvalue += "\t " + prop + " = " + str(self.additional_properties[prop]) + "\n"
+        strvalue += "\t managed_properties: \n"
+        for prop in self.properties:
+            strvalue += "\t " + prop + " = " + str(self.properties[prop]) + "\n"
         return strvalue
 
 

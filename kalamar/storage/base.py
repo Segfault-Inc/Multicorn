@@ -27,6 +27,7 @@ from kalamar import utils
 from kalamar.item import Item
 from kalamar import parser
 from kalamar import storage
+from itertools import product
 
 
 
@@ -64,22 +65,10 @@ class AccessPoint(object):
         """Common instance initialisation."""
         self.config = config
         self.name = config.name
-        self.parser_name = config.parser
-        # check that this parser exists
-        parser.load()
-        for subclass in utils.recursive_subclasses(Item):
-            if getattr(subclass, 'format', None) == self.parser_name:
-                break
-        else:
-            raise utils.ParserNotAvailable('Unknown parser: ' +
-                                           self.parser_name)
-                                       
         self.site = config.site
         self.default_encoding = config.default_encoding
-        self.storage_aliases = [a if len(a) == 2 else [a[0],a[0]] for a in config.additional_properties.get('storage_aliases',[])] 
-        self.parser_aliases = [a if len(a) == 2 else [a[0],a[0]] for a in config.additional_properties.get('parser_aliases',[])] 
-        self.property_names = [name for name, alias in
-                               self.storage_aliases + self.parser_aliases]
+        self.property_names = config.properties.keys()
+        self.properties = config.properties
         self.url = config.url
         self.basedir = config.basedir
 
@@ -116,6 +105,90 @@ class AccessPoint(object):
             yield utils.Condition(cond.property_name or self.property_names[i],
                                   cond.operator or utils.operator.eq,
                                   cond.value)
+
+
+    def get_associated_storage(property_name):
+        """ Return the name of the storage to which the property belongs.
+
+        """
+        if property_name in self.property_names :
+            return self.name
+        else : 
+            return None
+
+
+    
+    def _relative_prop(self,prop):
+        return str.join(".", prop.split(".")[1:])
+
+    def _process_mapping(self, mapping):
+        not_managed_mapping = {}
+        managed_mapping = {}
+        for key,value in mapping.items():
+            prop = value.split(".")[0]
+            if prop in self.remote_properties:
+                remote_ap = self.remote_properties[prop]
+                if remote_ap in not_managed_mapping:
+                    not_managed_mapping[remote_ap].update({key:value})
+                else:
+                    not_managed_mapping[remote_ap]={key:value}
+            else:
+                managed_mapping[key] = value
+        return managed_mapping,not_managed_mapping
+            
+    def _process_mapping_conditions(self, conditions):
+        not_managed_conditions = {}
+        managed_conditions = []
+        for cond in conditions:
+            if cond.property_name:
+                prop = cond.property_name.split(".")[0]
+                if prop in self.remote_properties:
+                    remote_ap = self.remote_properties[prop]
+                    newcond = utils.Condition(self._relative_prop(cond.property_name),cond.operator,cond.value)
+                    condlist = not_managed_conditions.get(remote_ap,[])
+                    condlist.append(newcond)
+                    not_managed_conditions[remote_ap] = condlist
+                else:
+                    managed_conditions.append(cond)
+            else:
+                    managed_conditions.append(cond)
+        return managed_conditions,not_managed_conditions
+            
+
+    def _gen_sub_request(self, item, not_managed_mapping):
+        conds = []
+        for key,value in not_managed_mapping.items():
+            base_object = value.split(".")[0]
+            conds.append(utils.Condition(None,None,item.properties[base_object]))
+        return conds
+
+
+    def _fetch_join(self, item, remote_ap, remote_mapping,conditions=[]):
+        new_mapping = dict([(prop_name,self._relative_prop(prop_mapping)) for prop_name,prop_mapping in
+                            remote_mapping.items()])
+        conditions = self._gen_sub_request(item,remote_mapping) + conditions
+        for viewitem in self.site.view(remote_ap,new_mapping,conditions):
+            yield viewitem
+
+
+    def view(self, mapping, conditions):
+        """ This default implementation uses search. It must be overriden.
+        
+        """
+        managed_mapping, not_managed_mapping = self._process_mapping(mapping)
+        managed_conditions, not_managed_conditions = self._process_mapping_conditions(conditions)
+        for item in self.site.search(self.name, managed_conditions):
+            viewitem = dict([(alias,item[prop]) for alias, prop in managed_mapping.items()])
+            if len(not_managed_mapping) != 0:
+                subitems_generators = [self._fetch_join(item,remote_ap,remote_mapping,not_managed_conditions[remote_ap]) for remote_ap,remote_mapping in not_managed_mapping.items()]
+                for cartesian_item in product(*subitems_generators):
+                    for item in cartesian_item:
+                        viewitem.update(item)
+                    yield viewitem
+            else:
+                yield viewitem
+
+
     
     def search(self, conditions):
         """Generate a sequence of every item matching "conditions".
@@ -132,44 +205,15 @@ class AccessPoint(object):
         # 5. filter the items yielded with conditions applying to the parser
         # 6. yield filtered items
         
-        storage_aliases = dict(self.storage_aliases)
-        parser_aliases = dict(self.parser_aliases)
-        
-        storage_properties_not_aliased = set(self.get_storage_properties())
-        # Parser aliased properties have priority over storage not aliased
-        # properties
-        storage_properties_not_aliased.difference_update(parser_aliases.keys())
-        
-        storage_properties = set(storage_aliases.keys())
-        storage_properties.update(storage_properties_not_aliased)
-        
-        storage_conditions = []
-        parser_conditions = []
-
         conditions = list(self.expand_syntaxic_sugar(conditions))
-        for condition in conditions:
-            if condition.property_name in storage_properties:
-                storage_conditions.append(utils.Condition(
-                    storage_aliases.get(condition.property_name,
-                                        condition.property_name),
-                    condition.operator, condition.value))
-            else:
-                parser_conditions.append(condition)
-        
-        for properties, opener in self._storage_search(storage_conditions):
-            item = self._make_item(opener, properties)
-            
-            for condition in parser_conditions:
-                if not item.test_condition(condition):
-                    break
-            else:
-                yield item
+        for properties, opener, lazy_properties in self._storage_search(conditions):
+            item = self._make_item(opener, properties, lazy_properties)
+            yield item
     
-    def _make_item(self, opener, properties):
-        item_parser = Item._find_parser(self)
-        return item_parser(self, opener, properties)
+    def _make_item(self, opener, properties,lazy_properties={}):
+        return Item(self, opener, properties,lazy_properties)
     
-    def get_storage_properties(self):
+    def get_properties(self):
         """Return the list of properties used by the storage (not aliased).
 
         This method has to be overriden.
@@ -236,6 +280,11 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError('Abstract method')
+
+    @property
+    def remote_properties(self):
+        raise NotImplementedError('Abstract method')
+        
 
     def generate_primary_values(self):
         """Generate a dict with primary keys and unused values.

@@ -283,7 +283,7 @@ class FileSystemStorage(AccessPoint):
                                 # pattern is completed
                                 filename = self._real_filename(path)
                                 yield properties, functools.partial(
-                                    self.get_file_content, path)
+                                    self.get_file_content, path),[]
         
         return walk(u'', self.filename_pattern_parts, ())
             

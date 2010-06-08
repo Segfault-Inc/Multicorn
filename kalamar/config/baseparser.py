@@ -14,8 +14,9 @@ def parse(config_filename):
         items = dict(config_parser.items(section))
         url = items.pop("url")
         parser = items.pop("parser") if "parser" in items else None
-        for attr in ["parser_aliases" , "storage_aliases"]:
-            if attr in items:
-                items[attr] = [name.split("=",1) for name in items[attr].split("/") if name]
-        configs.append(Config(url,section,items,parser,basedir))
+        properties = {}
+        for prop in items.pop("properties").split("/"):
+            key, value = prop.split("=")[0:2]
+            properties[key] = value
+        configs.append(Config(url, section, properties, items, parser, basedir))
     return configs

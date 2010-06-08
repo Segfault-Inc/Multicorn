@@ -269,7 +269,7 @@ class DBAPIStorage(AccessPoint):
             if self.content_column is not None:
                 line.pop(self.content_column)
                 
-            yield (line, _opener(data))
+            yield (line, _opener(data),[])
 
         cursor.close()
     

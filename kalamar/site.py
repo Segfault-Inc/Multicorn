@@ -101,7 +101,27 @@ class Site(object):
             return [value if isinstance(value, utils.Condition)
                     else utils.Condition(None, None, value)
                     for value in request]
-        
+
+
+
+    def view(self, access_point, mapping, request=None):
+        """Returns partial items.
+
+        ``mapping`` is a dict mapping the items property to custom keys in 
+        the returned partial items. 
+
+        ``request`` follows the same format as in the search method.
+        Example:
+        site.view("access_point',{"name":"name","boss_name": "foreign.name"})
+
+        """
+        conditions = self.parse_request(request or [])
+        master_ap = self.access_points[access_point]
+        # The ap returns 
+        return master_ap.view(mapping, conditions)
+
+
+
     def isearch(self, access_point, request=None):
         """Return a generator of items in ``access_point`` matching ``request``.
         
@@ -119,14 +139,14 @@ class Site(object):
         """
         return list(self.isearch(access_point, request))
     
-    def open(self, access_point, request=None):
+    def open(self, access_point, request):
         """Return the item in access_point matching request.
         
         If there is no result, raise ``Site.ObjectDoesNotExist``.
         If there are more than 1 result, raise ``Site.MultipleObjectsReturned``.
         
         """
-        search = iter(self.isearch(access_point, request))
+        search = iter(self.search(access_point, request))
         try:
             item = search.next()
         except StopIteration:
@@ -138,6 +158,10 @@ class Site(object):
             return item
         else:
             raise self.MultipleObjectsReturned
+
+    def batchopen(self, access_point, requests):
+        for request in requests:
+            yield open(access_point, request)
     
     @staticmethod
     def save(item):

@@ -53,7 +53,7 @@ class Item(object):
     # TODO: use the MultiDict power by coding getlist/setlist (or not?)
     format = None
 
-    def __init__(self, access_point, opener=None, storage_properties={}):
+    def __init__(self, access_point, opener=None, storage_properties={}, lazy_properties={}):
         """This constructor should not be used directly.
         Get items from AccessPoint’s or use Item.create_item to create them.
         
@@ -66,75 +66,35 @@ class Item(object):
         
         """
         self._opener = opener or str
-        self._raw_content = None
         self._raw_content_mimetype = None
         self._access_point = access_point
         self._access_point_name = None
-        self.storage_modified = False
-        self.parser_modified = False
+        self._modified = False
         self._request = None
-        
-        # Used when an item is contained into a capsule
-        self.association_properties = {}
-        
-        
-        self.storage_aliases = dict(access_point.storage_aliases)
-        self.parser_aliases = dict(access_point.parser_aliases)
-        
-        self.raw_storage_properties = MultiDict(storage_properties)
-        
-        # Keep this one to track modifications made to raw_parser_properties
-        self.old_storage_properties = MultiDict(storage_properties)
+        self.property_names = access_point.property_names
+        self.loaded_properties = dict([(name,value) for name,value in storage_properties.items() if name not in lazy_properties])
+        self.properties = storage_properties
 
-        self.storage_properties = utils.AliasedMultiDict(
-            self.raw_storage_properties, self.storage_aliases)
-        
-    @cached_property
-    def raw_parser_properties(self):
-        """The “parser” counterpart of raw_storage_properties. A MultiDict.
-        
-        Parser properties are lazy: only parse when needed.
-
-        """
-        return MultiDict(self._parse_data())
-
-    @cached_property
-    def parser_properties(self):
-        """The “parser” counterpart of storage_properties.
-        
-        This is also a cached_property because we need the actual
-        raw_parser_properties MultiDict to instanciate it.
-
-        """
-        return utils.AliasedMultiDict(self.raw_parser_properties,
-                                      self.parser_aliases)
-
-    def _is_storage_key(self, key):
-        """Determine wether this key is storage property or parser property."""
-        if key in self.storage_aliases:
-            return True
-        if key in self.parser_aliases:
-            return False
-        return key in self.storage_properties
+    
+    def is_loaded(self, prop):
+        return prop in self.loaded_properties
     
     def __getitem__(self, key):
         """Return the item ``key`` property."""
         try:
-            if self._is_storage_key(key):
-                return self.storage_properties[key]
+            if self.is_loaded(key):
+                return self.loaded_properties[key]
             else:
-                return self.parser_properties[key]
+                loaded_prop = self._access_point.load(key, self, self.properties[key]) 
+                self.loaded_properties[key] = loaded_prop
+                return loaded_prop
         except KeyError:
             return None
     
     def __setitem__(self, key, value):
         """Set the item ``key`` property to ``value``."""
-        if self._is_storage_key(key):
-            self.storage_properties[key] = value
-            self.storage_modified = True
-        else:
-            self.parser_properties[key] = value
-            self.parser_modified = True
+        self.loaded_properties[key] = value
+        self.storage_modified = True
 
     def __eq__(self, item):
         """Test if ``item`` is the same as this item."""
@@ -235,17 +195,7 @@ class Item(object):
         ParserNotAvailable: Unknown parser: I do not exist
         
         """
-        parser.load()
-        
-        if access_point.parser_name is None:
-            return Item
-        
-        for subclass in utils.recursive_subclasses(Item):
-            if getattr(subclass, 'format', None) == access_point.parser_name:
-                return subclass
-        
-        raise utils.ParserNotAvailable('Unknown parser: ' +
-                                       access_point.parser_name)
+        return Item
 
     @property
     def encoding(self):
@@ -307,8 +257,7 @@ class Item(object):
     def keys(self):
         """Return the name of all properties."""
         # Use a set to make keys unique
-        return list(set(self.storage_properties.keys() +
-                        self.parser_properties.keys()))
+        return self.properties.keys()
 
     def _parse_data(self):
         """Parse properties from data, return a dictionnary (MultiDict).
