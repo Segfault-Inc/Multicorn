@@ -146,7 +146,7 @@ class Site(object):
         If there are more than 1 result, raise ``Site.MultipleObjectsReturned``.
         
         """
-        search = iter(self.search(access_point, request))
+        search = iter(self.isearch(access_point, request))
         try:
             item = search.next()
         except StopIteration:
@@ -157,6 +157,7 @@ class Site(object):
         except StopIteration:
             return item
         else:
+            print "MULTIPLE OBJECT!" + str(request)
             raise self.MultipleObjectsReturned
 
     def batchopen(self, access_point, requests):

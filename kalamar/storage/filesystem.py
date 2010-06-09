@@ -239,6 +239,7 @@ class FileSystemStorage(AccessPoint):
         >>> assert u'__init__' not in results
 
         """
+        print "FS SEARCH:" + str(conditions)
         conditions = list(conditions)
         
         def walk(subdir, pattern_parts, previous_properties):

@@ -279,9 +279,14 @@ class Item(object):
 
     def _get_content(self):
         """Return the raw content as a bytestring, to be parsed."""
-        if self._raw_content is None:
-            self._raw_content = self._opener() or ''
-        return self._raw_content
+        return self[self._access_point.content_attr]
+
+    def _get_parent(self):
+        return self[self._access_point.parent_attr]
+    
+    def _get_parent(self):
+        return self[self._access_point.children_attr]
+
 
 
 

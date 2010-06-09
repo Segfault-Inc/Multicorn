@@ -216,8 +216,10 @@ def runserver(site, args=None):
     if not args or args[0] != '--help':
         args = ['runserver'] + args
     action_runserver = werkzeug.script.make_runserver(
-        lambda: site,
+        lambda: site,extra_files=[]
         # Files for the reloader to watch
-        extra_files=[site.kalamar_site.config_filename]
-        if site and site.kalamar_site.config_filename else [])
+        # FIX ME: the config may not be in a single file
+        #extra_files=[site.kalamar_site.config_filename]
+        #if site and site.kalamar_site.config_filename else []
+    )
     werkzeug.script.run(args=args)

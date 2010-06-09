@@ -125,15 +125,19 @@ class AccessPoint(object):
         not_managed_mapping = {}
         managed_mapping = {}
         for key,value in mapping.items():
-            prop = value.split(".")[0]
-            if prop in self.remote_properties:
-                remote_ap = self.remote_properties[prop]
-                if remote_ap in not_managed_mapping:
-                    not_managed_mapping[remote_ap].update({key:value})
-                else:
-                    not_managed_mapping[remote_ap]={key:value}
-            else:
+            splitted = value.split(".")
+            if len(splitted) == 1:
                 managed_mapping[key] = value
+            else:
+                prop = splitted[0]
+                if prop in self.remote_properties:
+                    remote_ap = self.remote_properties[prop]
+                    if remote_ap in not_managed_mapping:
+                        not_managed_mapping[remote_ap].update({key:value})
+                    else:
+                        not_managed_mapping[remote_ap]={key:value}
+                else:
+                    managed_mapping[key] = value
         return managed_mapping,not_managed_mapping
             
     def _process_mapping_conditions(self, conditions):
@@ -141,15 +145,19 @@ class AccessPoint(object):
         managed_conditions = []
         for cond in conditions:
             if cond.property_name:
-                prop = cond.property_name.split(".")[0]
-                if prop in self.remote_properties:
-                    remote_ap = self.remote_properties[prop]
-                    newcond = utils.Condition(self._relative_prop(cond.property_name),cond.operator,cond.value)
-                    condlist = not_managed_conditions.get(remote_ap,[])
-                    condlist.append(newcond)
-                    not_managed_conditions[remote_ap] = condlist
-                else:
+                splitted = cond.property_name.split(".")
+                if len(splitted) == 1:
                     managed_conditions.append(cond)
+                else:
+                    prop = splitted[0]
+                    if prop in self.remote_properties:
+                        remote_ap = self.remote_properties[prop]
+                        newcond = utils.Condition(self._relative_prop(cond.property_name),cond.operator,cond.value)
+                        condlist = not_managed_conditions.get(remote_ap,[])
+                        condlist.append(newcond)
+                        not_managed_conditions[remote_ap] = condlist
+                    else:
+                         managed_conditions.append(cond)
             else:
                     managed_conditions.append(cond)
         return managed_conditions,not_managed_conditions
@@ -180,7 +188,7 @@ class AccessPoint(object):
         for item in self.site.search(self.name, managed_conditions):
             viewitem = dict([(alias,item[prop]) for alias, prop in managed_mapping.items()])
             if len(not_managed_mapping) != 0:
-                subitems_generators = [self._fetch_join(item,remote_ap,remote_mapping,not_managed_conditions[remote_ap]) for remote_ap,remote_mapping in not_managed_mapping.items()]
+                subitems_generators = [self._fetch_join(item,remote_ap,remote_mapping,not_managed_conditions.get(remote_ap,[])) for remote_ap,remote_mapping in not_managed_mapping.items()]
                 for cartesian_item in product(*subitems_generators):
                     for item in cartesian_item:
                         viewitem.update(item)

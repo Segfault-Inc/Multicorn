@@ -242,11 +242,10 @@ class DBAPIStorage(AccessPoint):
         
         # Process conditions
         sql_condition, python_condition = self._process_conditions(conditions)
-        
         # Build request
         request, parameters = self._build_select_request(
             sql_condition, table, self.get_db_module().paramstyle)
-        
+        print "STORAGE SEARCH: " + str(request) + " CONDS: " + str(sql_condition)
         # Execute request
         cursor = connection.cursor()
         cursor.execute(request, parameters)

@@ -63,7 +63,7 @@ class AlchemyAccessPoint(AccessPoint):
         metadata = AlchemyAccessPoint.metadatas.get(url,None)
         if not metadata:
             #Constructs an engine using the url, stripping out the alchemy- part
-            engine = create_engine(url)
+            engine = create_engine(url, echo=True)
             metadata = MetaData()
             metadata.bind = engine
             AlchemyAccessPoint.metadatas[url] = metadata
@@ -80,26 +80,27 @@ class AlchemyAccessPoint(AccessPoint):
         self.db_mapping = {}
         table_name = self.config.url.split('?')[1]
         self.columns = {} 
-        self.prop_names = []
+        self.property_names = []
         self.remote_props = {}
         for name, props in config.properties.items() :
             alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
             column_name = props.get('dbcolumn',name)
-            self.prop_names.append(name)
+            self.property_names.append(name)
+            ispk = False
             if 'foreign_ap' in props :
                 self.remote_props[name] = props['foreign_ap' ]
             if not column_name == name :
                 self.db_mapping[column_name] = name
             if props.get("is_primary",None) == "true":
                 self.pks.append(str(name))
-                column = Column(column_name, alchemy_type, primary_key = True, key = name)
-            elif props.get("foreign-key",None):
-                column = Column(column_name,alchemy_type,ForeignKey(props.get("foreign-key")),key = name)
+                ispk = True
+            if props.get("foreign-key",None):
+                column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,
+                                primary_key=ispk)
             else:
-                column = Column(column_name,alchemy_type,key = name)
+                column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
             self.columns[name]=column
         self.table = Table(table_name,metadata,*self.columns.values())
-        self.prop_names += [name for name in self.storage_aliases]
     
     def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and y):
         """ Convert a kalamar item object to a dictionary for sqlalchemy.
@@ -224,7 +225,4 @@ class AlchemyAccessPoint(AccessPoint):
     def remote_properties(self):
         return self.remote_props
     
-    @property
-    def property_names(self):
-        return self.prop_names
 
