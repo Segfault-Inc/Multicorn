@@ -161,7 +161,7 @@ class AccessPoint(object):
             else:
                     managed_conditions.append(cond)
         return managed_conditions,not_managed_conditions
-            
+        
 
     def _gen_sub_request(self, item, not_managed_mapping):
         conds = []
@@ -179,12 +179,14 @@ class AccessPoint(object):
             yield viewitem
 
 
-    def view(self, mapping, conditions):
+
+    def view(self, mapping, conditions,joins={}):
         """ This default implementation uses search. It must be overriden.
         
         """
         managed_mapping, not_managed_mapping = self._process_mapping(mapping)
         managed_conditions, not_managed_conditions = self._process_mapping_conditions(conditions)
+
         for item in self.site.search(self.name, managed_conditions):
             viewitem = dict([(alias,item[prop]) for alias, prop in managed_mapping.items()])
             if len(not_managed_mapping) != 0:

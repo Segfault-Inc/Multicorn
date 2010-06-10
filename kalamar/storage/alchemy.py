@@ -28,6 +28,7 @@ from kalamar.item import Item
 from kalamar import parser
 from kalamar.storage.base import AccessPoint
 from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
+from sqlalchemy.sql.expression import alias
 from sqlalchemy import String,Integer,Date
 from sqlalchemy import and_ as sql_and
 
@@ -88,15 +89,14 @@ class AlchemyAccessPoint(AccessPoint):
             self.property_names.append(name)
             ispk = False
             if 'foreign_ap' in props :
-                self.remote_props[name] = props['foreign_ap' ]
+                self.remote_props[name] = props['foreign_ap']
             if not column_name == name :
                 self.db_mapping[column_name] = name
             if props.get("is_primary",None) == "true":
                 self.pks.append(str(name))
                 ispk = True
             if props.get("foreign-key",None):
-                column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,
-                                primary_key=ispk)
+                column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
             else:
                 column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
             self.columns[name]=column
@@ -132,7 +132,7 @@ class AlchemyAccessPoint(AccessPoint):
         """ Extract sqlalchemy expressions from a Condition iterable.
 
         """
-        return [self.columns[cond.property_name].op(AlchemyAccessPoint.sql_operators[cond.operator])(cond.value) for cond in conditions]
+        return [self._get_remote_column(cond.property_name).op(AlchemyAccessPoint.sql_operators.get(cond.operator,"="))(cond.value) for cond in conditions]
     
     def _values_to_where_clause(self,properties):
         """ From a dictionary, constructs sqlalchemy 'where' expression.
@@ -146,8 +146,46 @@ class AlchemyAccessPoint(AccessPoint):
         """
         return self._values_to_where_clause(self._extract_primary_key_value(item)) 
 
-    def _transform_aliased_properties(self,line):
+    def _transform_aliased_properties(self, line):
         return dict([(self.db_mapping.get(name,name),value) for name,value in line.items()])
+
+    def _extract_condition_propert_(self, condition):
+        return 
+
+    def _get_remote_column(self, compound_property):
+        splitted = compound_property.split(".")
+        if len(splitted) == 1:
+            return self.columns[compound_property]
+        else: 
+            return self.site.access_points[splitted[0]]._get_remote_column(str.join(".",splitted[1:]))
+
+    def _build_join(self,mapping,conditions,join=None):
+        if not join:
+            join = self.table
+        mapfn = lambda x : x.split(".")[0]
+        filterfn = lambda x : x in self.remote_props
+        extract_condition_prop = lambda x : x.property_name
+        ref_props = filter(filterfn,map(mapfn , mapping.values()))
+        ref_props += filter(filterfn,map(mapfn,map(extract_condition_prop ,conditions)))
+        ref_props = set(ref_props)
+        for prop in ref_props:
+            remote_ap = self.site.access_points[self.remote_props[prop]]
+            join = join.join(remote_ap.table)
+        return join
+
+    def view(self, mapping, conditions,joins={}):
+        """ This default implementation uses search. It must be overriden.
+        
+        """
+
+        conds = sql_and(self._process_conditions(conditions))
+        select = self.table.select(None,from_obj=self._build_join(mapping,conditions))
+        for cond in conds:
+            select.append_whereclause(cond)
+        select = select.with_only_columns([self._get_remote_column(value).label(key) for key,value in mapping.items()])
+        for line in select.execute():
+            yield self._transform_aliased_properties(line)
+
 
     def _storage_search(self, conditions):
         """Return a sequence of tuple (properties, file_opener)"""
@@ -161,7 +199,7 @@ class AlchemyAccessPoint(AccessPoint):
 
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).
-
+l
         """
         return self.columns.keys()
    
