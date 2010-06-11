@@ -156,8 +156,9 @@ class AlchemyAccessPoint(AccessPoint):
         splitted = compound_property.split(".")
         if len(splitted) == 1:
             return self.columns[compound_property]
-        else: 
-            return self.site.access_points[splitted[0]]._get_remote_column(str.join(".",splitted[1:]))
+        else:
+            remote_ap_name = self.remote_props[splitted[0]]
+            return self.site.access_points[remote_ap_name]._get_remote_column(str.join(".",splitted[1:]))
 
     def _build_join(self,mapping,conditions,join=None):
         if not join:
@@ -170,14 +171,16 @@ class AlchemyAccessPoint(AccessPoint):
         ref_props = set(ref_props)
         for prop in ref_props:
             remote_ap = self.site.access_points[self.remote_props[prop]]
+            print "DEBUG FKS:"
+            for fk in self.table.foreign_keys:
+                print fk
+            print "ATTEMPTING SUB JOIN:"
+            print join
+            print remote_ap.table
             join = join.join(remote_ap.table)
         return join
 
     def view(self, mapping, conditions,joins={}):
-        """ This default implementation uses search. It must be overriden.
-        
-        """
-
         conds = sql_and(self._process_conditions(conditions))
         select = self.table.select(None,from_obj=self._build_join(mapping,conditions))
         for cond in conds:
