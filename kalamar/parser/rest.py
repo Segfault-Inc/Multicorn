@@ -194,7 +194,7 @@ egestas.
                             os.path.dirname(self.filename),
                             os.path.normpath(filename))
                         item = self._access_point.site.item_from_filename(filename)
-                        output += item['fulltext'] or item['text']
+                        output += (item['fulltext'] or item['text']) + '\n'
                     else:
                         output += line + '\n'
                 return output
