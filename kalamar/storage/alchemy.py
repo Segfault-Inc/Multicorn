@@ -266,4 +266,6 @@ l
     def remote_properties(self):
         return self.remote_props
     
+    def get_properties(self):
+        return self.property_names
 
