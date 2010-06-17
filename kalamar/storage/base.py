@@ -293,6 +293,10 @@ class AccessPoint(object):
 
     @property
     def remote_properties(self):
+        """Dict of properties managed by remote access_point.
+
+        The dict provides the properties names as keys, and the 
+        corresponding access_points names as values."""
         raise NotImplementedError('Abstract method')
         
 
