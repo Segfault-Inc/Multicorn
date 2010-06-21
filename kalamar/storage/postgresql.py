@@ -53,10 +53,10 @@ else:
             
             """
             kwargs = {}
-            parts = self.config.url.split('/')
+            parts = str(self.config.url).split('/')
             
             user_part, host_part = parts[2].split('@')
-            kwargs['user'], kwargs['password'] = map(str,user_part.split(':'))
+            kwargs['user'], kwargs['password'] = user_part.split(':')
             
             host_and_port = host_part.split(':')
             kwargs['host'] = host_and_port[0]
