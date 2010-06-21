@@ -88,8 +88,8 @@ class AlchemyAccessPoint(AccessPoint):
             column_name = props.get('dbcolumn',name)
             self.property_names.append(name)
             ispk = False
-            if 'foreign_ap' in props :
-                self.remote_props[name] = props['foreign_ap']
+            if 'foreign-ap' in props :
+                self.remote_props[name] = props['foreign-ap']
             if not column_name == name :
                 self.db_mapping[column_name] = name
             if props.get("is_primary",None) == "true":
