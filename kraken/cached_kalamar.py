@@ -108,7 +108,8 @@ class CachedKalamarSite(object):
         if isinstance(request, dict):
             # TODO: test this!
             # lstrip('u') removes the leading 'u' in front of unicode values
-            request = '/'.join(['%s=%s' % (key, repr(value).lstrip('u'))
+            # rstrip('L') removes the ending 'L' behind long integers
+            request = '/'.join(['%s=%s' % (key, repr(value).lstrip('u').rstrip('L'))
                                 for key, value in request.items()])
         elif isinstance(request, list):
             request = tuple(request)
