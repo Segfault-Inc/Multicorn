@@ -102,8 +102,8 @@ class AlchemyAccessPoint(AccessPoint):
                     column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
                 else:
                     column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
-                self.columns[name]=column
-            self.table = Table(table_name,metadata,*self.columns.values())
+                self.columns[name] = column
+        self.table = Table(table_name,metadata,*self.columns.values())
     
     def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and y):
         """ Convert a kalamar item object to a dictionary for sqlalchemy.
