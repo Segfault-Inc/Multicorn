@@ -29,14 +29,16 @@ from kalamar import parser
 from kalamar.storage.base import AccessPoint
 from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
 from sqlalchemy.sql.expression import alias
-from sqlalchemy import String,Integer,Date
+from sqlalchemy import String,Integer,Date,Numeric
 from sqlalchemy import and_ as sql_and
 
 class SqlAlchemyTypes:
  types = {"string" : String,
           "date"   : Date,
           "id"    : Integer,
-          "integer" : Integer}
+          "integer" : Integer,
+          "decimal" : Numeric
+         }
 
 
 class AlchemyAccessPoint(AccessPoint):
