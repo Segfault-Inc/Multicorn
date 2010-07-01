@@ -86,13 +86,13 @@ class AlchemyAccessPoint(AccessPoint):
         self.property_names = []
         self.remote_props = {}
         for name, props in config.properties.items() :
+            if 'foreign-ap' in props   :
+                self.remote_props[name] = props['foreign-ap']
             if props.get('relation-type',None) != 'one-to-many':
                 alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
                 column_name = props.get('dbcolumn',name)
                 self.property_names.append(name)
                 ispk = False
-                if 'foreign-ap' in props   :
-                    self.remote_props[name] = props['foreign-ap']
                 if not column_name == name :
                     self.db_mapping[column_name] = name
                 if props.get("is_primary",None) == "true":
