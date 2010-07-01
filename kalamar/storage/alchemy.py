@@ -86,23 +86,24 @@ class AlchemyAccessPoint(AccessPoint):
         self.property_names = []
         self.remote_props = {}
         for name, props in config.properties.items() :
-            alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
-            column_name = props.get('dbcolumn',name)
-            self.property_names.append(name)
-            ispk = False
-            if 'foreign-ap' in props :
-                self.remote_props[name] = props['foreign-ap']
-            if not column_name == name :
-                self.db_mapping[column_name] = name
-            if props.get("is_primary",None) == "true":
-                self.pks.append(str(name))
-                ispk = True
-            if props.get("foreign-key",None):
-                column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
-            else:
-                column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
-            self.columns[name]=column
-        self.table = Table(table_name,metadata,*self.columns.values())
+            if props.get('relation-type',None) != 'one-to-many':
+                alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
+                column_name = props.get('dbcolumn',name)
+                self.property_names.append(name)
+                ispk = False
+                if 'foreign-ap' in props   :
+                    self.remote_props[name] = props['foreign-ap']
+                if not column_name == name :
+                    self.db_mapping[column_name] = name
+                if props.get("is_primary",None) == "true":
+                    self.pks.append(str(name))
+                    ispk = True
+                if props.get("foreign-key",None):
+                    column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
+                else:
+                    column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
+                self.columns[name]=column
+            self.table = Table(table_name,metadata,*self.columns.values())
     
     def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and y):
         """ Convert a kalamar item object to a dictionary for sqlalchemy.
