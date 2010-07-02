@@ -157,10 +157,13 @@ class AlchemyAccessPoint(AccessPoint):
     def _extract_condition_propert_(self, condition):
         return 
 
+    def _get_parent_ap(self):
+        return self.site.access_points[self.parent_ap]
+
     def _get_remote_column(self, compound_property):
         splitted = compound_property.split(".")
         if len(splitted) == 1:
-            return self.columns[compound_property]
+            return self.columns.get(compound_property, self._get_parent_ap()._get_remote_column(compound_property))
         else:
             remote_ap_name = self.remote_props[splitted[0]]
             return self.site.access_points[remote_ap_name]._get_remote_column(str.join(".",splitted[1:]))
