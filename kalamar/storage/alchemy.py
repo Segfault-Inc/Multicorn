@@ -163,24 +163,50 @@ class AlchemyAccessPoint(AccessPoint):
             remote_ap_name = self.remote_props[splitted[0]]
             return self.site.access_points[remote_ap_name]._get_remote_column(str.join(".",splitted[1:]))
 
+    def _process_mapping(self, mapping):
+        not_managed_mapping = {}
+        managed_mapping = {}
+        for key,value in mapping.items():
+            splitted = value.split(".")
+            if len(splitted) == 1:
+                managed_mapping[key] = value
+            else:
+                prop = splitted[0]
+                if prop in self.remote_properties:
+                    remote_ap = self.remote_properties[prop]
+                    if remote_ap in not_managed_mapping:
+                        not_managed_mapping[remote_ap].update({key:".".join(splitted[1:])})
+                    else:
+                        not_managed_mapping[remote_ap]={key: ".".join(splitted[1:] )}
+                else:
+                    managed_mapping[key] = value
+        return managed_mapping,not_managed_mapping
+            
+
     def _build_join(self,mapping,conditions,join=None):
-        if not join:
+        if join == None:
             join = self.table
         mapfn = lambda x : x.split(".")[0]
         filterfn = lambda x : x in self.remote_props
         extract_condition_prop = lambda x : x.property_name
-        ref_props = filter(filterfn,map(mapfn , mapping.values()))
-        ref_props += filter(filterfn,map(mapfn,map(extract_condition_prop ,conditions)))
-        ref_props = set(ref_props)
-        for prop in ref_props:
-            remote_ap = self.site.access_points[self.remote_props[prop]]
-            print "DEBUG FKS:"
-            for fk in self.table.foreign_keys:
-                print fk
-            print "ATTEMPTING SUB JOIN:"
-            print join
-            print remote_ap.table
+        managed_mapping,not_managed_mapping = self._process_mapping(mapping)
+        managed_conditions, not_managed_conditions = self._process_mapping_conditions(conditions)
+        print not_managed_mapping
+        for ap in not_managed_mapping :
+            remote_ap = self.site.access_points[ap]
             join = join.join(remote_ap.table)
+        for ap in not_managed_conditions :
+            remote_ap = self.site.access_points[ap]
+            join = join.join(remote_ap.table)
+        for ap in not_managed_mapping :
+            remote_ap = self.site.access_points[ap]
+            remote_mapping =  not_managed_mapping[ap]
+            print remote_mapping 
+            print "About to join " + self.name + " WITH " + ap
+            join = remote_ap._build_join(remote_mapping, not_managed_conditions.get(ap, []),join)
+        for ap in dict(filter(lambda x: x[0] not in mapping, not_managed_conditions.items())):
+            remote_ap = self.site.access_points[ap]
+            join = remote_ap._build_join({},  not_managed_conditions.get(ap, []),join)
         return join
 
     def view(self, mapping, conditions,joins={}):
