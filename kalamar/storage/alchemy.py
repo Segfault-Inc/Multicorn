@@ -74,6 +74,33 @@ class AlchemyAccessPoint(AccessPoint):
         return metadata 
 
 
+    def _make_column_from_property(self, name, props):
+        if 'foreign-ap' in props   :
+            self.remote_props[name] = props['foreign-ap']
+        if props.get('relation-type',None) != 'one-to-many':
+            alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
+            column_name = props.get('dbcolumn',name)
+            self.property_names.append(name)
+            ispk = False
+            if not column_name == name :
+                self.db_mapping[column_name] = name
+            if props.get("is_primary",None) == "true":
+                self.pks.append(str(name))
+                ispk = True
+            if props.get("foreign-key",None):
+                column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
+            else:
+                column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
+            self.columns[name] = column
+
+
+
+
+
+
+
+
+
     def __init__(self, config):
         """ Init the accesspoint with the table definitions contained in the config.a
 
@@ -86,27 +113,18 @@ class AlchemyAccessPoint(AccessPoint):
         self.columns = {} 
         self.property_names = []
         self.remote_props = {}
+        self.config = config
         self.parent_ap = config.additional_properties.get('inherits',None)
+        print self.name
         for name, props in config.properties.items() :
-            if 'foreign-ap' in props   :
-                self.remote_props[name] = props['foreign-ap']
-            if props.get('relation-type',None) != 'one-to-many':
-                alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
-                column_name = props.get('dbcolumn',name)
-                self.property_names.append(name)
-                ispk = False
-                if not column_name == name :
-                    self.db_mapping[column_name] = name
-                if props.get("is_primary",None) == "true":
-                    self.pks.append(str(name))
-                    ispk = True
-                if props.get("foreign-key",None):
-                    column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
-                else:
-                    column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
-                self.columns[name] = column
+            self._make_column_from_property(name,props)
+        if self.parent_ap :
+            for name, props in self._get_parent_ap().config.properties.items() :
+                if name not in self.property_names:
+                    self._make_column_from_property(name, props)
         self.table = Table(table_name,metadata,*self.columns.values())
-    
+   
+
     def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and y):
         """ Convert a kalamar item object to a dictionary for sqlalchemy.
             
@@ -158,12 +176,17 @@ class AlchemyAccessPoint(AccessPoint):
         return 
 
     def _get_parent_ap(self):
-        return self.site.access_points[self.parent_ap]
+        return self.site.access_points.get(self.parent_ap,None)
 
     def _get_remote_column(self, compound_property):
         splitted = compound_property.split(".")
         if len(splitted) == 1:
-            return self.columns.get(compound_property, self._get_parent_ap()._get_remote_column(compound_property))
+            print compound_property
+            print self.columns
+            print self.columns.get(compound_property,None)
+            if compound_property in self.columns: 
+                return self.columns.get(compound_property,None) 
+            return self._get_parent_ap()._get_remote_column(compound_property)
         else:
             remote_ap_name = self.remote_props[splitted[0]]
             return self.site.access_points[remote_ap_name]._get_remote_column(str.join(".",splitted[1:]))
