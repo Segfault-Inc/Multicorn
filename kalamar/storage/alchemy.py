@@ -86,6 +86,7 @@ class AlchemyAccessPoint(AccessPoint):
         self.columns = {} 
         self.property_names = []
         self.remote_props = {}
+        self.parent_ap = config.additional_properties.get('inherits',None)
         for name, props in config.properties.items() :
             if 'foreign-ap' in props   :
                 self.remote_props[name] = props['foreign-ap']
@@ -290,7 +291,7 @@ l
         to construct canonical requests for items.
         
         """
-        return self.pks
+        return self.pks if len(self.pks) else self.site.access_points[self.parent_ap].primary_keys
 
     @property
     def remote_properties(self):
