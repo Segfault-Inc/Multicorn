@@ -155,7 +155,16 @@ class AlchemyAccessPoint(AccessPoint):
         """ Extract sqlalchemy expressions from a Condition iterable.
 
         """
-        return [self._get_remote_column(cond.property_name).op(AlchemyAccessPoint.sql_operators.get(cond.operator,"="))(cond.value) for cond in conditions]
+        sql_conds = [] 
+        for cond in conditions:
+            if isinstance(cond.value,list):
+                op = " in "
+                value = "( " + " , ".join(map(str,cond.value)) + " ) " 
+            else :
+                op = AlchemyAccessPoint.sql_operators.get(cond.operator,"=")
+                value = cond.value
+            sql_conds.append(self._get_remote_column(cond.property_name).op(op)(value))
+        return sql_conds
     
     def _values_to_where_clause(self,properties):
         """ From a dictionary, constructs sqlalchemy 'where' expression.
