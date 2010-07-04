@@ -142,15 +142,20 @@ class DBAPIStorage(AccessPoint):
         
         parameters = []
         
-        parameters.extend(Parameter(key, item[key])
-                          for key in self.primary_keys)
-        request.extend(" AND ".join("%s=?" % self._quote_name(key)
-                                    for key in self.primary_keys))
+        where_conditions = []
+
+        for key in self.primary_keys:
+            quoted_key = self._quote_name(self._sql_escape_quotes(key))
+            where_conditions.append(_clean_where_condition(quoted_key, '=', item[key]))
+            if item[key] is not None:
+                parameters.append(Parameter(key, item[key]))
+
+        request.extend(u'%s ;' % u' AND '.join(where_conditions))
         
         paramstyle = self.get_db_module().paramstyle
         request, parameters = self._format_request(request.tounicode(),
                                                    parameters, paramstyle)
-        
+
         cursor = connection.cursor()
         cursor.execute(request, parameters)
         connection.commit()
