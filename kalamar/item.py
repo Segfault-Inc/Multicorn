@@ -85,7 +85,7 @@ class Item(object):
             if self.is_loaded(key):
                 return self.loaded_properties[key]
             else:
-                loaded_prop = self._access_point.load(key, self, self.properties[key]) 
+                loaded_prop = self._access_point.load(key, self, [self.properties[key]]) 
                 self.loaded_properties[key] = loaded_prop
                 return loaded_prop
         except KeyError:

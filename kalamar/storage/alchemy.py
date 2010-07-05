@@ -277,7 +277,11 @@ l
 
     def load(self,property_name, item, ref):
         if property_name in self.remote_properties:
-            return self.site.open(self.remote_properties[property_name], [ref])
+            conds = []
+            remoteap = self.remote_properties[property_name]
+            for pk,ref in zip(self.site.access_points[remoteap].primary_keys,ref):
+                conds.append(str(pk) + "=" + str(ref))
+            return self.site.open(remoteap, "/".join(conds))
     
     def save(self, item):
         """Update or add the item.
