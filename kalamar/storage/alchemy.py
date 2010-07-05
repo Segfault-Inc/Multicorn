@@ -233,8 +233,9 @@ class AlchemyAccessPoint(AccessPoint):
             remote_ap = self.site.access_points[ap]
             join = join.join(remote_ap.table)
         for ap in not_managed_conditions :
-            remote_ap = self.site.access_points[ap]
-            join = join.join(remote_ap.table)
+            if ap not in not_managed_mapping:
+                remote_ap = self.site.access_points[ap]
+                join = join.join(remote_ap.table)
         for ap in not_managed_mapping :
             remote_ap = self.site.access_points[ap]
             remote_mapping =  not_managed_mapping[ap]
