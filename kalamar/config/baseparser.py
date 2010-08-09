@@ -15,8 +15,9 @@ def parse(config_filename):
         url = items.pop("url")
         parser = items.pop("parser") if "parser" in items else None
         properties = {}
-        for prop in items.pop("properties").split("/"):
-            key, value = prop.split("=")[0:2]
-            properties[key] = value
+        if 'properties' in items :
+            for prop in items.pop("properties").split("/"):
+                key, value = prop.split("=")[0:2]
+                properties[key] = value
         configs.append(Config(url, section, properties, items, parser, basedir))
     return configs
