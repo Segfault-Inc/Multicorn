@@ -28,7 +28,7 @@ from kalamar.item import Item
 from kalamar import parser
 from kalamar.storage.base import AccessPoint
 from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
-from sqlalchemy.sql.expression import alias
+from sqlalchemy.sql.expression import alias,Select
 from sqlalchemy import String,Integer,Date,Numeric,DateTime
 from sqlalchemy import and_ as sql_and
 
@@ -115,7 +115,6 @@ class AlchemyAccessPoint(AccessPoint):
         self.remote_props = {}
         self.config = config
         self.parent_ap = config.additional_properties.get('inherits',None)
-        print self.name
         for name, props in config.properties.items() :
             self._make_column_from_property(name,props)
         if self.parent_ap :
@@ -134,6 +133,7 @@ class AlchemyAccessPoint(AccessPoint):
         for name in self.get_storage_properties() :
             if ffunction(name,item[name]):
                 if name in self.remote_properties:
+                    temp[name] = item[name]
                     if item.is_loaded(name):
                         remote_ap = self.site.access_points[self.remote_properties[name]]
                         remote_pk = remote_ap.primary_keys
@@ -190,9 +190,6 @@ class AlchemyAccessPoint(AccessPoint):
     def _get_remote_column(self, compound_property):
         splitted = compound_property.split(".")
         if len(splitted) == 1:
-            print compound_property
-            print self.columns
-            print self.columns.get(compound_property,None)
             if compound_property in self.columns: 
                 return self.columns.get(compound_property,None) 
             return self._get_parent_ap()._get_remote_column(compound_property)
@@ -200,60 +197,83 @@ class AlchemyAccessPoint(AccessPoint):
             remote_ap_name = self.remote_props[splitted[0]]
             return self.site.access_points[remote_ap_name]._get_remote_column(str.join(".",splitted[1:]))
 
-    def _process_mapping(self, mapping):
-        not_managed_mapping = {}
-        managed_mapping = {}
-        for key,value in mapping.items():
-            splitted = value.split(".")
+    def _make_condition(self, cond, relative_path = None):
+        relative_path = self.table if relative_path == None else relative_path
+        if isinstance(cond.value,list):
+            op = " in "
+            value = "( " + " , ".join(map(str,cond.value)) + " ) " 
+        else :
+            op = AlchemyAccessPoint.sql_operators.get(cond.operator,"=")
+            value = cond.value
+        return relative_path.corresponding_column(self.columns[cond.property_name]).op(op)(value)
+
+
+
+    def _extract_joins(self, properties_map, conditions, current_select, relative_path=None ):
+        relative_path = self.table if relative_path == None else relative_path
+        joins = []
+        not_managed = {}
+        not_managed_conditions = {}
+        sql_conditions = []
+        for property_name, property_path in properties_map.items():
+            splitted = property_path.split(".")
             if len(splitted) == 1:
-                managed_mapping[key] = value
-            else:
-                prop = splitted[0]
-                if prop in self.remote_properties:
-                    remote_ap = self.remote_properties[prop]
-                    if remote_ap in not_managed_mapping:
-                        not_managed_mapping[remote_ap].update({key:".".join(splitted[1:])})
-                    else:
-                        not_managed_mapping[remote_ap]={key: ".".join(splitted[1:] )}
-                else:
-                    managed_mapping[key] = value
-        return managed_mapping,not_managed_mapping
-            
+                selected_column = relative_path.corresponding_column(self.columns[splitted[0]])
+                selected_column = selected_column.label(property_name)
+                current_select.append_column(selected_column)
+            else :
+                property_root = splitted[0]
+                if property_root in self.remote_properties:
+                    remote_ap = self.remote_properties[property_root]
+                    remote_not_managed_props = not_managed.get(property_root,{})
+                    remote_not_managed_props[property_name] = ".".join(splitted[1:])
+                    not_managed[property_root] = remote_not_managed_props
+        for cond in conditions :
+            splitted = cond.property_name.split(".")
+            if len(splitted) == 1:
+                sql_cond = (self._make_condition(cond,relative_path))
+                current_select.append_whereclause(sql_cond)
+            else: 
+                property_root = splitted[0]
+                if property_root in self.remote_properties:
+                    remote_ap = self.remote_properties[property_root]
+                    remote_not_managed_conds = not_managed_conditions.get(property_root,[])
+                    cond.property_name = ".".join(splitted[1:])
+                    remote_not_managed_conds.append(cond)
+                    not_managed_conditions[property_root] = remote_not_managed_conds
+        for remote_prop_name, properties in not_managed.items():
+            remote_ap_name = self.remote_properties[remote_prop_name]
+            remote_ap = self.site.access_points[remote_ap_name]
+            remote_conditions = not_managed_conditions.pop(remote_prop_name, [])
+            child_relative_path = remote_ap.table.alias()
+            firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
+            secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
+            relative_path = relative_path.join(child_relative_path,firstjoincol == secondjoincol)
+            child_joins,child_conditions = remote_ap._extract_joins(properties,
+                    remote_conditions,current_select, child_relative_path)
+            sql_conditions.extend(child_conditions)
+        for remote_prop_name, conditions in not_managed_conditions.items():
+            remote_ap_name = self.remote_properties[remote_prop_name]
+            remote_ap = self.site.access_points[remote_ap_name]
+            child_relative_path = remote_ap.table.alias()
+            firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
+            secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
+            relative_path = relative_path.join(child_relative_path,firstjoincol == secondjoincol)
+            child_joins, child_conditions = remote_ap._extract_joins({}, conditions,current_select ,child_relative_path)
+            sql_conditions.extend(child_conditions)
+        joins = [relative_path]
+        print "EXTRACT JOIN CONDITIONS : " + self.name + " : " 
+        print sql_conditions
+        return joins,sql_conditions
+        
 
-    def _build_join(self,mapping,conditions,join=None):
-        if join == None:
-            join = self.table
-        mapfn = lambda x : x.split(".")[0]
-        filterfn = lambda x : x in self.remote_props
-        extract_condition_prop = lambda x : x.property_name
-        managed_mapping,not_managed_mapping = self._process_mapping(mapping)
-        managed_conditions, not_managed_conditions = self._process_mapping_conditions(conditions)
-        print not_managed_mapping
-        for ap in not_managed_mapping :
-            remote_ap = self.site.access_points[ap]
-            join = join.join(remote_ap.table)
-        for ap in not_managed_conditions :
-            if ap not in not_managed_mapping:
-                remote_ap = self.site.access_points[ap]
-                join = join.join(remote_ap.table)
-        for ap in not_managed_mapping :
-            remote_ap = self.site.access_points[ap]
-            remote_mapping =  not_managed_mapping[ap]
-            print remote_mapping 
-            print "About to join " + self.name + " WITH " + ap
-            join = remote_ap._build_join(remote_mapping, not_managed_conditions.get(ap, []),join)
-        for ap in dict(filter(lambda x: x[0] not in mapping, not_managed_conditions.items())):
-            remote_ap = self.site.access_points[ap]
-            join = remote_ap._build_join({},  not_managed_conditions.get(ap, []),join)
-        return join
-
-    def view(self, mapping, conditions,joins={}):
+    def view(self, mapping, conditions):
         conds = sql_and(self._process_conditions(conditions))
-        select = self.table.select(None,from_obj=self._build_join(mapping,conditions))
-        for cond in conds:
-            select.append_whereclause(cond)
-        select = select.with_only_columns([self._get_remote_column(value).label(key) for key,value in mapping.items()])
-        for line in select.execute():
+        query = Select(None,None,use_labels=True)
+        joins, sql_conditions = self._extract_joins(mapping,conditions, query)
+        for join in joins:
+            query.append_from(join)
+        for line in query.execute():
             yield self._transform_aliased_properties(line)
 
 
@@ -269,7 +289,6 @@ class AlchemyAccessPoint(AccessPoint):
 
     def get_storage_properties(self):
         """Return the list of properties used by the storage (not aliased).
-l
         """
         return self.columns.keys()
    
