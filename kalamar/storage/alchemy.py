@@ -205,7 +205,7 @@ class AlchemyAccessPoint(AccessPoint):
         else :
             op = AlchemyAccessPoint.sql_operators.get(cond.operator,"=")
             value = cond.value
-        return relative_path.corresponding_column(self.columns[cond.property_name]).op(op)(value)
+        return relative_path.corresponding_column(self._get_remote_column(cond.property_name)).op(op)(value)
 
 
 
@@ -246,30 +246,30 @@ class AlchemyAccessPoint(AccessPoint):
             remote_ap = self.site.access_points[remote_ap_name]
             remote_conditions = not_managed_conditions.pop(remote_prop_name, [])
             child_relative_path = remote_ap.table.alias()
-            firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
-            secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
-            relative_path = relative_path.join(child_relative_path,firstjoincol == secondjoincol)
+            #relative_path = child_relative_path.join(relative_path,firstjoincol == secondjoincol)
             child_joins,child_conditions = remote_ap._extract_joins(properties,
                     remote_conditions,current_select, child_relative_path)
+            firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
+            secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
+            relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
             sql_conditions.extend(child_conditions)
         for remote_prop_name, conditions in not_managed_conditions.items():
             remote_ap_name = self.remote_properties[remote_prop_name]
             remote_ap = self.site.access_points[remote_ap_name]
             child_relative_path = remote_ap.table.alias()
+            #relative_path = child_relative_path.join(relative_path,firstjoincol == secondjoincol)
+            child_joins, child_conditions = remote_ap._extract_joins({}, conditions,current_select ,child_relative_path)
             firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
             secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
-            relative_path = relative_path.join(child_relative_path,firstjoincol == secondjoincol)
-            child_joins, child_conditions = remote_ap._extract_joins({}, conditions,current_select ,child_relative_path)
+            relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
             sql_conditions.extend(child_conditions)
         joins = [relative_path]
-        print "EXTRACT JOIN CONDITIONS : " + self.name + " : " 
-        print sql_conditions
         return joins,sql_conditions
         
 
     def view(self, mapping, conditions):
         conds = sql_and(self._process_conditions(conditions))
-        query = Select(None,None,use_labels=True)
+        query = Select(None,None,from_obj=self.table,use_labels=True)
         joins, sql_conditions = self._extract_joins(mapping,conditions, query)
         for join in joins:
             query.append_from(join)
