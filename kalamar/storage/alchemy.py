@@ -92,6 +92,9 @@ class AlchemyAccessPoint(AccessPoint):
             else:
                 column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
             self.columns[name] = column
+        else :
+            self.one_to_manies[name] = props.get('foreign-property',self.name)
+
 
 
 
@@ -115,6 +118,7 @@ class AlchemyAccessPoint(AccessPoint):
         self.remote_props = {}
         self.config = config
         self.parent_ap = config.additional_properties.get('inherits',None)
+        self.one_to_manies = {}
         for name, props in config.properties.items() :
             self._make_column_from_property(name,props)
         if self.parent_ap :
@@ -191,7 +195,10 @@ class AlchemyAccessPoint(AccessPoint):
         splitted = compound_property.split(".")
         if len(splitted) == 1:
             if compound_property in self.columns: 
-                return self.columns.get(compound_property,None) 
+                return self.columns.get(compound_property,None)
+            elif compound_property in self.one_to_manies:
+                remote_ap_name = self.remote_props[splitted[0]]
+                return self.site.access_points[remote_ap_name].columns[self.one_to_manies[compound_property]]
             return self._get_parent_ap()._get_remote_column(compound_property)
         else:
             remote_ap_name = self.remote_props[splitted[0]]
@@ -249,8 +256,12 @@ class AlchemyAccessPoint(AccessPoint):
             #relative_path = child_relative_path.join(relative_path,firstjoincol == secondjoincol)
             child_joins,child_conditions = remote_ap._extract_joins(properties,
                     remote_conditions,current_select, child_relative_path)
-            firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
-            secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
+            if remote_prop_name in self.one_to_manies:
+                firstjoincol = child_relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
+                secondjoincol = relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
+            else : 
+                firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
+                secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
             relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
             sql_conditions.extend(child_conditions)
         for remote_prop_name, conditions in not_managed_conditions.items():
@@ -259,8 +270,12 @@ class AlchemyAccessPoint(AccessPoint):
             child_relative_path = remote_ap.table.alias()
             #relative_path = child_relative_path.join(relative_path,firstjoincol == secondjoincol)
             child_joins, child_conditions = remote_ap._extract_joins({}, conditions,current_select ,child_relative_path)
-            firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
-            secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
+            if remote_prop_name in self.one_to_manies:
+                firstjoincol = child_relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
+                secondjoincol = relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
+            else : 
+                firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
+                secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
             relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
             sql_conditions.extend(child_conditions)
         joins = [relative_path]
