@@ -337,10 +337,13 @@ class AlchemyAccessPoint(AccessPoint):
                 kwargs = self._convert_item_to_table_dict(item,ffunction = lambda name,value : name not in self.pks)
                 whereclause = self._where_clause_from_pk(item)
                 update = self.table.update()
-                update.where(whereclause).values(**kwargs).execute()
+                rp = update.where(whereclause).values(**kwargs).execute()
+                if rp.rowcount == 0:
+                    raise 
                 trans.commit()
-            except:
+            except :
                 trans.rollback()
+                raise 
         finally:
             conn.close()
             
