@@ -142,7 +142,8 @@ class AlchemyAccessPoint(AccessPoint):
                         remote_ap = self.site.access_points[self.remote_properties[name]]
                         remote_pk = remote_ap.primary_keys
                         #TODO : Consider the case when a remote_ap has more than one primary key.
-                        temp[name] = item[name][remote_pk[0]]
+                        if item[name]:
+                           temp[name] = item[name][remote_pk[0]]
                     else:
                         temp[name] = item[name]
                 else:
