@@ -128,7 +128,7 @@ class AlchemyAccessPoint(AccessPoint):
         self.table = Table(table_name,metadata,*self.columns.values())
    
 
-    def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and y):
+    def _convert_item_to_table_dict(self, item, ffunction = lambda x,y: x and not (y == None)):
         """ Convert a kalamar item object to a dictionary for sqlalchemy.
             
             Optionnaly, a function can be provided to filter the item properties.
