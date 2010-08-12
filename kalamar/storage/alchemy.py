@@ -123,7 +123,7 @@ class AlchemyAccessPoint(AccessPoint):
             self._make_column_from_property(name,props)
         if self.parent_ap :
             for name, props in self._get_parent_ap().config.properties.items() :
-                if name not in self.property_names:
+                if name not in self.config.properties:
                     self._make_column_from_property(name, props)
         self.table = Table(table_name,metadata,*self.columns.values())
    
