@@ -226,7 +226,6 @@ class AlchemyAccessPoint(AccessPoint):
         for property_name, property_path in properties_map.items():
             splitted = property_path.split(".")
             property_root = splitted[0].replace("<",'')
-            print "PROCESSING SELECTS IN " + self.name + ": " + property_root 
             if len(splitted) == 1:
                 selected_column = relative_path.corresponding_column(self.columns[property_root])
                 selected_column = selected_column.label(property_name)
@@ -266,7 +265,6 @@ class AlchemyAccessPoint(AccessPoint):
             else : 
                 firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
                 secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
-            print "JOINING ON : " + self.name + " AND " + remote_ap_name + " : OUTER ? " + str(isOuter)
             if isOuter:
                 relative_path = relative_path.outerjoin(child_joins[0],firstjoincol == secondjoincol)
             else : 
