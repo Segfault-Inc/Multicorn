@@ -138,7 +138,7 @@ class AlchemyAccessPoint(AccessPoint):
             if ffunction(name,item[name]):
                 if name in self.remote_properties:
                     temp[name] = item[name]
-                    if item.is_loaded(name):
+                    if item.is_loaded(name) and isinstance(item[name],Item):
                         remote_ap = self.site.access_points[self.remote_properties[name]]
                         remote_pk = remote_ap.primary_keys
                         #TODO : Consider the case when a remote_ap has more than one primary key.
