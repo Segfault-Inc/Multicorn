@@ -315,8 +315,8 @@ class AlchemyAccessPoint(AccessPoint):
             conds = []
             remoteap = self.remote_properties[property_name]
             for pk,ref in zip(self.site.access_points[remoteap].primary_keys,ref):
-                conds.append(str(pk) + "=" + str(ref))
-            return self.site.open(remoteap, "/".join(conds))
+                conds.append(utils.Condition(pk, "=",ref))
+            return self.site.open(remoteap, conds)
     
     def save(self, item):
         """Update or add the item.
