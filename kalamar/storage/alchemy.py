@@ -119,8 +119,10 @@ class AlchemyAccessPoint(AccessPoint):
         self.config = config
         self.parent_ap = config.additional_properties.get('inherits',None)
         self.one_to_manies = {}
+        self.typed_properties = {}
         for name, props in config.properties.items() :
             self._make_column_from_property(name,props)
+            self.typed_properties[name] = props.get('type','remote')
         if self.parent_ap :
             for name, props in self._get_parent_ap().config.properties.items() :
                 if name not in self.config.properties:
@@ -382,4 +384,7 @@ class AlchemyAccessPoint(AccessPoint):
     
     def get_properties(self):
         return self.property_names
+    
+    def get_typed_properties(self):
+        return self.typed_properties 
 
