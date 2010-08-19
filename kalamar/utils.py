@@ -98,6 +98,21 @@ class ParserNotAvailable(ValueError):
     """Parser unavailable in parsers."""
 
 
+class ConditionList(list):
+
+    def __init__(self, operator, values = []):
+        self.operator = operator
+        list.__init__(self, values)
+
+class ConditionAnd(ConditionList):
+
+    def __init__(self, values = []):
+        ConditionList.__init__(self,"and",values)
+
+class ConditionOr(ConditionList):
+
+    def __init__(self, values = []):
+        ConditionList.__init__(self,"or",values)
 
 class Condition(object):
     """A contener for property_name, condition_operator, value."""

@@ -31,6 +31,7 @@ from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
 from sqlalchemy.sql.expression import alias,Select
 from sqlalchemy import String,Integer,Date,Numeric,DateTime
 from sqlalchemy import and_ as sql_and
+from sqlalchemy import or_ as sql_or
 
 class SqlAlchemyTypes:
  types = {"string" : String,
@@ -170,7 +171,11 @@ class AlchemyAccessPoint(AccessPoint):
             else :
                 op = AlchemyAccessPoint.sql_operators.get(cond.operator,"=")
                 value = cond.value
-            sql_conds.append(self._get_remote_column(cond.property_name).op(op)(value))
+
+            if op == '=':
+                sql_conds.append(self._get_remote_column(cond.property_name) == value)
+            else:
+                sql_conds.append(self._get_remote_column(cond.property_name).op(op)(value))
         return sql_conds
     
     def _values_to_where_clause(self,properties):
@@ -215,7 +220,10 @@ class AlchemyAccessPoint(AccessPoint):
         else :
             op = AlchemyAccessPoint.sql_operators.get(cond.operator,"=")
             value = cond.value
-        return relative_path.corresponding_column(self._get_remote_column(cond.property_name)).op(op)(value)
+        if op == '=':
+            return relative_path.corresponding_column(self._get_remote_column(cond.property_name)) == value
+        else:
+            return relative_path.corresponding_column(self._get_remote_column(cond.property_name)).op(op)(value)
 
 
 
@@ -224,7 +232,7 @@ class AlchemyAccessPoint(AccessPoint):
         joins = []
         not_managed = {}
         not_managed_conditions = {}
-        sql_conditions = []
+        sql_conditions = {}
         for property_name, property_path in properties_map.items():
             splitted = property_path.split(".")
             property_root = splitted[0].replace("<",'')
@@ -242,7 +250,7 @@ class AlchemyAccessPoint(AccessPoint):
             splitted = cond.property_name.split(".")
             if len(splitted) == 1:
                 sql_cond = (self._make_condition(cond,relative_path))
-                current_select.append_whereclause(sql_cond)
+                sql_conditions[cond] = sql_cond
             else: 
                 property_root = splitted[0]
                 if property_root in self.remote_properties:
@@ -271,7 +279,7 @@ class AlchemyAccessPoint(AccessPoint):
                 relative_path = relative_path.outerjoin(child_joins[0],firstjoincol == secondjoincol)
             else : 
                 relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
-            sql_conditions.extend(child_conditions)
+            sql_conditions.update(child_conditions)
         for remote_prop_name, conditions in not_managed_conditions.items():
             remote_ap_name = self.remote_properties[remote_prop_name]
             remote_ap = self.site.access_points[remote_ap_name]
@@ -285,19 +293,42 @@ class AlchemyAccessPoint(AccessPoint):
                 firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
                 secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
             relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
-            sql_conditions.extend(child_conditions)
+            sql_conditions.update(child_conditions)
         joins = [relative_path]
         return joins,sql_conditions
         
 
+    def _flatten(self, conditions):
+        for elem in conditions:
+            if type(elem) in (tuple, list,utils.ConditionAnd,utils.ConditionOr):
+                for i in self._flatten(elem):
+                    yield i
+            else:
+                yield elem
+
+
     def view(self, mapping, conditions):
-        conds = sql_and(self._process_conditions(conditions))
         query = Select(None,None,from_obj=self.table,use_labels=True)
-        joins, sql_conditions = self._extract_joins(mapping,conditions, query)
+        joins, sql_conditions = self._extract_joins(mapping,self._flatten(conditions), query)
         for join in joins:
             query.append_from(join)
+        if len(sql_conditions) > 0:    
+            alchemconds = self._to_alchemy_conditions(conditions, sql_conditions)
+            query.append_whereclause(alchemconds)
         for line in query.execute():
             yield self._transform_aliased_properties(line)
+
+    def _to_alchemy_conditions(self, conditions, sql_conditions):
+        if isinstance(conditions,list):
+            if len(conditions) == 1:
+                return self._to_alchemy_conditions(conditions[0],sql_conditions)
+            elif conditions.operator == "and":
+                return apply(sql_and,[self._to_alchemy_conditions(cond, sql_conditions) for cond in conditions])
+            elif conditions.operator == "or":
+                return apply(sql_or,[self._to_alchemy_conditions(cond, sql_conditions) for cond in sql_conditions])
+        else:
+            return sql_conditions[conditions]
+
 
 
     def _storage_search(self, conditions):

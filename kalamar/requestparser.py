@@ -31,7 +31,7 @@ import datetime
 #from time import sleep
 
 from kalamar import iso8601, utils
-from kalamar.utils import Condition
+from kalamar.utils import Condition,ConditionAnd
 
 
 
@@ -47,7 +47,7 @@ def parse(data):
     []
     
     """
-    return list(iparse(data))
+    return ConditionAnd(iparse(data))
 
 
 

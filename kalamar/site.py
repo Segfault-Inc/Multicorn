@@ -90,17 +90,27 @@ class Site(object):
         [Condition(None, None, 1)]
 
         """
+        if isinstance(request, tuple):
+            return utils.ConditionOr([Site.parse_request(or_con) for or_con in request])
+        if isinstance(request, list):
+            return utils.ConditionAnd([Site.parse_request(cond) for cond in request])
         if isinstance(request, dict):
-            return [utils.Condition(key, None, value)
-                    for key, value in request.items()]
+            conditionArray = utils.ConditionAnd()
+            for key,value in request.items():
+                if isinstance(value,tuple):
+                    conditionArray.append(utils.Condition(key,utils.operators[value[0]],value[1]))
+                else: 
+                    conditionArray.append(utils.Condition(key,None,value))
+            return conditionArray
         elif isinstance(request, int) or isinstance(request, float):
             return requestparser.parse(str(request))
         elif isinstance(request, basestring):
             return requestparser.parse(request)
+        elif isinstance(request, utils.Condition):
+            return request
         else:
-            return [value if isinstance(value, utils.Condition)
-                    else utils.Condition(None, None, value)
-                    for value in request]
+            utils.Condition(None, None, request)
+                    
 
 
 
