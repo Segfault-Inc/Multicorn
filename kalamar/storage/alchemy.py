@@ -68,7 +68,7 @@ class AlchemyAccessPoint(AccessPoint):
         metadata = AlchemyAccessPoint.metadatas.get(url,None)
         if not metadata:
             #Constructs an engine using the url, stripping out the alchemy- part
-            engine = create_engine(url, echo=True)
+            engine = create_engine(url)
             metadata = MetaData()
             metadata.bind = engine
             AlchemyAccessPoint.metadatas[url] = metadata

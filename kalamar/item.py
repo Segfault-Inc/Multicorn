@@ -97,7 +97,7 @@ class Item(object):
     def __setitem__(self, key, value):
         """Set the item ``key`` property to ``value``."""
         self.loaded_properties[key] = value
-        self.storage_modified = True
+        self._modified = True
 
     def __eq__(self, item):
         """Test if ``item`` is the same as this item."""
@@ -219,7 +219,7 @@ class Item(object):
         been changed since its creation.
 
         """
-        return self.storage_modified or self.parser_modified
+        return self._modified
     
     @property
     def filename(self):
@@ -287,7 +287,7 @@ class Item(object):
     def _get_parent(self):
         return self[self._access_point.parent_attr]
     
-    def _get_parent(self):
+    def _get_children(self):
         return self[self._access_point.children_attr]
 
 
@@ -375,29 +375,6 @@ class CapsuleItem(Item):
     
     subitems = property(_get_subitems, _set_subitems)
         
-    def _get_parser_modified(self):
-        """Capsule parser_modified getter.
-
-        This getter assumes that the capsule content is modified when:
-        - one subitem (parser or storage) property has been modified, or
-        - one capsule parser property has been modified.
-
-        This situation should be right for most cases, particularly if the
-        whole subitems are embedded in the capsule (movies, archives, etc.).
-
-        If the subitems are just linked (ReStructuredText, etc.), this should
-        work too but could be optimized. You can override this function by
-        ``return self._parser_modified`` in this case.
-
-        """
-        return self._parser_modified or self.subitems.modified
-
-    def _set_parser_modified(self, value):
-        """Capsule parser_modified setter."""
-        self._parser_modified = value
-        
-    parser_modified = property(_get_parser_modified, _set_parser_modified)
-
     def _load_subitems(self):
         """Load and return capsule subitems."""
         raise NotImplementedError('Abstract class')

@@ -71,6 +71,7 @@ class AccessPoint(object):
         self.properties = config.properties
         self.url = config.url
         self.basedir = config.basedir
+        self.content_attr = None
 
     def expand_syntaxic_sugar(self, conditions):
         """Expand syntactic sugar in requests.
