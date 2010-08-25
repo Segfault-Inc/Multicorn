@@ -157,7 +157,7 @@ class StaticFileResponse(Response):
         headers.extend((
             ('Content-Type', mime_type or 'application/octet-stream'),
             ('Content-Length', str(self.file_stat.st_size)),
-            ('Last-Modified', werkzeug. http_date(self.file_stat.st_mtime))))
+            ('Last-Modified', werkzeug.http_date(self.file_stat.st_mtime))))
         start_response('200 OK', headers)
         return werkzeug.wrap_file(environ, self.file_obj)
 

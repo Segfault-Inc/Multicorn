@@ -114,7 +114,7 @@ class Site(object):
 
 
 
-    def view(self, access_point, mapping, request=None):
+    def view(self, access_point, mapping, request=None, **kwArgs):
         """Returns partial items.
 
         ``mapping`` is a dict mapping the items property to custom keys in 
@@ -128,7 +128,7 @@ class Site(object):
         conditions = self.parse_request(request or [])
         master_ap = self.access_points[access_point]
         # The ap returns 
-        return master_ap.view(mapping, conditions)
+        return master_ap.view(mapping, conditions,**kwArgs)
 
 
 

@@ -29,7 +29,7 @@ from kalamar import parser
 from kalamar.storage.base import AccessPoint
 from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
 from sqlalchemy.sql.expression import alias,Select
-from sqlalchemy import String,Integer,Date,Numeric,DateTime
+from sqlalchemy import String,Integer,Date,Numeric,DateTime,Boolean
 from sqlalchemy import and_ as sql_and
 from sqlalchemy import or_ as sql_or
 
@@ -39,6 +39,7 @@ class SqlAlchemyTypes:
           "id"    : Integer,
           "integer" : Integer,
           "decimal" : Numeric,
+          "boolean" : Boolean,
           "datetime" : DateTime
          }
 
@@ -78,23 +79,26 @@ class AlchemyAccessPoint(AccessPoint):
     def _make_column_from_property(self, name, props):
         if 'foreign-ap' in props   :
             self.remote_props[name] = props['foreign-ap']
-        if props.get('relation-type',None) != 'one-to-many':
-            alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
-            column_name = props.get('dbcolumn',name)
-            self.property_names.append(name)
-            ispk = False
-            if not column_name == name :
-                self.db_mapping[column_name] = name
-            if props.get("is_primary",None) == "true":
-                self.pks.append(str(name))
-                ispk = True
-            if props.get("foreign-key",None):
-                column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
-            else:
-                column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
-            self.columns[name] = column
-        else :
-            self.one_to_manies[name] = props.get('foreign-property',self.name)
+        try :
+            if props.get('relation-type',None) != 'one-to-many':
+                alchemy_type = SqlAlchemyTypes.types.get(props.get('type',None),None)
+                column_name = props.get('dbcolumn',name)
+                self.property_names.append(name)
+                ispk = False
+                if not column_name == name :
+                    self.db_mapping[column_name] = name
+                if props.get("is_primary",None) == "true":
+                    self.pks.append(str(name))
+                    ispk = True
+                if props.get("foreign-key",None):
+                    column = Column(column_name,alchemy_type, ForeignKey(props.get("foreign-key")),key = name,primary_key=ispk)
+                else:
+                    column = Column(column_name,alchemy_type,key = name,primary_key=ispk)
+                self.columns[name] = column
+            else :
+                self.one_to_manies[name] = props.get('foreign-property',self.name)
+        except: 
+            print "A problem occured while creating config for ap %s with column %s " % (self.name, name)
 
 
 
@@ -227,18 +231,24 @@ class AlchemyAccessPoint(AccessPoint):
 
 
 
-    def _extract_joins(self, properties_map, conditions, current_select, relative_path=None ):
+    def _extract_joins(self, properties_map, conditions, current_select, relative_path=None, order_by = {} ):
         relative_path = self.table if relative_path == None else relative_path
         joins = []
         not_managed = {}
         not_managed_conditions = {}
         sql_conditions = {}
+        orders = []
         for property_name, property_path in properties_map.items():
             splitted = property_path.split(".")
             property_root = splitted[0].replace("<",'')
             if len(splitted) == 1:
                 selected_column = relative_path.corresponding_column(self.columns[property_root])
                 selected_column = selected_column.label(property_name)
+                if property_name in order_by:
+                    if order_by[property_name] == 'asc':
+                        orders.append(selected_column.asc())
+                    else :
+                        orders.append(selected_column.desc())
                 current_select.append_column(selected_column)
             else :
                 if property_root in self.remote_properties:
@@ -267,8 +277,8 @@ class AlchemyAccessPoint(AccessPoint):
             remote_conditions = not_managed_conditions.pop(remote_prop_name, [])
             child_relative_path = remote_ap.table.alias()
             #relative_path = child_relative_path.join(relative_path,firstjoincol == secondjoincol)
-            child_joins,child_conditions = remote_ap._extract_joins(properties,
-                    remote_conditions,current_select, child_relative_path)
+            child_joins,child_conditions,child_orders = remote_ap._extract_joins(properties,
+                    remote_conditions,current_select, child_relative_path, order_by=order_by)
             if remote_prop_name in self.one_to_manies:
                 firstjoincol = child_relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
                 secondjoincol = relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
@@ -280,12 +290,14 @@ class AlchemyAccessPoint(AccessPoint):
             else : 
                 relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
             sql_conditions.update(child_conditions)
+            orders.extend(child_orders)
         for remote_prop_name, conditions in not_managed_conditions.items():
             remote_ap_name = self.remote_properties[remote_prop_name]
             remote_ap = self.site.access_points[remote_ap_name]
             child_relative_path = remote_ap.table.alias()
             #relative_path = child_relative_path.join(relative_path,firstjoincol == secondjoincol)
-            child_joins, child_conditions = remote_ap._extract_joins({}, conditions,current_select ,child_relative_path)
+            child_joins, child_conditions, child_orders = remote_ap._extract_joins({}, conditions,current_select
+                    ,child_relative_path, order_by=order_by)
             if remote_prop_name in self.one_to_manies:
                 firstjoincol = child_relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
                 secondjoincol = relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
@@ -294,8 +306,9 @@ class AlchemyAccessPoint(AccessPoint):
                 secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
             relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
             sql_conditions.update(child_conditions)
+            orders.extend(child_orders)
         joins = [relative_path]
-        return joins,sql_conditions
+        return joins,sql_conditions, orders
         
 
     def _flatten(self, conditions):
@@ -307,14 +320,22 @@ class AlchemyAccessPoint(AccessPoint):
                 yield elem
 
 
-    def view(self, mapping, conditions):
+    def view(self, mapping, conditions, **kwargs):
         query = Select(None,None,from_obj=self.table,use_labels=True)
-        joins, sql_conditions = self._extract_joins(mapping,self._flatten(conditions), query)
+        joins, sql_conditions, orders = self._extract_joins(mapping,self._flatten(conditions), query, order_by =
+        kwargs.get('order_by',{}))
         for join in joins:
             query.append_from(join)
         if len(sql_conditions) > 0:    
             alchemconds = self._to_alchemy_conditions(conditions, sql_conditions)
             query.append_whereclause(alchemconds)
+        query = apply(query.order_by, orders)
+        if kwargs.get('distinct',False):
+            query = query.distinct()
+        if 'range' in kwargs :
+            start = kwargs['range'][0]
+            stop  = kwargs['range'][1] - start 
+            query = query.offset(start).limit(stop)
         for line in query.execute():
             yield self._transform_aliased_properties(line)
 
