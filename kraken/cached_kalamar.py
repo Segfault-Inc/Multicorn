@@ -109,12 +109,13 @@ class CachedKalamarSite(object):
             # TODO: test this!
             # lstrip('u') removes the leading 'u' in front of unicode values
             # rstrip('L') removes the ending 'L' behind long integers
-            request = '/'.join(['%s=%s' % (key, repr(value).lstrip('u').rstrip('L'))
-                                for key, value in request.items()])
+            string_request = '/'.join(
+                ['%s=%s' % (key, repr(value).lstrip('u').rstrip('L'))
+                 for key, value in request.items()])
         elif isinstance(request, list):
-            request = tuple(request)
+            string_request = tuple(request)
 
-        key = ('search', access_point, request)
+        key = ('search', access_point, string_request)
         if key in self._cache:
             return self._cache[key]
         else:
