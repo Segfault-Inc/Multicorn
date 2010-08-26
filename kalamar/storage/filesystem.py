@@ -38,7 +38,7 @@ from . import _generator
 
 class FileSystemStorage(AccessPoint):
     """Store items in files."""
-    protocol = 'file'
+    protocol = 'file2'
     
     def __init__(self, config):
         """Initialize the storage according to the given configuration.
@@ -61,6 +61,8 @@ class FileSystemStorage(AccessPoint):
             self.url[len(self.__class__.protocol + '://'):]))
 
         self.filename_format = config.additional_properties.get('filename_format', '*')
+        self.properties = re.findall('<(\w*)>',self.filename_format)
+        self.content_attr = config.additional_properties.get('content')
 
     def get_storage_properties(self):
         """Return a list of the properties used for the storage.
@@ -192,7 +194,6 @@ class FileSystemStorage(AccessPoint):
         r"""Transform a standard pattern with wildcards into a regexp object.
 
         >>> re_ = FileSystemStorage._pattern_to_regexp(u'[*] * - *.txt', 3)
-        >>> print re_
         ^\[(?P<path3>.*)\]\ (?P<path4>.*)\ \-\ (?P<path5>.*)\.txt$
         >>> re_ = re.compile(re_)
         >>> re_ # doctest: +ELLIPSIS
@@ -203,15 +204,16 @@ class FileSystemStorage(AccessPoint):
         >>> assert re_.match(u'[au!]... - Ô.txt') is None
 
         """
-        def regexp_parts():
-            pattern_parts = pattern.split('*')
-            yield '^'
-            yield re.escape(pattern_parts[0])
-            for num, part in enumerate(pattern_parts[1:]):
-                yield '(?P<path%i>.*)' % (first_index + num)
-                yield re.escape(part)
-            yield '$'
+        def make_named_capturing_group(m):
+            return "(?P<%s>.*)" % m.group(1)
 
+        def regexp_parts():
+            pattern_parts = re.sub('<(\w*)>',make_named_capturing_group,pattern)
+            yield '^'
+            yield pattern_parts
+            yield '$'
+        truc = ''.join(regexp_parts())
+        return truc
         return ''.join(regexp_parts())
     
     def _storage_search(self, conditions):
@@ -239,7 +241,6 @@ class FileSystemStorage(AccessPoint):
         >>> assert u'__init__' not in results
 
         """
-        print "FS SEARCH:" + str(conditions)
         conditions = list(conditions)
         
         def walk(subdir, pattern_parts, previous_properties):
@@ -265,7 +266,7 @@ class FileSystemStorage(AccessPoint):
                         if condition.property_name in properties:
                             if not condition.operator(
                                 properties[condition.property_name], 
-                                condition.value):
+                                str(condition.value)):
                                 break
                     else:
                         # All the conditions for the present properties are met
@@ -282,9 +283,8 @@ class FileSystemStorage(AccessPoint):
                             if not pattern_parts:
                                 # This is a file and the filename
                                 # pattern is completed
-                                filename = self._real_filename(path)
-                                yield properties, functools.partial(
-                                    self.get_file_content, path),[]
+                                properties[self.content_attr] = ''
+                                yield properties,"" ,[self.content_attr]
         
         return walk(u'', self.filename_pattern_parts, ())
             
@@ -299,23 +299,21 @@ class FileSystemStorage(AccessPoint):
         u'storage/fs.py'
 
         """
-        def path_parts():
-            pattern_parts = self.filename_format.split('*')
-            yield pattern_parts[0]
-            for i, part in enumerate(pattern_parts[1:]):
-                # If no property is set, give a random name instead of None
-                # Closes bug #8
-                # TODO avoid already existing numbers (``hash`` limitation)
-                yield unicode(properties[u'path%i' % (i + 1)]
-                              or abs(hash(random())))
-                yield part
+        filename = self.filename_format
+        for key in self.properties:
+            filename = filename.replace('<%s>' % key, properties[key])
+        return filename
 
-        return ''.join(path_parts())
+    def load(self, property_name, item, ref):
+
+        if property_name == self.content_attr:
+            return self.get_file_content(self._path_from_properties(item))
+
 
     def save(self, item):
         """Add/update/move an item."""
         # Storage properties must be unicode strings
-        for name in self.get_storage_properties():
+        for name in self.properties:
             if item[name] is not None:
                 item[name] = unicode(item[name])
 
@@ -324,24 +322,17 @@ class FileSystemStorage(AccessPoint):
         else:
             old_path = None
 
-        new_path = self._path_from_properties(item.raw_storage_properties)
-
+        new_path = self._path_from_properties(item)
         if item.modified:
-            if old_path and not item.parser_modified:
-                # Move only: just rename
-                self.rename(old_path, new_path)
-            else:
-                # Add or update: serialize content…
-                content = item.serialize()
-
-                if old_path and item.storage_modified:
-                    # Move and update: remove old file
-                    self.remove(item)
-
-                # Add or update: …and write it
-                file_descriptor = self.open_file(new_path, mode='wb')
-                file_descriptor.write(content)
-                file_descriptor.close()
+            #TODO: Fix the "storage_modified" mess
+            if old_path:
+                self.remove(item)
+            # Add or update: serialize content…
+            content = item[self.content_attr]
+            # Add or update: …and write it
+            file_descriptor = self.open_file(new_path, mode='wb')
+            file_descriptor.write(content)
+            file_descriptor.close()
 
     def remove(self, item):
         """Remove ``item`` from the backend storage."""
@@ -351,7 +342,7 @@ class FileSystemStorage(AccessPoint):
     def filename_for(self, item):
         """Return the real filename for ``item``."""
         return self._real_filename(self._path_from_properties(
-            item.raw_storage_properties))
+            item.storage_properties))
     
     @werkzeug.cached_property
     @utils.apply_to_result(list)
@@ -420,8 +411,7 @@ class FileSystemStorage(AccessPoint):
             
         if not os.path.isfile(filename):
             return None
-
         return self._make_item(
-            functools.partial(
-                self.get_file_content, filename, real_filename=True),
-            properties)
+            None,
+            properties,
+            {self.content_attr : relative_filename})
