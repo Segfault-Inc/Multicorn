@@ -379,6 +379,7 @@ class AlchemyAccessPoint(AccessPoint):
             return self.site.search(remoteap,{remote_prop : item[self.primary_keys[0]]})
         elif property_name in self.remote_properties:
             conds = []
+            ref = filter(lambda x : x is not None, ref)
             if not ref:
                 return None
             else:
