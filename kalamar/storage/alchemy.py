@@ -381,10 +381,11 @@ class AlchemyAccessPoint(AccessPoint):
             conds = []
             if ref == None:
                 return None
-            remoteap = self.remote_properties[property_name]
-            for pk,ref in zip(self.site.access_points[remoteap].primary_keys,ref):
-                conds.append(utils.Condition(pk, "=",ref))
-            return self.site.open(remoteap, conds)
+            else:
+                remoteap = self.remote_properties[property_name]
+                for pk,ref in zip(self.site.access_points[remoteap].primary_keys,ref):
+                    conds.append(utils.Condition(pk, "=",ref))
+                return self.site.open(remoteap, conds)
 
     
     def save(self, item):
