@@ -29,18 +29,20 @@ from kalamar import parser
 from kalamar.storage.base import AccessPoint
 from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
 from sqlalchemy.sql.expression import alias,Select
-from sqlalchemy import String,Integer,Date,Numeric,DateTime,Boolean
+from sqlalchemy import String,Integer,Date,Numeric,DateTime,Boolean,Unicode
 from sqlalchemy import and_ as sql_and
 from sqlalchemy import or_ as sql_or
 
 class SqlAlchemyTypes:
- types = {"string" : String,
+ types = {"string" : Unicode,
           "date"   : Date,
           "id"    : Integer,
           "integer" : Integer,
           "decimal" : Numeric,
           "boolean" : Boolean,
-          "datetime" : DateTime
+          "datetime" : DateTime,
+          "password" : String,
+          "email"    : String
          }
 
 
@@ -130,6 +132,7 @@ class AlchemyAccessPoint(AccessPoint):
             self.typed_properties[name] = props.get('type','remote')
         if self.parent_ap :
             for name, props in self._get_parent_ap().config.properties.items() :
+                self.typed_properties[name] = props.get('type','remote')
                 if name not in self.config.properties:
                     self._make_column_from_property(name, props)
         self.table = Table(table_name,metadata,*self.columns.values())
