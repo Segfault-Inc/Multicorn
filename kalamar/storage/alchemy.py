@@ -373,12 +373,17 @@ class AlchemyAccessPoint(AccessPoint):
 
 
     def load(self,property_name, item, ref):
-        if property_name in self.remote_properties:
+        if property_name in self.one_to_manies:
+            remoteap = self.remote_properties[property_name]
+            remote_prop = self.one_to_manies[property_name]
+            return self.site.search(remoteap,{remote_prop : item[self.primary_keys[0]]})
+        elif property_name in self.remote_properties:
             conds = []
             remoteap = self.remote_properties[property_name]
             for pk,ref in zip(self.site.access_points[remoteap].primary_keys,ref):
                 conds.append(utils.Condition(pk, "=",ref))
             return self.site.open(remoteap, conds)
+
     
     def save(self, item):
         """Update or add the item.
