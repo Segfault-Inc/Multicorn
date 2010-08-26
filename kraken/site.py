@@ -34,8 +34,8 @@ import werkzeug
 from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 
 import koral
+import kalamar
 from kraken import utils
-from kraken.cached_kalamar import CachedKalamarSite
 
 
 
@@ -83,7 +83,7 @@ class Site(object):
         """TODO docstring."""
         request = utils.Request(environ, self.secret_key)
         request.koral = self.koral_site
-        request.kalamar = CachedKalamarSite(self.kalamar_site)
+        request.kalamar = kalamar.site.Site(self.kalamar_site)
         request.kraken = self
         request.template_response = lambda *args, **kwargs:\
             self.template_response(request, *args, **kwargs)
@@ -224,8 +224,6 @@ class Site(object):
             """TODO docstring."""
 
         site = FakeSite()
-        # request.kalamar is a CachedKalamarSite
-        # use the same instance so that they share the cache
         site.kalamar = request.kalamar
         site.koral = self.koral_site
         site.kraken = self
