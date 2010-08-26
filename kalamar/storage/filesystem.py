@@ -38,7 +38,7 @@ from . import _generator
 
 class FileSystemStorage(AccessPoint):
     """Store items in files."""
-    protocol = 'file2'
+    protocol = 'file'
     
     def __init__(self, config):
         """Initialize the storage according to the given configuration.
