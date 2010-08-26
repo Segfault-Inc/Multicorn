@@ -83,7 +83,7 @@ class Site(object):
         """TODO docstring."""
         request = utils.Request(environ, self.secret_key)
         request.koral = self.koral_site
-        request.kalamar = kalamar.site.Site(self.kalamar_site)
+        request.kalamar = self.kalamar_site
         request.kraken = self
         request.template_response = lambda *args, **kwargs:\
             self.template_response(request, *args, **kwargs)
