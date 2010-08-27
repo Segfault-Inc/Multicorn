@@ -206,7 +206,7 @@ class FileSystemStorage(AccessPoint):
         """
         def make_named_capturing_group(m):
             return "(?P<%s>.*)" % m.group(1)
-        pattern = re.escape(pattern)
+        pattern = re.escape(pattern).replace("\\<", "<").replace("\\>", ">")
         def regexp_parts():
             pattern_parts = re.sub('\<(\w*)\>',make_named_capturing_group,pattern)
             yield '^'
