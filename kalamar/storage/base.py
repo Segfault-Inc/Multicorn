@@ -216,7 +216,7 @@ class AccessPoint(object):
         # 5. filter the items yielded with conditions applying to the parser
         # 6. yield filtered items
         oldconds = conditions 
-        conditions = list(self.expand_syntaxic_sugar(conditions))
+        conditions = utils.ConditionAnd(self.expand_syntaxic_sugar(conditions))
         for properties, opener, lazy_properties in self._storage_search(conditions):
             item = self._make_item(opener, properties, lazy_properties)
             yield item

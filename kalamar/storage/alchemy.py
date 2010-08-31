@@ -357,11 +357,15 @@ class AlchemyAccessPoint(AccessPoint):
 
     def _storage_search(self, conditions):
         """Return a sequence of tuple (properties, file_opener)"""
-        conds = sql_and(self._process_conditions(conditions))
-        select = self.table.select()
-        for cond in conds:
-            select.append_whereclause(cond)
-        result = select.execute()
+        query = Select(None,None,from_obj=self.table,use_labels=True)
+        mapping = dict([(name,col.name) for name,col in self.columns.items() ])
+        joins, sql_conditions, orders = self._extract_joins(mapping,self._flatten(conditions), query)
+        for join in joins:
+            query.append_from(join)
+        if len(sql_conditions) > 0:    
+            alchemconds = self._to_alchemy_conditions(conditions, sql_conditions)
+            query.append_whereclause(alchemconds)
+        result = query.execute()
         for line in result:
             yield (self._transform_aliased_properties(line),"",self.remote_properties)
 
