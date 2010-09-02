@@ -66,12 +66,13 @@ class AlchemyAccessPoint(AccessPoint):
         """Returns a sql-alchemy metadata, associated with an engine
         
         """
-        url = self.config.url.split('?')[0].split('-')[1] 
+        url = self.config.url.split('?')[0].split('-')[1]
+        echo = self.config.debug
         #TODO: ensure this is thread-safe  
         metadata = AlchemyAccessPoint.metadatas.get(url,None)
         if not metadata:
             #Constructs an engine using the url, stripping out the alchemy- part
-            engine = create_engine(url)
+            engine = create_engine(url, echo=echo)
             metadata = MetaData()
             metadata.bind = engine
             AlchemyAccessPoint.metadatas[url] = metadata
@@ -131,10 +132,13 @@ class AlchemyAccessPoint(AccessPoint):
             self._make_column_from_property(name,props)
             self.typed_properties[name] = props.get('type','remote')
         if self.parent_ap :
-            for name, props in self._get_parent_ap().config.properties.items() :
+            parent_props = dict(self._get_parent_ap().config.properties)
+            for name, props in parent_props.items() :
                 self.typed_properties[name] = props.get('type','remote')
                 if name not in self.config.properties:
                     self._make_column_from_property(name, props)
+            parent_props.update(self.config.properties)
+            self.config.properties = parent_props
         self.table = Table(table_name,metadata,*self.columns.values())
    
 

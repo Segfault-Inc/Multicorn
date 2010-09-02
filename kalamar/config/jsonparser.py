@@ -15,5 +15,6 @@ def parse(config_filename):
         name = config.pop("name")
         parser = config.pop("parser") if "parser" in config else None
         properties = config.pop("properties")
-        configs.append(Config(url, name, properties, config, parser=parser, basedir=basedir))
+        debug = config.pop("debug",False)
+        configs.append(Config(url, name, properties, config, parser=parser, basedir=basedir,debug=debug))
     return configs
