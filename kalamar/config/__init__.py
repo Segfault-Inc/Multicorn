@@ -5,7 +5,7 @@ class Config(object):
     """Data class containing the configuration for a calamar access-point.""" 
 
     def __init__(self, url, name,properties,additional_properties, parser=None, basedir=None,
-            default_encoding="utf-8", debug=False):
+            default_encoding="utf-8", debug=False,label_attr=None):
         self.url = url
         self.site = None
         self.name = name
@@ -15,6 +15,7 @@ class Config(object):
         self.basedir = basedir
         self.default_encoding = default_encoding
         self.debug = debug
+        self.label_attr = label_attr
 
     def __str__(self):
         strvalue = "Config " + self.name + " : \n" 

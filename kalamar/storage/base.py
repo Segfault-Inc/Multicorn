@@ -72,6 +72,7 @@ class AccessPoint(object):
         self.url = config.url
         self.basedir = config.basedir
         self.content_attr = None
+        self.label_attr = config.label_attr
 
     def expand_syntaxic_sugar(self, conditions):
         """Expand syntactic sugar in requests.
@@ -312,3 +313,4 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError('Abstract method')
+

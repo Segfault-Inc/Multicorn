@@ -133,6 +133,8 @@ class AlchemyAccessPoint(AccessPoint):
             self.typed_properties[name] = props.get('type','remote')
         if self.parent_ap :
             parent_props = dict(self._get_parent_ap().config.properties)
+            if self.label_attr is None and self._get_parent_ap().label_attr is not None:
+                self.label_attr = self._get_parent_ap().label_attr
             for name, props in parent_props.items() :
                 self.typed_properties[name] = props.get('type','remote')
                 if name not in self.config.properties:
