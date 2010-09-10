@@ -42,7 +42,8 @@ class SqlAlchemyTypes:
           "boolean" : Boolean,
           "datetime" : DateTime,
           "password" : String,
-          "email"    : String
+          "email"    : String,
+          "currency" : Numeric
          }
 
 
