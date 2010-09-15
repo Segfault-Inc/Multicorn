@@ -40,3 +40,48 @@ class AccessPoint(object):
         self.properties = config["properties"]
         self.url = config["url"]
         self.basedir = config.get("basedir", "")
+	
+	def open(self, access_point_name, request={}, default=None):
+		"""Return the item in access_point matching request.
+        
+		"""
+		raise NotImplementedError('Abstract method')
+
+	def search(self, access_point_name, request=None):
+		"""Generate a sequence of every item matching request.
+
+		"""
+		raise NotImplementedError('Abstract method')
+
+	def view(self, access_point_name, request={}, mapping={}, interval=(0, -1), order=name|tuple(name)|tuple(tuple(name,order))):
+		"""Generate a sequence of every item matching request and mapping.
+
+		"""
+		#for item in self.site.search(self.name, ___):
+			
+		
+
+	def delete(self, request):
+		"""Delete the item from the backend storage.
+		
+		This method has to be overridden.
+
+		"""
+		raise NotImplementedError('Abstract method')
+	
+	def create(self, access_point_name, properties={}):
+		"""Create a new item.
+		
+		"""
+		item = Item(self, properties)
+		return item
+
+	def save(self, item):
+		"""Update or add the item.
+
+        This method has to be overriden.
+
+        """
+        raise NotImplementedError('Abstract method')
+	
+
