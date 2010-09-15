@@ -1,22 +1,18 @@
 import os
+import decimal
+import io
 try:
     import json
 except ImportError:
     import simplejson as json
 
 
-def prop_types = [
-    "string",
-    "integer",
-    "float",
-    "decimal",
-    "stream"
-]
+PROPERTY_TYPES = set(str, int, float, decimal.Decimal, io.IOBase)
 
 class Property(object):
-
-    def __init__(self,name, property_type, identity=False, auto=False, default=None, mandatory=False, relation=None,
-            remote_property=None):
+    def __init__(self, name, property_type, identity=False, auto=False,
+                 default=None, mandatory=False, relation=None,
+                 remote_property=None):
         self.name = name
         self.prop_type = prop_type
         self.identity = identity
@@ -30,8 +26,7 @@ class Property(object):
 class Config(object):
     """Data class containing the configuration for a calamar access-point.""" 
     def __init__(self, url, name, properties, additional_properties,
-                 default_encoding="utf-8",
-                 debug=False, label_attr=None):
+                 default_encoding="utf-8", debug=False, label_attr=None):
         self.url = url
         self.site = None
         self.name = name
@@ -60,9 +55,10 @@ def parse(config_filename):
     for config in jsonconfig:
         url = config.pop("url")
         name = config.pop("name")
-        properties = dict([(prop_name,Property(prop_name, **prop_values)) \
-            for prop_name,prop_values in config.pop("properties").items()])
-        label = config.pop("label",None)
+        properties = dict(
+            (prop_name,Property(prop_name, **prop_values)) 
+            for prop_name,prop_values in config.pop("properties").items())
+        label = config.pop("label", None)
         yield Config(
             url, name, properties, config, basedir, debug, label)
 
