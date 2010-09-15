@@ -55,7 +55,7 @@ class Request(object):
             self.right_operand)
 
     def walk(self, func, values=None):
-        """ Returns a list containing the result from applying func to each child """
+        """ Returns a dict containing the result from applying func to each child """
         valus = values or {}
         for branch in (self.left_operand, self.right_operand):
             values = branch.walk(func,values)
@@ -109,9 +109,11 @@ class Condition(Request):
     def value(self):
         return self.right_operand
     
-    def walk(self, func, values=[]):
-        """ Returns a list containing the result from applying func to each child """
-        return func(self)
+    def walk(self, func, values=None):
+        """ Returns a dict containing the result from applying func to each child """
+        values = values or {}
+        values[self] = func(self)
+        return values
 
 
 class And(Request):
