@@ -5,16 +5,37 @@ except ImportError:
     import simplejson as json
 
 
+def prop_types = [
+    "string",
+    "integer",
+    "float",
+    "decimal",
+    "stream"
+]
+
+class Property(object):
+
+    def __init__(self,name, property_type, identity=False, auto=False, default=None, mandatory=False, relation=None,
+            remote_property=None):
+        self.name = name
+        self.prop_type = prop_type
+        self.identity = identity
+        self.auto = auto
+        self.default = default
+        self.mandatory = mandatory
+        self.relation = relation
+        self.remote_property = remote_property
+
+
 class Config(object):
     """Data class containing the configuration for a calamar access-point.""" 
     def __init__(self, url, name, properties, additional_properties,
-                 parser=None, basedir=None, default_encoding="utf-8",
+                 default_encoding="utf-8",
                  debug=False, label_attr=None):
         self.url = url
         self.site = None
         self.name = name
         self.properties = properties
-        self.additional_properties = additional_properties 
         self.parser = parser
         self.basedir = basedir
         self.default_encoding = default_encoding
@@ -27,14 +48,10 @@ class Config(object):
         strvalue += "\t basedir: %s\n" % self.basedir
         strvalue += "\t parser: %s\n" % self.parser
         strvalue += "\t default_encoding: %s\n" % self.default_encoding
-        strvalue += "\t additional_props:\n"
-        for prop in self.additional_properties:
-            strvalue += "\t\t %s = %s\n" % (prop, self.additional_properties[prop])
         strvalue += "\t managed_properties:\n"
         for prop in self.properties:
             strvalue += "\t %s = %s\n" % (prop, self.properties[prop])
         return strvalue
-
 
 def parse(config_filename):
     """Parse a kalamar config file in Json format."""
@@ -43,10 +60,9 @@ def parse(config_filename):
     for config in jsonconfig:
         url = config.pop("url")
         name = config.pop("name")
-        parser = config.pop("parser") if "parser" in config else None
-        properties = config.pop("properties")
-        debug = config.pop("debug", False)
-        label_attr = config.pop("label_attr", None)
+        properties = dict([(prop_name,Property(prop_name, **prop_values)) \
+            for prop_name,prop_values in config.pop("properties").items()])
+        label = config.pop("label",None)
         yield Config(
-            url, name, properties, config, parser, basedir, debug, label_attr)
+            url, name, properties, config, basedir, debug, label)
 
