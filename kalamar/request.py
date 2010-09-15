@@ -22,7 +22,7 @@ Kalamar request objects.
 
 import operator
 import re
-from itertools import group_by
+from itertools import groupby
 
 OPERATORS = {
     "=": operator.eq,
@@ -31,15 +31,16 @@ OPERATORS = {
     ">=": operator.ge,
     "<": operator.lt,
     "<=": operator.le,
-    "~=": re_match,
-    "~!=": re_not_match,
+#    "~=": re_match,
+#    "~!=": re_not_match,
     "AND": operator.and_,
     "OR": operator.or_}
-REVERSE_OPERATORS = dict((value, key) for key, value in operators.items())
+REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
 
 class OperatorNotAvailable(ValueError):
     """Operator unavailable."""
+
 
 class Request(object):
     """Container for ``(left_operand, operator, right_operand)``."""
@@ -50,14 +51,15 @@ class Request(object):
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
-            self.__class__.__name__, self.property_name, self.operator,
-            self.value)
+            self.__class__.__name__, self.left_operand, self.operator,
+            self.right_operand)
 
-    def walk(self, func, values={}):
-        """ Returns a dict containing the result from applying func to each child """
-        values[self] = func(self)
+    def walk(self, func, values=None):
+        """ Returns a list containing the result from applying func to each child """
+        valus = values or {}
+        for branch in (self.left_operand, self.right_operand):
+            values = branch.walk(func,values)
         return values
-
 
     def test(self, item):
         """Return if :prop:`item` matches the request."""
@@ -68,26 +70,28 @@ class Request(object):
         return self.operator(item[left_operand], right_operand)
 
     @classmethod
-    def parse_request(cls, request):
+    def parse(cls, request):
         """Convert a ``request`` to a Request object.
 
         TODO: describe syntaxic sugar.
         
-        >>> Site.parse_request({u'a': 1, u'b': None})
+        >>> Request.parse({u'a': 1, u'b': 'foo'})
         ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [Condition(u'a', None, 1),
-         Condition(u'b', None, None)]
-
+        And(Condition(u'b', '=', 'foo'), <built-in function and_>, 
+            Condition(u'a', '=', 1))
         """
-        if hasattr(request, 'items') and callable(request.items):
-            # if it looks like a dict, it is a dict
+        if not request:
+            # empty request
+            return And()
+        elif hasattr(request, 'items') and callable(request.items):
+            # If it looks like a dict and smell like a dict, it is a dict.
             return And(*(Condition(key, '=', value) 
                          for key, value in request.items()))
         elif hasattr(request, 'test') and callable(request.test):
-            # if it looks like a Request …
+            # If it looks like a Request …
             return request
         else:
-            # assume a 3-tuple: short for a single condition
+            # Assume a 3-tuple: short for a single condition
             property_name, operator, value = request
             return Condition(property_name, operator, value)
 
@@ -105,23 +109,12 @@ class Condition(Request):
     def value(self):
         return self.right_operand
     
-class CompositeRequest(Request):
-    """Abstract class for composite requests, such as "AND" and "OR" 
-    
-    Both operands should be Requests
-    
-    """ 
-    def walk(self, func, values={}):
-        """ Returns a list containing the result from applying func to each leaf node """
-        for branch in (self.left_operand, self.right_operand):
-            values.update(branch.walk(func,values)
-        values[self] = func(self)
-        return values
+    def walk(self, func, values=[]):
+        """ Returns a list containing the result from applying func to each child """
+        return func(self)
 
 
-
-
-class And(CompositeRequest):
+class And(Request):
     """Container for ``(first, and, (second, and, (...)))``."""
     def __init__(self, *values):
         values = list(values)
@@ -131,7 +124,7 @@ class And(CompositeRequest):
         else:
             self.right_operand = values.pop()
 
-class Or(CompositeRequest):
+class Or(Request):
     """Container for ``(first, or, (second, or, (...)))``."""
     def __init__(self, *values):
         values = list(values)
@@ -141,22 +134,17 @@ class Or(CompositeRequest):
         else:
             self.right_operand = values.pop()
 
-class View_Request(object):
-    """ Class storing the information needed for a view 
+class ViewRequest(object):
+    """Class storing the information needed for a view.
     
-        The following attributes are available : 
-            - aliases : all aliases as defined when calling view
-            - my_aliases : aliases concerning the access_point directly
-                (i.e., the path consists of only a property from the ap)
-            - joins: a dict mapping property name to a boolean indicating 
-                wether the join should be outer or not (True: outer join, False: inner join)
-            _ subviews : a dict mapping property_names to View_Request objects
-                
-        
+    :attribute aliases: all aliases as defined when calling view
+    :attribute my_aliases: aliases concerning the access_point directly
+      (i.e., the path consists of only a property from the ap)
+    :attribute joins: a dict mapping property name to a boolean indicating 
+      wether the join should be outer or not (True: outer, False: inner)
+    :attribute subviews: a dict mapping property_names to View_Request objects
     
     """
-
-    
     def __init__(self,access_point, aliases, request):
         #Initialize instance attributes
         self.aliases = aliases
@@ -184,6 +172,14 @@ class View_Request(object):
 
 	def _classify(self):
         """ Build subviews from the aliases and request """
+            for key, value in aliases.items():
+                if "." not in val:
+                    self.my_aliases[key] = value
+                else:
+                    self._other_aliases[key] = value
+
+    def classify(self):
+        """Build subviews from the aliases and request."""
         self.subviews = {}
         self.joins = {}
         for alias, property_path in self._other_aliases.items():
@@ -195,7 +191,7 @@ class View_Request(object):
             if root not in self.subviews:
                 access_point = self.access_point.properties[root].access_point
                 subview = View_Request(access_point, {}, None)
-            else : 
+            else:
                 subview = self.subviews[root]
             subview.aliases[alias] = splitted_path[1:].join(".")
             self.joins[root] = is_outer_join 
