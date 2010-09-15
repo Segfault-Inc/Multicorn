@@ -1,0 +1,4 @@
+#!/bin/sh
+cd $(dirname $0)
+nosetests --with-doctest -d kalamar
+
