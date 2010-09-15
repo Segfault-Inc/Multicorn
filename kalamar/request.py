@@ -61,12 +61,32 @@ class Request(object):
             if isinstance(self.right_operand, Request) else self.right_operand
         return self.operator(item[left_operand], right_operand)
 
+    @classmethod
+    def parse_request(cls, request):
+        """Convert a ``request`` to a Request object.
 
-	
+        TODO: describe syntaxic sugar.
+        
+        >>> Site.parse_request({u'a': 1, u'b': None})
+        ...                                  # doctest: +NORMALIZE_WHITESPACE
+        [Condition(u'a', None, 1),
+         Condition(u'b', None, None)]
+
+        """
+        if hasattr(request, 'items') and callable(request.items):
+            # if it looks like a dict, it is a dict
+            return And(*(Condition(key, '=', value) 
+                         for key, value in request.items()))
+        elif hasattr(request, 'test') and callable(request.test):
+            # if it looks like a Request …
+            return request
+        else:
+            # assume a 3-tuple: short for a single condition
+            property_name, operator, value = request
+            return Condition(property_name, operator, value)
+
 
 class View_Request(object):
-
-
 	def _process_aliases(self, aliases):
 		my_aliases = {}
 		other_aliases = {}
@@ -92,20 +112,25 @@ class View_Request(object):
 	def classify(aliases, request):
 		
 		return subviews
-		
-		 
+
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
     def __init__(self, property_name, operator, value):
         super(Condition, self).__init__(property_name, operator, value)
-        self.property_name = property_name
-        self.value = value
+    
+    @property
+    def property_name(self):
+        return self.left_operand
+    
+    @property
+    def value(self):
+        return self.right_operand
     
 
 class And(Request):
     """Container for ``(first, and, (second, and, (...)))``."""
-    def __init__(self, values):
+    def __init__(self, *values):
         values = list(values)
         super(And, self).__init__(values.pop(), OPERATORS["AND"], None)
         if len(values) > 1:
@@ -116,10 +141,11 @@ class And(Request):
 
 class Or(Request):
     """Container for ``(first, or, (second, or, (...)))``."""
-    def __init__(self, values):
+    def __init__(self, *values):
         values = list(values)
         super(Or, self).__init__(values.pop(), OPERATORS["OR"], None)
         if len(values) > 1:
             self.right_operand = Or(values)
         else:
             self.right_operand = values.pop()
+

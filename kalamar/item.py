@@ -22,8 +22,7 @@ Base classes to create kalamar items.
 
 import collections
 from werkzeug import MultiDict
-    
-from kalamar import parser, utils
+from werkzeug.contrib.sessions import ModificationTrackingDict
 
 
 Identity = collections.namedtuple('Identity', 'access_point, conditions')

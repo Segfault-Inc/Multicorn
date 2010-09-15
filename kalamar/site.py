@@ -25,10 +25,7 @@ Create one for each independent site with its own configuration.
 import os
 import warnings
 
-from kalamar.storage import base
-from kalamar.config import baseparser
-from kalamar import Item, requestparser, utils
-
+from kalamar import Item
 
 
 class Site(object):
@@ -45,74 +42,15 @@ class Site(object):
     class FileNotFoundError(Exception):
         """File not found on filesystem."""
     
-    def __init__(self, configs, fail_on_inexistent_parser=True):
-        """Create a kalamar site from a configuration file.
-        
-
-        """
-        self.access_points = {}
-        for config in configs:
-            config.site = self
-            if fail_on_inexistent_parser:
-                access_point = base.AccessPoint.from_url(config)
-            else:
-                try:
-                    access_point = base.AccessPoint.from_url(config)
-                except utils.ParserNotAvailable, exception:
-                    warnings.warn('The access point %r was ignored. (%s)' %
-                                  (config.name, exception.args[0]))
-                    continue
-            self.access_points[config.name] = access_point
-                        
-        # If no configuration file, no access_point !
+    def __init__(self):
+        self.access_points = set()
     
-    @classmethod
-    def parse_request(cls, request):
-        """Convert a ``request`` to a list of Condition objects.
-
-        If ``request`` is a string, parse it with our query language.
-        If it’s a number, parse its string representation.
-        If it’s a dict, assume equality for all operators.
-        Otherwise, assume it’s a list of values
-        
-        >>> Site.parse_request(u"/'1'/b='42'/c>='3'/")
-        ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [Condition(None, None, u'1'),
-         Condition(u'b', <built-in function eq>, u'42'),
-         Condition(u'c', <built-in function ge>, u'3')]
-
-        >>> Site.parse_request({u'a': 1, u'b': None})
-        ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [Condition(u'a', None, 1),
-         Condition(u'b', None, None)]
-
-        >>> Site.parse_request(1)            # doctest: +NORMALIZE_WHITESPACE
-        [Condition(None, None, 1)]
-
-        """
-        if isinstance(request, tuple):
-            return utils.ConditionOr([cls.parse_request(or_con) for or_con in request])
-        if isinstance(request, list):
-            return utils.ConditionAnd([cls.parse_request(cond) for cond in request])
-        if isinstance(request, dict):
-            conditionArray = utils.ConditionAnd()
-            for key,value in request.items():
-                if isinstance(value,tuple):
-                    conditionArray.append(utils.Condition(key,utils.operators[value[0]],value[1]))
-                else: 
-                    conditionArray.append(utils.Condition(key,None,value))
-            return conditionArray
-        elif isinstance(request, int) or isinstance(request, float):
-            return requestparser.parse(str(request))
-        elif isinstance(request, basestring):
-            return requestparser.parse(request)
-        elif isinstance(request, utils.Condition):
-            return request
-        else:
-            utils.Condition(None, None, request)
-                    
-
-
+    def register(self, access_point):
+        if access_point.site:
+            # TODO: raise specific exception?
+            raise RuntimeError('Access point already registered.')
+        access_point.site = self
+        self.access_points.add(access_point)
 
     def view(self, access_point, mapping, request=None, **kwArgs):
         """Returns partial items.
@@ -226,11 +164,4 @@ class Site(object):
             item = access_point.item_from_filename(filename)
             if item and item is not NotImplemented:
                 return item
-
-
-class SiteFromConf(Site):
-
-    def __init__(self,filename=None,fail_on_inexistent_parser=True):
-        super(SiteFromConf,self).__init__(baseparser.parse(filename),fail_on_inexistent_parser)
-
 
