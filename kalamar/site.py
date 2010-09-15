@@ -23,6 +23,7 @@ Create one for each independent site with its own configuration.
 """
 
 from kalamar import Item
+from kalamar.request import Request
 
 
 class Site(object):
@@ -32,22 +33,26 @@ class Site(object):
         self.access_points = {}
     
     def register(self, name, access_point):
-        if access_point.site:
+        if hasattr(access_point, 'site'):
             # TODO: raise specific exception?
             raise RuntimeError('Access point already registered.')
+        if name in self.access_points:
+            # TODO: raise specific exception?
+            raise RuntimeError('Site already has an access point named %r.'
+                               % name)
         access_point.site = self
         self.access_points[name] = access_point
     
     def deleguate_to_acces_point(method_name, first_arg_is_a_request=False):
         if first_arg_is_a_request:
-            def wrapper(self, access_point, request, *args, **kwargs):
+            def wrapper(self, access_point, request=None, *args, **kwargs):
                 request = Request.parse(request)
                 ap = self.access_points[access_point]
                 return getattr(ap, method_name)(request, *args, **kwargs)
         else:
             def wrapper(self, access_point, *args, **kwargs):
                 ap = self.access_points[access_point]
-                return getattr(ap, method_name)(request, *args, **kwargs)
+                return getattr(ap, method_name)(*args, **kwargs)
         wrapper.__name__ = method_name
         return wrapper
     
@@ -57,6 +62,6 @@ class Site(object):
     delete_many = deleguate_to_acces_point('delete_many', True)
     save = deleguate_to_acces_point('save')
     delete = deleguate_to_acces_point('delete')
-    create_item = deleguate_to_acces_point('create_item')
+    create = deleguate_to_acces_point('create')
 
     del deleguate_to_acces_point

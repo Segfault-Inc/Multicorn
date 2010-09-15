@@ -20,6 +20,9 @@ Access point base class.
 
 """
 
+from ..item import Item
+
+
 MISSING_PARAMETER = object()
 
 class AccessPoint(object):
