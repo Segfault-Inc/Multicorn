@@ -22,8 +22,7 @@ Base classes to create kalamar items.
 
 import collections
 from werkzeug import MultiDict
-    
-from kalamar import parser, utils
+from werkzeug.contrib.sessions import ModificationTrackingDict
 
 
 Identity = collections.namedtuple('Identity', 'access_point, conditions')
@@ -67,9 +66,7 @@ class Item(MultiDict, ModificationTrackingDict):
         
         """
         if isinstance(item, Item):
-            str1 = hash(self)
-            str2 = hash(item)
-            return cmp(str1, str2)
+            return cmp(hash(self), hash(item))
         return NotImplemented
 
     def __repr__(self):
