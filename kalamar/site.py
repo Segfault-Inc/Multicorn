@@ -22,25 +22,11 @@ Create one for each independent site with its own configuration.
 
 """
 
-import os
-import warnings
-
 from kalamar import Item
 
 
 class Site(object):
     """Kalamar site."""
-    class NotOneObjectReturned(Exception):
-        """Not one object has been returned."""
-
-    class MultipleObjectsReturned(NotOneObjectReturned):
-        """More than one object have been returned."""
-
-    class ObjectDoesNotExist(NotOneObjectReturned):
-        """No object has been returned."""
-
-    class FileNotFoundError(Exception):
-        """File not found on filesystem."""
     
     def __init__(self):
         self.access_points = {}
@@ -51,112 +37,25 @@ class Site(object):
             raise RuntimeError('Access point already registered.')
         access_point.site = self
         self.access_points[name] = access_point
-
-    def view(self, access_point, mapping, request=None, **kwArgs):
-        """Returns partial items.
-
-        ``mapping`` is a dict mapping the items property to custom keys in 
-        the returned partial items. 
-
-        ``request`` follows the same format as in the search method.
-        Example:
-        site.view("access_point',{"name":"name","boss_name": "foreign.name"})
-
-        """
-        conditions = Request.parse(request)
-        master_ap = self.access_points[access_point]
-        # The ap returns 
-        return master_ap.view(mapping, conditions,**kwArgs)
-
-
-
-    def isearch(self, access_point, request=None):
-        """Return a generator of items in ``access_point`` matching ``request``.
-        
-        See ``Site.parse_request`` for the syntax of the ``request`` string.
-
-        """
-        conditions = Request.parse(request)
-        return self.access_points[access_point].search(conditions)
     
-    def search(self, access_point, request=None):
-        """List all items in ``access_point`` matching ``request``.
-        
-        See ``Site.parse_request`` for the syntax of the ``request`` string.
-
-        """
-        return list(self.isearch(access_point, request))
-    
-    def open(self, access_point, request):
-        """Return the item in access_point matching request.
-        
-        If there is no result, raise ``Site.ObjectDoesNotExist``.
-        If there are more than 1 result, raise ``Site.MultipleObjectsReturned``.
-        
-        """
-        search = iter(self.isearch(access_point, request))
-        try:
-            item = search.next()
-        except StopIteration:
-            raise self.ObjectDoesNotExist
-        
-        try:
-            search.next()
-        except StopIteration:
-            return item
+    def deleguate_to_acces_point(method_name, first_arg_is_a_request=False):
+        if first_arg_is_a_request:
+            def wrapper(self, access_point, request, *args, **kwargs):
+                request = Request.parse(request)
+                ap = self.access_points[access_point]
+                return getattr(ap, method_name)(request, *args, **kwargs)
         else:
-            raise self.MultipleObjectsReturned
-
-    @staticmethod
-    def save(item):
-        """Update or add the item."""
-        return item._access_point.save(item)
-
-    @staticmethod
-    def remove(item):
-        """Remove/delete the item from the backend storage."""
-        return item._access_point.remove(item)
+            def wrapper(self, access_point, *args, **kwargs):
+                ap = self.access_points[access_point]
+                return getattr(ap, method_name)(request, *args, **kwargs)
+        wrapper.__name__ = method_name
+        return wrapper
     
-    def remove_many(self, access_point, request):
-        """Remove all items matching the request
-        """
-        conditions = Request.parse(request)
-        return self.access_points[access_point].remove_many(conditions)
+    open = deleguate_to_acces_point('open', True)
+    search = deleguate_to_acces_point('search', True)
+    view = deleguate_to_acces_point('view', True)
+    delete = deleguate_to_acces_point('delete', True)
+    save = deleguate_to_acces_point('save')
+    create_item = deleguate_to_acces_point('create_item')
 
-    
-    def create_item(self, access_point_name, properties):
-        """Return an item.
-        
-        TODO document & test
-
-        """
-        access_point = self.access_points[access_point_name]
-        return Item.create_item(access_point, properties)
-    
-    def get_description(self, access_point_name):
-        """Return a tuple of strings or None.
-        
-        Return the keys defined in configuration or None if
-        ``access_point_name`` does not exist.
-
-        """
-        access_point = self.access_points[access_point_name]
-        return access_point.property_names
-
-    def generate_primary_values(self, access_point_name):
-        """Return dict of primary keys and values for ``access_point_name``."""
-        access_point = self.access_points[access_point_name]
-        return access_point.generate_primary_values()
-    
-    def item_from_filename(self, filename):
-        """Search all access points for an item matching ``filename``.
-
-        Return the first item found or None.
-
-        """
-        filename = os.path.normpath(filename)
-        for access_point in self.access_points.values():
-            item = access_point.item_from_filename(filename)
-            if item and item is not NotImplemented:
-                return item
-
+    del deleguate_to_acces_point

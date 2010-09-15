@@ -7,7 +7,7 @@ except ImportError:
     import simplejson as json
 
 
-PROPERTY_TYPES = set(str, int, float, decimal.Decimal, io.IOBase)
+PROPERTY_TYPES = set([str, int, float, decimal.Decimal, io.IOBase])
 
 class Property(object):
     def __init__(self, name, property_type, identity=False, auto=False,

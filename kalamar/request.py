@@ -22,7 +22,7 @@ Kalamar request objects.
 
 import operator
 import re
-from itertools import group_by
+from itertools import groupby
 
 OPERATORS = {
     "=": operator.eq,
@@ -31,11 +31,11 @@ OPERATORS = {
     ">=": operator.ge,
     "<": operator.lt,
     "<=": operator.le,
-    "~=": re_match,
-    "~!=": re_not_match,
+#    "~=": re_match,
+#    "~!=": re_not_match,
     "AND": operator.and_,
     "OR": operator.or_}
-REVERSE_OPERATORS = dict((value, key) for key, value in operators.items())
+REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
 
 class OperatorNotAvailable(ValueError):
@@ -50,8 +50,8 @@ class Request(object):
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
-            self.__class__.__name__, self.property_name, self.operator,
-            self.value)
+            self.__class__.__name__, self.left_operand, self.operator,
+            self.right_operand)
 
     def walk(self, func, values=[]):
         """ Returns a list containing the result from applying func to each child """
@@ -71,11 +71,10 @@ class Request(object):
 
         TODO: describe syntaxic sugar.
         
-        >>> Site.parse_request({u'a': 1, u'b': None})
+        >>> Request.parse({u'a': 1, u'b': 'foo'})
         ...                                  # doctest: +NORMALIZE_WHITESPACE
-        [Condition(u'a', None, 1),
-         Condition(u'b', None, None)]
-
+        And(Condition(u'b', '=', 'foo'), <built-in function and_>, 
+            Condition(u'a', '=', 1))
         """
         if not request:
             # empty request
@@ -109,7 +108,7 @@ class Condition(Request):
     def walk(self, func, values=[]):
         """ Returns a list containing the result from applying func to each child """
         for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values)
+            values.extend(branch.walk(func,values))
         return values
 
 class CompositeRequest(Request):
@@ -121,7 +120,7 @@ class CompositeRequest(Request):
     def walk(self, func, values=[]):
         """ Returns a list containing the result from applying func to each leaf node """
         for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values)
+            values.extend(branch.walk(func,values))
         return values
 
 
@@ -173,12 +172,12 @@ class View_Request(object):
 
 	def _process_aliases(self, aliases):
 		for key,val in aliases.items():
-			if not '.' val:
+			if '.' not in val:
 				self.my_aliases[key] = val
 			else:
 				self._other_aliases[key] = val
 
-	def classify(self):
+    def classify(self):
         """ Build subviews from the aliases and request """
         self.subviews = {}
         self.joins = {}
@@ -202,9 +201,9 @@ class View_Request(object):
             return root,request
 
         #Builds a dict mapping property_names to elementary Condition 
-        joins_from_request = sorted(self.request.walk(join_from_request),lambda x,y : return x)
-        joins_from_request = dict([(key, list(group)) \ 
-            for key,group in groupby(joins_from_request, lambda x,y: return x)])
+        joins_from_request = sorted(self.request.walk(join_from_request),lambda x,y : x)
+        joins_from_request = dict([(key, list(group)) 
+            for key,group in groupby(joins_from_request, lambda x,y: x)])
         for key, value in joins_from_request.items():
             self.joins[key] = True
 
