@@ -53,9 +53,11 @@ class Request(object):
             self.__class__.__name__, self.property_name, self.operator,
             self.value)
 
-    def walk(self, func, values=[]):
-        """ Returns a list containing the result from applying func to each child """
-        return func(self)
+    def walk(self, func, values={}):
+        """ Returns a dict containing the result from applying func to each child """
+        values[self] = func(self)
+        return values
+
 
     def test(self, item):
         """Return if :prop:`item` matches the request."""
@@ -103,23 +105,20 @@ class Condition(Request):
     def value(self):
         return self.right_operand
     
-    def walk(self, func, values=[]):
-        """ Returns a list containing the result from applying func to each child """
-        for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values)
-        return values
-
 class CompositeRequest(Request):
     """Abstract class for composite requests, such as "AND" and "OR" 
     
     Both operands should be Requests
     
     """ 
-    def walk(self, func, values=[]):
+    def walk(self, func, values={}):
         """ Returns a list containing the result from applying func to each leaf node """
         for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values)
+            values.update(branch.walk(func,values)
+        values[self] = func(self)
         return values
+
+
 
 
 class And(CompositeRequest):
@@ -159,12 +158,16 @@ class View_Request(object):
 
     
     def __init__(self,access_point, aliases, request):
+        #Initialize instance attributes
         self.aliases = aliases
         self.my_aliases = {}
         self._other_aliases = {}
         self.request = request
         self.subviews = {}
         self.joins = {}
+        self.orphan_request = {}
+        
+        #Process the bouzin
         self._process_aliases(aliases)
         self.classify()
 
@@ -175,7 +178,11 @@ class View_Request(object):
 			else:
 				self._other_aliases[key] = val
 
-	def classify(self):
+    def _classify_request(self):
+        
+        
+
+	def _classify(self):
         """ Build subviews from the aliases and request """
         self.subviews = {}
         self.joins = {}
@@ -195,16 +202,15 @@ class View_Request(object):
         
         def join_from_request(request):
             root = request.left_operand.split(".")[0]
-            root = root[1:] if root.startswith("<") else root
-            return root,request
+            root = root[1:] if root.startswith("<") else rooddt
+            return root
 
-        #Builds a dict mapping property_names to elementary Condition 
-        joins_from_request = sorted(self.request.walk(join_from_request),lambda x,y : return x)
+        #Builds a dict mapping property_names to elementary Conditions
+        joins_from_request = sorted(self.request.walk(join_from_request),lambda req,prop )
         joins_from_request = dict([(key, list(group)) \ 
             for key,group in groupby(joins_from_request, lambda x,y: return x)])
         for key, value in joins_from_request.items():
             self.joins[key] = True
-
         self.joins.update(dict([(key,True) for key in joins_from_request]))
 
 
