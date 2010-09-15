@@ -53,6 +53,14 @@ class Request(object):
             self.__class__.__name__, self.property_name, self.operator,
             self.value)
 
+    def test(self, item):
+        """Return if :prop:`item` matches the request."""
+        left_operand = self.left_operand.test(item) \
+            if isinstance(self.left_operand, Request) else self.left_operand
+        right_operand = self.right_operand.test(item) \
+            if isinstance(self.right_operand, Request) else self.right_operand
+        return self.operator(item[left_operand], right_operand)
+
 
 	
 
