@@ -82,7 +82,13 @@ class AccessPoint(object):
 #        managed, not_managed = self._process_manageable(mapping, request)
         raise NotImplementedError('Abstract method')
         
-    def delete(self, request):
+    def delete_many(self, request):
+        """Delete all item matching the request.
+        """
+        for item in self.search(request):
+            self.delete(item)
+    
+    def delete(self, item):
         """Delete the item from the backend storage.
         
         This method has to be overridden.

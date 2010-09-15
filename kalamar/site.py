@@ -54,8 +54,9 @@ class Site(object):
     open = deleguate_to_acces_point('open', True)
     search = deleguate_to_acces_point('search', True)
     view = deleguate_to_acces_point('view', True)
-    delete = deleguate_to_acces_point('delete', True)
+    delete_many = deleguate_to_acces_point('delete_many', True)
     save = deleguate_to_acces_point('save')
+    delete = deleguate_to_acces_point('delete')
     create_item = deleguate_to_acces_point('create_item')
 
     del deleguate_to_acces_point

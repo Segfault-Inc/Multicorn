@@ -78,7 +78,7 @@ class Request(object):
         """
         if not request:
             # empty request
-            return And() 
+            return And()
         elif hasattr(request, 'items') and callable(request.items):
             # If it looks like a dict and smell like a dict, it is a dict.
             return And(*(Condition(key, '=', value) 
