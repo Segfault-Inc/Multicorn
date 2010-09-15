@@ -52,13 +52,13 @@ class AccessPoint(object):
 
 		"""
 		raise NotImplementedError('Abstract method')
-
+	
 	def view(self, access_point_name, request={}, mapping={}, interval=(0, -1), order=name|tuple(name)|tuple(tuple(name,order))):
 		"""Generate a sequence of every item matching request and mapping.
 
 		"""
-		#for item in self.site.search(self.name, ___):
-			
+		managed, not_managed = self._process_manageable(mapping, request)
+		
 		
 
 	def delete(self, request):

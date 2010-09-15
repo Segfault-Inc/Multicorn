@@ -22,7 +22,7 @@ Kalamar request objects.
 
 import operator
 import re
-
+from itertools import group_by
 
 OPERATORS = {
     "=": operator.eq,
@@ -41,7 +41,6 @@ REVERSE_OPERATORS = dict((value, key) for key, value in operators.items())
 class OperatorNotAvailable(ValueError):
     """Operator unavailable."""
 
-
 class Request(object):
     """Container for ``(left_operand, operator, right_operand)``."""
     def __init__(self, left_operand, operator, right_operand):
@@ -54,6 +53,39 @@ class Request(object):
             self.__class__.__name__, self.property_name, self.operator,
             self.value)
 
+
+	
+
+class View_Request(object):
+
+
+	def _process_aliases(self, aliases):
+		my_aliases = {}
+		other_aliases = {}
+		for key,val in aliases.items():
+			if not '.' val:
+				my_aliases[key] = val
+			else:
+				other_aliases[key] = val
+		self.aliases = my_aliases
+		return other_aliases
+
+	def _process_request(self, request):
+		#TODO : remove what we can't manage from the request
+		other_requests = {}		
+		self.request = request
+		return other_requests
+
+	def __init__(self, aliases, request):
+		other_aliases = self._process_aliases(aliases)
+		other_requests = self._process_request(request)
+		self.subviews = self.classify(other_aliases, other_requests)
+
+	def classify(aliases, request):
+		
+		return subviews
+		
+		 
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
