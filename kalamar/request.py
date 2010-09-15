@@ -89,62 +89,6 @@ class Request(object):
             property_name, operator, value = request
             return Condition(property_name, operator, value)
 
-class View_Request(object):
-
-    def __init__(self,access_point, aliases, request):
-		self.other_aliases = {}
-        self.aliases = {}
-        self._process_aliases(aliases)
-		other_requests = self._process_request(request)
-		self.subviews = self.classify(other_aliases, other_requests)
-        self.access_point = access_point
-
-	def _process_aliases(self, aliases):
-		my_aliases = {}
-		for key,val in aliases.items():
-			if not '.' val:
-				self.aliases[key] = val
-			else:
-				self.other_aliases[key] = val
-
-    def _extract_foreign_condition(self, request):
-        foreign_conditions = []
-        self_conditions = []
-        if request.operator == OPERATORS["AND"]:
-            for op in (request.left_operand, request.right_operand):
-                self_requests, foreign_requests = self._extract_foreign_condition(request.op)
-                self_conditions.extend(self_requests)
-                foreign_conditions.extend(foreign_requests)
-        elif request.operator == OPERATORS["OR"]:
-            for op in (request.left_operand, request.right_operand):
-                self_re
-
-
-        return foreign_conditions
-
-        
-         
-
-	def classify(self):
-        """ Build subviews from the aliases and request """
-        self.subviews = {}
-        self.joins = {}
-        for alias, property_path in self.other_aliases.items():
-            splitted_path = property_path.split(".")
-            root = splitted_path[0]
-            is_outer_join = root.startswith("<")
-            if is_outer_join:
-                root = root[1:]
-            if root not in self.subviews:
-                access_point = self.access_point.properties[root].access_point
-                subview = View_Request(access_point, {}, None)
-            else : 
-                subview = self.subviews[root]
-            subview.aliases[alias] = splitted_path[1:].join(".")
-            self.joins[root] = is_outer_join 
-            
-		return subviews
-
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
@@ -159,8 +103,26 @@ class Condition(Request):
     def value(self):
         return self.right_operand
     
+    def walk(self, func, values=[]):
+        """ Returns a list containing the result from applying func to each child """
+        for branch in (self.left_operand, self.right_operand):
+            values.extend(branch.walk(func,values)
+        return values
 
-class And(Request):
+class CompositeRequest(Request):
+    """Abstract class for composite requests, such as "AND" and "OR" 
+    
+    Both operands should be Requests
+    
+    """ 
+    def walk(self, func, values=[]):
+        """ Returns a list containing the result from applying func to each leaf node """
+        for branch in (self.left_operand, self.right_operand):
+            values.extend(branch.walk(func,values)
+        return values
+
+
+class And(CompositeRequest):
     """Container for ``(first, and, (second, and, (...)))``."""
     def __init__(self, *values):
         values = list(values)
@@ -170,8 +132,7 @@ class And(Request):
         else:
             self.right_operand = values.pop()
 
-
-class Or(Request):
+class Or(CompositeRequest):
     """Container for ``(first, or, (second, or, (...)))``."""
     def __init__(self, *values):
         values = list(values)
@@ -180,4 +141,71 @@ class Or(Request):
             self.right_operand = Or(values)
         else:
             self.right_operand = values.pop()
+
+class View_Request(object):
+    """ Class storing the information needed for a view 
+    
+        The following attributes are available : 
+            - aliases : all aliases as defined when calling view
+            - my_aliases : aliases concerning the access_point directly
+                (i.e., the path consists of only a property from the ap)
+            - joins: a dict mapping property name to a boolean indicating 
+                wether the join should be outer or not (True: outer join, False: inner join)
+            _ subviews : a dict mapping property_names to View_Request objects
+                
+        
+    
+    """
+
+    
+    def __init__(self,access_point, aliases, request):
+        self.aliases = aliases
+        self.my_aliases = {}
+        self._other_aliases = {}
+        self.request = request
+        self.subviews = {}
+        self.joins = {}
+        self._process_aliases(aliases)
+        self.classify()
+
+	def _process_aliases(self, aliases):
+		for key,val in aliases.items():
+			if not '.' val:
+				self.my_aliases[key] = val
+			else:
+				self._other_aliases[key] = val
+
+	def classify(self):
+        """ Build subviews from the aliases and request """
+        self.subviews = {}
+        self.joins = {}
+        for alias, property_path in self._other_aliases.items():
+            splitted_path = property_path.split(".")
+            root = splitted_path[0]
+            is_outer_join = root.startswith("<")
+            if is_outer_join:
+                root = root[1:]
+            if root not in self.subviews:
+                access_point = self.access_point.properties[root].access_point
+                subview = View_Request(access_point, {}, None)
+            else : 
+                subview = self.subviews[root]
+            subview.aliases[alias] = splitted_path[1:].join(".")
+            self.joins[root] = is_outer_join 
+        
+        def join_from_request(request):
+            root = request.left_operand.split(".")[0]
+            root = root[1:] if root.startswith("<") else root
+            return root,request
+
+        #Builds a dict mapping property_names to elementary Condition 
+        joins_from_request = sorted(self.request.walk(join_from_request),lambda x,y : return x)
+        joins_from_request = dict([(key, list(group)) \ 
+            for key,group in groupby(joins_from_request, lambda x,y: return x)])
+        for key, value in joins_from_request.items():
+            self.joins[key] = True
+
+        self.joins.update(dict([(key,True) for key in joins_from_request]))
+
+
 
