@@ -20,17 +20,13 @@ Base classes to create kalamar items.
 
 """
 
+import collections
 from werkzeug import MultiDict
     
 from kalamar import parser, utils
 
 
-class Identity(tuple):
-    """Tuple (access_point, tuple(conditions)) identifying an :class:`Item`."""
-    def __init__(self, access_point, conditions):
-        self.access_point = access_point
-        self.conditions = conditions
-        return super(Identity, self).__init__((access_point, conditions))
+Identity = collections.namedtuple('Identity', 'access_point, conditions')
 
 
 class Item(MultiDict, ModificationTrackingDict):
