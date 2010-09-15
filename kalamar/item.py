@@ -66,9 +66,7 @@ class Item(MultiDict, ModificationTrackingDict):
         
         """
         if isinstance(item, Item):
-            str1 = hash(self)
-            str2 = hash(item)
-            return cmp(str1, str2)
+            return cmp(hash(self), hash(item))
         return NotImplemented
 
     def __repr__(self):
