@@ -66,8 +66,8 @@ class Site(object):
                         
         # If no configuration file, no access_point !
     
-    @staticmethod
-    def parse_request(request):
+    @classmethod
+    def parse_request(cls, request):
         """Convert a ``request`` to a list of Condition objects.
 
         If ``request`` is a string, parse it with our query language.
@@ -91,9 +91,9 @@ class Site(object):
 
         """
         if isinstance(request, tuple):
-            return utils.ConditionOr([Site.parse_request(or_con) for or_con in request])
+            return utils.ConditionOr([cls.parse_request(or_con) for or_con in request])
         if isinstance(request, list):
-            return utils.ConditionAnd([Site.parse_request(cond) for cond in request])
+            return utils.ConditionAnd([cls.parse_request(cond) for cond in request])
         if isinstance(request, dict):
             conditionArray = utils.ConditionAnd()
             for key,value in request.items():
