@@ -41,6 +41,7 @@ REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 class OperatorNotAvailable(ValueError):
     """Operator unavailable."""
 
+
 class Request(object):
     """Container for ``(left_operand, operator, right_operand)``."""
     def __init__(self, left_operand, operator, right_operand):
@@ -55,7 +56,9 @@ class Request(object):
 
     def walk(self, func, values=[]):
         """ Returns a list containing the result from applying func to each child """
-        return func(self)
+        for branch in (self.left_operand, self.right_operand):
+            values.extend(branch.walk(func,values))
+        return values
 
     def test(self, item):
         """Return if :prop:`item` matches the request."""
@@ -107,24 +110,10 @@ class Condition(Request):
     
     def walk(self, func, values=[]):
         """ Returns a list containing the result from applying func to each child """
-        for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values))
-        return values
-
-class CompositeRequest(Request):
-    """Abstract class for composite requests, such as "AND" and "OR" 
-    
-    Both operands should be Requests
-    
-    """ 
-    def walk(self, func, values=[]):
-        """ Returns a list containing the result from applying func to each leaf node """
-        for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values))
-        return values
+        return func(self)
 
 
-class And(CompositeRequest):
+class And(Request):
     """Container for ``(first, and, (second, and, (...)))``."""
     def __init__(self, *values):
         values = list(values)
@@ -134,7 +123,7 @@ class And(CompositeRequest):
         else:
             self.right_operand = values.pop()
 
-class Or(CompositeRequest):
+class Or(Request):
     """Container for ``(first, or, (second, or, (...)))``."""
     def __init__(self, *values):
         values = list(values)
@@ -144,22 +133,17 @@ class Or(CompositeRequest):
         else:
             self.right_operand = values.pop()
 
-class View_Request(object):
-    """ Class storing the information needed for a view 
+class ViewRequest(object):
+    """Class storing the information needed for a view.
     
-        The following attributes are available : 
-            - aliases : all aliases as defined when calling view
-            - my_aliases : aliases concerning the access_point directly
-                (i.e., the path consists of only a property from the ap)
-            - joins: a dict mapping property name to a boolean indicating 
-                wether the join should be outer or not (True: outer join, False: inner join)
-            _ subviews : a dict mapping property_names to View_Request objects
-                
-        
+    :attribute aliases: all aliases as defined when calling view
+    :attribute my_aliases: aliases concerning the access_point directly
+      (i.e., the path consists of only a property from the ap)
+    :attribute joins: a dict mapping property name to a boolean indicating 
+      wether the join should be outer or not (True: outer, False: inner)
+    :attribute subviews: a dict mapping property_names to View_Request objects
     
     """
-
-    
     def __init__(self,access_point, aliases, request):
         self.aliases = aliases
         self.my_aliases = {}
@@ -167,18 +151,19 @@ class View_Request(object):
         self.request = request
         self.subviews = {}
         self.joins = {}
+
         self._process_aliases(aliases)
         self.classify()
 
 	def _process_aliases(self, aliases):
-		for key,val in aliases.items():
-			if '.' not in val:
-				self.my_aliases[key] = val
-			else:
-				self._other_aliases[key] = val
+            for key, value in aliases.items():
+                if "." not in val:
+                    self.my_aliases[key] = value
+                else:
+                    self._other_aliases[key] = value
 
     def classify(self):
-        """ Build subviews from the aliases and request """
+        """Build subviews from the aliases and request."""
         self.subviews = {}
         self.joins = {}
         for alias, property_path in self._other_aliases.items():
@@ -190,7 +175,7 @@ class View_Request(object):
             if root not in self.subviews:
                 access_point = self.access_point.properties[root].access_point
                 subview = View_Request(access_point, {}, None)
-            else : 
+            else:
                 subview = self.subviews[root]
             subview.aliases[alias] = splitted_path[1:].join(".")
             self.joins[root] = is_outer_join 
@@ -200,14 +185,13 @@ class View_Request(object):
             root = root[1:] if root.startswith("<") else root
             return root,request
 
-        #Builds a dict mapping property_names to elementary Condition 
-        joins_from_request = sorted(self.request.walk(join_from_request),lambda x,y : x)
-        joins_from_request = dict([(key, list(group)) 
-            for key,group in groupby(joins_from_request, lambda x,y: x)])
+        # Builds a dict mapping property_names to elementary Condition
+        joins_from_request = sorted(
+            self.request.walk(join_from_request), lambda x, y: x)
+        joins_from_request = dict(
+            (key, list(group)) for key, group
+            in groupby(joins_from_request, lambda x, y: x))
         for key, value in joins_from_request.items():
             self.joins[key] = True
 
-        self.joins.update(dict([(key,True) for key in joins_from_request]))
-
-
-
+        self.joins.update(dict((key,True) for key in joins_from_request))
