@@ -153,24 +153,24 @@ class ViewRequest(object):
         self._process_aliases(aliases)
         self.classify()
 
-	def _process_aliases(self, aliases):
-		for key,val in aliases.items():
-			if not '.' val:
-				self.my_aliases[key] = val
-			else:
-				self._other_aliases[key] = val
+    def _process_aliases(self, aliases):
+        for key,val in aliases.items():
+            if '.' not in val:
+                self.my_aliases[key] = val
+            else:
+                self._other_aliases[key] = val
 
     def _classify_request(self):
-        
+        pass
         
 
-	def _classify(self):
+    def _classify(self):
         """ Build subviews from the aliases and request """
-            for key, value in aliases.items():
-                if "." not in val:
-                    self.my_aliases[key] = value
-                else:
-                    self._other_aliases[key] = value
+        for key, value in aliases.items():
+            if "." not in val:
+                self.my_aliases[key] = value
+            else:
+                self._other_aliases[key] = value
 
     def classify(self):
         """Build subviews from the aliases and request."""
@@ -196,9 +196,9 @@ class ViewRequest(object):
             return root
 
         #Builds a dict mapping property_names to elementary Conditions
-        joins_from_request = sorted(self.request.walk(join_from_request),lambda req,prop )
-        joins_from_request = dict([(key, list(group)) \ 
-            for key,group in groupby(joins_from_request, lambda x,y: return x)])
+        joins_from_request = sorted(self.request.walk(join_from_request),lambda: req,prop )
+        joins_from_request = dict([(key, list(group))
+            for key,group in groupby(joins_from_request, lambda x,y: x)])
         for key, value in joins_from_request.items():
             self.joins[key] = True
         self.joins.update(dict([(key,True) for key in joins_from_request]))
