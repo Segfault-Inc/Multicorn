@@ -62,7 +62,7 @@ class Request(object):
         return self.operator(item[left_operand], right_operand)
 
     @classmethod
-    def parse_request(cls, request):
+    def parse(cls, request):
         """Convert a ``request`` to a Request object.
 
         TODO: describe syntaxic sugar.
@@ -73,15 +73,18 @@ class Request(object):
          Condition(u'b', None, None)]
 
         """
-        if hasattr(request, 'items') and callable(request.items):
-            # if it looks like a dict, it is a dict
+        if not request:
+            # empty request
+            return And() 
+        elif hasattr(request, 'items') and callable(request.items):
+            # If it looks like a dict and smell like a dict, it is a dict.
             return And(*(Condition(key, '=', value) 
                          for key, value in request.items()))
         elif hasattr(request, 'test') and callable(request.test):
-            # if it looks like a Request …
+            # If it looks like a Request …
             return request
         else:
-            # assume a 3-tuple: short for a single condition
+            # Assume a 3-tuple: short for a single condition
             property_name, operator, value = request
             return Condition(property_name, operator, value)
 

@@ -43,14 +43,14 @@ class Site(object):
         """File not found on filesystem."""
     
     def __init__(self):
-        self.access_points = set()
+        self.access_points = {}
     
-    def register(self, access_point):
+    def register(self, name, access_point):
         if access_point.site:
             # TODO: raise specific exception?
             raise RuntimeError('Access point already registered.')
         access_point.site = self
-        self.access_points.add(access_point)
+        self.access_points[name] = access_point
 
     def view(self, access_point, mapping, request=None, **kwArgs):
         """Returns partial items.
@@ -63,7 +63,7 @@ class Site(object):
         site.view("access_point',{"name":"name","boss_name": "foreign.name"})
 
         """
-        conditions = self.parse_request(request or [])
+        conditions = Request.parse(request)
         master_ap = self.access_points[access_point]
         # The ap returns 
         return master_ap.view(mapping, conditions,**kwArgs)
@@ -76,7 +76,7 @@ class Site(object):
         See ``Site.parse_request`` for the syntax of the ``request`` string.
 
         """
-        conditions = self.parse_request(request or [])
+        conditions = Request.parse(request)
         return self.access_points[access_point].search(conditions)
     
     def search(self, access_point, request=None):
@@ -105,13 +105,8 @@ class Site(object):
         except StopIteration:
             return item
         else:
-            print "MULTIPLE OBJECT!" + str(request)
             raise self.MultipleObjectsReturned
 
-    def batchopen(self, access_point, requests):
-        for request in requests:
-            yield open(access_point, request)
-    
     @staticmethod
     def save(item):
         """Update or add the item."""
@@ -125,7 +120,7 @@ class Site(object):
     def remove_many(self, access_point, request):
         """Remove all items matching the request
         """
-        conditions = self.parse_request(request or [])
+        conditions = Request.parse(request)
         return self.access_points[access_point].remove_many(conditions)
 
     
