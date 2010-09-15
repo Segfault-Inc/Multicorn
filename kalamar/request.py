@@ -21,8 +21,6 @@ Kalamar request objects.
 """
 
 import operator
-import re
-from itertools import groupby
 
 OPERATORS = {
     "=": operator.eq,
@@ -32,38 +30,22 @@ OPERATORS = {
     "<": operator.lt,
     "<=": operator.le,
 #    "~=": re_match,
-#    "~!=": re_not_match,
-    "AND": operator.and_,
-    "OR": operator.or_}
-REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
+#    "~!=": re_not_match
+}
 
 
 class OperatorNotAvailable(ValueError):
-    """Operator unavailable."""
+    pass
 
 class Request(object):
-    """Container for ``(left_operand, operator, right_operand)``."""
-    def __init__(self, left_operand, operator, right_operand):
-        self.left_operand = left_operand
-        self.operator = operator
-        self.right_operand = right_operand
-
-    def __repr__(self):
-        return "%s(%r, %r, %r)" % (
-            self.__class__.__name__, self.left_operand, self.operator,
-            self.right_operand)
+    """Abstract class for kalamar requests."""
+    def test(self, item):
+        """Return if :prop:`item` matches the request."""
+        raise NotImplementedError('Abstract class.')
 
     def walk(self, func, values=[]):
         """ Returns a list containing the result from applying func to each child """
         return func(self)
-
-    def test(self, item):
-        """Return if :prop:`item` matches the request."""
-        left_operand = self.left_operand.test(item) \
-            if isinstance(self.left_operand, Request) else self.left_operand
-        right_operand = self.right_operand.test(item) \
-            if isinstance(self.right_operand, Request) else self.right_operand
-        return self.operator(item[left_operand], right_operand)
 
     @classmethod
     def parse(cls, request):
@@ -95,54 +77,62 @@ class Request(object):
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
     def __init__(self, property_name, operator, value):
-        super(Condition, self).__init__(property_name, operator, value)
-    
-    @property
-    def property_name(self):
-        return self.left_operand
-    
-    @property
-    def value(self):
-        return self.right_operand
-    
+        self.prop_name = prop_name
+        self.operator = operator
+        self.value = value
+
+    def __repr__(self):
+        return "%s(%r, %r, %r)" % (
+            self.__class__.__name__, self.prop_name, self.operator,
+            self.value)
+
+    def test(self, item):
+        """Return if :prop:`item` matches the request."""
+        return self.operator(item[self.property_name], self.value)
+
     def walk(self, func, values=[]):
         """ Returns a list containing the result from applying func to each child """
         for branch in (self.left_operand, self.right_operand):
             values.extend(branch.walk(func,values))
         return values
 
-class CompositeRequest(Request):
-    """Abstract class for composite requests, such as "AND" and "OR" 
+#class CompositeRequest(Request):
+#    """Abstract class for composite requests, such as "AND" and "OR" 
+#    
+#    Both operands should be Requests
+#    
+#    """ 
+#    def walk(self, func, values=[]):
+#        """ Returns a list containing the result from applying func to each leaf node """
+#        for branch in (self.left_operand, self.right_operand):
+#            values.extend(branch.walk(func,values))
+#        return values
+
+
+class And(Request):
+    """True if all given requests are true."""
+    def __init__(self, *requests):
+        self.requests = requests
     
-    Both operands should be Requests
+    def test(self, item):
+        return all(request.test(item) for request in self.requests)
+
+class Or(Request):
+    """True if at least one given requests are true."""
+    def __init__(self, *requests):
+        self.requests = requests
     
-    """ 
-    def walk(self, func, values=[]):
-        """ Returns a list containing the result from applying func to each leaf node """
-        for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values))
-        return values
+    def test(self, item):
+        return any(request.test(item) for request in self.requests)
 
+class Not(Request):
+    """Negates a request."""
+    def __init__(self, request):
+        self.request = request
+    
+    def test(self, item):
+        return not self.request.test(item)
 
-class And(CompositeRequest):
-    """Container for ``(first, and, (second, and, (...)))``."""
-    def __init__(self, *values):
-        values = list(values)
-        super(And, self).__init__(values.pop(), OPERATORS["AND"], None)
-        if len(values) > 1:
-            self.right_operand = And(values)
-        else:
-            self.right_operand = values.pop()
-
-class Or(CompositeRequest):
-    """Container for ``(first, or, (second, or, (...)))``."""
-    def __init__(self, *values):
-        values = list(values)
-        super(Or, self).__init__(values.pop(), OPERATORS["OR"], None)
-        if len(values) > 1:
-            self.right_operand = Or(values)
-        else:
-            self.right_operand = values.pop()
 
 class View_Request(object):
     """ Class storing the information needed for a view 
