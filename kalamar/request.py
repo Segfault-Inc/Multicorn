@@ -37,15 +37,19 @@ OPERATORS = {
 class OperatorNotAvailable(ValueError):
     pass
 
+
 class Request(object):
     """Abstract class for kalamar requests."""
     def test(self, item):
         """Return if :prop:`item` matches the request."""
         raise NotImplementedError('Abstract class.')
 
-    def walk(self, func, values=[]):
-        """ Returns a list containing the result from applying func to each child """
-        return func(self)
+    def walk(self, func, values=None):
+        """ Returns a dict containing the result from applying func to each child """
+        valus = values or {}
+        for branch in (self.left_operand, self.right_operand):
+            values = branch.walk(func,values)
+        return values
 
     @classmethod
     def parse(cls, request):
@@ -89,24 +93,12 @@ class Condition(Request):
     def test(self, item):
         """Return if :prop:`item` matches the request."""
         return self.operator(item[self.property_name], self.value)
-
-    def walk(self, func, values=[]):
-        """ Returns a list containing the result from applying func to each child """
-        for branch in (self.left_operand, self.right_operand):
-            values.extend(branch.walk(func,values))
+    
+    def walk(self, func, values=None):
+        """ Returns a dict containing the result from applying func to each child """
+        values = values or {}
+        values[self] = func(self)
         return values
-
-#class CompositeRequest(Request):
-#    """Abstract class for composite requests, such as "AND" and "OR" 
-#    
-#    Both operands should be Requests
-#    
-#    """ 
-#    def walk(self, func, values=[]):
-#        """ Returns a list containing the result from applying func to each leaf node """
-#        for branch in (self.left_operand, self.right_operand):
-#            values.extend(branch.walk(func,values))
-#        return values
 
 
 class And(Request):
@@ -117,6 +109,7 @@ class And(Request):
     def test(self, item):
         return all(request.test(item) for request in self.requests)
 
+
 class Or(Request):
     """True if at least one given requests are true."""
     def __init__(self, *requests):
@@ -124,6 +117,7 @@ class Or(Request):
     
     def test(self, item):
         return any(request.test(item) for request in self.requests)
+
 
 class Not(Request):
     """Negates a request."""
@@ -134,41 +128,52 @@ class Not(Request):
         return not self.request.test(item)
 
 
-class View_Request(object):
-    """ Class storing the information needed for a view 
+class ViewRequest(object):
+    """Class storing the information needed for a view.
     
-        The following attributes are available : 
-            - aliases : all aliases as defined when calling view
-            - my_aliases : aliases concerning the access_point directly
-                (i.e., the path consists of only a property from the ap)
-            - joins: a dict mapping property name to a boolean indicating 
-                wether the join should be outer or not (True: outer join, False: inner join)
-            _ subviews : a dict mapping property_names to View_Request objects
-                
-        
+    :attribute aliases: all aliases as defined when calling view
+    :attribute my_aliases: aliases concerning the access_point directly
+      (i.e., the path consists of only a property from the ap)
+    :attribute joins: a dict mapping property name to a boolean indicating 
+      wether the join should be outer or not (True: outer, False: inner)
+    :attribute subviews: a dict mapping property_names to View_Request objects
     
     """
-
-    
     def __init__(self,access_point, aliases, request):
+        #Initialize instance attributes
         self.aliases = aliases
         self.my_aliases = {}
         self._other_aliases = {}
         self.request = request
         self.subviews = {}
         self.joins = {}
+        self.orphan_request = {}
+        
+        #Process the bouzin
         self._process_aliases(aliases)
         self.classify()
 
 	def _process_aliases(self, aliases):
 		for key,val in aliases.items():
-			if '.' not in val:
+			if not '.' val:
 				self.my_aliases[key] = val
 			else:
 				self._other_aliases[key] = val
 
-    def classify(self):
+    def _classify_request(self):
+        
+        
+
+	def _classify(self):
         """ Build subviews from the aliases and request """
+            for key, value in aliases.items():
+                if "." not in val:
+                    self.my_aliases[key] = value
+                else:
+                    self._other_aliases[key] = value
+
+    def classify(self):
+        """Build subviews from the aliases and request."""
         self.subviews = {}
         self.joins = {}
         for alias, property_path in self._other_aliases.items():
@@ -180,23 +185,22 @@ class View_Request(object):
             if root not in self.subviews:
                 access_point = self.access_point.properties[root].access_point
                 subview = View_Request(access_point, {}, None)
-            else : 
+            else:
                 subview = self.subviews[root]
             subview.aliases[alias] = splitted_path[1:].join(".")
             self.joins[root] = is_outer_join 
         
         def join_from_request(request):
             root = request.left_operand.split(".")[0]
-            root = root[1:] if root.startswith("<") else root
-            return root,request
+            root = root[1:] if root.startswith("<") else rooddt
+            return root
 
-        #Builds a dict mapping property_names to elementary Condition 
-        joins_from_request = sorted(self.request.walk(join_from_request),lambda x,y : x)
-        joins_from_request = dict([(key, list(group)) 
-            for key,group in groupby(joins_from_request, lambda x,y: x)])
+        #Builds a dict mapping property_names to elementary Conditions
+        joins_from_request = sorted(self.request.walk(join_from_request),lambda req,prop )
+        joins_from_request = dict([(key, list(group)) \ 
+            for key,group in groupby(joins_from_request, lambda x,y: return x)])
         for key, value in joins_from_request.items():
             self.joins[key] = True
-
         self.joins.update(dict([(key,True) for key in joins_from_request]))
 
 
