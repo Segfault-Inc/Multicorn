@@ -53,6 +53,10 @@ class Request(object):
             self.__class__.__name__, self.property_name, self.operator,
             self.value)
 
+    def walk(self, func, values=[]):
+        """ Returns a list containing the result from applying func to each child """
+        return func(self)
+
     def test(self, item):
         """Return if :prop:`item` matches the request."""
         left_operand = self.left_operand.test(item) \
@@ -62,35 +66,69 @@ class Request(object):
         return self.operator(item[left_operand], right_operand)
 
 
-	
+
+class RequestMetaData(object):
+
+    def __init__(request):
+        self.request = request
+
+    def concerned_properties:
+
 
 class View_Request(object):
 
+    def __init__(self,access_point, aliases, request):
+		self.other_aliases = {}
+        self.aliases = {}
+        self._process_aliases(aliases)
+		other_requests = self._process_request(request)
+		self.subviews = self.classify(other_aliases, other_requests)
+        self.access_point = access_point
 
 	def _process_aliases(self, aliases):
 		my_aliases = {}
-		other_aliases = {}
 		for key,val in aliases.items():
 			if not '.' val:
-				my_aliases[key] = val
+				self.aliases[key] = val
 			else:
-				other_aliases[key] = val
-		self.aliases = my_aliases
-		return other_aliases
+				self.other_aliases[key] = val
 
-	def _process_request(self, request):
-		#TODO : remove what we can't manage from the request
-		other_requests = {}		
-		self.request = request
-		return other_requests
+    def _extract_foreign_condition(self, request):
+        foreign_conditions = []
+        self_conditions = []
+        if request.operator == OPERATORS["AND"]:
+            for op in (request.left_operand, request.right_operand):
+                self_requests, foreign_requests = self._extract_foreign_condition(request.op)
+                self_conditions.extend(self_requests)
+                foreign_conditions.extend(foreign_requests)
+        elif request.operator == OPERATORS["OR"]:
+            for op in (request.left_operand, request.right_operand):
+                self_re
 
-	def __init__(self, aliases, request):
-		other_aliases = self._process_aliases(aliases)
-		other_requests = self._process_request(request)
-		self.subviews = self.classify(other_aliases, other_requests)
 
-	def classify(aliases, request):
-		
+        return foreign_conditions
+
+        
+         
+
+	def classify(self):
+        """ Build subviews from the aliases and request """
+        self.subviews = {}
+        self.joins = {}
+        for alias, property_path in self.other_aliases.items():
+            splitted_path = property_path.split(".")
+            root = splitted_path[0]
+            is_outer_join = root.startswith("<")
+            if is_outer_join:
+                root = root[1:]
+            if root not in self.subviews:
+                access_point = self.access_point.properties[root].access_point
+                subview = View_Request(access_point, {}, None)
+            else : 
+                subview = self.subviews[root]
+            subview.aliases[alias] = splitted_path[1:].join(".")
+            self.joins[root] = is_outer_join 
+            
 		return subviews
 		
 		 
