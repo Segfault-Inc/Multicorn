@@ -41,6 +41,9 @@ def make_test_site():
     site = Site()
     site.register('test_ap',make_test_ap())
     site.register('test_remote_ap',make_test_second_ap())
+    my_item = site.create('test_ap', {'id':3, 'name': 4})
+    my_item.save()
+    site.create('test_remote_ap', {'id' : 4 , 'label': 'remote_item', 'remote' : my_item}).save()
     return site
 
 
@@ -73,9 +76,13 @@ def test_aliases_view_request():
     eq_(sub_req.sub_requests[0].value, "truc")
     eq_(sub_req.sub_requests[0].property_name, 'name')
 
-def test_conditions_view_request():
-    pass
 
+def test_view():
+    site = make_test_site()
+    aliases = {'id_select': 'id', 'name_select': 'name', 'remote_select': 'remote.name'}
+    req = Request.parse({'remote.name':'truc'})
+    subitems = site.view("test_remote_ap", aliases, req)
+    
     
 
      
