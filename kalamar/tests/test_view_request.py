@@ -22,7 +22,7 @@ Test the view request algorithm
 from nose.tools import eq_, nottest
 from kalamar.request import Request, ViewRequest
 from kalamar.access_point.memory import Memory
-from kalamar.config import Property
+from kalamar.property import Property
 from kalamar.item import Item
 from kalamar.site import Site
 
