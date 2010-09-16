@@ -105,6 +105,7 @@ class AccessPoint(object):
         
         """
         item = Item(self, properties)
+        self.modified = True
         return item
 
     def save(self, item):
