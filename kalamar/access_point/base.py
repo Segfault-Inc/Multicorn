@@ -84,14 +84,18 @@ class AccessPoint(object):
             return dict([(alias, item[value]) for alias, value in aliases.items()])
         orphan_request = view_request.orphan_request
         fake_props = []
-
+        #First, we perform a search on our own properties
         for item in self.search(view_request.request):
             view_item = alias_item(item,view_request.aliases)
             subitems_generators = []
+            #Build subviews on our remote properties
             for prop, subview in view_request.subviews.items():
                 property_obj = self.properties[prop]
                 remote_ap = self.site.access_points[property_obj.remote_ap]
                 if property_obj.relation == 'many-to-one':
+                    # Add aliases to the request to compare the item to our reference
+                    # as well as a clause to the orphan_request to be tested against the resulting
+                    # property
                     for id_prop in remote_ap.identity_properties:
                         fake_prop = '____' + prop + '____' + id_prop
                         fake_props.append(fake_prop)
@@ -102,7 +106,10 @@ class AccessPoint(object):
                 subitems_generators.append(remote_ap.view(subview))
             if not subitems_generators:
                 yield view_item
-            else: 
+            else:
+                # Compute the cartesian product of the subviews results,
+                # update the properties, and test it against the unevaluated
+                # request before yielding
                 for cartesian_item in product(*subitems_generators):
                     newitem = dict(view_item)
                     for cartesian_atom in cartesian_item:
