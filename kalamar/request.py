@@ -83,23 +83,24 @@ class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
     def __init__(self, property_name, operator, value):
         try:
-            self.operator = OPERATORS[operator]
+            self.operator_func = OPERATORS[operator]
         except KeyError:
             raise OperatorNotAvailable('Operator %r is not supported here.'
                                        % operator)
         self.property_name = property_name
+        self.operator = operator
         self.value = value
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
             self.__class__.__name__,
             self.property_name,
-            REVERSE_OPERATORS[self.operator],
+            self.operator,
             self.value)
 
     def test(self, item):
         """Return if :prop:`item` matches the request."""
-        return self.operator(item[self.property_name], self.value)
+        return self.operator_func(item[self.property_name], self.value)
     
     def walk(self, func, values=None):
         """ Returns a dict containing the result from applying func to each child """
@@ -110,37 +111,40 @@ class Condition(Request):
 
 class And(Request):
     """True if all given requests are true."""
-    def __init__(self, *requests):
-        self.requests = requests
+    def __init__(self, *sub_requests):
+        self.sub_requests = sub_requests
     
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, 
-                           ', '.join(map(repr, self.requests)))
+                           ', '.join(map(repr, self.sub_requests)))
 
     def test(self, item):
-        return all(request.test(item) for request in self.requests)
+        return all(request.test(item) for request in self.sub_requests)
 
 
 class Or(Request):
     """True if at least one given requests are true."""
-    def __init__(self, *requests):
-        self.requests = requests
+    def __init__(self, *sub_requests):
+        self.sub_requests = sub_requests
     
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, 
-                           ', '.join(map(repr, self.requests)))
+                           ', '.join(map(repr, self.sub_requests)))
 
     def test(self, item):
-        return any(request.test(item) for request in self.requests)
+        return any(request.test(item) for request in self.sub_requests)
 
 
 class Not(Request):
     """Negates a request."""
-    def __init__(self, request):
-        self.request = request
+    def __init__(self, sub_request):
+        self.sub_request = sub_request
     
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.sub_request)
+
     def test(self, item):
-        return not self.request.test(item)
+        return not self.sub_request.test(item)
 
 
 class ViewRequest(object):
