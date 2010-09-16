@@ -191,11 +191,10 @@ class ViewRequest(object):
             else:
                 self._other_aliases[key] = value
 
-    def classify(self):
-        """Build subviews from the aliases and request."""
-        self.subviews = {}
-        self.joins = {}
-        conditions = {}
+    def _classify_alias(self):
+        """ Returns a dict mapping properties from this access point to 
+        to the alias it should manage
+        """
         aliases = {}
         for alias, property_path in self._other_aliases.items():
             splitted_path = property_path.split(".")
@@ -207,7 +206,11 @@ class ViewRequest(object):
             subaliases.update({alias: ".".join(splitted_path[1:])})
             aliases[root] = subaliases
             self.joins[root] = is_outer_join 
-        #Builds a dict mapping property_names to elementary Conditions
+        return aliases
+
+    def _classify_request(self):
+        """Builds a dict mapping property names to the condition they manage
+        """
         def join_from_request(request):
             path = request.property_name.split(".")
             if len(path) == 1 :
@@ -222,6 +225,17 @@ class ViewRequest(object):
         for key, value in joins_from_request.items():
             self.joins[key] = True
         self.joins.update(dict([(key,True) for key in joins_from_request]))
+        return joins_from_request 
+
+
+
+    def classify(self):
+        """Build subviews from the aliases and request."""
+        self.subviews = {}
+        self.joins = {}
+        conditions = {}
+        aliases = self._classify_alias()
+        joins_from_request = self._classify_request()
         #genereates the subviews from the processed aliases and requests
         for key in self.joins:
             access_point = self.access_point.properties[key].remote_ap
