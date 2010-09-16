@@ -50,7 +50,7 @@ def test_simple_view_request():
     ap = make_test_ap() 
     req = Request.parse({'id':3, 'name':'stuff'})
     aliases = {'id_select':'id', 'name_select':'name'}
-    viewreq = ViewRequest(ap, aliases, req)
+    viewreq = ViewRequest(aliases, req)
     #Assert that the aliases are all classified as 'manageable'
     eq_(viewreq.my_aliases, aliases)
     eq_(viewreq.aliases, aliases)
@@ -60,13 +60,22 @@ def test_aliases_view_request():
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'name', 'remote_select': 'remote.name'}
     req = Request.parse({'remote.name':'truc'})
-    viewreq = ViewRequest(site.access_points['test_remote_ap'],aliases, req)
+    viewreq = ViewRequest(aliases, req)
     eq_(viewreq.my_aliases, {'id_select': 'id', 'name_select': 'name'})
     eq_(viewreq.joins , {'remote':True})
     eq_(len(viewreq.subviews),1)
     subview = viewreq.subviews['remote']
     eq_(subview.my_aliases, {'remote_select':'name'})
     eq_(subview.subviews, {})
+    sub_req = subview.request
+    eq_(len(sub_req.sub_requests), 1)
+    eq_(sub_req.sub_requests[0].operator, "=")
+    eq_(sub_req.sub_requests[0].value, "truc")
+    eq_(sub_req.sub_requests[0].property_name, 'name')
+
+def test_conditions_view_request():
+    pass
+
     
 
      

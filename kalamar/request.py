@@ -48,7 +48,7 @@ class Request(object):
     def walk(self, func, values=None):
         """ Returns a dict containing the result from applying func to each child """
         values = values or {}
-        for branch in (self.requests):
+        for branch in (self.sub_requests):
             values = branch.walk(func,values)
         return values
 
@@ -158,10 +158,9 @@ class ViewRequest(object):
     :attribute subviews: a dict mapping property_names to View_Request objects
     
     """
-    def __init__(self,access_point, aliases, request):
+    def __init__(self, aliases, request):
         #Initialize instance attributes
         self.request = request
-        self.access_point = access_point
         self._my_requests = []
         self.aliases = aliases
         self.my_aliases = {}
@@ -215,8 +214,8 @@ class ViewRequest(object):
             else: 
                 newcond = Condition(rest, request.operator, request.value)
                 self.joins[root] = True
-                conds_for_prop = conds_by_prop.get(root,And())
-                conds_for_prop.requests.append(newcond)
+                conds_for_prop = conds_by_prop.get(root,[])
+                conds_for_prop.append(newcond)
                 conds_by_prop[root] = conds_for_prop
         elif isinstance(request, Or):
             #TODO: manage Or which belong strictly to the property, and 
@@ -224,10 +223,10 @@ class ViewRequest(object):
             self.orphan_request.append(request)
             return {}
         elif isinstance(request, And):
-            for branch in request.requests:
+            for branch in request.sub_requests:
                 conds_by_prop.update(self._classify_request(branch, conds_by_prop))
         elif isinstance(request, Not):
-            conds_by_prop.update(self._classify_request(request.request, conds_by_prop))
+            conds_by_prop.update(self._classify_request(request.subrequest, conds_by_prop))
         return conds_by_prop
         
 
@@ -240,12 +239,11 @@ class ViewRequest(object):
         conditions = {}
         aliases = self._classify_alias()
         conditions = self._classify_request(self.request)
-        self.request = And(self._my_requests)
+        self.request = apply(And, self._my_requests)
         #genereates the subviews from the processed aliases and requests
         for key in self.joins:
-            access_point = self.access_point.properties[key].remote_ap
-            req = conditions.get(key, Request.parse({}))
-            subview = ViewRequest(access_point, aliases.get(key,{}), req)
+            req = conditions.get(key, [])
+            subview = ViewRequest(aliases.get(key,{}), apply(And, req))
             self.subviews[key] = subview
 
 
