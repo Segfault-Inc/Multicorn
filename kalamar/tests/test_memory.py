@@ -68,3 +68,15 @@ def test_open_zero():
     site = make_test_site()
     result = site.open('things', {'name': 'nonexistent'})
 
+def test_delete():
+    site = make_test_site()
+    item = site.open('things', {'name': 'foo'})
+    item.delete()
+    eq_(list(site.search('things', {'name': 'foo'})), [])
+
+def test_delete_many():
+    site = make_test_site()
+    site.delete_many('things', {'name': 'bar'})
+    eq_(list(site.search('things', {'name': 'bar'})), [])
+
+

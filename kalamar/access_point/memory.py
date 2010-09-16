@@ -37,6 +37,13 @@ class Memory(AccessPoint):
     def delete(self, item):
         del self._store[item[self.id_property]]
     
+    def delete_many(self, request):
+        # build a temporary list as we can not delete (change the dict size)
+        # during iteration
+        matching_items = list(self.search(request))
+        for item in matching_items:
+            self.delete(item)
+    
     def save(self, item):
         self._store[item[self.id_property]] = dict(item)
 
