@@ -112,7 +112,12 @@ class Condition(Request):
 class And(Request):
     """True if all given requests are true."""
     def __init__(self, *sub_requests):
-        self.sub_requests = sub_requests
+        self.sub_requests = []
+        for sub_req in sub_requests:
+            if isinstance(sub_req, And):
+                self.sub_requests.extend(sub_req.sub_requests)
+            else :
+                self.sub_requests.append(sub_req)
     
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, 
@@ -125,7 +130,12 @@ class And(Request):
 class Or(Request):
     """True if at least one given requests are true."""
     def __init__(self, *sub_requests):
-        self.sub_requests = sub_requests
+        self.sub_requests = []
+        for sub_req in sub_requests:
+            if isinstance(sub_req, Or):
+                self.sub_requests.extend(sub_req.sub_requests)
+            else :
+                self.sub_requests.append(sub_req)
     
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, 
@@ -160,17 +170,15 @@ class ViewRequest(object):
     """
     def __init__(self, aliases, request):
         #Initialize instance attributes
-        self.request = request
-        self._my_requests = []
         self.aliases = {}
         self._other_aliases = {}
-        self.request = request
+        self.request = And()
         self.subviews = {}
         self.joins = {}
-        self.orphan_request = []
+        self.orphan_request = And()
         #Process the bouzin
         self._process_aliases(aliases)
-        self.classify()
+        self.classify(request)
 
     def _process_aliases(self, aliases):
         for key,val in aliases.items():
@@ -209,7 +217,7 @@ class ViewRequest(object):
         if isinstance(request, Condition):
             root, rest = self.root(request.property_name)
             if not rest : 
-                self._my_requests.append(request)
+                self.request = And(self.request, request)
             else: 
                 newcond = Condition(rest, request.operator, request.value)
                 self.joins[root] = True
@@ -219,7 +227,7 @@ class ViewRequest(object):
         elif isinstance(request, Or):
             #TODO: manage Or which belong strictly to the property, and 
             # should therefore be kept
-            self.orphan_request.append(request)
+            orphan_request = And(orphan_request, request)
             return {}
         elif isinstance(request, And):
             for branch in request.sub_requests:
@@ -231,14 +239,13 @@ class ViewRequest(object):
 
 
 
-    def classify(self):
+    def classify(self, request):
         """Build subviews from the aliases and request."""
         self.subviews = {}
         self.joins = {}
         conditions = {}
         aliases = self._classify_alias()
-        conditions = self._classify_request(self.request)
-        self.request = apply(And, self._my_requests)
+        conditions = self._classify_request(request)
         #genereates the subviews from the processed aliases and requests
         for key in self.joins:
             req = conditions.get(key, [])

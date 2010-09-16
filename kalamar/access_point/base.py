@@ -22,7 +22,7 @@ Access point base class.
 
 from ..item import Item
 from itertools import product
-
+from ..request import And, Condition
 
 class NotOneMatchingItem(Exception):
     """Not one object has been returned."""
@@ -82,15 +82,36 @@ class AccessPoint(object):
         """
         def alias_item(item, aliases):
             return dict([(alias, item[value]) for alias, value in aliases.items()])
+        orphan_request = view_request.orphan_request
+        fake_props = []
+
         for item in self.search(view_request.request):
             view_item = alias_item(item,view_request.aliases)
-            subitems_generators = [self.site.access_points[self.properties[prop].remote_ap].view(subview) 
-                    for prop, subview in view_request.subviews.items()]
-            for cartesian_item in product(*subitems_generators):
-                newitem = dict(view_item)
-                for cartesian_atom in cartesian_item:
-                    newitem.update(cartesian_atom)
-                yield newitem
+            subitems_generators = []
+            for prop, subview in view_request.subviews.items():
+                property_obj = self.properties[prop]
+                remote_ap = self.site.access_points[property_obj.remote_ap]
+                if property_obj.relation == 'many-to-one':
+                    for id_prop in remote_ap.identity_properties:
+                        fake_prop = '____' + prop + '____' + id_prop
+                        fake_props.append(fake_prop)
+                        orphan_request = And(orphan_request, Condition(fake_prop, '=', item[prop][id_prop]))
+                        subview.aliases[fake_prop] = id_prop
+                elif property_obj.relation == 'one-to-many':
+                    subview.request = And(Condition(property_obj.remote_property,'=',item),subview.request)
+                subitems_generators.append(remote_ap.view(subview))
+            if not subitems_generators:
+                yield view_item
+            else: 
+                for cartesian_item in product(*subitems_generators):
+                    newitem = dict(view_item)
+                    for cartesian_atom in cartesian_item:
+                        newitem.update(cartesian_atom)
+                        
+                        if orphan_request.test(newitem):
+                            for fake_prop in fake_props:
+                                newitem.pop(fake_prop)
+                            yield newitem
         
     def delete_many(self, request):
         """Delete all item matching the request.
@@ -119,6 +140,10 @@ class AccessPoint(object):
         This method has to be overriden.
 
         """
+        raise NotImplementedError('Abstract method')
+
+    @property
+    def identity_properties(self):
         raise NotImplementedError('Abstract method')
     
 

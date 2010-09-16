@@ -5,10 +5,9 @@ import kalamar
 PROPERTY_TYPES = set([str, int, float, decimal.Decimal, io.IOBase, kalamar.item.Item])
 
 class Property(object):
-    def __init__(self, name, property_type, identity=False, auto=False,
+    def __init__(self,  property_type, identity=False, auto=False,
                  default=None, mandatory=False, relation=None, remote_ap=None,
                  remote_property=None):
-        self.name = name
         self.property_type = property_type
         self.identity = identity
         self.auto = auto

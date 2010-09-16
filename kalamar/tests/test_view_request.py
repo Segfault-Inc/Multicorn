@@ -33,8 +33,9 @@ def make_test_ap():
 
 @nottest
 def make_test_second_ap():
-    remote_prop = Property('remote', Item, relation='many-to-one', remote_ap='test_ap')
-    return Memory({'id': int, 'label': str, 'remote': remote_prop},'id')
+    remote_prop = Property(Item, relation='many-to-one', remote_ap='test_ap')
+    return Memory({'id': Property(int),'label' : Property( int), 'remote': remote_prop},'id')
+
 
 @nottest
 def make_test_site():
@@ -42,8 +43,11 @@ def make_test_site():
     site.register('test_ap',make_test_ap())
     site.register('test_remote_ap',make_test_second_ap())
     my_item = site.create('test_ap', {'id':3, 'name': 'truc'})
+    my_second_item = site.create('test_ap', {'id':10, 'name': 'truc'})
     my_item.save()
+    my_second_item.save()
     site.create('test_remote_ap', {'id' : 4 , 'label': 'remote_item', 'remote' : my_item}).save()
+    site.create('test_remote_ap', {'id' : 8 , 'label': 'remote_item2', 'remote' : my_second_item}).save()
     return site
 
 
@@ -80,13 +84,13 @@ def test_aliases_view_request():
 def test_simplest_view():
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
-    req = Request.parse({'remote.name':'truc'})
+    req = Request.parse({'remote.id':10})
     items = list(site.view("test_remote_ap", aliases, req))
     eq_(len(items), 1)
     uniq_item = items[0]
-    eq_(uniq_item['name_select'],  'remote_item')
+    eq_(uniq_item['name_select'],  'remote_item2')
     eq_(uniq_item['remote_select'],  'truc')
-    eq_(uniq_item['id_select'],  4)
+    eq_(uniq_item['id_select'],  8)
     
 
      

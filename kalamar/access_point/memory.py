@@ -46,4 +46,8 @@ class Memory(AccessPoint):
     
     def save(self, item):
         self._store[item[self.id_property]] = dict(item)
+    
+    @property
+    def identity_properties(self):
+        return [self.id_property]
 
