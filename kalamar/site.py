@@ -23,7 +23,7 @@ Create one for each independent site with its own configuration.
 """
 
 from .item import Item
-from .request import Request
+from .request import Request, ViewRequest
 
 
 class Site(object):
@@ -56,13 +56,16 @@ class Site(object):
                 return getattr(ap, method_name)(*args, **kwargs)
         wrapper.__name__ = method_name
         return wrapper
-    
+   
+
     open = deleguate_to_acces_point('open', True)
     search = deleguate_to_acces_point('search', True)
-    view = deleguate_to_acces_point('view', True)
     delete_many = deleguate_to_acces_point('delete_many', True)
     save = deleguate_to_acces_point('save')
     delete = deleguate_to_acces_point('delete')
     create = deleguate_to_acces_point('create')
+    def view(self, access_point, aliases, request):
+        ap = self.access_points[access_point]
+        return ap.view(ViewRequest(aliases,request))
 
     del deleguate_to_acces_point

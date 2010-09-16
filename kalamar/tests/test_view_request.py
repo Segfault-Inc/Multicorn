@@ -41,6 +41,9 @@ def make_test_site():
     site = Site()
     site.register('test_ap',make_test_ap())
     site.register('test_remote_ap',make_test_second_ap())
+    my_item = site.create('test_ap', {'id':3, 'name': 'truc'})
+    my_item.save()
+    site.create('test_remote_ap', {'id' : 4 , 'label': 'remote_item', 'remote' : my_item}).save()
     return site
 
 
@@ -50,9 +53,9 @@ def test_simple_view_request():
     ap = make_test_ap() 
     req = Request.parse({'id':3, 'name':'stuff'})
     aliases = {'id_select':'id', 'name_select':'name'}
-    viewreq = ViewRequest(ap, aliases, req)
+    viewreq = ViewRequest(aliases, req)
     #Assert that the aliases are all classified as 'manageable'
-    eq_(viewreq.my_aliases, aliases)
+    eq_(viewreq.aliases, aliases)
     eq_(viewreq.aliases, aliases)
     eq_(viewreq.subviews, {})
 
@@ -60,13 +63,30 @@ def test_aliases_view_request():
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'name', 'remote_select': 'remote.name'}
     req = Request.parse({'remote.name':'truc'})
-    viewreq = ViewRequest(site.access_points['test_remote_ap'],aliases, req)
-    eq_(viewreq.my_aliases, {'id_select': 'id', 'name_select': 'name'})
+    viewreq = ViewRequest(aliases, req)
+    eq_(viewreq.aliases, {'id_select': 'id', 'name_select': 'name'})
     eq_(viewreq.joins , {'remote':True})
     eq_(len(viewreq.subviews),1)
     subview = viewreq.subviews['remote']
-    eq_(subview.my_aliases, {'remote_select':'name'})
+    eq_(subview.aliases, {'remote_select':'name'})
     eq_(subview.subviews, {})
+    sub_req = subview.request
+    eq_(len(sub_req.sub_requests), 1)
+    eq_(sub_req.sub_requests[0].operator, "=")
+    eq_(sub_req.sub_requests[0].value, "truc")
+    eq_(sub_req.sub_requests[0].property_name, 'name')
+
+
+def test_simplest_view():
+    site = make_test_site()
+    aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
+    req = Request.parse({'remote.name':'truc'})
+    items = list(site.view("test_remote_ap", aliases, req))
+    eq_(len(items), 1)
+    uniq_item = items[0]
+    eq_(uniq_item['name_select'],  'remote_item')
+    eq_(uniq_item['remote_select'],  'truc')
+    eq_(uniq_item['id_select'],  4)
     
 
      

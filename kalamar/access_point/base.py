@@ -21,6 +21,7 @@ Access point base class.
 """
 
 from ..item import Item
+from itertools import product
 
 
 class NotOneMatchingItem(Exception):
@@ -68,7 +69,7 @@ class AccessPoint(object):
         raise NotImplementedError('Abstract method')
     
 #    def view(self, request, mapping={}, interval=(0, -1), order=name|tuple(name)|tuple(tuple(name,order))):
-    def view(self, request, mapping, **kwArgs):
+    def view(self, view_request, **kwArgs):
         """Returns partial items.
 
         ``mapping`` is a dict mapping the items property to custom keys in 
@@ -79,12 +80,17 @@ class AccessPoint(object):
         site.view("access_point',{"name":"name","boss_name": "foreign.name"})
 
         """
-#        conditions = Request.parse(request)
-#        master_ap = self.access_points[access_point]
-        # The ap returns 
-#        return master_ap.view(mapping, conditions,**kwArgs)
-#        managed, not_managed = self._process_manageable(mapping, request)
-        raise NotImplementedError('Abstract method')
+        def alias_item(item, aliases):
+            return dict([(alias, item[value]) for alias, value in aliases.items()])
+        for item in self.search(view_request.request):
+            view_item = alias_item(item,view_request.aliases)
+            subitems_generators = [self.site.access_points[self.properties[prop].remote_ap].view(subview) 
+                    for prop, subview in view_request.subviews.items()]
+            for cartesian_item in product(*subitems_generators):
+                newitem = dict(view_item)
+                for cartesian_atom in cartesian_item:
+                    newitem.update(cartesian_atom)
+                yield newitem
         
     def delete_many(self, request):
         """Delete all item matching the request.
