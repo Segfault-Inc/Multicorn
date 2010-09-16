@@ -22,8 +22,8 @@ Create one for each independent site with its own configuration.
 
 """
 
-from kalamar import Item
-from kalamar.request import Request
+from .item import Item
+from .request import Request
 
 
 class Site(object):
@@ -41,6 +41,7 @@ class Site(object):
             raise RuntimeError('Site already has an access point named %r.'
                                % name)
         access_point.site = self
+        access_point.name = name
         self.access_points[name] = access_point
     
     def deleguate_to_acces_point(method_name, first_arg_is_a_request=False):

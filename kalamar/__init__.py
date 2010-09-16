@@ -22,6 +22,6 @@ Kalamar - Content Management Library
 # TODO: write module documentation
 """
 
-from kalamar.item import Item
-from kalamar.site import Site
+from .site import Site
+from .access_point.base import MultipleMatchingItems, ItemDoesNotExist
 

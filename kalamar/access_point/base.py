@@ -23,22 +23,23 @@ Access point base class.
 from ..item import Item
 
 
-MISSING_PARAMETER = object()
+class NotOneMatchingItem(Exception):
+    """Not one object has been returned."""
+
+class MultipleMatchingItems(NotOneMatchingItem):
+    """More than one object have been returned."""
+
+class ItemDoesNotExist(NotOneMatchingItem):
+    """No object has been returned."""
+
+
+DEFAULT_PARAMETER = object()
 
 class AccessPoint(object):
     """Abstract class for all access points.
 
     """
-    class NotOneObjectReturned(Exception):
-        """Not one object has been returned."""
-
-    class MultipleObjectsReturned(NotOneObjectReturned):
-        """More than one object have been returned."""
-
-    class ObjectDoesNotExist(NotOneObjectReturned):
-        """No object has been returned."""
-
-    def open(self, request, default=MISSING_PARAMETER):
+    def open(self, request, default=DEFAULT_PARAMETER):
         """Return the item in access_point matching request.
         
         If there is no result, raise ``Site.ObjectDoesNotExist``.
@@ -49,8 +50,8 @@ class AccessPoint(object):
         try:
             item = results.next()
         except StopIteration:
-            if default is MISSING_PARAMETER:
-                raise self.ObjectDoesNotExist
+            if default is DEFAULT_PARAMETER:
+                raise ItemDoesNotExist
             return default
         
         try:
@@ -58,7 +59,7 @@ class AccessPoint(object):
         except StopIteration:
             return item
         else:
-            raise self.MultipleObjectsReturned
+            raise MultipleMatchingItems
 
     def search(self, request):
         """Return an iterable of every item matching request.
