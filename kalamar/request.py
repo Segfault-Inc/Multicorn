@@ -158,13 +158,14 @@ class ViewRequest(object):
         #Initialize instance attributes
         self.request = request
         self.access_point = access_point
+        self._my_requests = []
         self.aliases = aliases
         self.my_aliases = {}
         self._other_aliases = {}
         self.request = request
         self.subviews = {}
         self.joins = {}
-        self.orphan_request = {}
+        self.orphan_request = []
         #Process the bouzin
         self._process_aliases(aliases)
         self.classify()
@@ -175,21 +176,6 @@ class ViewRequest(object):
                 self.my_aliases[key] = val
             else:
                 self._other_aliases[key] = val
-
-    def _classify_request(self, request):
-        def transform_node(node):
-            if node.operator == OPERATORS['OR']:
-                return node
-            else:
-                return None
-        
-    def _classify(self):
-        """ Build subviews from the aliases and request """
-        for key, value in aliases.items():
-            if "." not in val:
-                self.my_aliases[key] = value
-            else:
-                self._other_aliases[key] = value
 
     def _classify_alias(self):
         """ Returns a dict mapping properties from this access point to 
@@ -208,24 +194,38 @@ class ViewRequest(object):
             self.joins[root] = is_outer_join 
         return aliases
 
-    def _classify_request(self):
-        """Builds a dict mapping property names to the condition they manage
-        """
-        def join_from_request(request):
-            path = request.property_name.split(".")
-            if len(path) == 1 :
-                return None
-            else:
-                root = path[0]
-                root = root[1:] if root.startswith("<") else root
-                return root
-        joins_from_request = sorted(self.request.walk(join_from_request).items())
-        joins_from_request = dict([(key, list(group)) 
-            for key,group in groupby(joins_from_request, lambda x: x[1]) if key])
-        for key, value in joins_from_request.items():
-            self.joins[key] = True
-        self.joins.update(dict([(key,True) for key in joins_from_request]))
-        return joins_from_request 
+    def real_prop_name(self, prop_name):
+        return prop_name[1:] if prop_name.startswith("<") else prop_name
+
+    def root(self, prop_name):
+        splitted = prop_name.split(".")
+        rest = ".".join(splitted[1:]) if len(splitted) > 1 else None
+        return self.real_prop_name(splitted[0]),rest
+
+    def _classify_request(self, request, conds_by_prop=None):
+        conds_by_prop = conds_by_prop or {}
+        if isinstance(request, Condition):
+            root, rest = self.root(request.property_name)
+            if not rest : 
+                self._my_requests.append(request)
+            else: 
+                newcond = Condition(rest, request.operator, request.value)
+                self.joins[root] = True
+                conds_for_prop = conds_by_prop.get(root,And())
+                conds_for_prop.requests.append(newcond)
+                conds_by_prop[root] = conds_for_prop
+        elif isinstance(request, Or):
+            #TODO: manage Or which belong strictly to the property, and 
+            # should therefore be kept
+            self.orphan_request.append(request)
+            return {}
+        elif isinstance(request, And):
+            for branch in request.requests:
+                conds_by_prop.update(self._classify_request(branch, conds_by_prop))
+        elif isinstance(request, Not):
+            conds_by_prop.update(self._classify_request(request.request, conds_by_prop))
+        return conds_by_prop
+        
 
 
 
@@ -235,13 +235,15 @@ class ViewRequest(object):
         self.joins = {}
         conditions = {}
         aliases = self._classify_alias()
-        joins_from_request = self._classify_request()
+        conditions = self._classify_request(self.request)
+        self.request = And(self._my_requests)
         #genereates the subviews from the processed aliases and requests
         for key in self.joins:
             access_point = self.access_point.properties[key].remote_ap
             req = conditions.get(key, Request.parse({}))
             subview = ViewRequest(access_point, aliases.get(key,{}), req)
             self.subviews[key] = subview
+
 
 
 
