@@ -39,18 +39,19 @@ class Item(MultiDict, ModificationTrackingDict):
     """
     def __init__(self, access_point, properties={}):
         self._access_point = access_point
-        self._old_properties = None
         self.modified = True
-        self._loaded_properties = MultiDict()
+        super(Item, self).__init__(properties)
+#        self._old_properties = None
+#        self._loaded_properties = MultiDict()
 
-        item_properties = MultiDict(
-            (name, None) for name in access_point.properties)
-        if properties:
-            for name, value in properties.items():
-                # TODO: manage MultiDicts
-                item_properties[name] = value
-        
-        self.update(item_properties)
+#        item_properties = MultiDict(
+#            (name, None) for name in access_point.properties)
+#        if properties:
+#            for name, value in properties.items():
+#                # TODO: manage MultiDicts
+#                item_properties[name] = value
+#        
+#        self.update(item_properties)
 
     def __eq__(self, item):
         """Test if ``item`` is the same as this item."""
@@ -72,8 +73,8 @@ class Item(MultiDict, ModificationTrackingDict):
     def __repr__(self):
         """Return a user-friendly representation of item."""
         return "<%s(%s @ %s)>" % (
-            self.__class__.__name__, repr(self.request),
-            repr(self.access_point_name))
+            self.__class__.__name__, repr(self.identity),
+            repr(self._access_point.name))
     
     def __hash__(self):
         """Return a hash of item.
@@ -85,7 +86,7 @@ class Item(MultiDict, ModificationTrackingDict):
         YOU KNOW WHAT YOU'RE DOING.
         
         """
-        return hash(self.access_point_name + self.request)
+        return hash(self._access_point.name + self.request)
 
     @property
     def encoding(self):
@@ -105,8 +106,10 @@ class Item(MultiDict, ModificationTrackingDict):
 
     def save(self):
         """Save the item."""
-        self.access_point._save(item)
+        self._access_point.save(self)
+        self.modified = False
 
     def delete(self):
         """Delete the item."""
-        self.access_point._delete(item)
+        self._access_point.delete(self)
+

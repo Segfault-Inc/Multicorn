@@ -19,7 +19,7 @@
 Test registering access points to a Site.
 """
 
-from nose.tools import raises
+from nose.tools import eq_, raises
 from kalamar import Site
 
 
@@ -33,7 +33,7 @@ def test_simple_setup():
     site = Site()
     ap = DummyAccessPoint()
     site.register('things', ap)
-    assert site.access_points == {'things': ap}
+    eq_(site.access_points, {'things': ap})
     
 @raises(RuntimeError)
 def test_double_register():

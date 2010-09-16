@@ -19,14 +19,20 @@ from .base import AccessPoint
 from ..item import Item
 
 class Memory(AccessPoint):
-    def __init__(self, id_property='id'):
+    """
+    Trivial access point that keeps everything in memory.
+    Mainly useful for testing.
+    """
+    def __init__(self, properties, id_property):
+        self.properties = properties
         self.id_property = id_property
         self._store = {}
         
     def search(self, request):
-        return (Item(self, properties)
-                for properties in self._store.itervalues()
-                if request.test(properties))
+        for properties in self._store.itervalues():
+            item = Item(self, properties)
+            if request.test(item):
+                yield item
     
     def delete(self, item):
         del self._store[item[self.id_property]]

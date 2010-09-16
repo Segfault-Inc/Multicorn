@@ -32,9 +32,9 @@ OPERATORS = {
 #    "~=": re_match,
 #    "~!=": re_not_match
 }
+REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
-
-class OperatorNotAvailable(ValueError):
+class OperatorNotAvailable(KeyError):
     pass
 
 
@@ -57,10 +57,10 @@ class Request(object):
 
         TODO: describe syntaxic sugar.
         
+        XXX This doctest relies on the order of a dict. TODO: Fix this.
         >>> Request.parse({u'a': 1, u'b': 'foo'})
         ...                                  # doctest: +NORMALIZE_WHITESPACE
-        And(Condition(u'b', '=', 'foo'), <built-in function and_>, 
-            Condition(u'a', '=', 1))
+        And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
         """
         if not request:
             # empty request
@@ -81,13 +81,19 @@ class Request(object):
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
     def __init__(self, property_name, operator, value):
-        self.prop_name = prop_name
-        self.operator = operator
+        try:
+            self.operator = OPERATORS[operator]
+        except KeyError:
+            raise OperatorNotAvailable('Operator %r is not supported here.'
+                                       % operator)
+        self.property_name = property_name
         self.value = value
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
-            self.__class__.__name__, self.prop_name, self.operator,
+            self.__class__.__name__,
+            self.property_name,
+            REVERSE_OPERATORS[self.operator],
             self.value)
 
     def test(self, item):
@@ -106,6 +112,10 @@ class And(Request):
     def __init__(self, *requests):
         self.requests = requests
     
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, 
+                           ', '.join(map(repr, self.requests)))
+
     def test(self, item):
         return all(request.test(item) for request in self.requests)
 
@@ -115,6 +125,10 @@ class Or(Request):
     def __init__(self, *requests):
         self.requests = requests
     
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, 
+                           ', '.join(map(repr, self.requests)))
+
     def test(self, item):
         return any(request.test(item) for request in self.requests)
 
