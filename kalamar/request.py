@@ -162,8 +162,7 @@ class ViewRequest(object):
         #Initialize instance attributes
         self.request = request
         self._my_requests = []
-        self.aliases = aliases
-        self.my_aliases = {}
+        self.aliases = {}
         self._other_aliases = {}
         self.request = request
         self.subviews = {}
@@ -176,7 +175,7 @@ class ViewRequest(object):
     def _process_aliases(self, aliases):
         for key,val in aliases.items():
             if '.' not in val:
-                self.my_aliases[key] = val
+                self.aliases[key] = val
             else:
                 self._other_aliases[key] = val
 

@@ -83,9 +83,9 @@ class AccessPoint(object):
         def alias_item(item, aliases):
             return dict([(alias, item[value]) for alias, value in aliases.items()])
         for item in self.search(view_request.request):
-            view_item = alias_item(item,request.aliases)
-            subitems_generators = [site.access_points[self.properties[prop].remote_ap].view(subview) 
-                    for prop, subview in view_request.subviews]
+            view_item = alias_item(item,view_request.aliases)
+            subitems_generators = [self.site.access_points[self.properties[prop].remote_ap].view(subview) 
+                    for prop, subview in view_request.subviews.items()]
             for cartesian_item in product(*subitems_generators):
                 newitem = dict(view_item)
                 for cartesian_atom in cartesian_item:
