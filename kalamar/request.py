@@ -168,10 +168,13 @@ class ViewRequest(object):
 			else:
 				self._other_aliases[key] = val
 
-    def _classify_request(self):
+    def _classify_request(self, request):
+        def transform_node(node)::Q
+            if node.operator == OPERATORS['OR']
+                return node
+            else:
+                return None
         
-        
-
 	def _classify(self):
         """ Build subviews from the aliases and request """
             for key, value in aliases.items():
