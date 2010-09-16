@@ -21,14 +21,13 @@ Base classes to create kalamar items.
 """
 
 import collections
-from werkzeug import MultiDict
-from werkzeug.contrib.sessions import ModificationTrackingDict
+from werkzeug.datastructures import MultiDict, UpdateDictMixin
 
 
 Identity = collections.namedtuple('Identity', 'access_point, conditions')
 
 
-class Item(MultiDict, ModificationTrackingDict):
+class Item(collections.MutableMapping):
     """Base class for items.
     
     The _access_point attribute represents where, in kalamar, the item is
@@ -37,21 +36,29 @@ class Item(MultiDict, ModificationTrackingDict):
     Items are hashable but mutable, use hash with caution.
 
     """
-    def __init__(self, access_point, properties={}):
+    def __init__(self, access_point, properties=None):
         self._access_point = access_point
-        self.modified = True
-        super(Item, self).__init__(properties)
-#        self._old_properties = None
-#        self._loaded_properties = MultiDict()
+        self.modified = False
+        self._properties = {}
 
-#        item_properties = MultiDict(
-#            (name, None) for name in access_point.properties)
-#        if properties:
-#            for name, value in properties.items():
-#                # TODO: manage MultiDicts
-#                item_properties[name] = value
-#        
-#        self.update(item_properties)
+        for key, value in (properties or {}).items():
+            self._properties[key] = (value,)
+    
+    def __getitem__(self, key):
+        return self._properties[key][0]
+
+    def __setitem__(self, key, value):
+        self.modified = True
+        self._properties[key] = (value,)
+
+    def __delitem__(self, key):
+        del self._properties[key]
+
+    def __iter__(self):
+        return iter(self._properties)
+
+    def __len__(self):
+        return len(self._properties)
 
     def __eq__(self, item):
         """Test if ``item`` is the same as this item."""
@@ -88,21 +95,17 @@ class Item(MultiDict, ModificationTrackingDict):
         """
         return hash(self._access_point.name + self.request)
 
-    @property
-    def encoding(self):
-        """Return the item encoding.
+    def setlist(self, key, values):
+        self.modified = True
+        self._properties[key] = tuple(values)
 
-        Return the item encoding, based on what the parser can know from
-        the item data or, if unable to do so, on what is specified in the
-        access_point.
-
-        """
-        return self._access_point.default_encoding
+    def getlist(self, key):
+        return self._properties[key]
     
     @property
     def identity(self):
         """Return an :class:`Identity` instance indentifying only this item."""
-        return 
+        return None
 
     def save(self):
         """Save the item."""
@@ -112,4 +115,3 @@ class Item(MultiDict, ModificationTrackingDict):
     def delete(self):
         """Delete the item."""
         self._access_point.delete(self)
-
