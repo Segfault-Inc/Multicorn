@@ -21,6 +21,7 @@ Kalamar request objects.
 """
 
 import operator
+from itertools import groupby
 
 OPERATORS = {
     "=": operator.eq,
@@ -46,8 +47,8 @@ class Request(object):
 
     def walk(self, func, values=None):
         """ Returns a dict containing the result from applying func to each child """
-        valus = values or {}
-        for branch in (self.left_operand, self.right_operand):
+        values = values or {}
+        for branch in (self.requests):
             values = branch.walk(func,values)
         return values
 
@@ -155,6 +156,8 @@ class ViewRequest(object):
     """
     def __init__(self,access_point, aliases, request):
         #Initialize instance attributes
+        self.request = request
+        self.access_point = access_point
         self.aliases = aliases
         self.my_aliases = {}
         self._other_aliases = {}
@@ -162,7 +165,6 @@ class ViewRequest(object):
         self.subviews = {}
         self.joins = {}
         self.orphan_request = {}
-        
         #Process the bouzin
         self._process_aliases(aliases)
         self.classify()
@@ -193,32 +195,41 @@ class ViewRequest(object):
         """Build subviews from the aliases and request."""
         self.subviews = {}
         self.joins = {}
+        conditions = {}
+        aliases = {}
         for alias, property_path in self._other_aliases.items():
             splitted_path = property_path.split(".")
             root = splitted_path[0]
             is_outer_join = root.startswith("<")
             if is_outer_join:
                 root = root[1:]
-            if root not in self.subviews:
-                access_point = self.access_point.properties[root].access_point
-                subview = View_Request(access_point, {}, None)
-            else:
-                subview = self.subviews[root]
-            subview.aliases[alias] = splitted_path[1:].join(".")
+            subaliases = aliases.get(root,{})
+            subaliases.update({alias: ".".join(splitted_path[1:])})
+            aliases[root] = subaliases
             self.joins[root] = is_outer_join 
-        
-        def join_from_request(request):
-            root = request.left_operand.split(".")[0]
-            root = root[1:] if root.startswith("<") else rooddt
-            return root
-
         #Builds a dict mapping property_names to elementary Conditions
-        joins_from_request = sorted(self.request.walk(join_from_request),lambda: req,prop )
-        joins_from_request = dict([(key, list(group))
-            for key,group in groupby(joins_from_request, lambda x,y: x)])
+        def join_from_request(request):
+            path = request.property_name.split(".")
+            if len(path) == 1 :
+                return None
+            else:
+                root = path[0]
+                root = root[1:] if root.startswith("<") else root
+                return root
+        joins_from_request = sorted(self.request.walk(join_from_request).items())
+        joins_from_request = dict([(key, list(group)) 
+            for key,group in groupby(joins_from_request, lambda x: x[1]) if key])
         for key, value in joins_from_request.items():
             self.joins[key] = True
         self.joins.update(dict([(key,True) for key in joins_from_request]))
+        #genereates the subviews from the processed aliases and requests
+        for key in self.joins:
+            access_point = self.access_point.properties[key].remote_ap
+            req = conditions.get(key, Request.parse({}))
+            subview = ViewRequest(access_point, aliases.get(key,{}), req)
+            self.subviews[key] = subview
+
+
 
 
 
