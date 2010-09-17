@@ -48,6 +48,8 @@ class Item(collections.MutableMapping):
         return self._properties[key][0]
 
     def __setitem__(self, key, value):
+        if key not in self:
+            raise KeyError(key)
         self.modified = True
         self._properties[key] = (value,)
 
@@ -96,6 +98,8 @@ class Item(collections.MutableMapping):
         return hash(self._access_point.name + self.request)
 
     def setlist(self, key, values):
+        if key not in self:
+            raise KeyError(key)
         self.modified = True
         self._properties[key] = tuple(values)
 
