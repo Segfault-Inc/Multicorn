@@ -22,7 +22,7 @@ Access point base class.
 
 from ..item import Item
 from itertools import product
-from ..request import And, Condition
+from ..request import And, Condition, Or
 
 class NotOneMatchingItem(Exception):
     """Not one object has been returned."""
@@ -82,10 +82,11 @@ class AccessPoint(object):
         """
         def alias_item(item, aliases):
             return dict([(alias, item[value]) for alias, value in aliases.items()])
-        orphan_request = view_request.orphan_request
         fake_props = []
+        orphan_request = view_request.orphan_request
         #First, we perform a search on our own properties
         for item in self.search(view_request.request):
+            join_request = And()
             view_item = alias_item(item,view_request.aliases)
             subitems_generators = []
             #Build subviews on our remote properties
@@ -99,25 +100,26 @@ class AccessPoint(object):
                     for id_prop in remote_ap.identity_properties:
                         fake_prop = '____' + prop + '____' + id_prop
                         fake_props.append(fake_prop)
-                        orphan_request = And(orphan_request, Condition(fake_prop, '=', item[prop][id_prop]))
+                        join_request = And(join_request, Condition(fake_prop, '=', item[prop][id_prop]))
                         subview.aliases[fake_prop] = id_prop
                 elif property_obj.relation == 'one-to-many':
-                    subview.request = And(Condition(property_obj.remote_property,'=',item),subview.request)
+                    subview.additional_request = Condition(property_obj.remote_property,'=',item)
                 subitems_generators.append(remote_ap.view(subview))
+                orphan_request = Or(orphan_request, join_request)
             if not subitems_generators:
                 yield view_item
             else:
                 # Compute the cartesian product of the subviews results,
                 # update the properties, and test it against the unevaluated
                 # request before yielding
+                print join_request
                 for cartesian_item in product(*subitems_generators):
                     newitem = dict(view_item)
                     for cartesian_atom in cartesian_item:
                         newitem.update(cartesian_atom)
-                        
-                        if orphan_request.test(newitem):
+                        if view_request.orphan_request.test(newitem) and join_request.test(newitem):
                             for fake_prop in fake_props:
-                                newitem.pop(fake_prop)
+                                newitem.pop(fake_prop, None)
                             yield newitem
         
     def delete_many(self, request):
