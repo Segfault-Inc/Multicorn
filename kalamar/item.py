@@ -20,6 +20,7 @@ Base classes to create kalamar items.
 
 """
 
+from abc import abstractmethod
 import collections
 from werkzeug.datastructures import MultiDict, UpdateDictMixin
 
@@ -27,7 +28,31 @@ from werkzeug.datastructures import MultiDict, UpdateDictMixin
 Identity = collections.namedtuple('Identity', 'access_point, conditions')
 
 
-class Item(collections.MutableMapping):
+class MutableMultiMapping(collections.MutableMapping):
+    """A MutableMapping where each key as associated to multiple values.
+    
+    Stored values are actually tuples, but __getitem__ only gives the first
+    element of that tuple, and __setitem__ wraps the new value in a tuple.
+    
+    To access the underlying tuples, use getlist and setlist.
+
+    """
+    @abstractmethod
+    def getlist(self, key, value):
+        raise KeyError
+
+    @abstractmethod
+    def setlist(self, key, value):
+        raise KeyError
+
+    def __getitem__(self, key):
+        return self.getlist(key)[0]
+
+    def __setitem__(self, key, value):
+        self.setlist(key, (value,))
+
+
+class Item(MutableMapping):
     """Base class for items.
     
     The _access_point attribute represents where, in kalamar, the item is
@@ -38,19 +63,12 @@ class Item(collections.MutableMapping):
     """
     def __init__(self, access_point, properties=None):
         self._access_point = access_point
-        self.modified = False
         self._properties = {}
-
-        for key, value in (properties or {}).items():
-            self._properties[key] = (value,)
+        self.update(properties or {})
+        # update() sets modified to True, but we do not want initialisation to
+        # count as a modification.
+        self.modified = False
     
-    def __getitem__(self, key):
-        return self._properties[key][0]
-
-    def __setitem__(self, key, value):
-        self.modified = True
-        self._properties[key] = (value,)
-
     def __delitem__(self, key):
         del self._properties[key]
 
@@ -59,17 +77,6 @@ class Item(collections.MutableMapping):
 
     def __len__(self):
         return len(self._properties)
-
-    def __cmp__(self, item):
-        """Compare two items.
-        
-        Useful in some algorithms (sorting by key, for example).
-        DO NOT USE UNLESS YOU KNOW WHAT YOU'RE DOING!
-        
-        """
-        if isinstance(item, Item):
-            return cmp(hash(self), hash(item))
-        return NotImplemented
 
     def __repr__(self):
         """Return a user-friendly representation of item."""
@@ -87,7 +94,7 @@ class Item(collections.MutableMapping):
     @property
     def identity(self):
         """Return an :class:`Identity` instance indentifying only this item."""
-        return None
+        return NotImplemented
 
     def save(self):
         """Save the item."""
