@@ -85,6 +85,8 @@ class Item(MutableMapping):
             repr(self._access_point.name))
     
     def setlist(self, key, values):
+        if key not in self:
+            raise KeyError(key)
         self.modified = True
         self._properties[key] = tuple(values)
 
