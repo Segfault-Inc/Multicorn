@@ -95,7 +95,7 @@ class Item(collections.MutableMapping):
         YOU KNOW WHAT YOU'RE DOING.
         
         """
-        return hash(self._access_point.name + self.request)
+        return hash(self.identity)
 
     def setlist(self, key, values):
         if key not in self:
