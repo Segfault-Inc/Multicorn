@@ -16,9 +16,10 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Kalamar Site class.
+Site
+====
 
-Create one for each independent site with its own configuration.
+Site class. Create one for each independent site with its own configuration.
 
 """
 

@@ -16,6 +16,9 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Request
+=======
+
 Kalamar request objects.
 
 """
@@ -23,6 +26,7 @@ Kalamar request objects.
 import operator
 from abc import ABCMeta, abstractmethod
 from itertools import groupby
+
 
 OPERATORS = {
     "=": operator.eq,
@@ -35,6 +39,7 @@ OPERATORS = {
 #    "~!=": re_not_match
 }
 REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
+
 
 class OperatorNotAvailable(KeyError):
     pass

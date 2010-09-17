@@ -16,7 +16,11 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Site test
+=========
+
 Test registering access points to a Site.
+
 """
 
 from nose.tools import eq_, raises
@@ -28,28 +32,25 @@ class DummyAccessPoint(object):
 
 
 def test_simple_setup():
-    """Setup a Site with a single access point, no exception raised.
-    """
+    """Setup a Site with a single access point, no exception raised."""
     site = Site()
     ap = DummyAccessPoint()
-    site.register('things', ap)
-    eq_(site.access_points, {'things': ap})
+    site.register("things", ap)
+    eq_(site.access_points, {"things": ap})
     
 @raises(RuntimeError)
 def test_double_register():
-    """Registering the same AP twice raises an exception.
-    """
+    """Registering the same AP twice raises an exception."""
     site = Site()
     ap = DummyAccessPoint()
-    site.register('things', ap)
-    site.register('stuff', ap)
+    site.register("things", ap)
+    site.register("stuff", ap)
     
 @raises(RuntimeError)
 def test_ap_name_conflict():
-    """Registering two APs with the same name raises an exception.
-    """
+    """Registering two APs with the same name raises an exception."""
     site = Site()
-    site.register('things', DummyAccessPoint())
-    site.register('things', DummyAccessPoint())
+    site.register("things", DummyAccessPoint())
+    site.register("things", DummyAccessPoint())
     
 

@@ -16,6 +16,9 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Memory test
+===========
+
 Test the Memory access point.
 
 """

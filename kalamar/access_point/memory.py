@@ -18,10 +18,12 @@
 from .base import AccessPoint
 from ..item import Item
 
+
 class Memory(AccessPoint):
-    """
-    Trivial access point that keeps everything in memory.
+    """Trivial access point that keeps everything in memory.
+
     Mainly useful for testing.
+
     """
     def __init__(self, properties, id_property):
         self.properties = properties
