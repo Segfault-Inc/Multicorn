@@ -16,18 +16,14 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Property
+========
+
 Kalamar property object.
 
 """
 
-import decimal
-import io
-
 from . import item
-
-
-PROPERTY_TYPES = set((
-        str, int, float, decimal.Decimal, io.IOBase, item.Item))
 
 
 class MissingRemoteAP(RuntimeError):
