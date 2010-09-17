@@ -16,6 +16,9 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Item
+====
+
 Base classes to create kalamar items.
 
 """

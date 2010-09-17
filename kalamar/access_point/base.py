@@ -16,6 +16,9 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Access Point
+============
+
 Access point base class.
 
 """
@@ -25,17 +28,21 @@ from ..item import Item
 from itertools import product
 from ..request import And, Condition, Or
 
+
+DEFAULT_PARAMETER = object()
+
+
 class NotOneMatchingItem(Exception):
     """Not one object has been returned."""
+
 
 class MultipleMatchingItems(NotOneMatchingItem):
     """More than one object have been returned."""
 
+
 class ItemDoesNotExist(NotOneMatchingItem):
     """No object has been returned."""
 
-
-DEFAULT_PARAMETER = object()
 
 class AccessPoint(object):
     """Abstract class for all access points.

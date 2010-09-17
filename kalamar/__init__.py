@@ -20,6 +20,7 @@ Kalamar - Content Management Library
 ====================================
 
 # TODO: write module documentation
+
 """
 
 from .site import Site
