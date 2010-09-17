@@ -37,8 +37,8 @@ else:
     class GenshiEngine(BaseEngine):
         r"""Koral engine for Genshi: http://genshi.edgewall.org/
         
-        >>> import koral.site, test.koral, os.path
-        >>> path = os.path.join(os.path.dirname(test.koral.__file__), 'templates')
+        >>> import koral.site, koral.tests, os.path
+        >>> path = os.path.join(os.path.dirname(koral.tests.__file__), 'templates')
         >>> engine = koral.site.Site(path).engines['genshi']
         >>> engine.render('hello.genshi.html')
         ...   # doctest: +NORMALIZE_WHITESPACE
