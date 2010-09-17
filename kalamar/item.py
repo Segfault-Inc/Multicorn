@@ -62,12 +62,6 @@ class Item(collections.MutableMapping):
     def __len__(self):
         return len(self._properties)
 
-    def __eq__(self, item):
-        """Test if ``item`` is the same as this item."""
-        if isinstance(item, Item):
-            return hash(item) == hash(self)
-        return NotImplemented
-
     def __cmp__(self, item):
         """Compare two items.
         
@@ -85,18 +79,6 @@ class Item(collections.MutableMapping):
             self.__class__.__name__, repr(self.identity),
             repr(self._access_point.name))
     
-    def __hash__(self):
-        """Return a hash of item.
-        
-        Do not forget that items are mutable, so the hash could change!
-        
-        This hash value is useful in some algorithms (eg in sets) and it
-        permits a huge gain of performance. However, DON'T USE THIS HASH UNLESS
-        YOU KNOW WHAT YOU'RE DOING.
-        
-        """
-        return hash(self.identity)
-
     def setlist(self, key, values):
         if key not in self:
             raise KeyError(key)

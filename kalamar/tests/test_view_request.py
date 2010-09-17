@@ -29,12 +29,14 @@ from kalamar.site import Site
 
 @nottest
 def make_test_ap():
-    return Memory({'id': int, 'name': str}, 'id')
+    one_to_many = Property(Item, relation='one-to-many', remote_ap='test_remote_ap', remote_property='remote')
+    return Memory({'id': Property(int), 'name': Property(str), 'manies': one_to_many}, 'id')
 
 @nottest
 def make_test_second_ap():
     remote_prop = Property(Item, relation='many-to-one', remote_ap='test_ap')
     return Memory({'id': Property(int),'label' : Property( int), 'remote': remote_prop},'id')
+
 
 
 @nottest
@@ -46,7 +48,8 @@ def make_test_site():
     my_second_item = site.create('test_ap', {'id':10, 'name': 'truc'})
     my_item.save()
     my_second_item.save()
-    site.create('test_remote_ap', {'id' : 4 , 'label': 'remote_item', 'remote' : my_item}).save()
+    remote = site.create('test_remote_ap', {'id' : 4 , 'label': 'remote_item', 'remote' : my_item})
+    remote.save()
     site.create('test_remote_ap', {'id' : 8 , 'label': 'remote_item2', 'remote' : my_second_item}).save()
     return site
 
@@ -86,12 +89,21 @@ def test_simplest_view():
     aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
     req = Request.parse({'remote.id':10})
     items = list(site.view("test_remote_ap", aliases, req))
+    print items
     eq_(len(items), 1)
     uniq_item = items[0]
     eq_(uniq_item['name_select'],  'remote_item2')
     eq_(uniq_item['remote_select'],  'truc')
     eq_(uniq_item['id_select'],  8)
     
+def test_one_to_many():
+    site = make_test_site()
+    aliases = {'local_id' : 'id','local_name' : 'name',  'remote_label' : 'manies.label'}
+    items = list(site.view('test_ap', aliases,{}))
+    eq_(len(items), 2)
 
+
+
+    
      
 

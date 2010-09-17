@@ -172,13 +172,20 @@ class ViewRequest(object):
         #Initialize instance attributes
         self.aliases = {}
         self._other_aliases = {}
-        self.request = And()
+        self._request = And()
+        self._original_request = request
+        self.additional_aliases = {}
+        self.additional_request = And()
         self.subviews = {}
         self.joins = {}
         self.orphan_request = And()
         #Process the bouzin
         self._process_aliases(aliases)
         self.classify(request)
+
+    @property
+    def request(self):
+        return And(self._request, self.additional_request)
 
     def _process_aliases(self, aliases):
         for key,val in aliases.items():
@@ -217,7 +224,7 @@ class ViewRequest(object):
         if isinstance(request, Condition):
             root, rest = self.root(request.property_name)
             if not rest : 
-                self.request = And(self.request, request)
+                self._request = And(self._request, request)
             else: 
                 newcond = Condition(rest, request.operator, request.value)
                 self.joins[root] = True
