@@ -105,21 +105,19 @@ class AccessPoint(object):
                 elif property_obj.relation == 'one-to-many':
                     subview.additional_request = Condition(property_obj.remote_property,'=',item)
                 subitems_generators.append(remote_ap.view(subview))
-                orphan_request = Or(orphan_request, join_request)
             if not subitems_generators:
                 yield view_item
             else:
                 # Compute the cartesian product of the subviews results,
                 # update the properties, and test it against the unevaluated
                 # request before yielding
-                print join_request
                 for cartesian_item in product(*subitems_generators):
                     newitem = dict(view_item)
                     for cartesian_atom in cartesian_item:
                         newitem.update(cartesian_atom)
-                        if view_request.orphan_request.test(newitem) and join_request.test(newitem):
-                            for fake_prop in fake_props:
-                                newitem.pop(fake_prop, None)
+                        if orphan_request.test(newitem) and join_request.test(newitem):
+                            for fake_prop in view_request.additional_aliases:
+                                newitem.pop(fake_prop)
                             yield newitem
         
     def delete_many(self, request):
