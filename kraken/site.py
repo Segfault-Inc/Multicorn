@@ -41,8 +41,7 @@ from kraken import utils
 
 class Site(object):
     """WSGI application from a site root and a kalamar configuration file."""
-    def __init__(self, site_root, kalamar_conf=None, secret_key=None,
-                 fail_on_inexistent_parser=True):
+    def __init__(self, site_root, secret_key=None):
         """Initialize the Site.
 
         ``site_root``: dirname of the root of the site
@@ -54,8 +53,7 @@ class Site(object):
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(self.site_root)
-        self.kalamar_site = utils.KalamarSiteForKraken(kalamar_conf if kalamar_conf else None,
-            fail_on_inexistent_parser=fail_on_inexistent_parser)
+        self.kalamar_site = utils.KalamarSiteForKraken()
         
         # create a virtual package in sys.modules so that we can import 
         # python modules in the site
@@ -176,8 +174,8 @@ class Site(object):
                           extension=None, engine=None):
         """Build a response for ``request`` according to given parameters.
 
-        >>> import test.kraken
-        >>> site = test.kraken.make_site()
+        >>> import kraken.tests
+        >>> site = kraken.tests.make_site()
         >>> req = site.make_request({})
         >>> site.template_response(req, 'foo')
         Traceback (most recent call last):
@@ -240,8 +238,8 @@ class Site(object):
 
         Return a module object.
 
-        >>> import test.kraken
-        >>> site = test.kraken.make_site()
+        >>> import kraken.tests
+        >>> site = kraken.tests.make_site()
         >>> module = site.import_('inexistent')
         Traceback (most recent call last):
             ...
@@ -250,7 +248,7 @@ class Site(object):
         >>> site.import_('lorem.ipsum') # doctest: +ELLIPSIS
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken_site_....lorem.ipsum' 
-            from '...test/kraken/site/lorem/ipsum.py...'>
+            from '...kraken/tests/site/lorem/ipsum.py...'>
         """
         name = self.package_name + '.' + name
         # example: with name = 'kraken_site_42.views.main', __import__(name)
@@ -270,8 +268,8 @@ class Site(object):
 
         Return (template_name, type, engine) for the first one found or None.
 
-        >>> import test.kraken
-        >>> site = test.kraken.make_site()
+        >>> import kraken.tests
+        >>> site = kraken.tests.make_site()
 
         Directory stucture of site.site_root:
             index.html.genshi

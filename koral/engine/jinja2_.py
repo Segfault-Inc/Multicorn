@@ -36,8 +36,8 @@ else:
     class Jinja2Engine(BaseEngine):
         """Koral engine for Jinja2: http://jinja.pocoo.org/2/
         
-        >>> import koral.site, test.koral, os.path
-        >>> path = os.path.join(os.path.dirname(test.koral.__file__), 'templates')
+        >>> import koral.site, koral.tests, os.path
+        >>> path = os.path.join(os.path.dirname(koral.tests.__file__), 'templates')
         >>> engine = koral.site.Site(path).engines['jinja2']
         >>> engine.render('hello.jinja2.html')
         u'<html><body>Hello, World!</body></html>'

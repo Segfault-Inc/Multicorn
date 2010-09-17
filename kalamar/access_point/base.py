@@ -16,30 +16,49 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Access Point
+============
+
 Access point base class.
 
 """
 
+import abc
 from ..item import Item
 from itertools import product
 from ..request import And, Condition, Or
 
+
+DEFAULT_PARAMETER = object()
+
+
 class NotOneMatchingItem(Exception):
     """Not one object has been returned."""
 
+
 class MultipleMatchingItems(NotOneMatchingItem):
     """More than one object have been returned."""
+
 
 class ItemDoesNotExist(NotOneMatchingItem):
     """No object has been returned."""
 
 
-DEFAULT_PARAMETER = object()
-
 class AccessPoint(object):
     """Abstract class for all access points.
-
+    
+    In addition to abstract methods and properties, concrete access points
+    must have two attributes:
+    
+    :attr:`properties` is a dict where keys are
+    property names as strings, and value are :class:`kalamar.property.Property`
+    instances.
+    
+    :attr:`identity_properties` is a tuple of property names that compose
+    the "identity" of items in this access point.
     """
+    __metaclass__ = abc.ABCMeta
+    
     def open(self, request, default=DEFAULT_PARAMETER):
         """Return the item in access_point matching request.
         
@@ -62,6 +81,7 @@ class AccessPoint(object):
         else:
             raise MultipleMatchingItems
 
+    @abc.abstractmethod
     def search(self, request):
         """Return an iterable of every item matching request.
 
@@ -126,6 +146,7 @@ class AccessPoint(object):
         for item in self.search(request):
             self.delete(item)
     
+    @abc.abstractmethod
     def delete(self, item):
         """Delete the item from the backend storage.
         
@@ -142,6 +163,7 @@ class AccessPoint(object):
         self.modified = True
         return item
 
+    @abc.abstractmethod
     def save(self, item):
         """Update or add the item.
 
@@ -149,9 +171,4 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError('Abstract method')
-
-    @property
-    def identity_properties(self):
-        raise NotImplementedError('Abstract method')
-    
 

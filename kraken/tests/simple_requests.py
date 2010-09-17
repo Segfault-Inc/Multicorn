@@ -1,8 +1,8 @@
 
 import os
-from unittest2 import TestCase
+from unittest import TestCase
 
-from test.kraken import KrakenSiteMixin
+from . import KrakenSiteMixin
 
 class TestSimpleRequests(KrakenSiteMixin, TestCase):
     def test_notfound(self):

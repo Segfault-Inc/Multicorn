@@ -36,8 +36,8 @@ else:
     class MakoEngine(BaseEngine):
         r"""Koral engine for Mako: http://www.makotemplates.org/
         
-        >>> import koral.site, test.koral, os.path
-        >>> path = os.path.join(os.path.dirname(test.koral.__file__), 'templates')
+        >>> import koral.site, koral.tests, os.path
+        >>> path = os.path.join(os.path.dirname(koral.tests.__file__), 'templates')
         >>> engine = koral.site.Site(path).engines['mako']
         >>> engine.render('hello.mako.html')
         u'<html><body>Hello, World!</body></html>\n'

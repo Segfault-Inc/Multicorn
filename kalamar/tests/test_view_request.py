@@ -16,7 +16,11 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Test the view request algorithm
+View request test
+=================
+
+Test the view request algorithm.
+
 """
 
 from nose.tools import eq_, nottest
