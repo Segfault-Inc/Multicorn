@@ -21,6 +21,7 @@ Kalamar request objects.
 """
 
 import operator
+from abc import ABCMeta, abstractmethod
 from itertools import groupby
 
 OPERATORS = {
@@ -41,16 +42,21 @@ class OperatorNotAvailable(KeyError):
 
 class Request(object):
     """Abstract class for kalamar requests."""
+    __metaclass__ = ABCMeta
+    
+    @abstractmethod
     def test(self, item):
         """Return if :prop:`item` matches the request."""
-        raise NotImplementedError('Abstract class.')
+        raise NotImplementedError
 
+    @abstractmethod
+    def __eq__(self, other):
+        raise NotImplementedError
+    
+    @abstractmethod
     def walk(self, func, values=None):
         """ Returns a dict containing the result from applying func to each child """
-        values = values or {}
-        for branch in (self.sub_requests):
-            values = branch.walk(func,values)
-        return values
+        raise NotImplementedError
 
     @classmethod
     def parse(cls, request):
@@ -97,50 +103,57 @@ class Condition(Request):
             self.property_name,
             self.operator,
             self.value)
+    
+    def __eq__(self, other):
+        return isinstance(other, Condition) and \
+            (self.property_name, self.operator, self.value) == \
+            (other.property_name, other.operator, other.value)
 
     def test(self, item):
         """Return if :prop:`item` matches the request."""
         return self.operator_func(item[self.property_name], self.value)
     
     def walk(self, func, values=None):
-        """ Returns a dict containing the result from applying func to each child """
         values = values or {}
         values[self] = func(self)
         return values
 
 
-class And(Request):
-    """True if all given requests are true."""
+class _And_or_Or(Request):
+    """Super class for And and Or that holds identical behavior."""
     def __init__(self, *sub_requests):
         self.sub_requests = []
         for sub_req in sub_requests:
-            if isinstance(sub_req, And):
+            # Both And and Or are associative.
+            if isinstance(sub_req, self.__class__):
                 self.sub_requests.extend(sub_req.sub_requests)
             else :
                 self.sub_requests.append(sub_req)
     
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+            and self.sub_requests == other.sub_requests
+
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, 
                            ', '.join(map(repr, self.sub_requests)))
 
+    def walk(self, func, values=None):
+        """ Returns a dict containing the result from applying func to each child """
+        values = values or {}
+        for branch in self.sub_requests:
+            values = branch.walk(func,values)
+        return values
+
+
+class And(_And_or_Or):
+    """True if all given requests are true."""
     def test(self, item):
         return all(request.test(item) for request in self.sub_requests)
 
 
-class Or(Request):
+class Or(_And_or_Or):
     """True if at least one given requests are true."""
-    def __init__(self, *sub_requests):
-        self.sub_requests = []
-        for sub_req in sub_requests:
-            if isinstance(sub_req, Or):
-                self.sub_requests.extend(sub_req.sub_requests)
-            else :
-                self.sub_requests.append(sub_req)
-    
-    def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, 
-                           ', '.join(map(repr, self.sub_requests)))
-
     def test(self, item):
         return any(request.test(item) for request in self.sub_requests)
 
@@ -150,11 +163,17 @@ class Not(Request):
     def __init__(self, sub_request):
         self.sub_request = sub_request
     
+    def __eq__(self, other):
+        return isinstance(other, Not) and self.sub_request == other.sub_request
+
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.sub_request)
 
     def test(self, item):
         return not self.sub_request.test(item)
+
+    def walk(self, func, values=None):
+        return self.sub_request.walk(values or {})
 
 
 class ViewRequest(object):
