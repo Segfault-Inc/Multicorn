@@ -52,7 +52,7 @@ class MutableMultiMapping(collections.MutableMapping):
         self.setlist(key, (value,))
 
 
-class Item(MutableMapping):
+class Item(MutableMultiMapping):
     """Base class for items.
     
     The _access_point attribute represents where, in kalamar, the item is
