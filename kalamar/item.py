@@ -31,10 +31,11 @@ Identity = collections.namedtuple('Identity', 'access_point, conditions')
 class MutableMultiMapping(collections.MutableMapping):
     """A MutableMapping where each key as associated to multiple values.
     
-    Stored values are actually tuples, but __getitem__ only gives the first
-    element of that tuple, and __setitem__ wraps the new value in a tuple.
+    Stored values are actually tuples, but :meth:`__getitem__` only gives
+    the first element of that tuple, and :meth:`__setitem__` wraps the new 
+    value in a tuple.
     
-    To access the underlying tuples, use getlist and setlist.
+    To access the underlying tuples, use :meth:`getlist` and :meth:`setlist`.
 
     """
     @abstractmethod
@@ -55,10 +56,8 @@ class MutableMultiMapping(collections.MutableMapping):
 class Item(MutableMultiMapping):
     """Base class for items.
     
-    The _access_point attribute represents where, in kalamar, the item is
-    stored. It is an instance of AccessPoint.
-
-    Items are hashable but mutable, use hash with caution.
+    The :attr:`_access_point` attribute represents where, in kalamar, 
+    the item is stored. It is an instance of :class:`AccessPoint`.
 
     """
     def __init__(self, access_point, properties=None):
