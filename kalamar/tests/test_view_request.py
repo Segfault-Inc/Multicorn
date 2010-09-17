@@ -93,7 +93,6 @@ def test_simplest_view():
     aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
     req = Request.parse({'remote.id':10})
     items = list(site.view("test_remote_ap", aliases, req))
-    print items
     eq_(len(items), 1)
     uniq_item = items[0]
     eq_(uniq_item['name_select'],  'remote_item2')

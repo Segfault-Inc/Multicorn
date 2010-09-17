@@ -196,8 +196,8 @@ class ViewRequest(object):
     """
     def __init__(self, aliases, request):
         #Initialize instance attributes
-        self.aliases = {}
-        self._other_aliases = {}
+        self.aliases = dict(aliases)
+        self._subaliases = {}
         self._request = And()
         self._original_request = request
         self.additional_aliases = {}
@@ -206,35 +206,29 @@ class ViewRequest(object):
         self.joins = {}
         self.orphan_request = And()
         #Process the bouzin
-        self._process_aliases(aliases)
         self.classify(request)
 
     @property
     def request(self):
         return And(self._request, self.additional_request)
 
-    def _process_aliases(self, aliases):
-        for key,val in aliases.items():
-            if '.' not in val:
-                self.aliases[key] = val
-            else:
-                self._other_aliases[key] = val
-
     def _classify_alias(self):
         """ Returns a dict mapping properties from this access point to 
         to the alias it should manage
         """
         aliases = {}
-        for alias, property_path in self._other_aliases.items():
+        for alias, property_path in self.aliases.items():
             splitted_path = property_path.split(".")
-            root = splitted_path[0]
-            is_outer_join = root.startswith("<")
-            if is_outer_join:
-                root = root[1:]
-            subaliases = aliases.get(root,{})
-            subaliases.update({alias: ".".join(splitted_path[1:])})
-            aliases[root] = subaliases
-            self.joins[root] = is_outer_join 
+            if len(splitted_path) > 1:
+                root = splitted_path[0]
+                is_outer_join = root.startswith("<")
+                if is_outer_join:
+                    root = root[1:]
+                subaliases = self._subaliases.get(root,{})
+                subaliases.update({alias: ".".join(splitted_path[1:])})
+                self._subaliases[root] = subaliases
+                self.joins[root] = is_outer_join 
+                self.aliases.pop(alias)
         return aliases
 
     def real_prop_name(self, prop_name):
@@ -244,6 +238,24 @@ class ViewRequest(object):
         splitted = prop_name.split(".")
         rest = ".".join(splitted[1:]) if len(splitted) > 1 else None
         return self.real_prop_name(splitted[0]),rest
+
+    def _build_orphan(self, request):
+        if isinstance(request, Or):
+            return apply(Or, [self._build_orphan(subreq) for subreq in request.sub_requests])
+        elif isinstance(request, And):
+            return apply(And, [self._build_orphan(subreq) for subreq in request.sub_requests])
+        elif isinstance(request, Condition):
+            root, rest = self.root(request.property_name)
+            alias = '_____' + request.property_name
+            remote_aliases = self._subaliases.get(root,{})
+            remote_aliases[alias] = rest
+            self._subaliases[root] = remote_aliases
+            self.additional_aliases[alias] = request.property_name
+            cond = Condition(alias, request.operator, request.value)
+            return cond
+
+
+        
 
     def _classify_request(self, request, conds_by_prop=None):
         conds_by_prop = conds_by_prop or {}
@@ -259,8 +271,8 @@ class ViewRequest(object):
                 conds_by_prop[root] = conds_for_prop
         elif isinstance(request, Or):
             #TODO: manage Or which belong strictly to the property, and 
-            # should therefore be kept
-            orphan_request = And(orphan_request, request)
+            #should therefore be kept
+            self.orphan_request = And(self.orphan_request,self._build_orphan(request))
             return {}
         elif isinstance(request, And):
             for branch in request.sub_requests:
@@ -277,12 +289,12 @@ class ViewRequest(object):
         self.subviews = {}
         self.joins = {}
         conditions = {}
-        aliases = self._classify_alias()
+        self._classify_alias()
         conditions = self._classify_request(request)
         #genereates the subviews from the processed aliases and requests
         for key in self.joins:
             req = conditions.get(key, [])
-            subview = ViewRequest(aliases.get(key,{}), apply(And, req))
+            subview = ViewRequest(self._subaliases.get(key,{}), apply(And, req))
             self.subviews[key] = subview
 
 
