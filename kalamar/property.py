@@ -21,5 +21,9 @@ class Property(object):
     def validate(self):
         if self.relation:
             if not (self.remote_ap):
-                raise RuntimeError('Invalide property definition')
+                raise RuntimeError('Invalid property definition ')
+            if self.relation == 'one-to-many':
+                if not self.remote_property:
+                    raise RuntimeError('Invalid property definition')
+
 
