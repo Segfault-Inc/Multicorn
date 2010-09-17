@@ -19,7 +19,7 @@
 Request
 =======
 
-Kalamar request objects.
+Kalamar request objects and operator helpers.
 
 """
 
@@ -34,15 +34,12 @@ OPERATORS = {
     ">": operator.gt,
     ">=": operator.ge,
     "<": operator.lt,
-    "<=": operator.le,
-#    "~=": re_match,
-#    "~!=": re_not_match
-}
+    "<=": operator.le}
 REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
 
 class OperatorNotAvailable(KeyError):
-    pass
+    """Operator is unknown or not managed."""
 
 
 class Request(object):
@@ -64,6 +61,10 @@ class Request(object):
         raise NotImplementedError
 
     @classmethod
+    def parse(cls, access_point, request):
+        self.parse(request)
+
+    @classmethod
     def parse(cls, request):
         """Convert a ``request`` to a Request object.
 
@@ -73,16 +74,17 @@ class Request(object):
         >>> Request.parse({u'a': 1, u'b': 'foo'})
         ...                                  # doctest: +NORMALIZE_WHITESPACE
         And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
+
         """
         if not request:
             # empty request
             return And()
         elif hasattr(request, 'items') and callable(request.items):
-            # If it looks like a dict and smell like a dict, it is a dict.
+            # If it looks like a dict and smells like a dict, it is a dict.
             return And(*(Condition(key, '=', value) 
                          for key, value in request.items()))
         elif hasattr(request, 'test') and callable(request.test):
-            # If it looks like a Request …
+            # If it looks like a Request…
             return request
         else:
             # Assume a 3-tuple: short for a single condition
@@ -96,8 +98,8 @@ class Condition(Request):
         try:
             self.operator_func = OPERATORS[operator]
         except KeyError:
-            raise OperatorNotAvailable('Operator %r is not supported here.'
-                                       % operator)
+            raise OperatorNotAvailable(
+                "Operator %r is not supported here." % operator)
         self.property_name = property_name
         self.operator = operator
         self.value = value
