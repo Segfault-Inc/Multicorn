@@ -41,9 +41,14 @@ class AccessPoint(object):
     """Abstract class for all access points.
     
     In addition to abstract methods and properties, concrete access points
-    must have a :attr:`properties` attribute: a dict where keys are
+    must have two attributes:
+    
+    :attr:`properties` is a dict where keys are
     property names as strings, and value are :class:`kalamar.property.Property`
     instances.
+    
+    :attr:`identity_properties` is a tuple of property names that compose
+    the "identity" of items in this access point.
     """
     __metaclass__ = abc.ABCMeta
     
@@ -161,9 +166,4 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError('Abstract method')
-
-    @abc.abstractproperty
-    def identity_properties(self):
-        raise NotImplementedError('Abstract method')
-    
 

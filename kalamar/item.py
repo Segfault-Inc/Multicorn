@@ -22,7 +22,6 @@ Base classes to create kalamar items.
 
 from abc import abstractmethod
 import collections
-from werkzeug.datastructures import MultiDict, UpdateDictMixin
 
 
 Identity = collections.namedtuple('Identity', 'access_point, conditions')
@@ -56,12 +55,12 @@ class MutableMultiMapping(collections.MutableMapping):
 class Item(MutableMultiMapping):
     """Base class for items.
     
-    The :attr:`_access_point` attribute represents where, in kalamar, 
+    The :attr:`access_point` attribute represents where, in kalamar, 
     the item is stored. It is an instance of :class:`AccessPoint`.
 
     """
     def __init__(self, access_point, properties=None):
-        self._access_point = access_point
+        self.access_point = access_point
         self._properties = {}
         self.update(properties or {})
         # update() sets modified to True, but we do not want initialisation to
@@ -81,7 +80,7 @@ class Item(MutableMultiMapping):
         """Return a user-friendly representation of item."""
         return "<%s(%s @ %s)>" % (
             self.__class__.__name__, repr(self.identity),
-            repr(self._access_point.name))
+            repr(self.access_point.name))
     
     def setlist(self, key, values):
         self.modified = True
@@ -97,9 +96,9 @@ class Item(MutableMultiMapping):
 
     def save(self):
         """Save the item."""
-        self._access_point.save(self)
+        self.access_point.save(self)
         self.modified = False
 
     def delete(self):
         """Delete the item."""
-        self._access_point.delete(self)
+        self.access_point.delete(self)
