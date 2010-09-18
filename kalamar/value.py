@@ -19,7 +19,7 @@
 Value
 =====
 
-Kalamar helpers for values.
+Kalamar helpers for value casting.
 
 """
 
@@ -28,11 +28,6 @@ import datetime
 import io
 
 from . import item
-
-
-PROPERTY_TYPES = set((
-        unicode, int, float, decimal.Decimal, io.IOBase, item.Item,
-        datetime.datetime, datetime.date))
 
 
 class FixedOffsetTimeZone(datetime.tzinfo):
@@ -132,3 +127,27 @@ def to_date(value):
     elif isinstance(value, basestring):
         return datetime.datetime.strptime(value, "%Y-%m-%d").date()
     raise ValueError
+
+def to_stream(value):
+    for method in ("read", "write", "close"):
+        if not hasattr(value, method):
+            # value does not look like a steam
+            raise ValueError
+    return value
+
+def to_type(value, data_type):
+    """Return ``value`` if instance of ``data_type`` else raise error."""
+    if isinstance(value, data_type):
+        return value
+    raise ValueError
+
+
+PROPERTY_TYPES = {
+    unicode: to_unicode,
+    int: to_int,
+    float: to_float,
+    decimal.Decimal: to_decimal,
+    io.IOBase: to_stream,
+    item.Item: lambda value: to_type(value, item.Item),
+    datetime.datetime: to_datetime,
+    datetime.date: to_date}

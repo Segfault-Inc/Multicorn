@@ -27,6 +27,8 @@ import operator
 from abc import ABCMeta, abstractmethod
 from itertools import groupby
 
+from .value import PROPERTY_TYPES, to_type
+
 
 OPERATORS = {
     "=": operator.eq,
@@ -47,16 +49,26 @@ def normalize_request(properties, request):
 
     TODO: describe syntaxic sugar.
     TODO: more unit tests here.
+    XXX This doctests rely on the order of a dict. TODO: Fix this.
     
-    >>> properties = {'a': None, 'b': None}
-    
-    XXX This doctest relies on the order of a dict. TODO: Fix this.
+    >>> properties = {'a': int, 'b': str}
     >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
     And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
 
+    >>> properties = {'a': float, 'b': unicode}
+    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    And(Condition(u'a', '=', 1.0), Condition(u'b', '=', u'foo'))
+
+    >>> properties = {'a': float, 'b': int}
+    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ...
+    ValueError: ...
+
     """
     if not request:
-        # empty request
+        # Empty request
         return And()
     elif hasattr(request, 'items') and callable(request.items):
         # If it looks like a dict and smells like a dict, it is a dict.
@@ -71,13 +83,14 @@ def normalize_request(properties, request):
     elif isinstance(request, Not):
         return Not(normalize_request(properties, request.sub_request))
     elif isinstance(request, Condition):
-        try:
-            property = properties[request.property_name]
-        except KeyError:
-            raise KeyError('This access point has no %r property.' 
-                           % request.property_name)
-        # TODO: cast to the correct type here.
-        value = request.value
+        if request.property_name not in properties:
+            raise KeyError(
+                "This access point has no %r property." % request.property_name)
+        property_type = properties[request.property_name]
+        if property_type in PROPERTY_TYPES:
+            value = PROPERTY_TYPES[property_type](request.value)
+        else:
+            value = to_type(request.value, property_type)
         return Condition(request.property_name, request.operator, value)
     else:
         # Assume a 3-tuple: short for a single condition
