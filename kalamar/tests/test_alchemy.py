@@ -66,7 +66,14 @@ class TestAlchemy:
         assert(all(['truc' in item.keys() and 'name' in item.keys() for item in items]))
         items = list(self.site.view('test', {'truc': 'id', 'name': 'label'}, {'id':1}))
         eq_(len(items), 1)
-   
+
+    def testupdate(self):
+       item = self.site.open('test',{'id':1})
+       item['label'] = 'updated'
+       item.save()
+       item = self.site.open('test',{'id':1})
+       eq_(item['label'], 'updated')
+       
     
     def tearDown(self):
         for item in self.items:

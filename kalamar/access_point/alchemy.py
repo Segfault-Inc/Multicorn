@@ -60,7 +60,7 @@ class Alchemy(AccessPoint):
         """ Initialize the sql alchemy engine on first access """
         metadata = Alchemy.__metadatas.get(self.url, None)
         if not metadata:
-            engine = create_engine(self.url, echo=True)
+            engine = create_engine(self.url)
             metadata = MetaData()
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
@@ -69,8 +69,8 @@ class Alchemy(AccessPoint):
         for name, prop in self.properties.items():
             alchemy_type = SQLALCHEMYTYPES.get(prop.type,None)
             kwargs = {'key' : name}
-            if prop in self.identity_properties:
-                kwargs[primary_key] = True
+            if name in self.identity_properties:
+                kwargs['primary_key'] = True
             if prop.default:
                 kwargs[default] = prop.default
             if prop.relation == 'many-to-one':
@@ -149,7 +149,6 @@ class Alchemy(AccessPoint):
                 item[pk] = id
             trans.commit()
         except:
-            raise 
             try:
                 whereclause = self.__to_pk_where_clause(item)
                 update = self._table.update()
