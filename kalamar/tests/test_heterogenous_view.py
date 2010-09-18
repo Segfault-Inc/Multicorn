@@ -41,7 +41,7 @@ class TestHeterogeneous:
         return ap
 
     def make_memory_ap(self):
-        ap = Memory({'id': Property(int), 'label': Property('str')}, 'id')
+        ap = Memory({'id': Property(int), 'label': Property(str)}, 'id')
         return ap
 
     def setUp(self):
