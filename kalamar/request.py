@@ -28,7 +28,7 @@ from abc import ABCMeta, abstractmethod
 from itertools import groupby
 
 from .value import PROPERTY_TYPES, to_type
-
+from .property import Property
 
 OPERATORS = {
     "=": operator.eq,
@@ -51,15 +51,15 @@ def normalize_request(properties, request):
     TODO: more unit tests here.
     XXX This doctests rely on the order of a dict. TODO: Fix this.
     
-    >>> properties = {'a': int, 'b': str}
+    >>> properties = {'a': Property(int), 'b': Property(str)}
     >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
     And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
 
-    >>> properties = {'a': float, 'b': unicode}
+    >>> properties = {'a': Property(float), 'b': Property(unicode)}
     >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
     And(Condition(u'a', '=', 1.0), Condition(u'b', '=', u'foo'))
 
-    >>> properties = {'a': float, 'b': int}
+    >>> properties = {'a': Property(float), 'b': Property(int)}
     >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
     ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
     Traceback (most recent call last):
@@ -83,11 +83,16 @@ def normalize_request(properties, request):
     elif isinstance(request, Not):
         return Not(normalize_request(properties, request.sub_request))
     elif isinstance(request, Condition):
-        if request.property_name not in properties:
+        #TODO decide where the Condition.root method should be
+        root, rest = request.root()
+        if root not in properties:
             raise KeyError(
-                "This access point has no %r property." % request.property_name)
-        property_type = properties[request.property_name]
-        if property_type in PROPERTY_TYPES:
+                "This access point has no %r property." % root)
+        property_type = properties[root].type
+        #TODO : validate sub requests 
+        if rest :
+            return request
+        elif property_type in PROPERTY_TYPES:
             value = PROPERTY_TYPES[property_type](request.value)
         else:
             value = to_type(request.value, property_type)
@@ -97,6 +102,7 @@ def normalize_request(properties, request):
         property_name, operator, value = request
         return normalize_request(properties, 
             Condition(property_name, operator, value))
+
 
 
 class Request(object):
@@ -133,6 +139,12 @@ class Condition(Request):
         self.property_name = property_name
         self.operator = operator
         self.value = value
+    
+    
+    def root(self):
+        splitted = self.property_name.split(".")
+        rest = ".".join(splitted[1:]) if len(splitted) > 1 else None
+        return splitted[0], rest
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
@@ -261,13 +273,7 @@ class ViewRequest(object):
                 self.aliases.pop(alias)
         return aliases
 
-    def real_prop_name(self, prop_name):
-        return prop_name[1:] if prop_name.startswith("<") else prop_name
 
-    def root(self, prop_name):
-        splitted = prop_name.split(".")
-        rest = ".".join(splitted[1:]) if len(splitted) > 1 else None
-        return self.real_prop_name(splitted[0]),rest
 
     def _build_orphan(self, request):
         if isinstance(request, Or):
@@ -275,7 +281,7 @@ class ViewRequest(object):
         elif isinstance(request, And):
             return apply(And, [self._build_orphan(subreq) for subreq in request.sub_requests])
         elif isinstance(request, Condition):
-            root, rest = self.root(request.property_name)
+            root, rest = request.root()
             alias = '_____' + request.property_name
             remote_aliases = self._subaliases.get(root,{})
             remote_aliases[alias] = rest
@@ -290,7 +296,7 @@ class ViewRequest(object):
     def _classify_request(self, request, conds_by_prop=None):
         conds_by_prop = conds_by_prop or {}
         if isinstance(request, Condition):
-            root, rest = self.root(request.property_name)
+            root, rest = request.root()
             if not rest : 
                 self._request = And(self._request, request)
             else: 

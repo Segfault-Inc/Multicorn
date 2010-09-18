@@ -118,6 +118,8 @@ class AccessPoint(object):
                     # as well as a clause to the orphan_request to be tested against the resulting
                     # property
                     for id_prop in remote_ap.identity_properties:
+                        print prop
+                        print item[prop]
                         fake_prop = '____' + prop + '____' + id_prop
                         fake_props.append(fake_prop)
                         join_request = And(join_request, Condition(fake_prop, '=', item[prop][id_prop]))
@@ -155,13 +157,33 @@ class AccessPoint(object):
         """
         raise NotImplementedError('Abstract method')
     
-    def create(self, properties={}):
+    def create(self, properties={}, lazy_loaders={}):
         """Create a new item.
         
         """
-        item = Item(self, properties)
+        lazy_refs = (dict([(name, prop) for name, prop in self.properties.items() if prop.relation == 'one-to-many'
+            and name not in properties and name not in lazy_loaders]))
+        for name, value in lazy_refs.items(): 
+            lazy_loaders[name] = self._default_loader(properties, value)
+        item = Item(self, properties, lazy_loaders)
         self.modified = True
         return item
+
+    def _default_loader(self, properties ,lazy_prop):
+        """ Returns a default loader to manage references in an access_point
+
+        """
+        remote = self.site.access_points[lazy_prop.remote_ap]
+        if lazy_prop.relation == 'one-to-many':
+            id_props = self.identity_properties
+            conditions = apply(And, [Condition(prop, '=' , properties[prop]) for prop in id_props])
+            def loader():
+                return [remote.search(conditions)]
+        else:
+            raise RuntimeError('Cannont use a default lazy loader on a %s relation' % lazy_prop.relation)
+        return loader
+
+
 
     @abc.abstractmethod
     def save(self, item):
