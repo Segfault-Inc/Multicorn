@@ -34,22 +34,18 @@ def make_testtable():
     return ap
 
 
-
 class TestAlchemy:
-
 
     def setUp(self):
         self.site = Site()
         self.site.register('test', make_testtable())
         self.items = []
-        item = self.site.create('test',{'id' : 1, 'label':'Test'})
+        item = self.site.create('test', {'id': 1, 'label': u'Test'})
         self.items.append(item)
         item.save()
-        item = self.site.create('test',{'id' : 2, 'label':'Test2'})
+        item = self.site.create('test', {'id': 2, 'label': u'Test2'})
         self.items.append(item)
         item.save()
-
-
 
     def testsearch(self):
         items = list(self.site.search('test'))
@@ -61,27 +57,25 @@ class TestAlchemy:
         eq_(item['label'], 'Test')
 
     def testview(self):
-        items = list(self.site.view('test', {'truc': 'id', 'name': 'label'}, {}))
+        items = list(self.site.view('test', {'truc': 'id', 'name': u'label'}, 
+                                    {}))
         eq_(len(items), 2)
-        assert(all(['truc' in item.keys() and 'name' in item.keys() for item in items]))
-        items = list(self.site.view('test', {'truc': 'id', 'name': 'label'}, {'id':1}))
+        for item in items:
+            assert 'truc' in item.keys() and 'name' in item.keys()
+        items = list(self.site.view('test', {'truc': 'id', 'name': u'label'},
+                     {'id': 1}))
         eq_(len(items), 1)
 
     def testupdate(self):
-       item = self.site.open('test',{'id':1})
-       item['label'] = 'updated'
+       item = self.site.open('test', {'id': 1})
+       item['label'] = u'updated'
        item.save()
-       item = self.site.open('test',{'id':1})
-       eq_(item['label'], 'updated')
-       
+       item = self.site.open('test', {'id': 1})
+       eq_(item['label'], u'updated')
     
     def tearDown(self):
         for item in self.items:
             item.delete()
         for ap in self.site.access_points.values():
             ap._table.drop()
-        
-
-
-
 

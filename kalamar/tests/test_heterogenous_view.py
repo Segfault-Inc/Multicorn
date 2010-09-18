@@ -30,18 +30,18 @@ from kalamar.item import Item
 
 class TestHeterogeneous:
 
-    @nottest
     def make_alchemy_ap(self):
         url = "sqlite:///"
         id = AlchemyProperty(int, column_name='id')
         label = AlchemyProperty(unicode, column_name='label')
-        memory = AlchemyProperty(Item, column_name='memory', relation='many-to-one', remote_ap='memory')
-        ap = Alchemy(url,'test',{'id':id, 'label': label, 'memory': memory},'id',True)
+        memory = AlchemyProperty(Item, column_name='memory', 
+            relation='many-to-one', remote_ap='memory')
+        ap = Alchemy(url, 'test', {'id': id, 'label': label, 'memory': memory},
+            'id', True)
         return ap
 
-    @nottest
     def make_memory_ap(self):
-        ap = Memory({'id':Property(int), 'label': Property('str')},'id')
+        ap = Memory({'id': Property(int), 'label': Property('str')}, 'id')
         return ap
 
     def setUp(self):
@@ -49,15 +49,19 @@ class TestHeterogeneous:
         self.alchemy_ap = self.make_alchemy_ap()
         self.site.register('alchemy', self.alchemy_ap )
         self.site.register('memory', self.make_memory_ap())
-        self.memitem = self.site.create('memory',{'id':1, 'label':'memorytest'})
+        self.memitem = self.site.create('memory', 
+            {'id': 1, 'label': u'memorytest'})
         self.memitem.save()
-        self.dbitem = self.site.create('alchemy',{'id':1, 'label':'alchemytest', 'memory': self.memitem})
+        self.dbitem = self.site.create('alchemy',
+            {'id': 1, 'label': u'alchemytest', 'memory': self.memitem})
         self.dbitem.save()
         
     
     def test_view(self):
-        items = list(self.site.view('alchemy',{'alch_id':'id','alch_label':'label', 'mem_id':'memory.id', 'mem_label':
-            'memory.label'},{}))
+        pass
+        items = list(self.site.view('alchemy',
+            {'alch_id': u'id', 'alch_label': u'label',
+             'mem_id': u'memory.id', 'mem_label': u'memory.label'}, {}))
         eq_(len(items), 1)
         item = items[0]
         eq_(item['alch_id'],1)
