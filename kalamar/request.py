@@ -70,9 +70,9 @@ def normalize_request(properties, request):
     if not request:
         # Empty request
         return And()
-    elif hasattr(request, 'items') and callable(request.items):
+    elif hasattr(request, "items") and callable(request.items):
         # If it looks like a dict and smells like a dict, it is a dict.
-        return And(*(normalize_request(properties, Condition(key, '=', value))
+        return And(*(normalize_request(properties, Condition(key, "=", value))
                      for key, value in request.items()))
     elif isinstance(request, And):
         return And(*(normalize_request(properties, r)
@@ -83,13 +83,13 @@ def normalize_request(properties, request):
     elif isinstance(request, Not):
         return Not(normalize_request(properties, request.sub_request))
     elif isinstance(request, Condition):
-        #TODO decide where the Condition.root method should be
+        # TODO decide where the Condition.root method should be
         root, rest = request.root()
         if root not in properties:
             raise KeyError(
                 "This access point has no %r property." % root)
         property_type = properties[root].type
-        #TODO : validate sub requests 
+        # TODO : validate sub requests 
         if rest :
             return request
         elif property_type in PROPERTY_TYPES:
@@ -102,7 +102,6 @@ def normalize_request(properties, request):
         property_name, operator, value = request
         return normalize_request(properties, 
             Condition(property_name, operator, value))
-
 
 
 class Request(object):
@@ -120,7 +119,7 @@ class Request(object):
     
     @abstractmethod
     def walk(self, func, values=None):
-        """ Returns a dict containing the result from applying func to each child """
+        """Returns a dict of the result from applying ``func`` to each child."""
         raise NotImplementedError
 
     @classmethod
@@ -140,7 +139,6 @@ class Condition(Request):
         self.operator = operator
         self.value = value
     
-    
     def root(self):
         splitted = self.property_name.split(".")
         rest = ".".join(splitted[1:]) if len(splitted) > 1 else None
@@ -159,10 +157,11 @@ class Condition(Request):
             (other.property_name, other.operator, other.value)
 
     def test(self, item):
-        """Return if :prop:`item` matches the request."""
+        """Return if ``item`` matches the request."""
         return self.operator_func(item[self.property_name], self.value)
     
     def walk(self, func, values=None):
+        """Returns a dict of the result from applying ``func`` to each child."""
         values = values or {}
         values[self] = func(self)
         return values
@@ -184,11 +183,11 @@ class _And_or_Or(Request):
             and self.sub_requests == other.sub_requests
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, 
-                           ', '.join(map(repr, self.sub_requests)))
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ", ".join(map(repr, self.sub_requests)))
 
     def walk(self, func, values=None):
-        """ Returns a dict containing the result from applying func to each child """
         values = values or {}
         for branch in self.sub_requests:
             values = branch.walk(func,values)
@@ -255,8 +254,11 @@ class ViewRequest(object):
         return And(self._request, self.additional_request)
 
     def _classify_alias(self):
-        """ Returns a dict mapping properties from this access point to 
-        to the alias it should manage
+        """Classify request aliases.
+
+        Return a dict mapping properties from this access point to to the alias
+        it should manage.
+
         """
         aliases = {}
         for alias, property_path in self.aliases.items():
@@ -273,25 +275,22 @@ class ViewRequest(object):
                 self.aliases.pop(alias)
         return aliases
 
-
-
     def _build_orphan(self, request):
         if isinstance(request, Or):
-            return apply(Or, [self._build_orphan(subreq) for subreq in request.sub_requests])
+            return apply(Or, [self._build_orphan(subreq)
+                              for subreq in request.sub_requests])
         elif isinstance(request, And):
-            return apply(And, [self._build_orphan(subreq) for subreq in request.sub_requests])
+            return apply(And, [self._build_orphan(subreq)
+                               for subreq in request.sub_requests])
         elif isinstance(request, Condition):
             root, rest = request.root()
-            alias = '_____' + request.property_name
-            remote_aliases = self._subaliases.get(root,{})
+            alias = "_____" + request.property_name
+            remote_aliases = self._subaliases.get(root, {})
             remote_aliases[alias] = rest
             self._subaliases[root] = remote_aliases
             self.additional_aliases[alias] = request.property_name
             cond = Condition(alias, request.operator, request.value)
             return cond
-
-
-        
 
     def _classify_request(self, request, conds_by_prop=None):
         conds_by_prop = conds_by_prop or {}
@@ -306,19 +305,19 @@ class ViewRequest(object):
                 conds_for_prop.append(newcond)
                 conds_by_prop[root] = conds_for_prop
         elif isinstance(request, Or):
-            #TODO: manage Or which belong strictly to the property, and 
-            #should therefore be kept
-            self.orphan_request = And(self.orphan_request,self._build_orphan(request))
+            # TODO: manage Or which belong strictly to the property, and 
+            # should therefore be kept
+            self.orphan_request = And(
+                self.orphan_request,self._build_orphan(request))
             return {}
         elif isinstance(request, And):
             for branch in request.sub_requests:
-                conds_by_prop.update(self._classify_request(branch, conds_by_prop))
+                conds_by_prop.update(
+                    self._classify_request(branch, conds_by_prop))
         elif isinstance(request, Not):
-            conds_by_prop.update(self._classify_request(request.subrequest, conds_by_prop))
+            conds_by_prop.update(
+                self._classify_request(request.subrequest, conds_by_prop))
         return conds_by_prop
-        
-
-
 
     def classify(self, request):
         """Build subviews from the aliases and request."""
@@ -327,14 +326,9 @@ class ViewRequest(object):
         conditions = {}
         self._classify_alias()
         conditions = self._classify_request(request)
-        #genereates the subviews from the processed aliases and requests
+        # Genereates the subviews from the processed aliases and requests
         for key in self.joins:
             req = conditions.get(key, [])
-            subview = ViewRequest(self._subaliases.get(key,{}), apply(And, req))
+            subview = ViewRequest(
+                self._subaliases.get(key, {}), apply(And, req))
             self.subviews[key] = subview
-
-
-
-
-
-
