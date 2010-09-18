@@ -23,7 +23,6 @@ Site class. Create one for each independent site with its own configuration.
 
 """
 
-from .item import Item
 from . import request
 from .request import Request, ViewRequest, normalize_request
 

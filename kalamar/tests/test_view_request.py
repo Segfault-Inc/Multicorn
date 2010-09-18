@@ -35,12 +35,12 @@ from kalamar.site import Site
 @nottest
 def make_test_ap():
     one_to_many = Property(Item, relation='one-to-many', remote_ap='test_remote_ap', remote_property='remote')
-    return Memory({'id': Property(int), 'name': Property(str), 'manies': one_to_many}, 'id')
+    return Memory({'id': Property(int), 'name': Property(unicode), 'manies': one_to_many}, 'id')
 
 @nottest
 def make_test_second_ap():
     remote_prop = Property(Item, relation='many-to-one', remote_ap='test_ap')
-    return Memory({'id': Property(int),'label' : Property( int), 'remote': remote_prop},'id')
+    return Memory({'id': Property(int),'label' : Property(unicode), 'remote': remote_prop},'id')
 
 
 
