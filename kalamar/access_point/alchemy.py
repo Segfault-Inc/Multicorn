@@ -81,7 +81,7 @@ class Alchemy(AccessPoint):
                     self.remote_alchemy_props.append(name)
                     fk = ForeignKey("%s.%s" % foreign_table,foreign_column)
                     column = Column(prop.column_name, alchemy_type, fk, kwargs)
-                    prop.foreign_ap = foreign_ap
+                    prop.foreign_ap_obj = foreign_ap
                 else :
                     foreign_prop = foreign_ap.properties[foreign_ap.identity_properties[0]]
                     alchemy_type = alchemy_type or \
@@ -103,7 +103,7 @@ class Alchemy(AccessPoint):
         splitted = propertyname.split(".")
         prop = self.properties[splitted[0]]
         if len(splitted) > 1 :
-            return prop.foreign_ap.__get_column(propertyname[1:])
+            return prop.foreign_ap_obj.__get_column(propertyname[1:])
         else:
             return prop._column
 
@@ -127,7 +127,21 @@ class Alchemy(AccessPoint):
     def __item_from_result(self, result):
         lazy_props = {}
         props = {}
-        return self.create(dict(result))
+        for name, prop in self.properties.items():
+            if prop.relation == 'one-to-many':
+                lazy_props[name] = None
+            elif prop.relation == 'many-to-one':
+                lazy_props[name] = self._many_to_one_lazy_loader(prop, result[name])
+            else: 
+                props[name] = result[name]
+        return self.create(props, lazy_props)
+
+    def _many_to_one_lazy_loader(self, property, value):
+        remote_ap = self.site.access_points[property.remote_ap]
+        def loader():
+            cond = Condition(remote_ap.identity_properties[0], "=", value)
+            return remote_ap.open(cond)
+        return loader
                 
     def search(self, request):
         query = Select(None, None, from_obj=self._table, use_labels=True)

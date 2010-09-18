@@ -87,7 +87,7 @@ class Item(MutableMultiMapping):
         try:
             return self._properties[key]
         except KeyError:
-            value = self._lazy_loaders[key]()
+            value = [self._lazy_loaders[key]()]
             self._properties[key] = value
             del self._lazy_loaders[key]
             return value
