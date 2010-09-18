@@ -58,7 +58,6 @@ class TestHeterogeneous:
         
     
     def test_view(self):
-        pass
         items = list(self.site.view('alchemy',
             {'alch_id': u'id', 'alch_label': u'label',
              'mem_id': u'memory.id', 'mem_label': u'memory.label'}, {}))
