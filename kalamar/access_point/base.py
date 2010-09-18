@@ -118,8 +118,6 @@ class AccessPoint(object):
                     # as well as a clause to the orphan_request to be tested against the resulting
                     # property
                     for id_prop in remote_ap.identity_properties:
-                        print prop
-                        print item[prop]
                         fake_prop = '____' + prop + '____' + id_prop
                         fake_props.append(fake_prop)
                         join_request = And(join_request, Condition(fake_prop, '=', item[prop][id_prop]))

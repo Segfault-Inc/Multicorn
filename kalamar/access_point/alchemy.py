@@ -140,7 +140,7 @@ class Alchemy(AccessPoint):
         remote_ap = self.site.access_points[property.remote_ap]
         def loader():
             cond = Condition(remote_ap.identity_properties[0], "=", value)
-            return remote_ap.open(cond)
+            return (remote_ap.open(cond),)
         return loader
                 
     def search(self, request):
