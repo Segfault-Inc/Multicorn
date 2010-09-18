@@ -24,5 +24,6 @@ Kalamar - Content Management Library
 """
 
 from .site import Site
+from .item import Item
 from .access_point.base import MultipleMatchingItems, ItemDoesNotExist
 

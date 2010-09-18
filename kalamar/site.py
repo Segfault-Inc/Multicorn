@@ -24,7 +24,8 @@ Site class. Create one for each independent site with its own configuration.
 """
 
 from .item import Item
-from .request import Request, ViewRequest
+from . import request
+from .request import Request, ViewRequest, normalize_request
 
 
 class Site(object):
@@ -48,8 +49,8 @@ class Site(object):
     def deleguate_to_acces_point(method_name, first_arg_is_a_request=False):
         if first_arg_is_a_request:
             def wrapper(self, access_point, request=None, *args, **kwargs):
-                request = Request.parse(request)
                 ap = self.access_points[access_point]
+                request = normalize_request(ap.properties, request)
                 return getattr(ap, method_name)(request, *args, **kwargs)
         else:
             def wrapper(self, access_point, *args, **kwargs):
@@ -67,7 +68,8 @@ class Site(object):
     create = deleguate_to_acces_point('create')
     def view(self, access_point, aliases, request):
         ap = self.access_points[access_point]
-        request = Request.parse(request)
+        # TODO: use normalize_request here?
+        request = normalize_request(ap.properties, request)
         return ap.view(ViewRequest(aliases,request))
 
     del deleguate_to_acces_point

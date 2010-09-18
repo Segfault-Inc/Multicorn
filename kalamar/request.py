@@ -19,13 +19,15 @@
 Request
 =======
 
-Kalamar request objects.
+Kalamar request objects and operator helpers.
 
 """
 
 import operator
 from abc import ABCMeta, abstractmethod
 from itertools import groupby
+
+from .value import PROPERTY_TYPES, to_type
 
 
 OPERATORS = {
@@ -34,15 +36,67 @@ OPERATORS = {
     ">": operator.gt,
     ">=": operator.ge,
     "<": operator.lt,
-    "<=": operator.le,
-#    "~=": re_match,
-#    "~!=": re_not_match
-}
+    "<=": operator.le}
 REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
 
 class OperatorNotAvailable(KeyError):
-    pass
+    """Operator is unknown or not managed."""
+    
+
+def normalize_request(properties, request):
+    """Convert a ``request`` to a Request object.
+
+    TODO: describe syntaxic sugar.
+    TODO: more unit tests here.
+    XXX This doctests rely on the order of a dict. TODO: Fix this.
+    
+    >>> properties = {'a': int, 'b': str}
+    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
+
+    >>> properties = {'a': float, 'b': unicode}
+    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    And(Condition(u'a', '=', 1.0), Condition(u'b', '=', u'foo'))
+
+    >>> properties = {'a': float, 'b': int}
+    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ...
+    ValueError: ...
+
+    """
+    if not request:
+        # Empty request
+        return And()
+    elif hasattr(request, 'items') and callable(request.items):
+        # If it looks like a dict and smells like a dict, it is a dict.
+        return And(*(normalize_request(properties, Condition(key, '=', value))
+                     for key, value in request.items()))
+    elif isinstance(request, And):
+        return And(*(normalize_request(properties, r)
+                     for r in request.sub_requests))
+    elif isinstance(request, Or):
+        return Or(*(normalize_request(properties, r)
+                    for r in request.sub_requests))
+    elif isinstance(request, Not):
+        return Not(normalize_request(properties, request.sub_request))
+    elif isinstance(request, Condition):
+        if request.property_name not in properties:
+            raise KeyError(
+                "This access point has no %r property." % request.property_name)
+        property_type = properties[request.property_name]
+        if property_type in PROPERTY_TYPES:
+            value = PROPERTY_TYPES[property_type](request.value)
+        else:
+            value = to_type(request.value, property_type)
+        return Condition(request.property_name, request.operator, value)
+    else:
+        # Assume a 3-tuple: short for a single condition
+        property_name, operator, value = request
+        return normalize_request(properties, 
+            Condition(property_name, operator, value))
 
 
 class Request(object):
@@ -64,30 +118,8 @@ class Request(object):
         raise NotImplementedError
 
     @classmethod
-    def parse(cls, request):
-        """Convert a ``request`` to a Request object.
-
-        TODO: describe syntaxic sugar.
-        
-        XXX This doctest relies on the order of a dict. TODO: Fix this.
-        >>> Request.parse({u'a': 1, u'b': 'foo'})
-        ...                                  # doctest: +NORMALIZE_WHITESPACE
-        And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
-        """
-        if not request:
-            # empty request
-            return And()
-        elif hasattr(request, 'items') and callable(request.items):
-            # If it looks like a dict and smell like a dict, it is a dict.
-            return And(*(Condition(key, '=', value) 
-                         for key, value in request.items()))
-        elif hasattr(request, 'test') and callable(request.test):
-            # If it looks like a Request …
-            return request
-        else:
-            # Assume a 3-tuple: short for a single condition
-            property_name, operator, value = request
-            return Condition(property_name, operator, value)
+    def parse(cls, access_point, request):
+        self.parse(request)
 
 
 class Condition(Request):
@@ -96,8 +128,8 @@ class Condition(Request):
         try:
             self.operator_func = OPERATORS[operator]
         except KeyError:
-            raise OperatorNotAvailable('Operator %r is not supported here.'
-                                       % operator)
+            raise OperatorNotAvailable(
+                "Operator %r is not supported here." % operator)
         self.property_name = property_name
         self.operator = operator
         self.value = value
