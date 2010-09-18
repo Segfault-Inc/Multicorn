@@ -83,8 +83,9 @@ class Alchemy(AccessPoint):
                     column = Column(prop.column_name, alchemy_type, fk, kwargs)
                     prop.foreign_ap = foreign_ap
                 else :
+                    foreign_prop = foreign_ap.properties[foreign_ap.identity_properties[0]]
                     alchemy_type = alchemy_type or \
-                        SQLALCHEMYTYPES.get(foreign_ap.identity_properties[0].type, None)
+                        SQLALCHEMYTYPES.get(foreign_prop.type, None)
                     column = Column(prop.column_name, alchemy_type, **kwargs)
             elif prop.relation == 'one-to-many':
                 pass
@@ -94,7 +95,7 @@ class Alchemy(AccessPoint):
             columns.append(column)
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable :
-            table.create()
+            table.create(checkfirst=True)
         return table
         
 
@@ -124,7 +125,9 @@ class Alchemy(AccessPoint):
                 return col.op(condition.operator)(condition.value)
         
     def __item_from_result(self, result):
-        return Item(self, dict(result))
+        lazy_props = {}
+        props = {}
+        return self.create(dict(result))
                 
     def search(self, request):
         query = Select(None, None, from_obj=self._table, use_labels=True)
@@ -138,13 +141,26 @@ class Alchemy(AccessPoint):
     def __to_pk_where_clause(self, item):
         return self.__to_alchemy_condition(apply(And, [Condition(pk, "=", item[pk]) 
             for pk in self.identity_properties]))
-            
+        
+    def __transform_to_table(self, item):
+        item_dict = {}
+        for prop, value in item.items():
+            if self.properties[prop].relation == 'many-to-one':
+                #TODO: more than one identity property
+                item_dict[prop] = item[prop].identity.conditions.values()[0]
+            elif self.properties[prop].relation == 'one-to-many':
+                pass
+            else :
+                item_dict[prop] = value
+        return item_dict
+
 
     def save(self, item):
         conn = self._table.bind.connect()
         trans = conn.begin()
+        value = self.__transform_to_table(item)
         try:
-            ids = self._table.insert().values(**item).execute().inserted_primary_key
+            ids = self._table.insert().values(value).execute().inserted_primary_key
             for (id,pk) in zip(ids, self.identity_properties):
                 item[pk] = id
             trans.commit()
@@ -152,7 +168,7 @@ class Alchemy(AccessPoint):
             try:
                 whereclause = self.__to_pk_where_clause(item)
                 update = self._table.update()
-                rp = update.where(whereclause).values(**item).execute()
+                rp = update.where(whereclause).values(value).execute()
                 if rp.rowcount == 0:
                     raise
                 trans.commit()
@@ -166,4 +182,4 @@ class Alchemy(AccessPoint):
         whereclause = self.__to_pk_where_clause(item)
         self._table.delete().where(whereclause).execute()
 
-    
+ 

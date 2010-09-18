@@ -159,8 +159,8 @@ class AccessPoint(object):
         """Create a new item.
         
         """
-        lazy_refs = (dict([(name, prop) for name, prop in self.properties.items() if prop.relation == 'one-to-many'
-            and name not in lazy_loaders]))
+        lazy_refs = (dict([(name, prop) for name, prop in self.properties.items() if prop.relation 
+            and name not in properties]))
         for prop, value in lazy_refs.items(): 
             lazy_loaders[prop] = self._default_loader(properties, self.properties[prop], value)
         item = Item(self, properties, lazy_loaders)
