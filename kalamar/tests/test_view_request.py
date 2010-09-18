@@ -96,8 +96,6 @@ def test_aliases_view_request():
 
 
 def test_simplest_view():
-    raise DeprecatedTest # This test is now broken. TODO: Fix it.
-
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
     req = normalize_request({'remote.id': None}, {'remote.id':10})

@@ -24,11 +24,13 @@ from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
 from sqlalchemy.sql.expression import alias, Select
 from sqlalchemy import String,Integer,Date,Numeric,DateTime,Boolean,Unicode
 from ..request import Condition, And, Or, Not
-
+from datetime import datetime, date
 
 SQLALCHEMYTYPES = {
     unicode : Unicode,
-    int : Integer
+    int : Integer,
+    datetime : DateTime,
+    date : Date
 }
 
 class AlchemyProperty(Property):
