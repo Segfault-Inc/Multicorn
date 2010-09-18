@@ -62,10 +62,8 @@ def make_test_site():
 def test_simple_view_request():
     """Create a simple view request, on a simgle access_point
     """
-    raise DeprecatedTest # This test is now broken. TODO: Fix it.
-
     ap = make_test_ap() 
-    req = normalize_request({'id': None, 'name': None}, 
+    req = normalize_request(ap.properties,
                             {'id':3, 'name':'stuff'})
     aliases = {'id_select':'id', 'name_select':'name'}
     viewreq = ViewRequest(aliases, req)
@@ -76,11 +74,9 @@ def test_simple_view_request():
 
 
 def test_aliases_view_request():
-    raise DeprecatedTest # This test is now broken. TODO: Fix it.
-
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'name', 'remote_select': 'remote.name'}
-    req = normalize_request({'remote.name': None}, {'remote.name':'truc'})
+    req = normalize_request(site.access_points["test_remote_ap"].properties, {'remote.name':'truc'})
     viewreq = ViewRequest(aliases, req)
     eq_(viewreq.aliases, {'id_select': 'id', 'name_select': 'name'})
     eq_(viewreq.joins , {'remote':True})
@@ -98,7 +94,7 @@ def test_aliases_view_request():
 def test_simplest_view():
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
-    req = normalize_request({'remote.id': None}, {'remote.id':10})
+    req = normalize_request(site.access_points["test_remote_ap"].properties, {'remote.id':10})
     items = list(site.view("test_remote_ap", aliases, req))
     eq_(len(items), 1)
     uniq_item = items[0]
@@ -107,8 +103,6 @@ def test_simplest_view():
     eq_(uniq_item['id_select'],  8)
     
 def test_one_to_many():
-    raise DeprecatedTest # This test is now broken. TODO: Fix it.
-
     site = make_test_site()
     aliases = {'local_id' : 'id','local_name' : 'name',  'remote_label' : 'manies.label'}
     items = list(site.view('test_ap', aliases,{}))
