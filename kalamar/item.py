@@ -123,14 +123,14 @@ class Item(MultiDict):
         if intersection:
             raise ValueError('Properties %r are both given and lazy.'
                              % (tuple(intersection),))
-        excess = given_keys - ap_keys
-        if excess:
-            raise ValueError('Unexpected given properties: %r' 
-                             % (tuple(excess),))
-        excess = lazy_keys - ap_keys
-        if excess:
-            raise ValueError('Unexpected lazy properties: %r' 
-                             % (tuple(excess),))
+        extra = given_keys - ap_keys
+        if extra:
+            raise ValueError('Unexpected given properties: %r'
+                             % (tuple(extra),))
+        extra = lazy_keys - ap_keys
+        if extra:
+            raise ValueError('Unexpected lazy properties: %r'
+                             % (tuple(extra),))
         
         super(Item, self).__init__()
         self.access_point = access_point
