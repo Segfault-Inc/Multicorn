@@ -41,7 +41,7 @@ from kraken import utils
 
 class Site(object):
     """WSGI application from a site root and a kalamar configuration file."""
-    def __init__(self, site_root, secret_key=None):
+    def __init__(self, site_root, kalamar_site=None, secret_key=None):
         """Initialize the Site.
 
         ``site_root``: dirname of the root of the site
@@ -53,7 +53,7 @@ class Site(object):
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
         self.koral_site = koral.Site(self.site_root)
-        self.kalamar_site = utils.KalamarSiteForKraken()
+        self.kalamar_site = kalamar_site
         
         # create a virtual package in sys.modules so that we can import 
         # python modules in the site
@@ -305,7 +305,7 @@ class Site(object):
                                               self.template_suffix_re))
 
         for dir_parts, basename_re in searches:
-            dirname = os.path.join(self.site_root, *dir_parts)
+            dirname = os.path.join(self.koral_site.path_to_root, *dir_parts)
             if os.path.isdir(dirname):
                 for name in os.listdir(dirname):
                     match = re.match(basename_re, name)
