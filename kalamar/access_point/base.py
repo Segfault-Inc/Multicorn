@@ -155,13 +155,38 @@ class AccessPoint(object):
         """
         raise NotImplementedError('Abstract method')
     
-    def create(self, properties={}):
+    def create(self, properties={}, lazy_loaders={}):
         """Create a new item.
         
         """
-        item = Item(self, properties)
+        lazy_refs = (dict([(name, prop) for name, prop in self.properties.items() if prop.relation == 'one-to-many'
+            and name not in lazy_loaders]))
+        for prop, value in lazy_refs.items(): 
+            lazy_loaders[prop] = self._default_loader(properties, self.properties[prop], value)
+        item = Item(self, properties, lazy_loaders)
         self.modified = True
         return item
+
+    def _default_loader(self, properties ,lazy_prop, lazy_value):
+        """ Returns a default loader to manage references in an access_point
+
+        """
+        remote = self.site.access_points[lazy_prop.remote_ap]
+        if lazy_prop.relation == 'many-to-one':
+            #TODO: manage multiple ids
+            conditions = Condition(remote.identity_properties[0], '=', lazy_value)
+            def loader():
+                return [remote.open(conditions)]
+        elif lazy_prop.relation == 'one-to-many':
+            id_props = self.identity_properties
+            conditions = apply(And, [Condition(prop, '=' , properties[prop]) for prop in id_props])
+            def loader():
+                return [remote.search(conditions)]
+        else:
+            raise RuntimeError('Cannont use a default lazy loader on a %s relation' % lazy_prop.relation)
+        return loader
+
+
 
     @abc.abstractmethod
     def save(self, item):

@@ -26,11 +26,11 @@ Test the Memory access point.
 from nose.tools import eq_, nottest, raises
 from kalamar import Site, MultipleMatchingItems, ItemDoesNotExist
 from kalamar.access_point.memory import Memory
-
+from kalamar.property import Property
 
 @nottest
 def make_test_ap():
-    return Memory({"id": int, "name": str}, "id")
+    return Memory({"id": Property(int), "name": Property(str)}, "id")
 
 @nottest
 def make_test_site():
