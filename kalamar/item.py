@@ -62,35 +62,59 @@ class Item(MutableMultiMapping):
     the item is stored. It is an instance of :class:`AccessPoint`.
 
     """
-    def __init__(self, access_point, properties=None):
+    def __init__(self, access_point, properties=(), lazy_loaders=()):
+        given_keys = set(properties)
+        lazy_keys = set(lazy_loaders)
+        
+        missing_keys = set(access_point.properties) - given_keys - lazy_keys
+        if missing_keys:
+            raise ValueError('Properties %r are neither given nor lazy.'
+                             % (tuple(missing_keys),))
+        intersection = given_keys & lazy_keys
+        if intersection:
+            raise ValueError('Properties %r are both given and lazy.'
+                             % (tuple(intersection),))
+        
         self.access_point = access_point
+        self._lazy_loaders = dict(lazy_loaders)
         self._properties = {}
         self.update(properties or {})
         # update() sets modified to True, but we do not want initialisation to
         # count as a modification.
         self.modified = False
     
+    def getlist(self, key):
+        try:
+            return self._properties[key]
+        except KeyError:
+            value = self._lazy_loaders[key]
+            self._properties[key] = value
+            del self._lazy_loaders[key]
+            return value
+    
+    def setlist(self, key, values):
+        self.modified = True
+        self._properties[key] = tuple(values)
+        try:
+            del self._lazy_loaders[key]
+        except KeyError:
+            pass
+
     def __delitem__(self, key):
-        del self._properties[key]
+        raise TypeError("%s object doesn't support item deletion." %
+            self.__class__.__name__)
 
     def __iter__(self):
-        return iter(self._properties)
+        return iter(self.access_point.properties)
 
     def __len__(self):
-        return len(self._properties)
+        return len(self.access_point.properties)
 
     def __repr__(self):
         """Return a user-friendly representation of item."""
         return "<%s(%s @ %s)>" % (
             self.__class__.__name__, repr(self.identity),
             repr(self.access_point.name))
-    
-    def setlist(self, key, values):
-        self.modified = True
-        self._properties[key] = tuple(values)
-
-    def getlist(self, key):
-        return self._properties[key]
     
     @property
     def identity(self):
