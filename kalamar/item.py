@@ -30,36 +30,84 @@ import collections
 Identity = collections.namedtuple('Identity', 'access_point, conditions')
 
 
-class MutableMultiMapping(collections.MutableMapping):
-    """A MutableMapping where each key as associated to multiple values.
+class MultiMapping(collections.Mapping):
+    """A Mapping where each key as associated to multiple values.
     
     Stored values are actually tuples, but :meth:`__getitem__` only gives
-    the first element of that tuple, and :meth:`__setitem__` wraps the new 
-    value in a tuple.
+    the first element of that tuple.
     
-    To access the underlying tuples, use :meth:`getlist` and :meth:`setlist`.
+    To access the underlying tuples, use :meth:`getlist`.
 
     """
     @abstractmethod
     def getlist(self, key, value):
         raise KeyError
 
+    def __getitem__(self, key):
+        return self.getlist(key)[0]
+
+
+class MutableMultiMapping(MultiMapping, collections.MutableMapping):
+    """A mutable MultiMapping.
+    
+    Stored values are actually tuples, but :meth:`__getitem__` only gives
+    the first element of that tuple.
+    
+    To access the underlying tuples, use :meth:`getlist` and :meth:`setlist`.
+
+    """
     @abstractmethod
     def setlist(self, key, value):
         raise KeyError
 
-    def __getitem__(self, key):
-        return self.getlist(key)[0]
-
     def __setitem__(self, key, value):
         self.setlist(key, (value,))
-
-
-class Item(MutableMultiMapping):
-    """Base class for items.
     
-    The :attr:`access_point` attribute represents where, in kalamar, 
-    the item is stored. It is an instance of :class:`AccessPoint`.
+    def update(self, other):
+        if isinstance(other, MultiMapping):
+            for key in other:
+                self.setlist(key, other.getlist(key))
+        else:
+            super(MutableMultiMapping, self).update(other)
+
+
+class MultiDict(MutableMultiMapping):
+    """Simple concrete subclass of MutableMultiMapping based on a dict.
+    """
+    def __init__(self):
+        self.__data = {}
+        
+    def getlist(self, key):
+        return self.__data[key]
+    
+    def setlist(self, key, values):
+        self.__data[key] = tuple(values)
+
+    def __delitem__(self, key):
+        del self.__data[key]
+
+    def __iter__(self):
+        return iter(self.__data)
+
+    def __len__(self):
+        return len(self.__data)
+
+
+class Item(MultiDict):
+    """    
+    :param access_point: The AccessPoint where this item came from.
+    
+    :param properties: A :class:`Mapping` of initial values for this item’s
+        properties. May be a MultiMapping to have multiple values for a given
+        property.
+    :param lazy_loaders: A :class:`Mapping` of callable "loaders" for
+        lazy properties. These callable should return a tuple of values.
+        When loading a property is expensive, this allows to only load it
+        when it’s needed.
+        When you have only one value, wrap it in a tuple like this: `(value,)`
+    
+    Every property defined in the access point must be given in one of
+    :obj:`properties` or :obj:`lazy_loaders`, but not both.
 
     """
     def __init__(self, access_point, properties=(), lazy_loaders=()):
@@ -75,26 +123,35 @@ class Item(MutableMultiMapping):
             raise ValueError('Properties %r are both given and lazy.'
                              % (tuple(intersection),))
         
+        super(Item, self).__init__()
         self.access_point = access_point
         self._lazy_loaders = dict(lazy_loaders)
-        self._properties = {}
-        self.update(properties or {})
-        # update() sets modified to True, but we do not want initialisation to
-        # count as a modification.
+        self.update(properties)
+        # update() sets modified to True, but we do not want initialisation
+        # to count as a modification.
         self.modified = False
     
     def getlist(self, key):
         try:
-            return self._properties[key]
+            # TODO: not sure if super() is more appropriate here.
+            return MultiDict.getlist(self, key)
         except KeyError:
-            value = [self._lazy_loaders[key]()]
-            self._properties[key] = value
+            # KeyError (again) is expected here for keys not in
+            # self.access_point.properties
+            loader = self._lazy_loaders[key]
+            values = tuple(loader())
+            # TODO: not sure if super() is more appropriate here.
+            MultiDict.setlist(self, key, values)
             del self._lazy_loaders[key]
-            return value
+            return values
     
     def setlist(self, key, values):
+        if key not in self:
+            raise KeyError("%s object doesn't support adding new keys." %
+                self.__class__.__name__)
         self.modified = True
-        self._properties[key] = tuple(values)
+        # TODO: not sure if super() is more appropriate here.
+        MultiDict.setlist(self, key, tuple(values))
         try:
             del self._lazy_loaders[key]
         except KeyError:
@@ -109,6 +166,11 @@ class Item(MutableMultiMapping):
 
     def __len__(self):
         return len(self.access_point.properties)
+
+    def __contains__(self, key):
+        # collections.Mutable’s default implementation is correct
+        # but based on __getitem__ which may needlessly call a lazy loader.
+        return key in self.access_point.properties
 
     def __repr__(self):
         """Return a user-friendly representation of item."""
