@@ -17,6 +17,7 @@
 
 from nose.tools import eq_, nottest
 from kalamar import Site, Item
+from kalamar.property import Property
 from kalamar.request import Condition, And, Or, Not, Request
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property

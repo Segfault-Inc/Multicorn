@@ -36,8 +36,6 @@ def make_test_site():
     child_property = Property(Item, relation='one-to-many', remote_ap='level2', remote_property='parent')
     level1_ap = Memory({'id' : Property(int),'label' : Property(unicode), 'parent' : parent_property, 'children' :
             child_property},'id')
-    
-    
 
     parent_property = Property(Item, relation='many-to-one', remote_ap='level1')
     level2_ap = Memory({'id' : Property(int),'label' : Property(unicode), 'parent' : parent_property},'id')
@@ -103,13 +101,8 @@ def test_complex_condition():
     condition = Or(Condition('children.label','=','1'), Condition('children.children.label','=','2.1'))
     items = list(site.view('root',aliases,condition))
     eq_(len(items), 3)
-    
-
-
 
 def test_many_to_ones():
     site = init_data()
-    
 
-    
 
