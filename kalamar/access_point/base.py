@@ -176,7 +176,7 @@ class AccessPoint(object):
             id_props = self.identity_properties
             conditions = apply(And, [Condition(prop, '=' , properties[prop]) for prop in id_props])
             def loader():
-                return [remote.search(conditions)]
+                return (remote.search(conditions),)
         else:
             raise RuntimeError('Cannot use a default lazy loader on a %s relation' % lazy_prop.relation)
         return loader

@@ -148,7 +148,11 @@ class Item(MultiDict):
             # KeyError (again) is expected here for keys not in
             # self.access_point.properties
             loader = self._lazy_loaders[key]
-            values = tuple(loader())
+            values = loader()
+            if not isinstance(values, tuple):
+                raise ValueError('Lazy loaders must return a tuple, not %s. '
+                    'To return a single value, wrap it in a tuple: (value,)'
+                    % type(values))
             # TODO: not sure if super() is more appropriate here.
             MultiDict.setlist(self, key, values)
             del self._lazy_loaders[key]
