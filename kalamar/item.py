@@ -113,8 +113,9 @@ class Item(MultiDict):
     def __init__(self, access_point, properties=(), lazy_loaders=()):
         given_keys = set(properties)
         lazy_keys = set(lazy_loaders)
+        ap_keys = set(access_point.properties)
         
-        missing_keys = set(access_point.properties) - given_keys - lazy_keys
+        missing_keys = ap_keys - given_keys - lazy_keys
         if missing_keys:
             raise ValueError('Properties %r are neither given nor lazy.'
                              % (tuple(missing_keys),))
@@ -122,6 +123,14 @@ class Item(MultiDict):
         if intersection:
             raise ValueError('Properties %r are both given and lazy.'
                              % (tuple(intersection),))
+        excess = given_keys - ap_keys
+        if excess:
+            raise ValueError('Unexpected given properties: %r' 
+                             % (tuple(excess),))
+        excess = lazy_keys - ap_keys
+        if excess:
+            raise ValueError('Unexpected lazy properties: %r' 
+                             % (tuple(excess),))
         
         super(Item, self).__init__()
         self.access_point = access_point
