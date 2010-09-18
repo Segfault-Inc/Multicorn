@@ -71,6 +71,9 @@ class Aliases(AccessPoint):
         self.properties = dict(
             (self.reversed_aliases.get(name, name), property)
             for name, property in wrapped_ap.properties.items())
+        self.identity_properties = tuple(
+            self.reversed_aliases.get(name, name)
+            for name in wrapped_ap.identity_properties)
     
     def translate_request(self, request):
         if isinstance(request, And):
