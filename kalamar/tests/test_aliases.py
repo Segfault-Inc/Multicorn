@@ -19,6 +19,7 @@ from nose.tools import eq_, nottest
 from kalamar import Site, Item
 from kalamar.request import Condition, And, Or, Not, Request
 from kalamar.access_point.memory import Memory
+from kalamar.property import Property
 from kalamar.access_point.aliases import AliasedItem, Aliases
 from .test_memory import make_test_site
 
@@ -27,9 +28,9 @@ class DummyAP(object):
 
 def test_aliased_item():
     dummy_underlying_ap = DummyAP()
-    dummy_underlying_ap.properties = {'FOO': None, 'other': None}
+    dummy_underlying_ap.properties = {'FOO': Property(int), 'other': Property(int)}
     dummy_ap = DummyAP()
-    dummy_ap.properties = {'foo': None, 'other': None}
+    dummy_ap.properties = {'foo': Property(int), 'other': Property(int)}
     dummy_ap.aliases = {'foo': 'FOO'}
     dummy_ap.reversed_aliases = {'FOO': 'foo'}
     underlying_item = Item(dummy_underlying_ap, {'FOO': 9, 'other': 0})
