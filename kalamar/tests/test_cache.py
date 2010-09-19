@@ -30,72 +30,18 @@ from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.access_point.cache import make_cache
 
+from kalamar.tests.common import run_common, make_site
 
-@nottest
-def make_test_ap():
+def make_ap():
     AccessPointMemoryCached = make_cache(Memory)
     return AccessPointMemoryCached({"id": Property(int), "name": Property(str)}, "id")
 
-# TODO: this first part is carbon copy from test_memory.py... Try to refactor it
-
-@nottest
-def make_test_site():
-    site = Site()
-    site.register("things", make_test_ap())
-    site.create("things", {"id": 1, "name": "foo"}).save()
-    site.create("things", {"id": 2, "name": "bar"}).save()
-    site.create("things", {"id": 3, "name": "bar"}).save()
-    return site
-
-
-def test_single_item():
-    """Save a single item and retrieve it."""
-    site = Site()
-    site.register("things", make_test_ap())
-    site.create("things", {"id": 1, "name": "foo"}).save()
-    all_items = list(site.search("things"))
-    eq_(len(all_items), 1)
-    item = all_items[0]
-    eq_(item["id"], 1)
-    eq_(item["name"], "foo")
-
-def test_search():
-    site = make_test_site()
-
-    results = site.search("things", {"name": "bar"})
-    eq_(set(item["id"] for item in results), set([2, 3]))
-
-def test_open_one():
-    site = make_test_site()
-    result = site.open("things", {"name": "foo"})
-    eq_(result["id"], 1)
-
-@raises(MultipleMatchingItems)
-def test_open_two():
-    site = make_test_site()
-    result = site.open("things", {"name": "bar"})
-
-@raises(ItemDoesNotExist)
-def test_open_zero():
-    site = make_test_site()
-    result = site.open("things", {"name": "nonexistent"})
-
-def test_delete():
-    site = make_test_site()
-    item = site.open("things", {"name": "foo"})
-    item.delete()
-    eq_(list(site.search("things", {"name": "foo"})), [])
-
-def test_delete_many():
-    site = make_test_site()
-    site.delete_many("things", {"name": "bar"})
-    eq_(list(site.search("things", {"name": "bar"})), [])
-
-
-# end of carbon copy. here comes the real code
-
+@run_common
 def test_cache():
-    site = make_test_site()
+    return make_ap()
+
+def test_cached_data_do_not_need_underlaying_access_point():
+    site = make_site(make_ap(), fill=True)
     ap = site.access_points['things']
 
     # search one item
@@ -157,7 +103,7 @@ def test_delegate():
     '''
     Test that the delegated class behave correctly
     '''
-    site = make_test_site()
+    site = make_site(make_ap(), fill=True)
 
     # search one item
     all_items = list(site.search("things"))

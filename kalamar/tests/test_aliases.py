@@ -22,7 +22,18 @@ from kalamar.request import Condition, And, Or, Not, Request
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.access_point.aliases import AliasedItem, Aliases
-from .test_memory import make_test_site
+from .common import make_site
+from .test_memory import make_ap as memory_make_ap
+
+from kalamar.tests.common import run_common
+
+def make_ap():
+    underlying_ap = Memory({"id": Property(int), "nom": Property(str)}, "id")
+    return Aliases({'name': 'nom'}, underlying_ap)
+
+@run_common
+def test_common():
+    return make_ap()
 
 class DummyAP(object):
     pass
@@ -79,7 +90,7 @@ def test_translate_request():
 
 
 def test_aliased_memory():
-    site = make_test_site()
+    site = make_site(memory_make_ap(), fill=True)
     underlying_ap = site.access_points['things']
     ap = Aliases({'nom': 'name'}, underlying_ap)
     site.register('aliased', ap)

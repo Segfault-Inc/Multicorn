@@ -23,14 +23,22 @@ from nose.tools import eq_, nottest
 from kalamar.access_point.alchemy import AlchemyProperty,Alchemy
 from kalamar.site import Site
 
-url = "sqlite:///"
+from kalamar.tests.common import run_common, make_site
 
+def make_ap():
+    return make_testtable()
+
+@run_common
+def test_cache():
+    return make_ap()
+
+url = "sqlite:///"
 
 @nottest
 def make_testtable():
     id = AlchemyProperty(int, column_name='id')
-    label = AlchemyProperty(unicode, column_name='label')
-    ap = Alchemy(url,'test',{'id':id, 'label': label},'id',True)
+    name = AlchemyProperty(unicode, column_name='name')
+    ap = Alchemy(url,'test',{'id':id, 'name': name},'id',True)
     return ap
 
 
@@ -40,10 +48,10 @@ class TestAlchemy:
         self.site = Site()
         self.site.register('test', make_testtable())
         self.items = []
-        item = self.site.create('test', {'id': 1, 'label': u'Test'})
+        item = self.site.create('test', {'id': 1, 'name': u'Test'})
         self.items.append(item)
         item.save()
-        item = self.site.create('test', {'id': 2, 'label': u'Test2'})
+        item = self.site.create('test', {'id': 2, 'name': u'Test2'})
         self.items.append(item)
         item.save()
 
@@ -54,24 +62,24 @@ class TestAlchemy:
         eq_(len(items), 1)
         item = items[0]
         eq_(item['id'], 1)
-        eq_(item['label'], 'Test')
+        eq_(item['name'], 'Test')
 
     def testview(self):
-        items = list(self.site.view('test', {'truc': 'id', 'name': u'label'}, 
+        items = list(self.site.view('test', {'truc': 'id', 'name': u'name'}, 
                                     {}))
         eq_(len(items), 2)
         for item in items:
             assert 'truc' in item.keys() and 'name' in item.keys()
-        items = list(self.site.view('test', {'truc': 'id', 'name': u'label'},
+        items = list(self.site.view('test', {'truc': 'id', 'name': u'name'},
                      {'id': 1}))
         eq_(len(items), 1)
 
     def testupdate(self):
        item = self.site.open('test', {'id': 1})
-       item['label'] = u'updated'
+       item['name'] = u'updated'
        item.save()
        item = self.site.open('test', {'id': 1})
-       eq_(item['label'], u'updated')
+       eq_(item['name'], u'updated')
     
     def tearDown(self):
         for item in self.items:

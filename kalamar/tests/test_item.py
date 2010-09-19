@@ -26,10 +26,11 @@ Test the Memory access point.
 from nose.tools import eq_
 
 from . import test_memory
+from .common import make_site
 
 
 def test_modification_tracking():
-    site = test_memory.make_test_site()
+    site = make_site(test_memory.make_ap(), fill=True)
     item = tuple(site.search("things"))[0]
     assert not item.modified
     item["name"] = "spam"

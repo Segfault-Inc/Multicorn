@@ -26,11 +26,12 @@ Test the Property class.
 from nose.tools import eq_, raises
 
 from . import test_memory
+from .common import make_site
 from ..property import Property, MissingRemoteAP, MissingRemoteProperty
 
 
 def test_property_creation():
-    remote_ap = test_memory.make_test_site().access_points["things"]
+    remote_ap = make_site(test_memory.make_ap(), fill=True).access_points["things"]
     prop = Property(str)
     eq_(prop.type, str)
     prop = Property(int, True, True, 42, True, "many-to-one", remote_ap, "name")
@@ -42,7 +43,7 @@ def test_property_creation_missing_remote_ap():
 
 @raises(MissingRemoteProperty)
 def test_property_creation_missing_remote_property():
-    remote_ap = test_memory.make_test_site().access_points["things"]
+    remote_ap = make_site(test_memory.make_ap(), fill=True).access_points["things"]
     prop = Property(float, relation="one-to-many", remote_ap=remote_ap)
 
 @raises(RuntimeError)
