@@ -93,7 +93,7 @@ class MultiDict(MutableMultiMapping):
         return len(self.__data)
 
 
-class Item(MultiDict):
+class Item(MutableMultiMapping):
     """Item base class.
 
     :param access_point: The AccessPoint where this item came from.
@@ -132,18 +132,14 @@ class Item(MultiDict):
             raise ValueError("Unexpected lazy properties: %r"
                              % (tuple(extra),))
         
-        super(Item, self).__init__()
         self.access_point = access_point
+        self._loaded_properties = MultiDict(properties)
         self._lazy_loaders = dict(lazy_loaders)
-        self.update(properties)
-        # update() sets modified to True, but we do not want initialisation
-        # to count as a modification.
         self.modified = False
     
     def getlist(self, key):
         try:
-            # TODO: not sure if super() is more appropriate here.
-            return MultiDict.getlist(self, key)
+            return self._loaded_properties.getlist(key)
         except KeyError:
             # KeyError (again) is expected here for keys not in
             # self.access_point.properties
@@ -153,8 +149,7 @@ class Item(MultiDict):
                 raise ValueError("Lazy loaders must return a tuple, not %s. "
                     "To return a single value, wrap it in a tuple: (value,)"
                     % type(values))
-            # TODO: not sure if super() is more appropriate here.
-            MultiDict.setlist(self, key, values)
+            self._loaded_properties.setlist(key, values)
             del self._lazy_loaders[key]
             return values
     
@@ -167,8 +162,7 @@ class Item(MultiDict):
         self.modified = True
         values = cast(self.access_point.properties[key], values)
 
-        # TODO: not sure if super() is more appropriate here.
-        MultiDict.setlist(self, key, values)
+        self._loaded_properties.setlist(key, values)
         try:
             del self._lazy_loaders[key]
         except KeyError:
