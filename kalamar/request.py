@@ -44,7 +44,7 @@ class OperatorNotAvailable(KeyError):
     """Operator is unknown or not managed."""
     
 
-def normalize_request(properties, request):
+def normalize(properties, request):
     """Convert a ``request`` to a Request object.
 
     TODO: describe syntaxic sugar.
@@ -52,15 +52,15 @@ def normalize_request(properties, request):
     XXX This doctests rely on the order of a dict. TODO: Fix this.
     
     >>> properties = {'a': Property(int), 'b': Property(str)}
-    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    >>> normalize(properties, {u'a': 1, u'b': 'foo'})
     And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
 
     >>> properties = {'a': Property(float), 'b': Property(unicode)}
-    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    >>> normalize(properties, {u'a': 1, u'b': 'foo'})
     And(Condition(u'a', '=', 1.0), Condition(u'b', '=', u'foo'))
 
     >>> properties = {'a': Property(float), 'b': Property(int)}
-    >>> normalize_request(properties, {u'a': 1, u'b': 'foo'})
+    >>> normalize(properties, {u'a': 1, u'b': 'foo'})
     ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
     Traceback (most recent call last):
         ...
@@ -72,16 +72,16 @@ def normalize_request(properties, request):
         return And()
     elif hasattr(request, "items") and callable(request.items):
         # If it looks like a dict and smells like a dict, it is a dict.
-        return And(*(normalize_request(properties, Condition(key, "=", value))
+        return And(*(normalize(properties, Condition(key, "=", value))
                      for key, value in request.items()))
     elif isinstance(request, And):
-        return And(*(normalize_request(properties, r)
+        return And(*(normalize(properties, r)
                      for r in request.sub_requests))
     elif isinstance(request, Or):
-        return Or(*(normalize_request(properties, r)
+        return Or(*(normalize(properties, r)
                     for r in request.sub_requests))
     elif isinstance(request, Not):
-        return Not(normalize_request(properties, request.sub_request))
+        return Not(normalize(properties, request.sub_request))
     elif isinstance(request, Condition):
         # TODO decide where the Condition.root method should be
         root, rest = request.root()
@@ -97,7 +97,7 @@ def normalize_request(properties, request):
     else:
         # Assume a 3-tuple: short for a single condition
         property_name, operator, value = request
-        return normalize_request(properties, 
+        return normalize(properties, 
             Condition(property_name, operator, value))
 
 

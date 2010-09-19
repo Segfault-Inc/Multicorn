@@ -49,4 +49,3 @@ def test_property_creation_missing_remote_property():
 @raises(RuntimeError)
 def test_property_creation_missing_remote_property_and_ap():
     prop = Property(float, relation="one-to-many")
-

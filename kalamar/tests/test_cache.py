@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
 # Copyright © 2008-2009 Kozea
@@ -44,72 +43,70 @@ def test_cached_data_do_not_need_underlaying_access_point():
     site = make_site(make_ap(), fill=True)
     ap = site.access_points['things']
 
-    # search one item
+    # Search one item
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
 
-    # monkey patch to disable ap
+    # Monkey patch to disable ap
     old_search = ap.__class__.__bases__[0].search
     ap.__class__.__bases__[0].search = None
     
-    # search one item
-    # with no ap, this must work !
+    # Search one item
+    # With no ap, this must work!
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
 
-    # restore request
+    # Restore request
     ap.__class__.__bases__[0].search = old_search
 
-    # update the item
+    # Update the item
     item["name"] = 'bob'
     site.save("things", item)
 
-    # monkey patch to disable ap
+    # Monkey patch to disable ap
     ap.__class__.__bases__[0].search = None
 
-    # this may fail because cache is invalided and ap is None
+    # This may fail because cache is invalided and ap is None
     assert_raises(TypeError, site.search, "things")
 
-    # restore the ap
+    # Restore the ap
     ap.__class__.__bases__[0].search = old_search
     
-    # search one item
+    # Search one item
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "bob")
 
-    #remove the ap and search again with cache
+    # Remove the ap and search again with cache
     ap.__class__.__bases__[0].search = None
     
-    # search one item
+    # Search one item
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "bob")
     
-    # restore it
+    # Restore it
     ap.__class__.__bases__[0].search = old_search
 
 def test_delegate():
-    '''
-    Test that the delegated class behave correctly
-    '''
+    """Test that the delegated class behave correctly"""
     site = make_site(make_ap(), fill=True)
 
-    # search one item
+    # Search one item
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
     item = all_items[0]
 
-    # we previously had issues with item not knowing their access point
+    # We previously had issues with item not knowing their access point
     repr(item)
     item.identity
