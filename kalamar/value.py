@@ -131,9 +131,14 @@ def to_date(value):
 def to_stream(value):
     for method in ("read", "write", "close"):
         if not hasattr(value, method):
-            # value does not look like a steam
+            # value does not look like a stream
             raise ValueError
     return value
+
+def to_iter(value):
+    if hasattr(value, "__iter__"):
+        return value
+    raise ValueError
 
 def to_type(value, data_type):
     """Return ``value`` if instance of ``data_type`` else raise error."""
@@ -148,6 +153,7 @@ PROPERTY_TYPES = {
     float: to_float,
     decimal.Decimal: to_decimal,
     io.IOBase: to_stream,
-    item.Item: lambda value: to_type(value, item.Item),
     datetime.datetime: to_datetime,
-    datetime.date: to_date}
+    datetime.date: to_date,
+    iter: to_iter,
+    item.Item: lambda value: to_type(value, item.Item)}

@@ -23,21 +23,20 @@ from nose.tools import eq_, nottest
 from kalamar.request import Condition, Or, Request, ViewRequest
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
-from kalamar.item import Item
 from kalamar.site import Site
 
 
 @nottest
 def make_test_site():
-    child_property = Property(Item, relation='one-to-many', remote_ap='level1', remote_property='parent')
+    child_property = Property(iter, relation='one-to-many', remote_ap='level1', remote_property='parent')
     root_ap = Memory({'id' : Property(int), 'label': Property(unicode), 'children' : child_property},'id')
 
-    parent_property = Property(Item, relation='many-to-one', remote_ap='root')
-    child_property = Property(Item, relation='one-to-many', remote_ap='level2', remote_property='parent')
+    parent_property = Property(iter, relation='many-to-one', remote_ap='root')
+    child_property = Property(iter, relation='one-to-many', remote_ap='level2', remote_property='parent')
     level1_ap = Memory({'id' : Property(int),'label' : Property(unicode), 'parent' : parent_property, 'children' :
             child_property},'id')
 
-    parent_property = Property(Item, relation='many-to-one', remote_ap='level1')
+    parent_property = Property(iter, relation='many-to-one', remote_ap='level1')
     level2_ap = Memory({'id' : Property(int),'label' : Property(unicode), 'parent' : parent_property},'id')
     site = Site()
     site.register('root', root_ap)
