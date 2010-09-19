@@ -197,6 +197,14 @@ class Item(MutableMultiMapping):
         ids = self.access_point.identity_properties
         return Identity(
             self.access_point.name, dict((name, self[name]) for name in ids))
+    
+    def __eq__(self, other):
+        return isinstance(other, Item) and other.identity == self.identity
+    
+    def __hash__(self):
+        ids = sorted(self.access_point.identity_properties)
+        return hash((self.access_point.name,
+            tuple((name, self[name]) for name in ids)))
 
     def save(self):
         """Save the item."""

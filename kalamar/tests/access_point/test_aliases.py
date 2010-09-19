@@ -49,6 +49,7 @@ def test_aliased_item():
     dummy_underlying_ap = DummyAP()
     dummy_underlying_ap.properties = {
         "FOO": Property(int), "other": Property(int)}
+    dummy_underlying_ap.identity_properties = ()
     dummy_ap = DummyAP()
     dummy_ap.properties = {"foo": Property(int), "other": Property(int)}
     dummy_ap.aliases = {"foo": "FOO"}
