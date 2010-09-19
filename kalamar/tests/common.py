@@ -9,9 +9,9 @@ def fill_site(site):
     '''
     File a *site* with tests data.
     '''
-    site.create("things", {"id": 1, "name": "foo"}).save()
-    site.create("things", {"id": 2, "name": "bar"}).save()
-    site.create("things", {"id": 3, "name": "bar"}).save()
+    site.create("things", {"id": 1, "name": u"foo"}).save()
+    site.create("things", {"id": 2, "name": u"bar"}).save()
+    site.create("things", {"id": 3, "name": u"bar"}).save()
 
 def make_site(ap, fill=False):
     '''

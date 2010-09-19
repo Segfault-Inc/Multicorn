@@ -46,7 +46,7 @@ def make_testtable():
     return ap
 
 
-class TestAlchemy:
+class TestAlchemy(object):
     def setUp(self):
         self.site = Site()
         self.site.register("test", make_testtable())

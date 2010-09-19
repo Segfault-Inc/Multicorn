@@ -33,7 +33,7 @@ from ..common import run_common, make_site
 
 def make_ap():
     AccessPointMemoryCached = make_cache(Memory)
-    return AccessPointMemoryCached({"id": Property(int), "name": Property(str)}, "id")
+    return AccessPointMemoryCached({"id": Property(int), "name": Property(unicode)}, "id")
 
 @run_common
 def test_cache():

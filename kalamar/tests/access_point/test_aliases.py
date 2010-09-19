@@ -34,7 +34,7 @@ from ..common import make_site, run_common
 from .test_memory import make_ap as memory_make_ap
 
 def make_ap():
-    underlying_ap = Memory({"id": Property(int), "nom": Property(str)}, "id")
+    underlying_ap = Memory({"id": Property(int), "nom": Property(unicode)}, "id")
     return Aliases({'name': 'nom'}, underlying_ap)
 
 @run_common

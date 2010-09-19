@@ -29,7 +29,7 @@ from kalamar.property import Property
 from ..common import run_common
 
 def make_ap():
-    return Memory({"id": Property(int), "name": Property(str)}, "id")
+    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
 
 @run_common
 def test_common():

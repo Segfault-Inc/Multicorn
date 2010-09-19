@@ -32,8 +32,8 @@ from ..property import Property, MissingRemoteAP, MissingRemoteProperty
 
 def test_property_creation():
     remote_ap = make_site(test_memory.make_ap(), fill=True).access_points["things"]
-    prop = Property(str)
-    eq_(prop.type, str)
+    prop = Property(unicode)
+    eq_(prop.type, unicode)
     prop = Property(int, True, True, 42, True, "many-to-one", remote_ap, "name")
     eq_(prop.type, int)
 

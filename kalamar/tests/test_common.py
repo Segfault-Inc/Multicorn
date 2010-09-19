@@ -8,7 +8,7 @@ from kalamar.tests.common import nofill, commontest
 @commontest
 def test_single_item(site):
     """Save a single item and retrieve it."""
-    site.create("things", {"id": 1, "name": "foo"}).save()
+    site.create("things", {"id": 1, "name": u"foo"}).save()
     all_items = list(site.search("things"))
     eq_(len(all_items), 1)
     item = all_items[0]
@@ -17,32 +17,32 @@ def test_single_item(site):
 
 @commontest
 def test_search(site):
-    results = site.search("things", {"name": "bar"})
+    results = site.search("things", {"name": u"bar"})
     eq_(set(item["id"] for item in results), set([2, 3]))
 
 @commontest
 def test_open_one(site):
-    result = site.open("things", {"name": "foo"})
+    result = site.open("things", {"name": u"foo"})
     eq_(result["id"], 1)
 
 @commontest
 @raises(MultipleMatchingItems)
 def test_open_two(site):
-    result = site.open("things", {"name": "bar"})
+    result = site.open("things", {"name": u"bar"})
 
 @commontest
 @raises(ItemDoesNotExist)
 def test_open_zero(site):
-    result = site.open("things", {"name": "nonexistent"})
+    result = site.open("things", {"name": u"nonexistent"})
 
 @commontest
 def test_delete(site):
-    item = site.open("things", {"name": "foo"})
+    item = site.open("things", {"name": u"foo"})
     item.delete()
-    eq_(list(site.search("things", {"name": "foo"})), [])
+    eq_(list(site.search("things", {"name": u"foo"})), [])
 
 @commontest
 def test_delete_many(site):
-    site.delete_many("things", {"name": "bar"})
-    eq_(list(site.search("things", {"name": "bar"})), [])
+    site.delete_many("things", {"name": u"bar"})
+    eq_(list(site.search("things", {"name": u"bar"})), [])
 
