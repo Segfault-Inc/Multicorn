@@ -72,8 +72,7 @@ class MutableMultiMapping(MultiMapping, collections.MutableMapping):
 
 
 class MultiDict(MutableMultiMapping):
-    """Simple concrete subclass of MutableMultiMapping based on a dict.
-    """
+    """Simple concrete subclass of MutableMultiMapping based on a dict."""
     def __init__(self):
         self.__data = {}
         
@@ -94,9 +93,9 @@ class MultiDict(MutableMultiMapping):
 
 
 class Item(MultiDict):
-    """    
+    """Item base class.
+
     :param access_point: The AccessPoint where this item came from.
-    
     :param properties: A :class:`Mapping` of initial values for this item’s
         properties. May be a MultiMapping to have multiple values for a given
         property.
@@ -117,19 +116,19 @@ class Item(MultiDict):
         
         missing_keys = ap_keys - given_keys - lazy_keys
         if missing_keys:
-            raise ValueError('Properties %r are neither given nor lazy.'
+            raise ValueError("Properties %r are neither given nor lazy."
                              % (tuple(missing_keys),))
         intersection = given_keys & lazy_keys
         if intersection:
-            raise ValueError('Properties %r are both given and lazy.'
+            raise ValueError("Properties %r are both given and lazy."
                              % (tuple(intersection),))
         extra = given_keys - ap_keys
         if extra:
-            raise ValueError('Unexpected given properties: %r'
+            raise ValueError("Unexpected given properties: %r"
                              % (tuple(extra),))
         extra = lazy_keys - ap_keys
         if extra:
-            raise ValueError('Unexpected lazy properties: %r'
+            raise ValueError("Unexpected lazy properties: %r"
                              % (tuple(extra),))
         
         super(Item, self).__init__()
@@ -150,8 +149,8 @@ class Item(MultiDict):
             loader = self._lazy_loaders[key]
             values = loader()
             if not isinstance(values, tuple):
-                raise ValueError('Lazy loaders must return a tuple, not %s. '
-                    'To return a single value, wrap it in a tuple: (value,)'
+                raise ValueError("Lazy loaders must return a tuple, not %s. "
+                    "To return a single value, wrap it in a tuple: (value,)"
                     % type(values))
             # TODO: not sure if super() is more appropriate here.
             MultiDict.setlist(self, key, values)
