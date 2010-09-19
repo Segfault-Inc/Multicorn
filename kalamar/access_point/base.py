@@ -155,10 +155,12 @@ class AccessPoint(object):
         """
         raise NotImplementedError('Abstract method')
     
-    def create(self, properties={}, lazy_loaders={}):
+    def create(self, properties=None, lazy_loaders=None):
         """Create a new item.
         
         """
+        properties = properties or {}
+        lazy_loaders = lazy_loaders or {}
         lazy_refs = (dict([(name, prop) for name, prop in self.properties.items() if prop.relation == 'one-to-many'
             and name not in properties and name not in lazy_loaders]))
         for name, value in lazy_refs.items(): 

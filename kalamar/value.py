@@ -139,7 +139,7 @@ def to_type(value, data_type):
     """Return ``value`` if instance of ``data_type`` else raise error."""
     if isinstance(value, data_type):
         return value
-    raise ValueError
+    raise ValueError('Value %r is not of type %r' % (value, data_type))
 
 
 PROPERTY_TYPES = {
