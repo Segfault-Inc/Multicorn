@@ -25,7 +25,7 @@ Test the view request algorithm.
 
 from nose.tools import eq_, nottest
 from nose.plugins.deprecated import DeprecatedTest
-from kalamar.request import Request, ViewRequest, normalize_request
+from kalamar.request import Request, ViewRequest, normalize
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
@@ -62,7 +62,7 @@ def test_simple_view_request():
     """Create a simple view request, on a simgle access_point
     """
     ap = make_test_ap() 
-    req = normalize_request(ap.properties,
+    req = normalize(ap.properties,
                             {'id':3, 'name':'stuff'})
     aliases = {'id_select':'id', 'name_select':'name'}
     viewreq = ViewRequest(aliases, req)
@@ -75,7 +75,7 @@ def test_simple_view_request():
 def test_aliases_view_request():
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'name', 'remote_select': 'remote.name'}
-    req = normalize_request(site.access_points["test_remote_ap"].properties, {'remote.name':'truc'})
+    req = normalize(site.access_points["test_remote_ap"].properties, {'remote.name':'truc'})
     viewreq = ViewRequest(aliases, req)
     eq_(viewreq.aliases, {'id_select': 'id', 'name_select': 'name'})
     eq_(viewreq.joins , {'remote':True})
@@ -93,7 +93,7 @@ def test_aliases_view_request():
 def test_simplest_view():
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
-    req = normalize_request(site.access_points["test_remote_ap"].properties, {'remote.id':10})
+    req = normalize(site.access_points["test_remote_ap"].properties, {'remote.id':10})
     items = list(site.view("test_remote_ap", aliases, req))
     eq_(len(items), 1)
     uniq_item = items[0]
