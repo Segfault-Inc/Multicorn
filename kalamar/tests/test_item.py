@@ -25,7 +25,7 @@ Test the Memory access point.
 
 from nose.tools import eq_
 
-from . import test_memory
+from .access_point import test_memory
 from .common import make_site
 
 

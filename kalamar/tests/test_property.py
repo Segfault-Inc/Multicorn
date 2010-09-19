@@ -25,7 +25,7 @@ Test the Property class.
 
 from nose.tools import eq_, raises
 
-from . import test_memory
+from .access_point import test_memory
 from .common import make_site
 from ..property import Property, MissingRemoteAP, MissingRemoteProperty
 
