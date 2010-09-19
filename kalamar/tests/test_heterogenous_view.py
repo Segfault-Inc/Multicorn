@@ -32,7 +32,7 @@ from kalamar.property import Property
 from kalamar.item import Item
 
 
-class TestHeterogeneous:
+class TestHeterogeneous(object):
     def make_alchemy_ap(self):
         url = "sqlite:///"
         id_property = AlchemyProperty(int, column_name="id")
@@ -40,7 +40,8 @@ class TestHeterogeneous:
         memory = AlchemyProperty(Item, column_name="memory", 
                                  relation="many-to-one", remote_ap="memory")
         ap = Alchemy(
-            url, "test", {"id": id_property, "label": label, "memory": memory},
+            url, "test_heterogeneous",
+            {"id": id_property, "label": label, "memory": memory},
             "id", True)
         return ap
 
@@ -75,3 +76,4 @@ class TestHeterogeneous:
 
     def tearDown(self):
         self.alchemy_ap._table.drop()
+        
