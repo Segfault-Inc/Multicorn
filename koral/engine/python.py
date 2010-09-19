@@ -20,9 +20,6 @@ Python engine support for Koral.
 
 """
 
-import sys
-import imp
-
 from koral.engine.base import BaseEngine
 
 
@@ -36,8 +33,6 @@ class PythonEngine(BaseEngine):
     
     def render(self, template_name, values={}, lang=None, modifiers=None):
         """Render Python template."""
-        sys.path.insert(0, self.path_to_root)
-        open_file, file_name, description = imp.find_module(template_name[:-3])
-        module = imp.load_module(template_name[:-3], open_file, file_name, description)
-        sys.path.pop(0)        
-        return module.handle_request(values["request"])
+        local = {}
+        execfile("%s/%s" % (self.path_to_root, template_name), local, local)
+        return local["handle_request"](values["request"])
