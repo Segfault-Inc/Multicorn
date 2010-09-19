@@ -160,17 +160,12 @@ class Item(MultiDict):
     
     def setlist(self, key, values):
         # FIXME: This is here to avoid circular imports
-        from .value import PROPERTY_TYPES, to_type
+        from .value import cast
         if key not in self:
             raise KeyError("%s object doesn't support adding new keys." %
                 self.__class__.__name__)
         self.modified = True
-
-        property_type = self.access_point.properties[key].type
-        if property_type in PROPERTY_TYPES:
-            values = tuple(PROPERTY_TYPES[property_type](value) for value in values)
-        else:
-            value = tuple(to_type(value, property_type) for value in values)
+        values = cast(self.access_point.properties[key], values)
 
         # TODO: not sure if super() is more appropriate here.
         MultiDict.setlist(self, key, values)

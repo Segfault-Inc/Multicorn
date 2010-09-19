@@ -27,7 +27,7 @@ import operator
 from abc import ABCMeta, abstractmethod
 from itertools import groupby
 
-from .value import PROPERTY_TYPES, to_type
+from .value import cast
 from .property import Property
 
 OPERATORS = {
@@ -88,14 +88,11 @@ def normalize_request(properties, request):
         if root not in properties:
             raise KeyError(
                 "This access point has no %r property." % root)
-        property_type = properties[root].type
         # TODO : validate sub requests 
-        if rest :
+        if rest:
             return request
-        elif property_type in PROPERTY_TYPES:
-            value = PROPERTY_TYPES[property_type](request.value)
         else:
-            value = to_type(request.value, property_type)
+            value = cast(properties[root], (request.value,))[0]
         return Condition(request.property_name, request.operator, value)
     else:
         # Assume a 3-tuple: short for a single condition

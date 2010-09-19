@@ -165,3 +165,13 @@ PROPERTY_TYPES = {
     datetime.date: to_date,
     iter: to_iter,
     item.Item: lambda value: to_type(value, item.Item)}
+
+
+def cast(prop, values):
+    """Cast an iterable of values, return a tuple of cast values."""
+    if not prop.mandatory and values == (None,):
+        return values
+    if prop.type in PROPERTY_TYPES:
+        return tuple(PROPERTY_TYPES[prop.type](value) for value in values)
+    else:
+        return tuple(to_type(value, prop.type) for value in values)
