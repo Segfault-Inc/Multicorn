@@ -26,7 +26,7 @@ Access point base class.
 import abc
 from ..item import Item
 from itertools import product
-from ..request import And, Condition, Or
+from ..request import And, Condition
 
 
 DEFAULT_PARAMETER = object()
@@ -51,19 +51,19 @@ class AccessPoint(object):
     must have two attributes:
     
     :attr:`properties` is a dict where keys are
-    property names as strings, and value are :class:`kalamar.property.Property`
-    instances.
-    
+        property names as strings, and value are :class:`kalamar.property.Property`
+        instances.
     :attr:`identity_properties` is a tuple of property names that compose
-    the "identity" of items in this access point.
+        the "identity" of items in this access point.
+
     """
     __metaclass__ = abc.ABCMeta
     
     def open(self, request, default=DEFAULT_PARAMETER):
-        """Return the item in access_point matching request.
+        """Return the item in access point matching ``request``.
         
-        If there is no result, raise ``Site.ObjectDoesNotExist``.
-        If there are more than one result, raise ``Site.MultipleObjectsReturned``.
+        If there is no result, raise ``Site.ObjectDoesNotExist``. If there are
+        more than one result, raise ``Site.MultipleObjectsReturned``.
         
         """
         results = iter(self.search(request))
@@ -73,7 +73,6 @@ class AccessPoint(object):
             if default is DEFAULT_PARAMETER:
                 raise ItemDoesNotExist
             return default
-        
         try:
             results.next()
         except StopIteration:
@@ -83,107 +82,106 @@ class AccessPoint(object):
 
     @abc.abstractmethod
     def search(self, request):
-        """Return an iterable of every item matching request.
-
-        """
-        raise NotImplementedError('Abstract method')
+        """Return an iterable of every item matching request."""
+        raise NotImplementedError("Abstract method")
     
-#    def view(self, request, mapping={}, interval=(0, -1), order=name|tuple(name)|tuple(tuple(name,order))):
-    def view(self, view_request, **kwArgs):
-        """Returns partial items.
+    def view(self, view_request, **kwargs):
+        """Return partial items.
 
-        ``mapping`` is a dict mapping the items property to custom keys in 
-        the returned partial items. 
+        :param view_request: follows the same format as in the search method
 
-        ``request`` follows the same format as in the search method.
         Example:
-        site.view("access_point',{"name":"name","boss_name": "foreign.name"})
+        site.view("access_point", {"name": "name", "boss_name": "foreign.name"})
 
         """
         def alias_item(item, aliases):
-            return dict([(alias, item[value]) for alias, value in aliases.items()])
+            return dict(
+                (alias, item[value]) for alias, value in aliases.items())
         fake_props = []
         orphan_request = view_request.orphan_request
-        #First, we perform a search on our own properties
+        # First, we perform a search on our own properties
         for item in self.search(view_request.request):
             join_request = And()
-            view_item = alias_item(item,view_request.aliases)
+            view_item = alias_item(item, view_request.aliases)
             subitems_generators = []
-            #Build subviews on our remote properties
+            # Build subviews on our remote properties
             for prop, subview in view_request.subviews.items():
                 property_obj = self.properties[prop]
                 remote_ap = self.site.access_points[property_obj.remote_ap]
-                if property_obj.relation == 'many-to-one':
-                    # Add aliases to the request to compare the item to our reference
-                    # as well as a clause to the orphan_request to be tested against the resulting
-                    # property
+                if property_obj.relation == "many-to-one":
+                    # Add aliases to the request to compare the item to our
+                    # reference as well as a clause to the orphan_request to be
+                    # tested against the resulting property
                     for id_prop in remote_ap.identity_properties:
-                        fake_prop = '____' + prop + '____' + id_prop
+                        fake_prop = "____" + prop + "____" + id_prop
                         fake_props.append(fake_prop)
-                        join_request = And(join_request, Condition(fake_prop, '=', item[prop][id_prop]))
+                        join_request = And(
+                            join_request, Condition(
+                                fake_prop, "=", item[prop][id_prop]))
                         subview.aliases[fake_prop] = id_prop
-                elif property_obj.relation == 'one-to-many':
-                    subview.additional_request = Condition(property_obj.remote_property,'=',item)
+                elif property_obj.relation == "one-to-many":
+                    subview.additional_request = Condition(
+                        property_obj.remote_property, "=", item)
                 subitems_generators.append(remote_ap.view(subview))
             if not subitems_generators:
                 yield view_item
             else:
-                # Compute the cartesian product of the subviews results,
-                # update the properties, and test it against the unevaluated
-                # request before yielding
+                # Compute the cartesian product of the subviews results, update
+                # the properties, and test it against the unevaluated request
+                # before yielding
                 for cartesian_item in product(*subitems_generators):
                     newitem = dict(view_item)
                     for cartesian_atom in cartesian_item:
                         newitem.update(cartesian_atom)
-                        if orphan_request.test(newitem) and join_request.test(newitem):
+                        if orphan_request.test(newitem) \
+                                and join_request.test(newitem):
                             for fake_prop in view_request.additional_aliases:
                                 newitem.pop(fake_prop)
                             yield newitem
         
     def delete_many(self, request):
-        """Delete all item matching the request.
-        """
+        """Delete all item matching ``request``."""
         for item in self.search(request):
             self.delete(item)
     
     @abc.abstractmethod
     def delete(self, item):
-        """Delete the item from the backend storage.
+        """Delete ``item`` from the backend storage.
         
         This method has to be overridden.
 
         """
-        raise NotImplementedError('Abstract method')
+        raise NotImplementedError("Abstract method")
     
     def create(self, properties=None, lazy_loaders=None):
-        """Create a new item.
-        
-        """
+        """Create and return a new item."""
         properties = properties or {}
         lazy_loaders = lazy_loaders or {}
-        lazy_refs = (dict([(name, prop) for name, prop in self.properties.items() if prop.relation == 'one-to-many'
-            and name not in properties and name not in lazy_loaders]))
+        lazy_refs = (
+            dict([(name, prop) for name, prop in self.properties.items()
+                  if prop.relation == "one-to-many"
+                  and name not in properties and name not in lazy_loaders]))
         for name, value in lazy_refs.items(): 
             lazy_loaders[name] = self._default_loader(properties, value)
         item = Item(self, properties, lazy_loaders)
         self.modified = True
         return item
 
-    def _default_loader(self, properties ,lazy_prop):
-        """ Returns a default loader to manage references in an access_point
-
-        """
+    def _default_loader(self, properties, lazy_prop):
+        """Return a default loader to manage references in an access point."""
         remote = self.site.access_points[lazy_prop.remote_ap]
-        if lazy_prop.relation == 'one-to-many':
+        if lazy_prop.relation == "one-to-many":
             id_props = self.identity_properties
-            conditions = apply(And, [Condition(prop, '=' , properties[prop]) for prop in id_props])
+            conditions = apply(
+                And, [Condition(prop, "=", properties[prop])
+                      for prop in id_props])
             def loader():
                 return (remote.search(conditions),)
         else:
-            raise RuntimeError('Cannot use a default lazy loader on a %s relation' % lazy_prop.relation)
+            raise RuntimeError(
+                "Cannot use default lazy loader"
+                "on %s relation" % lazy_prop.relation)
         return loader
-
-
 
     @abc.abstractmethod
     def save(self, item):
@@ -192,5 +190,4 @@ class AccessPoint(object):
         This method has to be overriden.
 
         """
-        raise NotImplementedError('Abstract method')
-
+        raise NotImplementedError("Abstract method")
