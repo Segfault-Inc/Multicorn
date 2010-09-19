@@ -132,8 +132,16 @@ class Item(MutableMultiMapping):
             raise ValueError("Unexpected lazy properties: %r"
                              % (tuple(extra),))
         
+        # FIXME: This is here to avoid circular imports
+        from .value import cast
+
         self.access_point = access_point
-        self._loaded_properties = MultiDict(properties)
+        given_properties = MultiDict(properties)
+        self._loaded_properties = MultiDict()
+        for key in given_properties:
+            self._loaded_properties.setlist(key, cast(
+                self.access_point.properties[key],
+                given_properties.getlist(key)))
         self._lazy_loaders = dict(lazy_loaders)
         self.modified = False
     
