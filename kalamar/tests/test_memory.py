@@ -41,7 +41,6 @@ def make_test_site():
     site.create("things", {"id": 3, "name": "bar"}).save()
     return site
 
-
 def test_single_item():
     """Save a single item and retrieve it."""
     site = Site()
@@ -83,5 +82,3 @@ def test_delete_many():
     site = make_test_site()
     site.delete_many("things", {"name": "bar"})
     eq_(list(site.search("things", {"name": "bar"})), [])
-
-
