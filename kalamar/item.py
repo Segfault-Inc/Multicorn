@@ -159,6 +159,8 @@ class Item(MutableMultiMapping):
         if key not in self:
             raise KeyError("%s object doesn't support adding new keys." %
                 self.__class__.__name__)
+        if key in self.access_point.identity_properties:
+            raise KeyError("Can not modify identity property %r." % key)
         self.modified = True
         values = cast(self.access_point.properties[key], values)
 
