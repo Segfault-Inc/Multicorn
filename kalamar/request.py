@@ -107,6 +107,8 @@ def normalize_request(properties, request):
 class Request(object):
     """Abstract class for kalamar requests."""
     __metaclass__ = ABCMeta
+
+    _hash_attributs = tuple()
     
     @abstractmethod
     def test(self, item):
@@ -126,9 +128,20 @@ class Request(object):
     def parse(cls, access_point, request):
         self.parse(request)
 
+    def __hash__(self):
+        return hash(self.__hash_tuple())
+
+    def __hash_tuple(self):
+        return tuple(getattr(self, attr) for attr in self._hash_attributs.split())
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__hash_tuple() == other.__hash_tuple()
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
+
+    _hash_attributs = 'property_name operator value'
+
     def __init__(self, property_name, operator, value):
         try:
             self.operator_func = OPERATORS[operator]
@@ -138,7 +151,7 @@ class Condition(Request):
         self.property_name = property_name
         self.operator = operator
         self.value = value
-    
+
     def root(self):
         splitted = self.property_name.split(".")
         rest = ".".join(splitted[1:]) if len(splitted) > 1 else None
@@ -151,11 +164,6 @@ class Condition(Request):
             self.operator,
             self.value)
     
-    def __eq__(self, other):
-        return isinstance(other, Condition) and \
-            (self.property_name, self.operator, self.value) == \
-            (other.property_name, other.operator, other.value)
-
     def test(self, item):
         """Return if ``item`` matches the request."""
         return self.operator_func(item[self.property_name], self.value)
@@ -168,6 +176,8 @@ class Condition(Request):
 
 
 class _And_or_Or(Request):
+    _hash_attributs = 'sub_requests __class__'
+
     """Super class for And and Or that holds identical behavior."""
     def __init__(self, *sub_requests):
         self.sub_requests = []
@@ -177,11 +187,9 @@ class _And_or_Or(Request):
                 self.sub_requests.extend(sub_req.sub_requests)
             else :
                 self.sub_requests.append(sub_req)
-    
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.sub_requests == other.sub_requests
 
+        self.sub_requests = tuple(self.sub_requests)
+    
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
@@ -207,13 +215,12 @@ class Or(_And_or_Or):
 
 
 class Not(Request):
+    _hash_attributs = 'sub_request __class__'
+
     """Negates a request."""
     def __init__(self, sub_request):
         self.sub_request = sub_request
     
-    def __eq__(self, other):
-        return isinstance(other, Not) and self.sub_request == other.sub_request
-
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.sub_request)
 
