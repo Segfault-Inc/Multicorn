@@ -28,18 +28,17 @@ from nose.plugins.deprecated import DeprecatedTest
 from kalamar.request import Request, ViewRequest, normalize_request
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
-from kalamar.item import Item
 from kalamar.site import Site
 
 
 @nottest
 def make_test_ap():
-    one_to_many = Property(Item, relation='one-to-many', remote_ap='test_remote_ap', remote_property='remote')
+    one_to_many = Property(iter, relation='one-to-many', remote_ap='test_remote_ap', remote_property='remote')
     return Memory({'id': Property(int), 'name': Property(unicode), 'manies': one_to_many}, 'id')
 
 @nottest
 def make_test_second_ap():
-    remote_prop = Property(Item, relation='many-to-one', remote_ap='test_ap')
+    remote_prop = Property(iter, relation='many-to-one', remote_ap='test_ap')
     return Memory({'id': Property(int),'label' : Property(unicode), 'remote': remote_prop},'id')
 
 

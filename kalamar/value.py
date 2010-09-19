@@ -81,11 +81,17 @@ def to_decimal(value):
 def to_datetime(value):
     """Cast ``value`` into datetime object.
 
+    >>> to_datetime("20100804")
+    datetime.datetime(2010, 8, 4, 0, 0)
     >>> to_datetime("2010-08-04")
     datetime.datetime(2010, 8, 4, 0, 0)
     >>> to_datetime("2010-08-04T20:34:31")
     datetime.datetime(2010, 8, 4, 20, 34, 31)
     >>> to_datetime("2010-08-04T20:34:31Z")
+    ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    datetime.datetime(2010, 8, 4, 20, 34, 31,
+        tzinfo=<kalamar.value.FixedOffsetTimeZone object at ...>)
+    >>> to_datetime("20100804-203431Z")
     ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
     datetime.datetime(2010, 8, 4, 20, 34, 31,
         tzinfo=<kalamar.value.FixedOffsetTimeZone object at ...>)
@@ -104,16 +110,17 @@ def to_datetime(value):
     elif isinstance(value, datetime.date):
         return value.datetime(value.year, value.month, value.day)
     elif isinstance(value, basestring):
-        if len(value) == 10:
-            return datetime.datetime.strptime(value, "%Y-%m-%d")
-        elif len(value) == 19:
-            return datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%S")
-        elif len(value) == 20 and value.endswith("Z"):
-            value = value[:-1] + "+00:00"
-        if len(value) == 25:
-            time, timezone = value[:19], value[19:]
-            hours, minutes = timezone.split(":")
-            time = datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S")
+        value = value.replace("-", "").replace(":", "").replace("T", "")
+        if len(value) == 8:
+            return datetime.datetime.strptime(value, "%Y%m%d")
+        elif len(value) == 14:
+            return datetime.datetime.strptime(value, "%Y%m%d%H%M%S")
+        elif len(value) == 15 and value.endswith("Z"):
+            value = value[:-1] + "+0000"
+        if len(value) == 19:
+            time, timezone = value[:14], value[14:]
+            hours, minutes = timezone[:2], timezone[2:]
+            time = datetime.datetime.strptime(time, "%Y%m%d%H%M%S")
             return time.replace(
                 tzinfo=FixedOffsetTimeZone(int(hours), int(minutes)))
     raise ValueError
@@ -125,21 +132,27 @@ def to_date(value):
     elif isinstance(value, datetime.datetime):
         return value.date()
     elif isinstance(value, basestring):
-        return datetime.datetime.strptime(value, "%Y-%m-%d").date()
+        value = value.replace("-", "").replace(":", "").replace("T", "")
+        return datetime.datetime.strptime(value, "%Y%m%d").date()
     raise ValueError
 
 def to_stream(value):
     for method in ("read", "write", "close"):
         if not hasattr(value, method):
-            # value does not look like a steam
+            # value does not look like a stream
             raise ValueError
     return value
+
+def to_iter(value):
+    if hasattr(value, "__iter__"):
+        return value
+    raise ValueError
 
 def to_type(value, data_type):
     """Return ``value`` if instance of ``data_type`` else raise error."""
     if isinstance(value, data_type):
         return value
-    raise ValueError
+    raise ValueError('Value %r is not of type %r' % (value, data_type))
 
 
 PROPERTY_TYPES = {
@@ -148,6 +161,7 @@ PROPERTY_TYPES = {
     float: to_float,
     decimal.Decimal: to_decimal,
     io.IOBase: to_stream,
-    item.Item: lambda value: to_type(value, item.Item),
     datetime.datetime: to_datetime,
-    datetime.date: to_date}
+    datetime.date: to_date,
+    iter: to_iter,
+    item.Item: lambda value: to_type(value, item.Item)}
