@@ -73,8 +73,9 @@ class MutableMultiMapping(MultiMapping, collections.MutableMapping):
 
 class MultiDict(MutableMultiMapping):
     """Simple concrete subclass of MutableMultiMapping based on a dict."""
-    def __init__(self):
+    def __init__(self, inital=()):
         self.__data = {}
+        self.update(inital)
         
     def getlist(self, key):
         return self.__data[key]

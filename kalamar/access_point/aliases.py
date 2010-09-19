@@ -97,13 +97,25 @@ class Aliases(AccessPoint):
         for underlying_item in self.wrapped_ap.search(request):
             yield AliasedItem(self, underlying_item)
     
+    def delete_many(self, request):
+        self.wrapped_ap.delete_many(self.translate_request(request))
+    
     def delete(self, item):
         self.wrapped_ap.delete(item.underlying_item)
     
     def save(self, item):
         self.wrapped_ap.save(item.underlying_item)
     
-    def create(self, *args, **kwargs):
-        return AliasedItem(self,
-            super(Aliases, self).create(*args, **kwargs))
+    def create(self, properties=(), lazy_loaders=()):
+        if isinstance(properties, item.MultiMapping):
+            props = item.MultiDict()
+            for key in properties:
+                props.setlist(self.aliases.get(key, key), 
+                    properties.getlist(key))
+        else:
+            props = dict((self.aliases.get(key, key), value)
+                for key, value in dict(properties).iteritems())
+        lazy_loaders = dict((self.aliases.get(key, key), value)
+            for key, value in dict(lazy_loaders).iteritems())
+        return AliasedItem(self, self.wrapped_ap.create(props, lazy_loaders))
 
