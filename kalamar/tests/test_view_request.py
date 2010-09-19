@@ -25,7 +25,7 @@ Test the view request algorithm.
 
 from nose.tools import eq_, nottest
 from nose.plugins.deprecated import DeprecatedTest
-from kalamar.request import Request, ViewRequest, normalize
+from kalamar.request import Request, Condition, ViewRequest, normalize
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
@@ -84,10 +84,10 @@ def test_aliases_view_request():
     eq_(subview.aliases, {'remote_select':'name'})
     eq_(subview.subviews, {})
     sub_req = subview.request
-    eq_(len(sub_req.sub_requests), 1)
-    eq_(sub_req.sub_requests[0].operator, "=")
-    eq_(sub_req.sub_requests[0].value, "truc")
-    eq_(sub_req.sub_requests[0].property_name, 'name')
+    assert isinstance(sub_req, Condition)
+    eq_(sub_req.operator, "=")
+    eq_(sub_req.value, "truc")
+    eq_(sub_req.property_name, 'name')
 
 
 def test_simplest_view():

@@ -42,45 +42,50 @@ REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
 class OperatorNotAvailable(KeyError):
     """Operator is unknown or not managed."""
+
+
+def _flatten(request):
+    """Take a And or Or request and return a generator of flattened
+    sub requests.
+    
+    """
+    main_class = request.__class__
+    def _flatten_inner(request):
+        if (# And(a, And(b, c)) == And(a, b, c)
+            request.__class__ is main_class or
+            # And(a) == a
+            isinstance(request, (And, Or)) and len(request.sub_requests) == 1):
+            for sub_request in request.sub_requests:
+                for sub_sub in _flatten_inner(sub_request):
+                    yield sub_sub
+        else:
+            yield request
+    
+    sub_requests = tuple(_flatten_inner(request))
+    if len(sub_requests) == 1:
+        return sub_requests[0]
+    return main_class(*sub_requests)
     
 
 def normalize(properties, request):
     """Convert a ``request`` to a Request object.
 
     TODO: describe syntaxic sugar.
-    TODO: more unit tests here.
-    XXX This doctests rely on the order of a dict. TODO: Fix this.
-    
-    >>> properties = {'a': Property(int), 'b': Property(str)}
-    >>> normalize(properties, {u'a': 1, u'b': 'foo'})
-    And(Condition(u'a', '=', 1), Condition(u'b', '=', 'foo'))
-
-    >>> properties = {'a': Property(float), 'b': Property(unicode)}
-    >>> normalize(properties, {u'a': 1, u'b': 'foo'})
-    And(Condition(u'a', '=', 1.0), Condition(u'b', '=', u'foo'))
-
-    >>> properties = {'a': Property(float), 'b': Property(int)}
-    >>> normalize(properties, {u'a': 1, u'b': 'foo'})
-    ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
-    Traceback (most recent call last):
-        ...
-    ValueError: ...
 
     """
     if not request:
-        # Empty request
+        # Empty request: always true.
         return And()
     elif hasattr(request, "items") and callable(request.items):
         # If it looks like a dict and smells like a dict, it is a dict.
         return And(*(normalize(properties, Condition(key, "=", value))
                      for key, value in request.items()))
-    elif isinstance(request, And):
-        return And(*(normalize(properties, r)
-                     for r in request.sub_requests))
-    elif isinstance(request, Or):
-        return Or(*(normalize(properties, r)
-                    for r in request.sub_requests))
+    elif isinstance(request, (And, Or)):
+        return _flatten(request.__class__(*(normalize(properties, r) 
+            for r in request.sub_requests)))
     elif isinstance(request, Not):
+        if isinstance(request.sub_request, Not):
+            return normalize(properties, request.sub_request.sub_request)
         return Not(normalize(properties, request.sub_request))
     elif isinstance(request, Condition):
         # TODO decide where the Condition.root method should be
@@ -97,8 +102,7 @@ def normalize(properties, request):
     else:
         # Assume a 3-tuple: short for a single condition
         property_name, operator, value = request
-        return normalize(properties, 
-            Condition(property_name, operator, value))
+        return normalize(properties, Condition(property_name, operator, value))
 
 
 class Request(object):
@@ -177,15 +181,7 @@ class _And_or_Or(Request):
 
     """Super class for And and Or that holds identical behavior."""
     def __init__(self, *sub_requests):
-        self.sub_requests = []
-        for sub_req in sub_requests:
-            # Both And and Or are associative.
-            if isinstance(sub_req, self.__class__):
-                self.sub_requests.extend(sub_req.sub_requests)
-            else :
-                self.sub_requests.append(sub_req)
-
-        self.sub_requests = tuple(self.sub_requests)
+        self.sub_requests = frozenset(sub_requests)
     
     def __repr__(self):
         return "%s(%s)" % (
@@ -255,7 +251,7 @@ class ViewRequest(object):
 
     @property
     def request(self):
-        return And(self._request, self.additional_request)
+        return _flatten(And(self._request, self.additional_request))
 
     def _classify_alias(self):
         """Classify request aliases.
