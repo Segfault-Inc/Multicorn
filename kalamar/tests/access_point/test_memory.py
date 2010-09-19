@@ -26,7 +26,7 @@ Test the Memory access point.
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 
-from kalamar.tests.common import run_common
+from .common import run_common
 
 def make_ap():
     return Memory({"id": Property(int), "name": Property(str)}, "id")

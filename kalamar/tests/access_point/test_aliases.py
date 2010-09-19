@@ -30,10 +30,8 @@ from kalamar.request import Condition, And, Or, Not, Request
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.access_point.aliases import AliasedItem, Aliases
-from .common import make_site
+from .common import make_site, run_common
 from .test_memory import make_ap as memory_make_ap
-
-from kalamar.tests.common import run_common
 
 def make_ap():
     underlying_ap = Memory({"id": Property(int), "nom": Property(str)}, "id")

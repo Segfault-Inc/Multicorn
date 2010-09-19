@@ -29,7 +29,7 @@ from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.access_point.cache import make_cache
 
-from kalamar.tests.common import run_common, make_site
+from .common import run_common, make_site
 
 def make_ap():
     AccessPointMemoryCached = make_cache(Memory)

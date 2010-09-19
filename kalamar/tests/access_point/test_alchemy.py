@@ -27,7 +27,7 @@ from nose.tools import eq_, nottest
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 
-from kalamar.tests.common import run_common, make_site
+from .common import run_common, make_site
 
 def make_ap():
     return make_testtable()
