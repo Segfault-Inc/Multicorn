@@ -102,4 +102,8 @@ class Aliases(AccessPoint):
     
     def save(self, item):
         self.wrapped_ap.save(item.underlying_item)
+    
+    def create(self, properties, lazy_loaders):
+        return AliasedItem(self,
+            super(Aliases, self).create(properties, lazy_loaders))
 
