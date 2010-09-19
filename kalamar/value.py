@@ -62,22 +62,6 @@ class FixedOffsetTimeZone(datetime.tzinfo):
         return datetime.timedelta(0)
 
 
-def to_unicode(value):
-    """Cast ``value`` into unicode object."""
-    return unicode(value)
-
-def to_int(value):
-    """Cast ``value`` into int object."""
-    return int(value)
-
-def to_float(value):
-    """Cast ``value`` into float object."""
-    return float(value)
-
-def to_decimal(value):
-    """Cast ``value`` into decimal object."""
-    return decimal.Decimal(str(value))
-
 def to_datetime(value):
     """Cast ``value`` into datetime object.
 
@@ -126,13 +110,20 @@ def to_datetime(value):
     raise ValueError
 
 def to_date(value):
-    """Cast ``value`` into date object."""
+    """Cast ``value`` into date object.
+
+    >>> to_date("20100804")
+    datetime.date(2010, 8, 4)
+    >>> to_date("2010-08-04")
+    datetime.date(2010, 8, 4)
+
+    """
     if isinstance(value, datetime.date):
         return value
     elif isinstance(value, datetime.datetime):
         return value.date()
     elif isinstance(value, basestring):
-        value = value.replace("-", "").replace(":", "").replace("T", "")
+        value = value.replace("-", "").replace(":", "")
         return datetime.datetime.strptime(value, "%Y%m%d").date()
     raise ValueError
 
@@ -156,10 +147,10 @@ def to_type(value, data_type):
 
 
 PROPERTY_TYPES = {
-    unicode: to_unicode,
-    int: to_int,
-    float: to_float,
-    decimal.Decimal: to_decimal,
+    unicode: unicode,
+    int: int,
+    float: float,
+    decimal.Decimal: lambda value: decimal.Decimal(str(value)),
     io.IOBase: to_stream,
     datetime.datetime: to_datetime,
     datetime.date: to_date,
