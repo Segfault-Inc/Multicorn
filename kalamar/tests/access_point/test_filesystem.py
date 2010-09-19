@@ -33,7 +33,7 @@ from kalamar.access_point.filesystem import FileSystem
 def test_filesytem_init():
     # Project root, contains kalamar dir
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
-    ap = FileSystem(root, "*/tests/test_*.py*",
+    ap = FileSystem(root, "*/tests/access_point/test_*.py*",
                     ["package", ("module", Property(unicode)), "extension"])
     site = kalamar.Site()
     site.register("tests", ap)
