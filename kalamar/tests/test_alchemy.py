@@ -16,11 +16,15 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Test the alchemy backend on an sqlite base
+Alchemy test
+============
+
+Test the alchemy backend on an sqlite base.
+
 """
 
 from nose.tools import eq_, nottest
-from kalamar.access_point.alchemy import AlchemyProperty,Alchemy
+from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 
 url = "sqlite:///"
@@ -28,54 +32,52 @@ url = "sqlite:///"
 
 @nottest
 def make_testtable():
-    id = AlchemyProperty(int, column_name='id')
-    label = AlchemyProperty(unicode, column_name='label')
-    ap = Alchemy(url,'test',{'id':id, 'label': label},'id',True)
+    id_property = AlchemyProperty(int, column_name="id")
+    label = AlchemyProperty(unicode, column_name="label")
+    ap = Alchemy(url, "test", {"id": id_property, "label": label}, "id", True)
     return ap
 
 
 class TestAlchemy:
-
     def setUp(self):
         self.site = Site()
-        self.site.register('test', make_testtable())
+        self.site.register("test", make_testtable())
         self.items = []
-        item = self.site.create('test', {'id': 1, 'label': u'Test'})
+        item = self.site.create("test", {"id": 1, "label": u"Test"})
         self.items.append(item)
         item.save()
-        item = self.site.create('test', {'id': 2, 'label': u'Test2'})
+        item = self.site.create("test", {"id": 2, "label": u"Test2"})
         self.items.append(item)
         item.save()
 
     def testsearch(self):
-        items = list(self.site.search('test'))
+        items = list(self.site.search("test"))
         eq_(len(items), 2)
-        items = list(self.site.search('test',{'id':1}))
+        items = list(self.site.search("test", {"id": 1}))
         eq_(len(items), 1)
         item = items[0]
-        eq_(item['id'], 1)
-        eq_(item['label'], 'Test')
+        eq_(item["id"], 1)
+        eq_(item["label"], "Test")
 
     def testview(self):
-        items = list(self.site.view('test', {'truc': 'id', 'name': u'label'}, 
-                                    {}))
+        items = list(
+            self.site.view("test", {"truc": "id", "name": u"label"}, {}))
         eq_(len(items), 2)
         for item in items:
-            assert 'truc' in item.keys() and 'name' in item.keys()
-        items = list(self.site.view('test', {'truc': 'id', 'name': u'label'},
-                     {'id': 1}))
+            assert "truc" in item.keys() and "name" in item.keys()
+        items = list(
+            self.site.view("test", {"truc": "id", "name": u"label"}, {"id": 1}))
         eq_(len(items), 1)
 
     def testupdate(self):
-       item = self.site.open('test', {'id': 1})
-       item['label'] = u'updated'
+       item = self.site.open("test", {"id": 1})
+       item["label"] = u"updated"
        item.save()
-       item = self.site.open('test', {'id': 1})
-       eq_(item['label'], u'updated')
+       item = self.site.open("test", {"id": 1})
+       eq_(item["label"], u"updated")
     
     def tearDown(self):
         for item in self.items:
             item.delete()
         for ap in self.site.access_points.values():
             ap._table.drop()
-

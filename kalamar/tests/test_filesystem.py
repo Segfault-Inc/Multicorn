@@ -15,6 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Filesystem test
+===============
+
+Test the filesystem backend.
+
+"""
+
 import os.path
 from nose.tools import eq_
 import kalamar
@@ -23,23 +31,21 @@ from kalamar.access_point.filesystem import FileSystem
 
 
 def test_filesytem_init():
-    # Project root. Contains kalamar dir.
+    # Project root, contains kalamar dir
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
-    ap = FileSystem(root, '*/tests/test_*.py*',
-                    ['package', ('module', Property(unicode)), 'extension'])
+    ap = FileSystem(root, "*/tests/test_*.py*",
+                    ["package", ("module", Property(unicode)), "extension"])
     site = kalamar.Site()
-    site.register('tests', ap)
+    site.register("tests", ap)
     eq_(set(ap.properties.keys()),
-        set(['package', 'module', 'extension', 'content']))
-    eq_(set(ap.identity_properties), set(['package', 'module', 'extension']))
+        set(["package", "module", "extension", "content"]))
+    eq_(set(ap.identity_properties), set(["package", "module", "extension"]))
     
-    this = {'package': 'kalamar', 'module': 'filesystem', 'extension': ''}
-    filename = __file__[:-1] if __file__.endswith('.pyc') else __file__
+    this = {"package": "kalamar", "module": "filesystem", "extension": ""}
+    filename = __file__[:-1] if __file__.endswith(".pyc") else __file__
     eq_(ap._filename_for(this), filename)
     
-    f = site.open('tests', this)['content']
+    f = site.open("tests", this)["content"]
     eq_(f.name, filename)
-    # This test tests it’s own presence!
-    assert 'RANDOM STRING A6buCMTbAdCV98j00vK455UIAPCJ' in f.read()
-    
-
+    # This test tests its own presence!
+    assert "RANDOM STRING A6buCMTbAdCV98j00vK455UIAPCJ" in f.read()
