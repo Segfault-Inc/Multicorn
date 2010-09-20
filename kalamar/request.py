@@ -23,20 +23,11 @@ Kalamar request objects and operator helpers.
 
 """
 
-import operator
+from operator import eq, ne, gt, ge, lt, le
 from abc import ABCMeta, abstractmethod
-from itertools import groupby
-
-from .property import Property
 
 
-OPERATORS = {
-    "=": operator.eq,
-    "!=": operator.ne,
-    ">": operator.gt,
-    ">=": operator.ge,
-    "<": operator.lt,
-    "<=": operator.le}
+OPERATORS = {"=": eq, "!=": ne, ">": gt, ">=": ge, "<": lt, "<=": le}
 REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
 
@@ -45,11 +36,9 @@ class OperatorNotAvailable(KeyError):
 
 
 def _flatten(request):
-    """Take a And or Or request and return a generator of flattened
-    sub requests.
-    
-    """
+    """Take And or Or ``request``, return a generator of flat sub requests."""
     main_class = request.__class__
+
     def _flatten_inner(request):
         if (# And(a, And(b, c)) == And(a, b, c)
             request.__class__ is main_class or
@@ -73,10 +62,10 @@ def normalize(properties, request):
 
     """
     if not request:
-        # Empty request: always true.
+        # Empty request: always true
         return And()
     elif hasattr(request, "items") and callable(request.items):
-        # If it looks like a dict and smells like a dict, it is a dict.
+        # If it looks like a dict and smells like a dict, it is a dict
         return And(*(normalize(properties, Condition(key, "=", value))
                      for key, value in request.items()))
     elif isinstance(request, (And, Or)):
@@ -87,12 +76,12 @@ def normalize(properties, request):
             return normalize(properties, request.sub_request.sub_request)
         return Not(normalize(properties, request.sub_request))
     elif isinstance(request, Condition):
-        # TODO decide where the Condition.root method should be
+        # TODO: decide where the Condition.root method should be
         root, rest = request.root()
         if root not in properties:
             raise KeyError(
                 "This access point has no %r property." % root)
-        # TODO : validate sub requests 
+        # TODO: validate sub requests 
         if rest:
             return request
         else:
@@ -108,39 +97,33 @@ class Request(object):
     """Abstract class for kalamar requests."""
     __metaclass__ = ABCMeta
 
-    _hash_attributs = tuple()
+    _hash_attributes = ""
     
     @abstractmethod
     def test(self, item):
-        """Return if :prop:`item` matches the request."""
+        """Return if ``item`` matches the request."""
         raise NotImplementedError
 
-    @abstractmethod
-    def __eq__(self, other):
-        raise NotImplementedError
-    
     @abstractmethod
     def walk(self, func, values=None):
         """Returns a dict of the result from applying ``func`` to each child."""
         raise NotImplementedError
 
-    @classmethod
-    def parse(cls, access_point, request):
-        self.parse(request)
-
     def __hash__(self):
         return hash(self.__hash_tuple())
 
     def __hash_tuple(self):
-        return tuple(getattr(self, attr) for attr in self._hash_attributs.split())
+        return tuple(
+            getattr(self, attr) for attr in self._hash_attributes.split())
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__hash_tuple() == other.__hash_tuple()
+        return isinstance(other, self.__class__) and \
+            self.__hash_tuple() == other.__hash_tuple()
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
 
-    _hash_attributs = 'property_name operator value'
+    _hash_attributes = "property_name operator value"
 
     def __init__(self, property_name, operator, value):
         try:
@@ -175,41 +158,43 @@ class Condition(Request):
         return values
 
 
-class _And_or_Or(Request):
-    _hash_attributs = 'sub_requests __class__'
-
+class _AndOr(Request):
     """Super class for And and Or that holds identical behavior."""
+    __metaclass__ = ABCMeta
+
+    _hash_attributes = "sub_requests __class__"
+
     def __init__(self, *sub_requests):
         self.sub_requests = frozenset(sub_requests)
     
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
-            ", ".join(map(repr, self.sub_requests)))
+            ", ".join(repr(request) for request in self.sub_requests))
 
     def walk(self, func, values=None):
         values = values or {}
         for branch in self.sub_requests:
-            values = branch.walk(func,values)
+            values = branch.walk(func, values)
         return values
 
 
-class And(_And_or_Or):
+class And(_AndOr):
     """True if all given requests are true."""
     def test(self, item):
         return all(request.test(item) for request in self.sub_requests)
 
 
-class Or(_And_or_Or):
+class Or(_AndOr):
     """True if at least one given requests are true."""
     def test(self, item):
         return any(request.test(item) for request in self.sub_requests)
 
 
 class Not(Request):
-    _hash_attributs = 'sub_request __class__'
+    """Negate a request."""
+    _hash_attributes = "sub_request __class__"
 
-    """Negates a request."""
     def __init__(self, sub_request):
         self.sub_request = sub_request
     
@@ -235,7 +220,7 @@ class ViewRequest(object):
     
     """
     def __init__(self, aliases, request):
-        #Initialize instance attributes
+        # Initialize instance attributes
         self.aliases = dict(aliases)
         self._subaliases = {}
         self._request = And()
@@ -245,7 +230,7 @@ class ViewRequest(object):
         self.subviews = {}
         self.joins = {}
         self.orphan_request = And()
-        #Process the bouzin
+        # Process
         self.classify(request)
 
     @property
@@ -267,7 +252,7 @@ class ViewRequest(object):
                 is_outer_join = root.startswith("<")
                 if is_outer_join:
                     root = root[1:]
-                subaliases = self._subaliases.get(root,{})
+                subaliases = self._subaliases.get(root, {})
                 subaliases.update({alias: ".".join(splitted_path[1:])})
                 self._subaliases[root] = subaliases
                 self.joins[root] = is_outer_join 
@@ -276,11 +261,11 @@ class ViewRequest(object):
 
     def _build_orphan(self, request):
         if isinstance(request, Or):
-            return apply(Or, [self._build_orphan(subreq)
-                              for subreq in request.sub_requests])
+            return Or(*(self._build_orphan(subreq)
+                        for subreq in request.sub_requests))
         elif isinstance(request, And):
-            return apply(And, [self._build_orphan(subreq)
-                               for subreq in request.sub_requests])
+            return And(*(self._build_orphan(subreq)
+                         for subreq in request.sub_requests))
         elif isinstance(request, Condition):
             root, rest = request.root()
             alias = "_____" + request.property_name
@@ -295,12 +280,12 @@ class ViewRequest(object):
         conds_by_prop = conds_by_prop or {}
         if isinstance(request, Condition):
             root, rest = request.root()
-            if not rest : 
+            if not rest:
                 self._request = And(self._request, request)
             else: 
                 newcond = Condition(rest, request.operator, request.value)
                 self.joins[root] = True
-                conds_for_prop = conds_by_prop.get(root,[])
+                conds_for_prop = conds_by_prop.get(root, [])
                 conds_for_prop.append(newcond)
                 conds_by_prop[root] = conds_for_prop
         elif isinstance(request, Or):
@@ -329,5 +314,5 @@ class ViewRequest(object):
         for key in self.joins:
             req = conditions.get(key, [])
             subview = ViewRequest(
-                self._subaliases.get(key, {}), apply(And, req))
+                self._subaliases.get(key, {}), And(*req))
             self.subviews[key] = subview
