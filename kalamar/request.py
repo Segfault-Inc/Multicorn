@@ -127,11 +127,6 @@ class Request(object):
     def __eq__(self, other):
         raise NotImplementedError
     
-    @abstractmethod
-    def walk(self, func, values=None):
-        """Returns a dict of the result from applying ``func`` to each child."""
-        raise NotImplementedError
-
     @classmethod
     def parse(cls, access_point, request):
         self.parse(request)
@@ -177,12 +172,6 @@ class Condition(Request):
         """Return if ``item`` matches the request."""
         return self.operator_func(item[self.property_name], self.value)
     
-    def walk(self, func, values=None):
-        """Returns a dict of the result from applying ``func`` to each child."""
-        values = values or {}
-        values[self] = func(self)
-        return values
-
 
 class _And_or_Or(Request):
     _hash_attributs = 'sub_requests __class__'
@@ -197,12 +186,6 @@ class _And_or_Or(Request):
         return "%s(%s)" % (
             self.__class__.__name__,
             ", ".join(map(repr, self.sub_requests)))
-
-    def walk(self, func, values=None):
-        values = values or {}
-        for branch in self.sub_requests:
-            values = branch.walk(func,values)
-        return values
 
 
 class And(_And_or_Or):
@@ -229,9 +212,6 @@ class Not(Request):
 
     def test(self, item):
         return not self.sub_request.test(item)
-
-    def walk(self, func, values=None):
-        return self.sub_request.walk(values or {})
 
 
 class ViewRequest(object):
