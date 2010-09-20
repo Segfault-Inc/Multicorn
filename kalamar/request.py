@@ -49,23 +49,32 @@ def _flatten(request):
     sub requests.
     
     """
-    main_class = request.__class__
-    def _flatten_inner(request):
-        if (# And(a, And(b, c)) == And(a, b, c)
-            request.__class__ is main_class or
-            # And(a) == a
-            isinstance(request, (And, Or)) and len(request.sub_requests) == 1):
-            for sub_request in request.sub_requests:
-                for sub_sub in _flatten_inner(sub_request):
-                    yield sub_sub
+    for sub_request in request.sub_requests:
+        if sub_request.__class__ is request.__class__:
+            for sub_sub in _flatten(sub_request):
+                yield sub_sub
         else:
-            yield request
-    
-    sub_requests = tuple(_flatten_inner(request))
-    if len(sub_requests) == 1:
-        return sub_requests[0]
-    return main_class(*sub_requests)
-    
+            yield sub_request
+
+def simplify(request):
+    """Return a simplified equivalent request.
+    """
+    if isinstance(request, (And, Or)):
+        # _flatten: And(a, And(b, c))) == And(a, b, c)
+        # Use a set to remove duplicates: And(a, b, b) == And(a, b)
+        new_sub_requests = set(simplify(r) for r in _flatten(request))
+        if len(new_sub_requests) == 1:
+            # And(a) == a
+            return new_sub_requests.pop()
+        return request.__class__(*new_sub_requests)
+    elif isinstance(request, Not):
+        if isinstance(request.sub_request, Not):
+            # Not(Not(a)) == a
+            return simplify(request.sub_request.sub_request)
+        else:
+            return Not(simplify(request.sub_request))
+    else:
+        return request
 
 def normalize(properties, request):
     """Convert a ``request`` to a Request object.
@@ -73,37 +82,35 @@ def normalize(properties, request):
     TODO: describe syntaxic sugar.
 
     """
-    if not request:
-        # Empty request: always true.
-        return And()
-    elif hasattr(request, "items") and callable(request.items):
-        # If it looks like a dict and smells like a dict, it is a dict.
-        return And(*(normalize(properties, Condition(key, "=", value))
-                     for key, value in request.items()))
-    elif isinstance(request, (And, Or)):
-        return _flatten(request.__class__(*(normalize(properties, r) 
-            for r in request.sub_requests)))
-    elif isinstance(request, Not):
-        if isinstance(request.sub_request, Not):
-            return normalize(properties, request.sub_request.sub_request)
-        return Not(normalize(properties, request.sub_request))
-    elif isinstance(request, Condition):
-        # TODO decide where the Condition.root method should be
-        root, rest = request.root()
-        if root not in properties:
-            raise KeyError(
-                "This access point has no %r property." % root)
-        # TODO : validate sub requests 
-        if rest:
-            return request
+    def _inner_normalize(request):
+        if not request:
+            # Empty request: always true.
+            return And()
+        elif hasattr(request, "items") and callable(request.items):
+            # If it looks like a dict and smells like a dict, it is a dict.
+            return And(*(_inner_normalize(Condition(key, "=", value))
+                         for key, value in request.items()))
+        elif isinstance(request, (And, Or)):
+            return request.__class__(*(_inner_normalize(r) 
+                for r in request.sub_requests))
+        elif isinstance(request, Not):
+            return Not(_inner_normalize(request.sub_request))
+        elif isinstance(request, Condition):
+            # TODO decide where the Condition.root method should be
+            root, rest = request.root()
+            if root not in properties:
+                raise KeyError(
+                    "This access point has no %r property." % root)
+            # TODO : validate sub requests 
+            if rest:
+                return request
+            else:
+                value = cast(properties[root], (request.value,))[0]
+            return Condition(request.property_name, request.operator, value)
         else:
-            value = cast(properties[root], (request.value,))[0]
-        return Condition(request.property_name, request.operator, value)
-    else:
-        # Assume a 3-tuple: short for a single condition
-        property_name, operator, value = request
-        return normalize(properties, Condition(property_name, operator, value))
-
+            # Assume a 3-tuple: short for a single cond
+            return _inner_normalize(Condition(*request))
+    return simplify(_inner_normalize(request)):
 
 class Request(object):
     """Abstract class for kalamar requests."""
@@ -137,6 +144,7 @@ class Request(object):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.__hash_tuple() == other.__hash_tuple()
+
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
@@ -181,6 +189,8 @@ class _And_or_Or(Request):
 
     """Super class for And and Or that holds identical behavior."""
     def __init__(self, *sub_requests):
+        # A frozenset in unordered: And(a, b) == And(b, a)
+        # and it’s elements are unique : And(a, a) = And(a)
         self.sub_requests = frozenset(sub_requests)
     
     def __repr__(self):
@@ -251,7 +261,7 @@ class ViewRequest(object):
 
     @property
     def request(self):
-        return _flatten(And(self._request, self.additional_request))
+        return simplify(And(self._request, self.additional_request))
 
     def _classify_alias(self):
         """Classify request aliases.

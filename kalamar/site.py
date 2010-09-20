@@ -67,7 +67,6 @@ class Site(object):
     create = deleguate_to_acces_point('create')
     def view(self, access_point, aliases, request):
         ap = self.access_points[access_point]
-        # TODO: use normalize here?
         request = normalize(ap.properties, request)
         return ap.view(ViewRequest(aliases,request))
 
