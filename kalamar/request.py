@@ -27,8 +27,8 @@ import operator
 from abc import ABCMeta, abstractmethod
 from itertools import groupby
 
-from .value import cast
 from .property import Property
+
 
 OPERATORS = {
     "=": operator.eq,
@@ -66,7 +66,6 @@ def _flatten(request):
         return sub_requests[0]
     return main_class(*sub_requests)
     
-
 def normalize(properties, request):
     """Convert a ``request`` to a Request object.
 
@@ -97,7 +96,7 @@ def normalize(properties, request):
         if rest:
             return request
         else:
-            value = cast(properties[root], (request.value,))[0]
+            value = properties[root].cast((request.value,))[0]
         return Condition(request.property_name, request.operator, value)
     else:
         # Assume a 3-tuple: short for a single condition

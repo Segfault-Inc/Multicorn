@@ -136,16 +136,13 @@ class Item(MutableMultiMapping):
             raise ValueError("Unexpected lazy properties: %r"
                              % (tuple(extra),))
         
-        # FIXME: This is here to avoid circular imports
-        from .value import cast
-
         self.access_point = access_point
         given_properties = MultiDict(properties)
         self._loaded_properties = MultiDict()
         for key in given_properties:
-            self._loaded_properties.setlist(key, cast(
-                self.access_point.properties[key],
-                given_properties.getlist(key)))
+            cast_value = self.access_point.properties[key].cast(
+                given_properties.getlist(key))
+            self._loaded_properties.setlist(key, cast_value)
         self._lazy_loaders = dict(lazy_loaders)
         self.modified = False
     
@@ -166,15 +163,13 @@ class Item(MutableMultiMapping):
             return values
     
     def setlist(self, key, values):
-        # FIXME: This is here to avoid circular imports
-        from .value import cast
         if key not in self:
             raise KeyError("%s object doesn't support adding new keys." %
                 self.__class__.__name__)
         if key in self.access_point.identity_properties:
             raise KeyError("Can not modify identity property %r." % key)
         self.modified = True
-        values = cast(self.access_point.properties[key], values)
+        values = self.access_point.properties[key].cast(values)
 
         self._loaded_properties.setlist(key, values)
         try:

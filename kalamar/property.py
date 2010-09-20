@@ -24,6 +24,7 @@ Kalamar property object.
 """
 
 from . import item
+from .value import PROPERTY_TYPES
 
 
 class MissingRemoteAP(RuntimeError):
@@ -52,3 +53,12 @@ class Property(object):
             raise MissingRemoteAP()
         if self.relation == "one-to-many" and not self.remote_property:
             raise MissingRemoteProperty()
+
+    def cast(self, values):
+        """Cast an iterable of values, return a tuple of cast values."""
+        if not self.mandatory and values == (None,):
+            return values
+        if self.type in PROPERTY_TYPES:
+            return tuple(PROPERTY_TYPES[self.type](value) for value in values)
+        else:
+            return tuple(to_type(value, self.type) for value in values)
