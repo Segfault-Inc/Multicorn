@@ -23,15 +23,16 @@ Kalamar property object.
 
 """
 
-from . import item
-from .value import PROPERTY_TYPES
+from .value import PROPERTY_TYPES, to_type
 
 
 class MissingRemoteAP(RuntimeError):
+    """Remote access point is missing in property definition."""
     value = "remote_ap missing in property definition"
 
 
 class MissingRemoteProperty(RuntimeError):
+    """Remote property is missing in property definition."""
     value = "remote_property missing in property definition"
 
 
