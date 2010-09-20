@@ -23,11 +23,11 @@ Base classes to create kalamar items.
 
 """
 
-from abc import abstractmethod
+import abc
 import collections
 
 
-Identity = collections.namedtuple('Identity', 'access_point, conditions')
+Identity = collections.namedtuple("Identity", "access_point, conditions")
 
 
 class MultiMapping(collections.Mapping):
@@ -39,8 +39,10 @@ class MultiMapping(collections.Mapping):
     To access the underlying tuples, use :meth:`getlist`.
 
     """
-    @abstractmethod
-    def getlist(self, key, value):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def getlist(self, key):
         raise KeyError
 
     def __getitem__(self, key):
@@ -56,7 +58,9 @@ class MutableMultiMapping(MultiMapping, collections.MutableMapping):
     To access the underlying tuples, use :meth:`getlist` and :meth:`setlist`.
 
     """
-    @abstractmethod
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
     def setlist(self, key, value):
         raise KeyError
 
