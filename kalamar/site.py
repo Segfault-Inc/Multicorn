@@ -23,52 +23,49 @@ Site class. Create one for each independent site with its own configuration.
 
 """
 
-from . import request
-from .request import Request, ViewRequest, normalize
+from .request import ViewRequest, normalize
 
 
 class Site(object):
     """Kalamar site."""
-    
     def __init__(self):
         self.access_points = {}
     
     def register(self, name, access_point):
-        if hasattr(access_point, 'site'):
-            # TODO: raise specific exception?
-            raise RuntimeError('Access point already registered.')
+        if hasattr(access_point, "site"):
+            raise RuntimeError("Access point already registered.")
         if name in self.access_points:
-            # TODO: raise specific exception?
-            raise RuntimeError('Site already has an access point named %r.'
-                               % name)
+            raise RuntimeError(
+                "Site already has an access point named %r." % name)
         access_point.site = self
         access_point.name = name
         self.access_points[name] = access_point
+
+    def view(self, access_point, aliases, request):
+        access_point = self.access_points[access_point]
+        # TODO: use normalize here?
+        request = normalize(access_point.properties, request)
+        return access_point.view(ViewRequest(aliases, request))
     
     def deleguate_to_acces_point(method_name, first_arg_is_a_request=False):
         if first_arg_is_a_request:
             def wrapper(self, access_point, request=None, *args, **kwargs):
-                ap = self.access_points[access_point]
-                request = normalize(ap.properties, request)
-                return getattr(ap, method_name)(request, *args, **kwargs)
+                access_point = self.access_points[access_point]
+                request = normalize(access_point.properties, request)
+                return getattr(access_point, method_name)(
+                    request, *args, **kwargs)
         else:
             def wrapper(self, access_point, *args, **kwargs):
-                ap = self.access_points[access_point]
-                return getattr(ap, method_name)(*args, **kwargs)
+                access_point = self.access_points[access_point]
+                return getattr(access_point, method_name)(*args, **kwargs)
         wrapper.__name__ = method_name
         return wrapper
-   
 
-    open = deleguate_to_acces_point('open', True)
-    search = deleguate_to_acces_point('search', True)
-    delete_many = deleguate_to_acces_point('delete_many', True)
-    save = deleguate_to_acces_point('save')
-    delete = deleguate_to_acces_point('delete')
-    create = deleguate_to_acces_point('create')
-    def view(self, access_point, aliases, request):
-        ap = self.access_points[access_point]
-        # TODO: use normalize here?
-        request = normalize(ap.properties, request)
-        return ap.view(ViewRequest(aliases,request))
+    open = deleguate_to_acces_point("open", True)
+    search = deleguate_to_acces_point("search", True)
+    delete_many = deleguate_to_acces_point("delete_many", True)
+    save = deleguate_to_acces_point("save")
+    delete = deleguate_to_acces_point("delete")
+    create = deleguate_to_acces_point("create")
 
     del deleguate_to_acces_point
