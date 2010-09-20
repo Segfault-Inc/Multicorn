@@ -15,19 +15,28 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Aliases access point
+====================
+
+Access point giving other names to the properties of the wrapped access point.
+
+"""
+
 from .base import AccessPoint
-from .. import item
+from ..item import MultiMapping, MultiDict, MutableMultiMapping
 from ..request import Condition, And, Or, Not
 
 
-class AliasedItem(item.MutableMultiMapping):
+class AliasedItem(MutableMultiMapping):
     def __init__(self, access_point, underlying_item):
+        super(AliasedItem, self).__init__()
         self.access_point = access_point
         self.underlying_item = underlying_item
 
     def __repr__(self):
-        return 'AliasedItem(%r, %r)' % (self.access_point,
-                                        self.underlying_item)
+        return "AliasedItem(%r, %r)" % (
+            self.access_point, self.underlying_item)
     
     def _translate_key(self, key):
         if key not in self.access_point.properties:
@@ -57,14 +66,15 @@ class AliasedItem(item.MutableMultiMapping):
 
 
 class Aliases(AccessPoint):
-    """
-    This access point wrapper renames properties.
-    """
+    """Wrapper access point renaming properties."""
     def __init__(self, aliases, wrapped_ap):
-        """
-        :param aliases: A dict where keys are the new property names,
+        """Create an access point aliasing ``wrapped_ap`` properties.
+
+        :param aliases: a dict where keys are the new property names,
             and values are the names in the wrapped access point.
+
         """
+        super(Aliases, self).__init__()
         self.wrapped_ap = wrapped_ap
         self.aliases = aliases
         self.reversed_aliases = dict((v, k) for k, v in self.aliases.items())
@@ -90,7 +100,7 @@ class Aliases(AccessPoint):
                              request.operator,
                              request.value)
         else:
-            raise ValueError('Unknown request type : %r' % request)
+            raise ValueError("Unknown request type : %r" % request)
     
     def search(self, request):
         request = self.translate_request(request)
@@ -106,16 +116,18 @@ class Aliases(AccessPoint):
     def save(self, item):
         self.wrapped_ap.save(item.underlying_item)
     
-    def create(self, properties=(), lazy_loaders=()):
-        if isinstance(properties, item.MultiMapping):
-            props = item.MultiDict()
-            for key in properties:
-                props.setlist(self.aliases.get(key, key), 
-                    properties.getlist(key))
-        else:
-            props = dict((self.aliases.get(key, key), value)
-                for key, value in dict(properties).iteritems())
-        lazy_loaders = dict((self.aliases.get(key, key), value)
-            for key, value in dict(lazy_loaders).iteritems())
+    def create(self, properties=None, lazy_loaders=None):
+        if properties:
+            if isinstance(properties, MultiMapping):
+                props = MultiDict()
+                for key in properties:
+                    props.setlist(self.aliases.get(key, key), 
+                        properties.getlist(key))
+            else:
+                props = dict((self.aliases.get(key, key), value)
+                    for key, value in dict(properties).iteritems())
+        if lazy_loaders:
+            lazy_loaders = dict(
+                (self.aliases.get(key, key), value)
+                for key, value in dict(lazy_loaders).iteritems())
         return AliasedItem(self, self.wrapped_ap.create(props, lazy_loaders))
-
