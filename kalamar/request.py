@@ -110,7 +110,7 @@ def normalize(properties, request):
         else:
             # Assume a 3-tuple: short for a single cond
             return _inner_normalize(Condition(*request))
-    return simplify(_inner_normalize(request)):
+    return simplify(_inner_normalize(request))
 
 class Request(object):
     """Abstract class for kalamar requests."""
