@@ -24,8 +24,9 @@ Access point base class.
 """
 
 import abc
-from ..item import Item
 from itertools import product
+
+from ..item import Item
 from ..request import And, Condition
 
 
@@ -48,13 +49,16 @@ class AccessPoint(object):
     """Abstract class for all access points.
     
     In addition to abstract methods and properties, concrete access points
-    must have two attributes:
+    must have three attributes:
     
     :attr:`properties` is a dict where keys are
         property names as strings, and value are :class:`kalamar.property.Property`
         instances.
     :attr:`identity_properties` is a tuple of property names that compose
         the "identity" of items in this access point.
+
+    Moreover, :attr:`site` is added when an access point is registered. This
+    attribute is mandatory for :method:`view`.
 
     """
     __metaclass__ = abc.ABCMeta
@@ -164,7 +168,7 @@ class AccessPoint(object):
         for name, value in lazy_refs.items(): 
             lazy_loaders[name] = self._default_loader(properties, value)
         item = Item(self, properties, lazy_loaders)
-        self.modified = True
+        item.modified = True
         return item
 
     def _default_loader(self, properties, lazy_prop):
@@ -172,9 +176,8 @@ class AccessPoint(object):
         remote = self.site.access_points[lazy_prop.remote_ap]
         if lazy_prop.relation == "one-to-many":
             id_props = self.identity_properties
-            conditions = apply(
-                And, [Condition(prop, "=", properties[prop])
-                      for prop in id_props])
+            conditions = And(*[Condition(prop, "=", properties[prop])
+                               for prop in id_props])
             def loader():
                 return (remote.search(conditions),)
         else:
