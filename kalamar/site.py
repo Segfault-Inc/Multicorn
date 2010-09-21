@@ -43,7 +43,6 @@ class Site(object):
 
     def view(self, access_point, aliases, request):
         access_point = self.access_points[access_point]
-        # TODO: use normalize here?
         request = normalize(access_point.properties, request)
         return access_point.view(ViewRequest(aliases, request))
     

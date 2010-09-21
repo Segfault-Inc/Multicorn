@@ -21,18 +21,34 @@ Test the alchemy backend on an sqlite base
 
 from nose.tools import eq_
 from kalamar.property import Property
-from kalamar.request import _flatten, normalize, Condition, And, Or
+from kalamar.request import simplify, normalize, Condition, And, Or, Not
 
 
-def test_flatten():
-    eq_(_flatten(And()),
-        And())
-    eq_(_flatten(And(And(), And())),
-        And())
-    eq_(_flatten(And(Condition('a', '=', 1))),
-        Condition('a', '=', 1))
-    eq_(_flatten(Or(Or(), Or(And(Condition('a', '=', 1))))),
-        Condition('a', '=', 1))
+def test_simplify():
+    c1 = Condition('a', '=', 1)
+    c2 = Condition('b', '>', 4)
+
+    eq_(And(), simplify(And()))
+    eq_(And(), simplify(And(And())))
+    eq_(And(), simplify(And(And(), And())))
+    eq_(Or(), simplify(Or()))
+    eq_(Or(), simplify(Or(Or())))
+    eq_(Or(), simplify(Or(Or(), Or())))
+
+    eq_(c1, simplify(And(c1)))
+    eq_(c1, simplify(And(c1, c1)))
+    eq_(c1, simplify(And(c1, And(c1))))
+    eq_(c1, simplify(And(And(c1))))
+    eq_(c1, simplify(And(And(c1), And())))
+    eq_(c1, simplify(Or(c1)))
+    eq_(c1, simplify(Or(c1, c1)))
+    eq_(c1, simplify(Or(c1, Or(c1))))
+    eq_(c1, simplify(Or(Or(c1))))
+    eq_(c1, simplify(Or(Or(c1), Or())))
+
+    eq_(c1, simplify(Not(Not(c1))))
+    eq_(c1, simplify(Or(Or(), Or(And(c1)))))
+    eq_(And(c1, c2), simplify(And(Or(Or(), Or(And(c1))), c2)))
         
 def test_normalize():
     # TODO: more unit tests here.
