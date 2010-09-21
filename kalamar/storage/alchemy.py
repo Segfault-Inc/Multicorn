@@ -43,6 +43,7 @@ class SqlAlchemyTypes:
           "datetime" : DateTime,
           "password" : String,
           "email"    : String,
+          "text"     : String,
           "currency" : Numeric
          }
 
