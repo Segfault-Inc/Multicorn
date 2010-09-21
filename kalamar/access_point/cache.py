@@ -15,22 +15,29 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Cache access point
+==================
+
+Factory generating an access point caching properties.
+
+"""
+
 
 def make_cache(ap_cls):
-    '''
-    Return an *ap_cls* AccessPoint enhanced with cache behavior.
+    """Return an ``ap_cls`` AccessPoint enhanced with cache behavior.
 
-    Ie, each search request can avoid the ap_cls search when search was
-    previously done. 
+    Ie, each search request can avoid the ``ap_cls`` search when search was
+    previously done.
 
-    Please note that make_cache returns a class inherited from *ap_cls*.
-    '''
+    Please note that ``make_cache`` returns a class inherited from ``ap_cls``.
 
+    """
     class Cache(ap_cls):
-        """
-        Access point that store a cache in memory for search request.
+        """Access point that store a cache in memory for search request.
 
-        The cache is invalided when data changes (with save, delete, delete_many)
+        The cache is invalided when data changes (with :meth:`save`,
+        :meth:`delete`, :meth:`delete_many`).
 
         """
         def __init__(self, *args, **kwargs):
@@ -39,19 +46,19 @@ def make_cache(ap_cls):
             self.__cache = {}
 
         def search(self, request):
-            # try to hit the cache
-            ret = self.__cache.get(request, None)
-            if not ret:
-                ret = list(super(Cache, self).search(request))
-                self.__cache[request] = ret
+            # Try to hit the cache
+            values = self.__cache.get(request, None)
+            if not values:
+                values = list(super(Cache, self).search(request))
+                self.__cache[request] = values
 
-            return ret
+            return values
 
-        # override functions which needs to invalidate the cache when called
-        def invalid_cache(f):
+        # Override functions which needs to invalidate the cache when called
+        def invalid_cache(function):
             def _(self, *args, **kwargs):
                 self.__cache = {}
-                return f(self, *args, **kwargs)
+                return function(self, *args, **kwargs)
             return _
 
         save = invalid_cache(ap_cls.save)
