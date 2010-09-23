@@ -23,7 +23,7 @@ Test the aliases backend.
 
 """
 
-from nose.tools import eq_, nottest
+from nose.tools import eq_, nottest, assert_raises
 from kalamar import Site, Item
 from kalamar.property import Property
 from kalamar.request import Condition, And, Or, Not, Request
@@ -35,7 +35,7 @@ from .test_memory import make_ap as memory_make_ap
 
 def make_ap():
     underlying_ap = Memory({"id": Property(int), "nom": Property(unicode)}, "id")
-    return Aliases({'name': 'nom'}, underlying_ap)
+    return Aliases(underlying_ap, {'name': 'nom'})
 
 @run_common
 def test_common():
@@ -81,7 +81,7 @@ def test_aliased_item():
     eq_(wrapped_item.getlist("FOO"), (2, 3))
 
 def test_translate_request():
-    ap = Aliases({"foo": "FOO", "bar": "BAR"}, Memory({}, ""))
+    ap = Aliases(Memory({}, ""), {"foo": "FOO", "bar": "BAR"})
     C = Condition
     eq_(ap.translate_request(C("foo", "=", 4)), C("FOO", "=", 4))
     eq_(ap.translate_request(C("other", "=", 7)), C("other", "=", 7))
@@ -94,16 +94,11 @@ def test_translate_request():
 def test_aliased_memory():
     site = make_site(memory_make_ap(), fill=True)
     underlying_ap = site.access_points['things']
-    ap = Aliases({"nom": "name"}, underlying_ap)
+    ap = Aliases(underlying_ap, {"nom": "name"})
     site.register("aliased", ap)
     
     results = site.search("aliased", {"nom": "bar"})
     eq_(set(item["id"] for item in results), set([2, 3]))
 
     # Old names are masked
-    try:
-        site.search("aliased", {"name": "bar"})
-    except KeyError:
-        pass
-    else:
-        assert False, "KeyError expected."
+    assert_raises(KeyError, site.search, "aliased", {"name": "bar"})

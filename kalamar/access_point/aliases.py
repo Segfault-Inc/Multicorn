@@ -23,7 +23,7 @@ Access point giving other names to the properties of the wrapped access point.
 
 """
 
-from .base import AccessPoint
+from .base import AccessPointWrapper
 from ..item import MultiMapping, MultiDict, ItemWrapper
 from ..request import Condition, And, Or, Not
 
@@ -45,17 +45,19 @@ class AliasedItem(ItemWrapper):
             yield self.access_point.reversed_aliases.get(key, key)
 
 
-class Aliases(AccessPoint):
+class Aliases(AccessPointWrapper):
     """Wrapper access point renaming properties."""
-    def __init__(self, aliases, wrapped_ap):
+    
+    ItemWrapper = AliasedItem
+    
+    def __init__(self, wrapped_ap, aliases):
         """Create an access point aliasing ``wrapped_ap`` properties.
 
         :param aliases: a dict where keys are the new property names,
             and values are the names in the wrapped access point.
 
         """
-        super(Aliases, self).__init__()
-        self.wrapped_ap = wrapped_ap
+        super(Aliases, self).__init__(wrapped_ap)
         self.aliases = aliases
         self.reversed_aliases = dict((v, k) for k, v in self.aliases.items())
         self.properties = dict(
@@ -83,31 +85,26 @@ class Aliases(AccessPoint):
             raise ValueError("Unknown request type : %r" % request)
     
     def search(self, request):
-        request = self.translate_request(request)
-        for underlying_item in self.wrapped_ap.search(request):
-            yield AliasedItem(self, underlying_item)
+        return super(Aliases, self).search(self.translate_request(request))
     
     def delete_many(self, request):
-        self.wrapped_ap.delete_many(self.translate_request(request))
-    
-    def delete(self, item):
-        self.wrapped_ap.delete(item.wrapped_item)
-    
-    def save(self, item):
-        self.wrapped_ap.save(item.wrapped_item)
+        super(Aliases, self).delete_many(self.translate_request(request))
     
     def create(self, properties=None, lazy_loaders=None):
-        if properties:
-            if isinstance(properties, MultiMapping):
-                props = MultiDict()
-                for key in properties:
-                    props.setlist(self.aliases.get(key, key), 
-                        properties.getlist(key))
-            else:
-                props = dict((self.aliases.get(key, key), value)
-                    for key, value in dict(properties).iteritems())
-        if lazy_loaders:
-            lazy_loaders = dict(
-                (self.aliases.get(key, key), value)
-                for key, value in dict(lazy_loaders).iteritems())
-        return AliasedItem(self, self.wrapped_ap.create(props, lazy_loaders))
+        if not properties:
+            properties = {}
+        if not lazy_loaders:
+            lazy_loaders = {}
+
+        if isinstance(properties, MultiMapping):
+            props = MultiDict()
+            for key in properties:
+                props.setlist(self.aliases.get(key, key), 
+                    properties.getlist(key))
+        else:
+            props = dict((self.aliases.get(key, key), value)
+                for key, value in dict(properties).iteritems())
+        lazy_loaders = dict(
+            (self.aliases.get(key, key), value)
+            for key, value in dict(lazy_loaders).iteritems())
+        return super(Aliases, self).create(props, lazy_loaders)
