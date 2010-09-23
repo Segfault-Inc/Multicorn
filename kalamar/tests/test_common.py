@@ -46,3 +46,10 @@ def test_delete_many(site):
     site.delete_many("things", {"name": u"bar"})
     eq_(list(site.search("things", {"name": u"bar"})), [])
 
+@commontest
+def test_eq(site):
+    item1 = site.open("things", {"name": u"foo"})
+    item2 = site.open("things", {"name": u"foo"})
+    eq_(item1, item2)
+
+
