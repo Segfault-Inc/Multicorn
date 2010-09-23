@@ -23,46 +23,44 @@ Factory generating an access point caching properties.
 
 """
 
+from .base import AccessPointWrapper
+from ..item import ItemWrapper
 
-def make_cache(ap_cls):
-    """Return an ``ap_cls`` AccessPoint enhanced with cache behavior.
 
-    Ie, each search request can avoid the ``ap_cls`` search when search was
-    previously done.
+class Cache(AccessPointWrapper):
+    """Access point that store a cache in memory for search request.
 
-    Please note that ``make_cache`` returns a class inherited from ``ap_cls``.
+    The cache is invalided when data changes (with :meth:`save`,
+    :meth:`delete`, :meth:`delete_many`).
 
     """
-    class Cache(ap_cls):
-        """Access point that store a cache in memory for search request.
+    def __init__(self, wrapped_ap):
+        super(Cache, self).__init__(wrapped_ap)
+        self.__cache = {}
 
-        The cache is invalided when data changes (with :meth:`save`,
-        :meth:`delete`, :meth:`delete_many`).
+    def search(self, request):
+        # Try to hit the cache
+        values = self.__cache.get(request, None)
+        if not values:
+            values = [ItemWrapper(self, item)
+                for item in self.wrapped_ap.search(request)]
+            self.__cache[request] = values
 
-        """
-        def __init__(self, *args, **kwargs):
-            super(Cache, self).__init__(*args, **kwargs)
+        return values
 
-            self.__cache = {}
+    # Override functions which needs to invalidate the cache when called
+    def invalidate_cache(name):
+        def wrapper(self, *args, **kwargs):
+            self.__cache.clear()
+            return getattr(super(Cache, self), name)(*args, **kwargs)
+        wrapper.__name__ = name
+        return wrapper
 
-        def search(self, request):
-            # Try to hit the cache
-            values = self.__cache.get(request, None)
-            if not values:
-                values = list(super(Cache, self).search(request))
-                self.__cache[request] = values
+    save = invalidate_cache("save")
+    delete_many = invalidate_cache("delete_many")
+    delete = invalidate_cache("delete")
 
-            return values
+    # default to underlying_item for all other methods and attributes
+#    def __getattr__(self, name):
+#        return getattr(self.wrapped_ap, name)
 
-        # Override functions which needs to invalidate the cache when called
-        def invalid_cache(function):
-            def _(self, *args, **kwargs):
-                self.__cache = {}
-                return function(self, *args, **kwargs)
-            return _
-
-        save = invalid_cache(ap_cls.save)
-        delete_many = invalid_cache(ap_cls.delete_many)
-        delete = invalid_cache(ap_cls.delete)
-
-    return Cache

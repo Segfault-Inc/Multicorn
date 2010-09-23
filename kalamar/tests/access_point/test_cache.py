@@ -27,13 +27,12 @@ from nose.tools import eq_, nottest, raises, assert_equal, assert_raises
 from kalamar import Site, MultipleMatchingItems, ItemDoesNotExist
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
-from kalamar.access_point.cache import make_cache
+from kalamar.access_point.cache import Cache
 
 from ..common import run_common, make_site
 
 def make_ap():
-    AccessPointMemoryCached = make_cache(Memory)
-    return AccessPointMemoryCached({"id": Property(int), "name": Property(unicode)}, "id")
+    return Cache(Memory({"id": Property(int), "name": Property(unicode)}, "id"))
 
 @run_common
 def test_cache():
@@ -51,8 +50,10 @@ def test_cached_data_do_not_need_underlaying_access_point():
     eq_(item["name"], "foo")
 
     # Monkey patch to disable ap
-    old_search = ap.__class__.__bases__[0].search
-    ap.__class__.__bases__[0].search = None
+#    old_search = ap.__class__.__bases__[0].search
+#    ap.__class__.__bases__[0].search = None
+    old_search = ap.wrapped_ap.search
+    ap.wrapped_ap.search = None
     
     # Search one item
     # With no ap, this must work!
@@ -62,21 +63,24 @@ def test_cached_data_do_not_need_underlaying_access_point():
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
 
-    # Restore request
-    ap.__class__.__bases__[0].search = old_search
+    # Restore ap
+    ap.wrapped_ap.search = old_search
+#    ap.__class__.__bases__[0].search = old_search
 
     # Update the item
     item["name"] = 'bob'
     site.save("things", item)
 
     # Monkey patch to disable ap
-    ap.__class__.__bases__[0].search = None
+#    ap.__class__.__bases__[0].search = None
+    ap.wrapped_ap.search = None
 
     # This may fail because cache is invalided and ap is None
     assert_raises(TypeError, site.search, "things")
 
     # Restore the ap
-    ap.__class__.__bases__[0].search = old_search
+#    ap.__class__.__bases__[0].search = old_search
+    ap.wrapped_ap.search = old_search
     
     # Search one item
     all_items = list(site.search("things"))
@@ -86,7 +90,7 @@ def test_cached_data_do_not_need_underlaying_access_point():
     eq_(item["name"], "bob")
 
     # Remove the ap and search again with cache
-    ap.__class__.__bases__[0].search = None
+    ap.wrapped_ap.search = None
     
     # Search one item
     all_items = list(site.search("things"))
@@ -96,7 +100,7 @@ def test_cached_data_do_not_need_underlaying_access_point():
     eq_(item["name"], "bob")
     
     # Restore it
-    ap.__class__.__bases__[0].search = old_search
+#    ap.wrapped_ap.search = wrapped_ap.
 
 def test_delegate():
     """Test that the delegated class behave correctly"""
