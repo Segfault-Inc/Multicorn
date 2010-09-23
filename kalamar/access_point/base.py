@@ -26,7 +26,7 @@ Access point base class.
 import abc
 from itertools import product
 
-from ..item import Item
+from ..item import Item, ItemWrapper
 from ..request import And, Condition
 
 
@@ -194,3 +194,40 @@ class AccessPoint(object):
 
         """
         raise NotImplementedError("Abstract method")
+
+
+class AccessPointWrapper(AccessPoint):
+    """A no-op access point wrapper. Meant to be subclassed."""
+    
+    # subclasses can override this.
+    ItemWrapper = ItemWrapper
+    
+    def __init__(self, wrapped_ap):
+        """Create an access point aliasing ``wrapped_ap`` properties.
+
+        :param aliases: a dict where keys are the new property names,
+            and values are the names in the wrapped access point.
+
+        """
+        super(AccessPointWrapper, self).__init__()
+        self.wrapped_ap = wrapped_ap
+        self.properties = wrapped_ap.properties
+        self.identity_properties = wrapped_ap.identity_properties
+    
+    def search(self, request):
+        for underlying_item in self.wrapped_ap.search(request):
+            yield self.ItemWrapper(self, underlying_item)
+    
+    def delete_many(self, request):
+        self.wrapped_ap.delete_many(request)
+    
+    def delete(self, item):
+        self.wrapped_ap.delete(item.wrapped_item)
+    
+    def save(self, item):
+        self.wrapped_ap.save(item.wrapped_item)
+    
+    def create(self, properties=None, lazy_loaders=None):
+        underlying_item = self.wrapped_ap.create(properties, lazy_loaders)
+        return self.ItemWrapper(self, underlying_item)
+
