@@ -53,11 +53,12 @@ def run_common(make_ap):
     If that function meet the noses requirements to be tested, this
     access_point instance will be tested over all common tests.
     '''
-
+    def _run_test(test):
+        test(make_site(make_ap(), fill=not hasattr(test, 'nofill')))
+        
     def test_run():
         for test in commontest.tests:
-            site = make_site(make_ap(), fill=not hasattr(test, 'nofill'))
-            yield test, site
+            yield _run_test, test
 
     update_wrapper(test_run, make_ap)
 
