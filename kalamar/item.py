@@ -97,7 +97,68 @@ class MultiDict(MutableMultiMapping):
         return len(self.__data)
 
 
-class Item(MutableMultiMapping):
+class AbstractItem(MutableMultiMapping):
+    """Abstract base class for Item-likes.
+
+    :param access_point: The AccessPoint where this item came from.
+
+    """
+    def __init__(self, access_point):
+        self.access_point = access_point
+
+    @abc.abstractmethod    
+    def getlist(self, key):
+        pass
+    
+    @abc.abstractmethod
+    def setlist(self, key, values):
+        pass
+
+    def __delitem__(self, key):
+        raise TypeError("%s object doesn't support item deletion." %
+            self.__class__.__name__)
+
+    def __iter__(self):
+        return iter(self.access_point.properties)
+
+    def __len__(self):
+        return len(self.access_point.properties)
+
+    def __contains__(self, key):
+        # collections.Mutable’s default implementation is correct
+        # but based on __getitem__ which may needlessly call a lazy loader.
+        return key in self.access_point.properties
+
+    def __repr__(self):
+        """Return a user-friendly representation of item."""
+        return "<%s: %r>" % (self.__class__.__name__, self.identity)
+    
+    @property
+    def identity(self):
+        """Return an :class:`Identity` instance indentifying only this item."""
+        ids = self.access_point.identity_properties
+        return Identity(
+            self.access_point.name, dict((name, self[name]) for name in ids))
+    
+    def __eq__(self, other):
+        return isinstance(other, AbstractItem) \
+            and other.identity == self.identity
+    
+    def __hash__(self):
+        return hash((self.access_point.name,
+            frozenset((name, self[name]) 
+                for name in self.access_point.identity_properties)))
+
+    def save(self):
+        """Save the item."""
+        self.access_point.save(self)
+
+    def delete(self):
+        """Delete the item."""
+        self.access_point.delete(self)
+
+
+class Item(AbstractItem):
     """Item base class.
 
     :param access_point: The AccessPoint where this item came from.
@@ -115,6 +176,7 @@ class Item(MutableMultiMapping):
 
     """
     def __init__(self, access_point, properties=(), lazy_loaders=()):
+        super(Item, self).__init__(access_point)
         given_keys = set(properties)
         lazy_keys = set(lazy_loaders)
         ap_keys = set(access_point.properties)
@@ -136,7 +198,6 @@ class Item(MutableMultiMapping):
             raise ValueError("Unexpected lazy properties: %r"
                              % (tuple(extra),))
         
-        self.access_point = access_point
         given_properties = MultiDict(properties)
         self._loaded_properties = MultiDict()
         for key in given_properties:
@@ -177,78 +238,25 @@ class Item(MutableMultiMapping):
         except KeyError:
             pass
 
-    def __delitem__(self, key):
-        raise TypeError("%s object doesn't support item deletion." %
-            self.__class__.__name__)
-
-    def __iter__(self):
-        return iter(self.access_point.properties)
-
-    def __len__(self):
-        return len(self.access_point.properties)
-
-    def __contains__(self, key):
-        # collections.Mutable’s default implementation is correct
-        # but based on __getitem__ which may needlessly call a lazy loader.
-        return key in self.access_point.properties
-
-    def __repr__(self):
-        """Return a user-friendly representation of item."""
-        return "<%s(%s @ %s)>" % (
-            self.__class__.__name__, repr(self.identity),
-            repr(self.access_point.name))
-    
-    @property
-    def identity(self):
-        """Return an :class:`Identity` instance indentifying only this item."""
-        ids = self.access_point.identity_properties
-        return Identity(
-            self.access_point.name, dict((name, self[name]) for name in ids))
-    
-    def __eq__(self, other):
-        return isinstance(other, Item) and other.identity == self.identity
-    
-    def __hash__(self):
-        ids = sorted(self.access_point.identity_properties)
-        return hash((self.access_point.name,
-            tuple((name, self[name]) for name in ids)))
-
     def save(self):
         """Save the item."""
-        self.access_point.save(self)
-        self.modified = False
-
-    def delete(self):
-        """Delete the item."""
-        self.access_point.delete(self)
+        if self.modified:
+            super(Item, self).save()
+            self.modified = False
 
 
-class ItemWrapper(MutableMultiMapping):
+class ItemWrapper(AbstractItem):
     def __init__(self, access_point, wrapped_item):
-        super(ItemWrapper, self).__init__()
+        super(ItemWrapper, self).__init__(access_point)
         self.access_point = access_point
         self.wrapped_item = wrapped_item
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (
-            self.__class__.__name__, self.access_point, self.wrapped_item)
-    
     def getlist(self, key):
         return self.wrapped_item.getlist(key)
     
     def setlist(self, key, values):
         return self.wrapped_item.setlist(key, values)
     
-    def __delitem__(self, key):
-        raise TypeError("%s object doesn't support item deletion." %
-            self.__class__.__name__)
-
-    def __iter__(self):
-        return iter(self.wrapped_item)
-
-    def __len__(self):
-        return len(self.wrapped_item)
-
     # default to underlying_item for all other methods and attributes
     def __getattr__(self, name):
         return getattr(self.wrapped_item, name)
