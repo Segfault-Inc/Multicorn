@@ -24,45 +24,25 @@ Access point giving other names to the properties of the wrapped access point.
 """
 
 from .base import AccessPoint
-from ..item import MultiMapping, MultiDict, MutableMultiMapping
+from ..item import MultiMapping, MultiDict, ItemWrapper
 from ..request import Condition, And, Or, Not
 
 
-class AliasedItem(MutableMultiMapping):
-    def __init__(self, access_point, underlying_item):
-        super(AliasedItem, self).__init__()
-        self.access_point = access_point
-        self.underlying_item = underlying_item
-
-    def __repr__(self):
-        return "AliasedItem(%r, %r)" % (
-            self.access_point, self.underlying_item)
-    
+class AliasedItem(ItemWrapper):
     def _translate_key(self, key):
         if key not in self.access_point.properties:
             raise KeyError
         return self.access_point.aliases.get(key, key)
     
     def getlist(self, key):
-        return self.underlying_item.getlist(self._translate_key(key))
+        return self.wrapped_item.getlist(self._translate_key(key))
     
     def setlist(self, key, values):
-        return self.underlying_item.setlist(self._translate_key(key), values)
+        return self.wrapped_item.setlist(self._translate_key(key), values)
     
-    def __delitem__(self, key):
-        raise TypeError("%s object doesn't support item deletion." %
-            self.__class__.__name__)
-
     def __iter__(self):
-        for key in self.underlying_item:
+        for key in self.wrapped_item:
             yield self.access_point.reversed_aliases.get(key, key)
-
-    def __len__(self):
-        return len(self.underlying_item)
-
-    # default to underlying_item for all other methods and attributes
-    def __getattr__(self, name):
-        return getattr(self.underlying_item, name)
 
 
 class Aliases(AccessPoint):
@@ -111,10 +91,10 @@ class Aliases(AccessPoint):
         self.wrapped_ap.delete_many(self.translate_request(request))
     
     def delete(self, item):
-        self.wrapped_ap.delete(item.underlying_item)
+        self.wrapped_ap.delete(item.wrapped_item)
     
     def save(self, item):
-        self.wrapped_ap.save(item.underlying_item)
+        self.wrapped_ap.save(item.wrapped_item)
     
     def create(self, properties=None, lazy_loaders=None):
         if properties:

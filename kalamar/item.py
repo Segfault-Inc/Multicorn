@@ -221,3 +221,35 @@ class Item(MutableMultiMapping):
     def delete(self):
         """Delete the item."""
         self.access_point.delete(self)
+
+
+class ItemWrapper(MutableMultiMapping):
+    def __init__(self, access_point, wrapped_item):
+        super(ItemWrapper, self).__init__()
+        self.access_point = access_point
+        self.wrapped_item = wrapped_item
+
+    def __repr__(self):
+        return "%s(%r, %r)" % (
+            self.__class__.__name__, self.access_point, self.wrapped_item)
+    
+    def getlist(self, key):
+        return self.wrapped_item.getlist(key)
+    
+    def setlist(self, key, values):
+        return self.wrapped_item.setlist(key, values)
+    
+    def __delitem__(self, key):
+        raise TypeError("%s object doesn't support item deletion." %
+            self.__class__.__name__)
+
+    def __iter__(self):
+        return iter(self.wrapped_item)
+
+    def __len__(self):
+        return len(self.wrapped_item)
+
+    # default to underlying_item for all other methods and attributes
+    def __getattr__(self, name):
+        return getattr(self.wrapped_item, name)
+

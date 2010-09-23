@@ -54,12 +54,12 @@ def test_aliased_item():
     dummy_ap.properties = {"foo": Property(int), "other": Property(int)}
     dummy_ap.aliases = {"foo": "FOO"}
     dummy_ap.reversed_aliases = {"FOO": "foo"}
-    underlying_item = Item(dummy_underlying_ap, {"FOO": 9, "other": 0})
-    item = AliasedItem(dummy_ap, underlying_item)
+    wrapped_item = Item(dummy_underlying_ap, {"FOO": 9, "other": 0})
+    item = AliasedItem(dummy_ap, wrapped_item)
     # Aliased property
-    eq_(underlying_item["FOO"], 9)
+    eq_(wrapped_item["FOO"], 9)
     item["foo"] = 1
-    eq_(underlying_item["FOO"], 1)
+    eq_(wrapped_item["FOO"], 1)
     # Old names are masked
     try:
         item["FOO"]
@@ -68,17 +68,17 @@ def test_aliased_item():
     else:
         assert False, "expected KeyError"
     # Non aliased property
-    eq_(underlying_item["other"], 0)
+    eq_(wrapped_item["other"], 0)
     item["other"] = 2
-    eq_(underlying_item["other"], 2)
+    eq_(wrapped_item["other"], 2)
     # Other attr
     assert item.access_point is dummy_ap
     # MultiDict-like method, aliased property
     item.setlist("foo", (2, 3))
     eq_(item["foo"], 2)
     eq_(item.getlist("foo"), (2, 3))
-    eq_(underlying_item["FOO"], 2)
-    eq_(underlying_item.getlist("FOO"), (2, 3))
+    eq_(wrapped_item["FOO"], 2)
+    eq_(wrapped_item.getlist("FOO"), (2, 3))
 
 def test_translate_request():
     ap = Aliases({"foo": "FOO", "bar": "BAR"}, Memory({}, ""))
