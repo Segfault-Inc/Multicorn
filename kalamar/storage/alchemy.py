@@ -249,6 +249,7 @@ class AlchemyAccessPoint(AccessPoint):
         not_managed_conditions = {}
         sql_conditions = {}
         orders = []
+        conditions = list(conditions)
         for property_name, property_path in properties_map.items():
             splitted = property_path.split(".")
             property_root = splitted[0].replace("<",'')
@@ -269,17 +270,17 @@ class AlchemyAccessPoint(AccessPoint):
                     not_managed[splitted[0]] = remote_not_managed_props
         for cond in conditions :
             splitted = cond.property_name.split(".")
+            property_root = splitted[0].replace("<",'')
             if len(splitted) == 1:
                 sql_cond = (self._make_condition(cond,relative_path))
                 sql_conditions[cond] = sql_cond
             else: 
-                property_root = splitted[0]
                 if property_root in self.remote_properties:
                     remote_ap = self.remote_properties[property_root]
                     remote_not_managed_conds = not_managed_conditions.get(property_root,[])
                     cond.property_name = ".".join(splitted[1:])
                     remote_not_managed_conds.append(cond)
-                    not_managed_conditions[property_root] = remote_not_managed_conds
+                    not_managed_conditions[splitted[0]] = remote_not_managed_conds
         for remote_prop_name, properties in not_managed.items():
             isOuter = remote_prop_name[0] == '<'
             remote_prop_name = remote_prop_name.replace('<','')
@@ -303,6 +304,8 @@ class AlchemyAccessPoint(AccessPoint):
             sql_conditions.update(child_conditions)
             orders.extend(child_orders)
         for remote_prop_name, conditions in not_managed_conditions.items():
+            isOuter = remote_prop_name[0] == '<'
+            remote_prop_name = remote_prop_name.replace('<','')
             remote_ap_name = self.remote_properties[remote_prop_name]
             remote_ap = self.site.access_points[remote_ap_name]
             child_relative_path = remote_ap.table.alias()
@@ -315,7 +318,10 @@ class AlchemyAccessPoint(AccessPoint):
             else : 
                 firstjoincol = relative_path.corresponding_column(self._get_remote_column(remote_prop_name))
                 secondjoincol = child_relative_path.corresponding_column(firstjoincol.foreign_keys[0].column)
-            relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
+            if isOuter:
+                relative_path = relative_path.outerjoin(child_joins[0],firstjoincol == secondjoincol)
+            else : 
+                relative_path = relative_path.join(child_joins[0],firstjoincol == secondjoincol)
             sql_conditions.update(child_conditions)
             orders.extend(child_orders)
         joins = [relative_path]
