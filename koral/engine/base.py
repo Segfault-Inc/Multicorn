@@ -20,6 +20,9 @@ Base template engine.
 
 """
 
+import os.path
+
+
 class BaseEngine(object):
     """Abstract class for all template engine adaptators in Koral.
     
@@ -45,3 +48,13 @@ class BaseEngine(object):
 
         """
         raise NotImplementedError
+
+
+class FileBasedEngine(BaseEngine):
+    def _build_filename(self, template_name):
+        """Convert a slash-separated template name to an absolute filename
+        """
+        parts = (part for part in template_name.split(u'/')
+            if part and part != u'..')
+        return os.path.join(self.path_to_root, *parts)
+
