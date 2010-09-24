@@ -9,7 +9,6 @@ setup(
     version = '0.1',
     packages = find_packages(
         exclude=['*._test', '*._test.*', 'test.*', 'test']),
-    scripts = ['dyko.py'],
     package_dir = {
         'kalamar': 'kalamar',
         'koral': 'koral',
@@ -29,6 +28,4 @@ setup(
     license = "GPL",
     keywords = "web framework database",
     url = "http://www.dyko.org/",
-    entry_points = {
-        'console_scripts': ['dyko = dyko:main']},
     zip_safe=False)
