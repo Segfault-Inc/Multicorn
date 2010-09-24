@@ -22,28 +22,30 @@ Create one for each independent site.
 
 """
 
-from koral import engine, utils
-
+from koral.engine import BUILTIN_ENGINES
 
 
 class Site(object):
     """Koral site."""
     def __init__(self, path_to_root):
-        """Create a kalamar site."""
         self.path_to_root = path_to_root
         self.engines = {}
 
-        engine.load()
-        for subclass in utils.recursive_subclasses(engine.BaseEngine):
-            if getattr(subclass, 'name', None):
-                self.engines[subclass.name] = subclass(self.path_to_root)
+        for name, engine_class in BUILTIN_ENGINES.items():
+            self.register_engine(name, engine_class)
+    
+    def register_engine(self, name, engine_class):
+        """Add an engine to this site.
+        
+        :param name: Identifier string for this engine. Pass the same value
+            to :method:`render` to use the registered engine.
+        :param engine_class: A concrete subclass of :class:`BaseEngine`
+        
+        """
+        self.engines[name] = engine_class(self.path_to_root)
     
     def render(self, site_engine, template_name, values={}, lang=None,
                modifiers=None):
-        """Shorthand to the engine render method.
-        
-        TODO test & doc
-
-        """
+        """Shorthand to the engine render method."""
         return self.engines[site_engine].render(
             template_name, values, lang, modifiers)

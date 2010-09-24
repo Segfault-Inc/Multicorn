@@ -20,33 +20,25 @@ Genshi engine support for Koral.
 
 """
 
-import warnings
 
 from koral.engine.base import BaseEngine
 
 
+class GenshiEngine(BaseEngine):
+    r"""Koral engine for Genshi: http://genshi.edgewall.org/
 
-try:
-    from genshi.template import TemplateLoader
-    import genshi.input
-except ImportError:
-    warnings.warn('Can not import genshi. '
-                  'GenshiEngine will not be available.',
-                  ImportWarning)
-else:
-    class GenshiEngine(BaseEngine):
-        r"""Koral engine for Genshi: http://genshi.edgewall.org/
-
-        """        
-        name = 'genshi'
+    """        
+    name = 'genshi'
+    
+    def __init__(self, *args, **kwargs):
+        """Genshi engine initialisation."""
+        super(GenshiEngine, self).__init__(*args, **kwargs)
+        from genshi.template import TemplateLoader
+        self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
         
-        def __init__(self, *args, **kwargs):
-            """Genshi engine initialisation."""
-            super(GenshiEngine, self).__init__(*args, **kwargs)
-            self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
-            
-        def render(self, template_name, values={}, lang=None, modifiers=None):
-            """Render genshi template."""
-            values = dict(values, XML=genshi.input.XML)
-            stream = self._loader.load(template_name).generate(**values)
-            return stream.render(method='html', encoding=None, doctype='html5')
+    def render(self, template_name, values={}, lang=None, modifiers=None):
+        """Render genshi template."""
+        import genshi.input
+        values = dict(values, XML=genshi.input.XML)
+        stream = self._loader.load(template_name).generate(**values)
+        return stream.render(method='html', encoding=None, doctype='html5')

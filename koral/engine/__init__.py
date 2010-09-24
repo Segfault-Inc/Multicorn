@@ -20,20 +20,22 @@ Parser module listing all engine access points.
 
 """
 
-import os
-import werkzeug
-
-from koral.engine.base import BaseEngine
-
-_loaded = False
-
+from .python import PythonEngine
+from .str_format import StrFormatEngine
+from .jinja2_ import Jinja2Engine
+from .genshi_ import GenshiEngine
+from .mako_ import MakoEngine
 
 
-def load():
-    """Import all modules in the curent package."""
-    global _loaded
-    if not _loaded:
-        for module in werkzeug.find_modules(
-            __name__, include_packages=True, recursive=True):
-            werkzeug.import_string(module)
-        _loaded = True
+BUILTIN_ENGINES = {'py': PythonEngine, 'str-format': StrFormatEngine}
+
+for name, engine in (('jinja2', Jinja2Engine), ('genshi', GenshiEngine),
+                     ('mako', MakoEngine)):
+    try:
+        engine('/nonexistent-path')
+    except ImportError:
+        # not installed/available
+        pass
+    else:
+        BUILTIN_ENGINES[name] = engine
+

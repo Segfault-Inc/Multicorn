@@ -20,32 +20,23 @@ Mako engine support for Koral.
 
 """
 
-import warnings
-
 from koral.engine.base import BaseEngine
 
 
+class MakoEngine(BaseEngine):
+    r"""Koral engine for Mako: http://www.makotemplates.org/
 
-try:
-    from mako.lookup import TemplateLookup
-except ImportError:
-    warnings.warn('Can not import mako. '
-                  'MakoEngine will not be available.',
-                  ImportWarning)
-else:
-    class MakoEngine(BaseEngine):
-        r"""Koral engine for Mako: http://www.makotemplates.org/
-
-        """
-        name = 'mako'
+    """
+    name = 'mako'
+    
+    def __init__(self, *args, **kwargs):
+        """Mako engine initialisation."""
+        super(MakoEngine, self).__init__(*args, **kwargs)
+        from mako.lookup import TemplateLookup
+        self._loader = TemplateLookup(directories=[self.path_to_root])
         
-        def __init__(self, *args, **kwargs):
-            """Mako engine initialisation."""
-            super(MakoEngine, self).__init__(*args, **kwargs)
-            self._loader = TemplateLookup(directories=[self.path_to_root])
-            
-        def render(self, template_name, values={}, lang=None, modifiers=None):
-            """Render mako template."""
-            values = dict(values)
-            template = self._loader.get_template(template_name)
-            return template.render_unicode(**values)
+    def render(self, template_name, values={}, lang=None, modifiers=None):
+        """Render mako template."""
+        values = dict(values)
+        template = self._loader.get_template(template_name)
+        return template.render_unicode(**values)

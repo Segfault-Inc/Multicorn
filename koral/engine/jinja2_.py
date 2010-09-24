@@ -20,30 +20,21 @@ Jinja2 engine support for Koral.
 
 """
 
-import warnings
-
 from koral.engine.base import BaseEngine
 
 
-
-try:
-    from jinja2 import Environment, FileSystemLoader
-except ImportError:
-    warnings.warn('Can not import jinja2. '
-                  'Jinja2Engine will not be available.',
-                  ImportWarning)
-else:    
-    class Jinja2Engine(BaseEngine):
-        """Koral engine for Jinja2: http://jinja.pocoo.org/2/
-        """
-        name = 'jinja2'
+class Jinja2Engine(BaseEngine):
+    """Koral engine for Jinja2: http://jinja.pocoo.org/2/
+    """
+    name = 'jinja2'
+    
+    def __init__(self, *args, **kwargs):
+        """Jinja2 engine initialisation."""
+        super(Jinja2Engine, self).__init__(*args, **kwargs)
+        from jinja2 import Environment, FileSystemLoader
+        self._env = Environment(loader=FileSystemLoader(self.path_to_root))
         
-        def __init__(self, *args, **kwargs):
-            """Jinja2 engine initialisation."""
-            super(Jinja2Engine, self).__init__(*args, **kwargs)
-            self._env = Environment(loader=FileSystemLoader(self.path_to_root))
-            
-        def render(self, template_name, values={}, lang=None, modifiers=None):
-            """Render Jinja2 template."""
-            template = self._env.get_template(template_name)
-            return template.render(**values)
+    def render(self, template_name, values={}, lang=None, modifiers=None):
+        """Render Jinja2 template."""
+        template = self._env.get_template(template_name)
+        return template.render(**values)
