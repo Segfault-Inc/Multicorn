@@ -43,14 +43,13 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         r = self.client.get('/')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<!DOCTYPE html>'
-                         '\n<html><body>Dyko root</body></html>')
+        self.assertEqual(r.data, '<html><body>Dyko root</body></html>\n')
 
     def test_hello(self):
-        r = self.client.get('/hello/')
+        r = self.client.get('/hello/?name=World')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<html><body>Hello, World!</body></html>')
+        self.assertEqual(r.data, '<html><body>Hello, World!</body></html>\n')
 
     def test_hello_redirect(self):
         r = self.client.get('/hello?world')

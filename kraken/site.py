@@ -185,10 +185,10 @@ class Site(object):
         Traceback (most recent call last):
             ...
         TypeError: Can provide both of extension and engine or neither, but not only one
-        >>> response = site.template_response(req, 'index.html.genshi')
+        >>> response = site.template_response(req, 'index.html.str-format')
         >>> response.mimetype
         'text/html'
-        >>> response = site.template_response(req, 'index.html.genshi', {},
+        >>> response = site.template_response(req, 'index.html.str-format', {},
         ...                                   'html', 'genshi')
         >>> response.mimetype
         'text/html'
@@ -272,25 +272,25 @@ class Site(object):
         >>> site = kraken.tests.make_site()
 
         Directory stucture of site.site_root:
-            index.html.genshi
-            hello.html.jinja2
+            index.html.str-format
+            hello.html.str-format
             hello/
-                index.genshi # No <type>
+                index.str-format # No <type>
                 index.html # No <engine>
                 index.html.foo # Non-existent <engine>
             lorem/
-                index.txt.jinja2
+                index.txt.str-format
 
         >>> site.find_template(u'/')
-        (u'index.html.genshi', u'html', u'genshi')
+        (u'index.html.str-format', u'html', u'str-format')
         >>> site.find_template(u'/nonexistent')
         
         >>> site.find_template(u'/hello/')
-        (u'hello.html.jinja2', u'html', u'jinja2')
+        (u'hello.html.str-format', u'html', u'str-format')
         >>> site.find_template(u'/hello/world')
         
         >>> site.find_template(u'/lorem/')
-        (u'lorem/index.txt.jinja2', u'txt', u'jinja2')
+        (u'lorem/index.txt.str-format', u'txt', u'str-format')
         >>> site.find_template(u'/lorem/ipsum')
 
         """
