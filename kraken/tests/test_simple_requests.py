@@ -43,9 +43,7 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         r = self.client.get('/')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<!DOCTYPE html PUBLIC '
-                         '"-//W3C//DTD XHTML 1.0 Strict//EN" '
-                         '"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'
+        self.assertEqual(r.data, '<!DOCTYPE html>'
                          '\n<html><body>Dyko root</body></html>')
 
     def test_hello(self):
