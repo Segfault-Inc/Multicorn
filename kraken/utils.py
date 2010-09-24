@@ -169,23 +169,6 @@ class KalamarSiteForKraken(kalamar.site.Site):
         except self.ObjectDoesNotExist:
             raise NotFound
 
-def arg_count(function):
-    """Return the nubmer of explicit arguments the function takes.
-    
-    *args and **kwargs arguments are excluded.
-    
-    >>> arg_count(lambda: 1)
-    0
-    >>> arg_count(lambda x, y: 1)
-    2
-    >>> arg_count(lambda x, y, *args: 1)
-    2
-
-    """
-    args = inspect.getargspec(function)[0]
-    return len(args)
-
-
 
 def runserver(site, args=None):
     """Run a developpement server for the given Kraken ``site``.
