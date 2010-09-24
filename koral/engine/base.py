@@ -20,6 +20,7 @@ Base template engine.
 
 """
 
+import abc
 import os.path
 
 
@@ -29,10 +30,13 @@ class BaseEngine(object):
     Subclasses must override the ``render`` method.
 
     """
+    __metaclass__ = abc.ABCMeta
+    
     def __init__(self, path_to_root):
         """Template engine initialisation."""
         self.path_to_root = path_to_root
     
+    @abc.abstractmethod
     def render(self, template_name, values={}, lang=None, modifiers=None):
         """Render ``template_name`` with the ``values`` dict, return unicode.
 
