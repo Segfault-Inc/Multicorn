@@ -16,8 +16,10 @@ setup(
     package_data = {
         '': ['AUTHORS'],
         'doc': ['*.rst']},
-    install_requires = {
-        'Werkzeug': ['werkzeug>=0.5']},
+    install_requires = [
+        'werkzeug>=0.5',
+        # TODO: test sqlalchemy 0.5?
+        'sqlalchemy>=0.6'],
     extras_require = {
         'Genshi': ['genshi>=0.5'],
         'Jinja2': ['jinja2>=2.0'],
