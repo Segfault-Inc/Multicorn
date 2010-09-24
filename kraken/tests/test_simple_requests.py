@@ -59,7 +59,7 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         self.assertEqual(r.status_code, 301)
         self.assertEqual(r.headers['Location'], 'http://localhost/hello/?world')
         self.assert_('redirect' in r.data.lower())
-        self.assert_('http://localhost/hello/?world' in r.data)
+        self.assert_('hello/?world' in r.data)
 
     def test_lipsum(self):
         r = self.client.get('/lorem/ipsum/')

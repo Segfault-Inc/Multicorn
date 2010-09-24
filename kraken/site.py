@@ -118,7 +118,7 @@ class Site(object):
     def handle_trailing_slash(request):
         """Redirect if ``request.path`` has no trailing slash."""    
         if not request.path.endswith(u'/'):
-            werkzeug.append_slash_redirect(request.environ)
+            werkzeug.abort(werkzeug.append_slash_redirect(request.environ))
         
     def handle_static_file(self, request):
         """Try handling a request with a static file.
