@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'Dyko',
-    version = '0.1',
+    version = '0.2.dev1',
     packages = find_packages(
         exclude=['*._test', '*._test.*', 'test.*', 'test']),
     package_dir = {
