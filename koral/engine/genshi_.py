@@ -36,20 +36,6 @@ except ImportError:
 else:
     class GenshiEngine(BaseEngine):
         r"""Koral engine for Genshi: http://genshi.edgewall.org/
-        
-        >>> import koral.site, koral.tests, os.path
-        >>> path = os.path.join(os.path.dirname(koral.tests.__file__), 'templates')
-        >>> engine = koral.site.Site(path).engines['genshi']
-        >>> engine.render('hello.genshi.html')
-        ...   # doctest: +NORMALIZE_WHITESPACE
-        u'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n<html><body>Hello,
-        World!</body></html>'
-        >>> engine.render('hello.genshi.html', {'name': 'Python'})
-        ...   # doctest: +NORMALIZE_WHITESPACE
-        u'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\n<html><body>Hello,
-        Python!</body></html>'
 
         """        
         name = 'genshi'
