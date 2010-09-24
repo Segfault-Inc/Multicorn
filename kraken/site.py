@@ -189,7 +189,7 @@ class Site(object):
         >>> response.mimetype
         'text/html'
         >>> response = site.template_response(req, 'index.html.str-format', {},
-        ...                                   'html', 'genshi')
+        ...                                   'html', 'str-format')
         >>> response.mimetype
         'text/html'
 
