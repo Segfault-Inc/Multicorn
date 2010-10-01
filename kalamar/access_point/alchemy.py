@@ -80,6 +80,7 @@ class Alchemy(AccessPoint):
                 #Transpose the kalamar relation in alchemy if possible
                 if isinstance(foreign_ap, Alchemy):
                     foreign_table = foreign_ap.tablename
+                    foreign_column = self.__get_column(name)
                     self.remote_alchemy_props.append(name)
                     fk = ForeignKey("%s.%s" % (foreign_table, foreign_column))
                     column = Column(prop.column_name, alchemy_type, fk, kwargs)
