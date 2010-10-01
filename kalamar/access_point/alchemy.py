@@ -81,7 +81,7 @@ class Alchemy(AccessPoint):
                 if isinstance(foreign_ap, Alchemy):
                     foreign_table = foreign_ap.tablename
                     self.remote_alchemy_props.append(name)
-                    fk = ForeignKey("%s.%s" % foreign_table,foreign_column)
+                    fk = ForeignKey("%s.%s" % (foreign_table, foreign_column))
                     column = Column(prop.column_name, alchemy_type, fk, kwargs)
                     prop.foreign_ap_obj = foreign_ap
                 else :
