@@ -41,6 +41,7 @@ class AlchemyProperty(Property):
         super(AlchemyProperty, self).__init__(property_type, identity, auto, default, mandatory, 
                 relation, remote_ap, remote_property)
         self.column_name = column_name
+        self._column = None
 
 
 
@@ -55,6 +56,46 @@ class Alchemy(AccessPoint):
         self.identity_properties = [identity_property]
         self.createtable = createtable
         self.remote_alchemy_props = []
+        for name, prop in self.properties.items():
+            prop.name = name 
+            if prop.relation is None:
+                self._column_from_prop(prop)
+
+    def _column_from_prop(self, prop):
+        if prop._column is not None:
+            return prop._column
+        alchemy_type = SQLALCHEMYTYPES.get(prop.type,None)
+        kwargs = {'key' : prop.name}
+        if prop.name in self.identity_properties:
+            kwargs['primary_key'] = True
+        if prop.default:
+            kwargs[default] = prop.default
+        if prop.relation == 'many-to-one':
+            foreign_ap = self.site.access_points[prop.remote_ap]
+            prop.foreign_ap_obj = foreign_ap
+            #Transpose the kalamar relation in alchemy if possible
+            if isinstance(foreign_ap, Alchemy):
+                foreign_table = foreign_ap.tablename
+                #TODO: Fix this for circular dependencies
+                foreign_column = self.__get_column("%s.%s" % (prop.name,
+                    prop.remote_property))
+                fk = ForeignKey("%s.%s" % (foreign_table,foreign_column),
+                        use_alter = True, name = "%s_%s_fkey" %
+                        (self.tablename, prop.name ))
+                self.remote_alchemy_props.append(prop.name)
+                alchemy_type = foreign_column.type
+                column = Column(prop.column_name, alchemy_type, fk, **kwargs)
+            else :
+                foreign_prop = foreign_ap.properties[foreign_ap.identity_properties[0]]
+                alchemy_type = alchemy_type or \
+                    SQLALCHEMYTYPES.get(foreign_prop.type, None)
+                column = Column(prop.column_name, alchemy_type, **kwargs)
+        elif prop.relation == 'one-to-many':
+            pass
+        else :
+            column = Column(prop.column_name, alchemy_type, **kwargs)
+        prop._column = column
+        return column
 
 
     @cached_property
@@ -67,37 +108,8 @@ class Alchemy(AccessPoint):
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
-        columns = []
-        for name, prop in self.properties.items():
-            alchemy_type = SQLALCHEMYTYPES.get(prop.type,None)
-            kwargs = {'key' : name}
-            if name in self.identity_properties:
-                kwargs['primary_key'] = True
-            if prop.default:
-                kwargs[default] = prop.default
-            if prop.relation == 'many-to-one':
-                foreign_ap = self.site.access_points[prop.remote_ap]
-                prop.foreign_ap_obj = foreign_ap
-                #Transpose the kalamar relation in alchemy if possible
-                if isinstance(foreign_ap, Alchemy):
-                    foreign_table = foreign_ap.tablename
-                    foreign_column = self.__get_column("%s.%s" % (name,
-                        prop.remote_property))
-                    self.remote_alchemy_props.append(name)
-                    fk = ForeignKey(foreign_column)
-                    alchemy_type = foreign_column.type
-                    column = Column(prop.column_name, alchemy_type, fk, **kwargs)
-                else :
-                    foreign_prop = foreign_ap.properties[foreign_ap.identity_properties[0]]
-                    alchemy_type = alchemy_type or \
-                        SQLALCHEMYTYPES.get(foreign_prop.type, None)
-                    column = Column(prop.column_name, alchemy_type, **kwargs)
-            elif prop.relation == 'one-to-many':
-                pass
-            else :
-                column = Column(prop.column_name, alchemy_type, **kwargs)
-            prop._column = column
-            columns.append(column)
+        columns = [self._column_from_prop(prop) for prop in
+                self.properties.values()]
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable :
             table.create(checkfirst=True)
