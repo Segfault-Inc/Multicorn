@@ -77,13 +77,16 @@ class Alchemy(AccessPoint):
                 kwargs[default] = prop.default
             if prop.relation == 'many-to-one':
                 foreign_ap = self.site.access_points[prop.remote_ap]
+                prop.foreign_ap_obj = foreign_ap
                 #Transpose the kalamar relation in alchemy if possible
                 if isinstance(foreign_ap, Alchemy):
                     foreign_table = foreign_ap.tablename
+                    foreign_column = self.__get_column("%s.%s" % (name,
+                        prop.remote_property))
                     self.remote_alchemy_props.append(name)
-                    fk = ForeignKey("%s.%s" % foreign_table,foreign_column)
-                    column = Column(prop.column_name, alchemy_type, fk, kwargs)
-                    prop.foreign_ap_obj = foreign_ap
+                    fk = ForeignKey(foreign_column)
+                    alchemy_type = foreign_column.type
+                    column = Column(prop.column_name, alchemy_type, fk, **kwargs)
                 else :
                     foreign_prop = foreign_ap.properties[foreign_ap.identity_properties[0]]
                     alchemy_type = alchemy_type or \
@@ -105,7 +108,7 @@ class Alchemy(AccessPoint):
         splitted = propertyname.split(".")
         prop = self.properties[splitted[0]]
         if len(splitted) > 1 :
-            return prop.foreign_ap_obj.__get_column(propertyname[1:])
+            return prop.foreign_ap_obj.__get_column(".".join(splitted[1:]))
         else:
             return prop._column
 
