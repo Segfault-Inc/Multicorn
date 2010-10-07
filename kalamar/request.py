@@ -84,16 +84,14 @@ def normalize(properties, request):
             return Not(_inner_normalize(request.sub_request))
         elif isinstance(request, Condition):
             # TODO: decide where the Condition.root method should be
-            root, rest = request.root()
+            root = request.property.property_name
             if root not in properties:
                 raise KeyError(
                     "This access point has no %r property." % root)
             # TODO: validate sub requests 
-            if rest:
-                return request
-            else:
-                value = properties[root].cast((request.value,))[0]
-            return Condition(request.property_name, request.operator, value)
+            value = properties[root].cast((request.value,))[0]
+            return Condition(property = request.property,
+                    operator=request.operator, value=value)
         else:
             # Assume a 3-tuple: short for a single cond
             return _inner_normalize(Condition(*request))
@@ -113,7 +111,7 @@ class Request(object):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
-            self.__hash_tuple() == other.__hash_tuple()
+            self.__hash__() == other.__hash__()
 
     def __hash__(self):
         return hash(self.__hash_tuple())
@@ -126,33 +124,81 @@ class Request(object):
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
 
-    _hash_attributes = "property_name operator value"
+    _hash_attributes = "property operator value"
 
-    def __init__(self, property_name, operator, value):
+    def __init__(self, property_name = None, operator='=', value=True, property=None):
         try:
             self.operator_func = OPERATORS[operator]
         except KeyError:
             raise OperatorNotAvailable(
                 "Operator %r is not supported here." % operator)
-        self.property_name = property_name
+        if property is not None:
+            self.property = property
+        else:
+            self.property = self.__build_property(property_name)
         self.operator = operator
         self.value = value
 
-    def root(self):
-        splitted = self.property_name.split(".")
-        rest = ".".join(splitted[1:]) if len(splitted) > 1 else None
-        return splitted[0], rest
+    def __build_property(self, property_name):
+        properties = property_name.split(".")
+        leaf = RequestProperty(properties[-1])
+        req_prop = leaf
+        for prop in properties[-1:0]:
+            req_prop = ComposedRequestProperty(prop, req_prop)
+        return req_prop
+
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
             self.__class__.__name__,
-            self.property_name,
+            self.property,
             self.operator,
             self.value)
     
     def test(self, item):
         """Return if ``item`` matches the request."""
-        return self.operator_func(item[self.property_name], self.value)
+        return self.operator_func(self.property.getValue(item), self.value)
+
+class RequestProperty(object):
+
+    def __init__(self, property_name):
+        self.property_name = property_name
+
+    def kalamarProperty(self, access_point):
+        return access_point.properties[self.property_name]
+
+    def getValue(self, item):
+        return item[self.property_name]
+
+    def __repr__(self):
+        return self.property_name
+
+
+    def __hash__(self):
+        return hash(self.property_name)
+
+
+class ComposedRequestProperty(RequestProperty):
+
+    def __init__(self, property_name, child_property, inner = True):
+        self.inner = inner
+        self.property_name = property_name
+        self.child_property = child_property
+
+    def kalamarProperty(self, access_point):
+        root = super(RequestProperty, self).kalamarProperty(access_point)
+        remote_ap = access_point.site.access_points[root.remote_ap]
+        return self.child_property.kalamarProperty(remote_ap)
+
+    def getValue(self, item):
+        return child_property.getValue(item[property_name])
+
+    def __repr__(self):
+        return "%s.%r" % (self.property_name, self.child_property)
+
+    def __hash__(self):
+        return hash(tuple(hash(self.property_name, hash(self.child_property))))
+
     
 
 class _AndOr(Request):

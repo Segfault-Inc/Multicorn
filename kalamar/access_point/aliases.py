@@ -77,7 +77,7 @@ class Aliases(AccessPointWrapper):
         elif isinstance(request, Not):
             return Not(self.translate_request(request.sub_request))
         elif isinstance(request, Condition):
-            name = request.property_name
+            name = request.property.property_name
             return Condition(self.aliases.get(name, name),
                              request.operator,
                              request.value)
