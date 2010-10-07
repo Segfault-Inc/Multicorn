@@ -135,7 +135,7 @@ class Alchemy(AccessPoint):
             return apply(sql.not_,[self.__to_alchemy_condition(cond)
                 for cond in condition.sub_requests])
         else:
-            col = condition.property.kalamarProperty(self)._column
+            col = self.__get_column(condition.property.__repr__())
             if condition.operator == '=':
                 return col == condition.value
             else:

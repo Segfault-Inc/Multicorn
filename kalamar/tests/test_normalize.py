@@ -56,7 +56,6 @@ def test_normalize():
     properties = {'a': Property(int), 'b': Property(unicode)}
     eq_(normalize(properties, {u'a': 1, u'b': u'foo'}),
         And(Condition(u'a', '=', 1), Condition(u'b', '=', u'foo')))
-    
     properties = {'a': Property(float), 'b': Property(unicode)}
     eq_(normalize(properties, {u'a': 1, u'b': 'foo'}),
         And(Condition(u'a', '=', 1.0), Condition(u'b', '=', u'foo')))

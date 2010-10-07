@@ -88,60 +88,14 @@ class AccessPoint(object):
     def search(self, request):
         """Return an iterable of every item matching request."""
         raise NotImplementedError("Abstract method")
-    
-    def view(self, view_request, **kwargs):
-        """Return partial items.
 
-        :param view_request: follows the same format as in the search method
-
-        Example:
-        site.view("access_point", {"name": "name", "boss_name": "foreign.name"})
+    def view(self, view_query):
+        """
 
         """
-        def alias_item(item, aliases):
-            return dict(
-                (alias, item[value]) for alias, value in aliases.items())
-        fake_props = []
-        orphan_request = view_request.orphan_request
-        # First, we perform a search on our own properties
-        for item in self.search(view_request.request):
-            join_request = And()
-            view_item = alias_item(item, view_request.aliases)
-            subitems_generators = []
-            # Build subviews on our remote properties
-            for prop, subview in view_request.subviews.items():
-                property_obj = self.properties[prop]
-                remote_ap = self.site.access_points[property_obj.remote_ap]
-                if property_obj.relation == "many-to-one":
-                    # Add aliases to the request to compare the item to our
-                    # reference as well as a clause to the orphan_request to be
-                    # tested against the resulting property
-                    for id_prop in remote_ap.identity_properties:
-                        fake_prop = "____" + prop + "____" + id_prop
-                        fake_props.append(fake_prop)
-                        join_request = And(
-                            join_request, Condition(
-                                fake_prop, "=", item[prop][id_prop]))
-                        subview.aliases[fake_prop] = id_prop
-                elif property_obj.relation == "one-to-many":
-                    subview.additional_request = Condition(
-                        property_obj.remote_property, "=", item)
-                subitems_generators.append(remote_ap.view(subview))
-            if not subitems_generators:
-                yield view_item
-            else:
-                # Compute the cartesian product of the subviews results, update
-                # the properties, and test it against the unevaluated request
-                # before yielding
-                for cartesian_item in product(*subitems_generators):
-                    newitem = dict(view_item)
-                    for cartesian_atom in cartesian_item:
-                        newitem.update(cartesian_atom)
-                        if orphan_request.test(newitem) \
-                                and join_request.test(newitem):
-                            for fake_prop in view_request.additional_aliases:
-                                newitem.pop(fake_prop)
-                            yield newitem
+        items = self.search(And())
+        return  view_query(items)
+
         
     def delete_many(self, request):
         """Delete all item matching ``request``."""
@@ -175,11 +129,12 @@ class AccessPoint(object):
         """Return a default loader to manage references in an access point."""
         remote = self.site.access_points[lazy_prop.remote_ap]
         if lazy_prop.relation == "one-to-many":
-            id_props = self.identity_properties
-            conditions = And(*[Condition(prop, "=", properties[prop])
-                               for prop in id_props])
+            local_ref = self.identity_properties[0]
+            condition_property = "%s.%s" % (lazy_prop.remote_property, local_ref)
+            conditions = Condition(condition_property , '=',
+                    properties[local_ref])
             def loader():
-                return (remote.search(conditions),)
+                return (list(remote.search(conditions)),)
         else:
             raise RuntimeError(
                 "Cannot use default lazy loader"

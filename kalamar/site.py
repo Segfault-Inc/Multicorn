@@ -23,7 +23,67 @@ Site class. Create one for each independent site with its own configuration.
 
 """
 
-from .request import ViewRequest, normalize
+from .request import normalize, make_request, And, Condition, Or, Not
+from .query import QueryFilter, QuerySelect, QueryChain
+
+
+def validate_filter(site, query, properties):
+    valid = normalize(properties, query.condition)
+    return valid, properties
+
+def validate_select(site, query, properties):
+    def derive_property(property, old_prop):
+        if property.child_property is not None:
+            childname = property.child_property.property_name
+            try:
+                child_prop = site.access_points[old_prop.remote_ap].properties[childname]
+            except KeyError:
+                raise KeyError("This request has no %r property" % childname) 
+            return derive_property(property.child_property, child_prop)
+        else:
+            return old_prop
+    new_props = {}
+    for name, prop in query.mapping.items():
+        old_prop = properties[prop.property_name]
+        new_props[name] = derive_property(prop, old_prop)
+    return True, new_props 
+
+
+def validate_chain(site, query,  properties):
+    for q in query.queries:
+        valid, properties = QUERY_VALIDATORS[q.__class__](site, q, properties)
+        if not valid:
+            return False, properties
+    return True, properties
+
+
+QUERY_VALIDATORS = {
+        QueryFilter: validate_filter,
+        QuerySelect: validate_select,
+        QueryChain:  validate_chain,
+}
+
+
+def translate_request(request, aliases):
+    if isinstance(request, And):
+        return And(*(translate_request(r, aliases)
+                     for r in request.sub_requests))
+    elif isinstance(request, Or):
+        return Or(*(translate_request(r, aliases)
+                    for r in request.sub_requests))
+    elif isinstance(request, Not):
+        return Not(translate_request(request.sub_request, aliases))
+    elif isinstance(request, Condition):
+        name = request.property.__repr__()
+        if name in aliases:
+            return Condition(aliases.get(name, name),
+                         request.operator,
+                         request.value)
+        else:
+            new_name = "____%s" % name.replace(".", "_")
+            aliases[name] = new_name
+            return Condition(new_name, request.operator, request.value)
+
 
 
 class Site(object):
@@ -41,11 +101,25 @@ class Site(object):
         access_point.name = name
         self.access_points[name] = access_point
 
-    def view(self, access_point, aliases, request):
+    def view(self, access_point, aliases=None, request=None, query=None):
         access_point = self.access_points[access_point]
-        request = normalize(access_point.properties, request)
-        return access_point.view(ViewRequest(aliases, request))
-    
+        if query is None:
+            #Add dummy selects to be able to filter on those
+            aliases = dict([(value, key) for key, value in aliases.items()])
+            request = make_request(request)
+            request = translate_request(request, aliases)
+            aliases = dict([(value, key) for key, value in aliases.items()])
+            query = QueryChain([QuerySelect(aliases), QueryFilter(request)])
+        valid, properties = self.validate_query(access_point, query)
+        if valid is True:
+            return access_point.view(query)
+        else:
+            raise RuntimeError("Bad Query")
+
+ 
+    def validate_query(self, access_point, query):
+        return QUERY_VALIDATORS[query.__class__](self, query, access_point.properties)       
+
     def deleguate_to_acces_point(method_name, first_arg_is_a_request=False):
         if first_arg_is_a_request:
             def wrapper(self, access_point, request=None, *args, **kwargs):

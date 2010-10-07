@@ -24,7 +24,7 @@ Test the view request algorithm.
 """
 
 from nose.tools import eq_, nottest
-from kalamar.request import Condition, Or, Request, ViewRequest
+from kalamar.request import Condition, Or, Request
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
@@ -79,16 +79,65 @@ def init_data():
     item22 = site.create("level2", {"label": "2.2", "id": 4, "parent": item2})
     item22.save()
 
+    rootitem["children"] = [item1, item2]
+    rootitem.save()
+
+    item1["children"] = [item11, item12]
+    item1.save()
+    item2["children"] = [item21, item22]
+    item2.save()
+
     return site
+
+def test_lazy():
+    site = init_data()
+    root = site.open("root", {"id": 0})
+    eq_(len(list(root["children"])), 2)
+
+def test_bad_request():
+    site = init_data()
+    try:
+        list(site.view("root", {"leaf_label": "children.grou"}, {}))
+    except KeyError:
+        pass
+    else:
+        assert False, "Expected KeyError."
+
+    try:
+        list(site.view("root", {"leaf_label": "children.label"},
+            {"children.grou" : 4}))
+    except KeyError:
+        pass
+    else:
+        assert False, "Expected KeyError."
+
+
+    try:
+        list(site.view("root", {"leaf_label": "children.label"},
+            {"children.children.id" : "abc"}))
+    except ValueError:
+        pass
+    else:
+        assert False, "Expected ValueError."
+
+    
+
+
+    
 
 def test_first_level():
     site = init_data()
     aliases = {"leaf_label": "children.label", "root_label": "label"}
     items = list(site.view("root", aliases, {}))
     eq_(len(items), 2)
+
+def test_first_level_with_cond():
+    site = init_data()
+    aliases = {"leaf_label": "children.label", "root_label": "label"}
     conditions = {"children.label": "1"}
     items = list(site.view("root", aliases, conditions))
     eq_(len(items), 1)
+
 
 def test_leaf_nodes():
     site = init_data()
@@ -96,7 +145,6 @@ def test_leaf_nodes():
         "leaf_label": "children.children.label", "root_label": "label",
         "middle_label":"children.label"}
     condition = Condition("children.children.label", "=", "2.2")
-    viewReq = ViewRequest(aliases,condition)
     items = list(site.view("root", aliases, condition))
     eq_(len(items), 1)
     assert(all([item["leaf_label"] == "2.2" for item in items]))

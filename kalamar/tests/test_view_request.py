@@ -25,7 +25,7 @@ Test the view request algorithm.
 
 from nose.tools import eq_, nottest
 from nose.plugins.deprecated import DeprecatedTest
-from kalamar.request import Request, Condition, ViewRequest, normalize
+from kalamar.request import Request, Condition, normalize
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
@@ -54,46 +54,19 @@ def make_test_site():
     my_second_item.save()
     remote = site.create('test_remote_ap', {'id' : 4 , 'label': 'remote_item', 'remote' : my_item})
     remote.save()
-    site.create('test_remote_ap', {'id' : 8 , 'label': 'remote_item2', 'remote' : my_second_item}).save()
+    remote2 = site.create('test_remote_ap', {'id' : 8 , 'label': 'remote_item2', 'remote' : my_second_item})
+    remote2.save()
+    my_item['manies'] = [remote, remote2]
+    my_item.save()
     return site
 
 
-def test_simple_view_request():
-    """Create a simple view request, on a simgle access_point
-    """
-    ap = make_test_ap() 
-    req = normalize(ap.properties,
-                            {'id':3, 'name':'stuff'})
-    aliases = {'id_select':'id', 'name_select':'name'}
-    viewreq = ViewRequest(aliases, req)
-    #Assert that the aliases are all classified as 'manageable'
-    eq_(viewreq.aliases, aliases)
-    eq_(viewreq.aliases, aliases)
-    eq_(viewreq.subviews, {})
-
-
-def test_aliases_view_request():
-    site = make_test_site()
-    aliases = {'id_select': 'id', 'name_select': 'name', 'remote_select': 'remote.name'}
-    req = normalize(site.access_points["test_remote_ap"].properties, {'remote.name':'truc'})
-    viewreq = ViewRequest(aliases, req)
-    eq_(viewreq.aliases, {'id_select': 'id', 'name_select': 'name'})
-    eq_(viewreq.joins , {'remote':True})
-    eq_(len(viewreq.subviews),1)
-    subview = viewreq.subviews['remote']
-    eq_(subview.aliases, {'remote_select':'name'})
-    eq_(subview.subviews, {})
-    sub_req = subview.request
-    assert isinstance(sub_req, Condition)
-    eq_(sub_req.operator, "=")
-    eq_(sub_req.value, "truc")
-    eq_(sub_req.property_name, 'name')
 
 
 def test_simplest_view():
     site = make_test_site()
     aliases = {'id_select': 'id', 'name_select': 'label', 'remote_select': 'remote.name'}
-    req = normalize(site.access_points["test_remote_ap"].properties, {'remote.id':10})
+    req =  {'remote.id': 10}
     items = list(site.view("test_remote_ap", aliases, req))
     eq_(len(items), 1)
     uniq_item = items[0]

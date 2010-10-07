@@ -63,21 +63,52 @@ def simplify(request):
     else:
         return request
 
-def normalize(properties, request):
+
+def make_request_property(property_name):
+    """Return an instance of RequestProperty
+    
+    >>> make_request_property("a")
+    a
+    >>> make_request_property("a.id")
+    a.id
+    
+
+    """
+    properties = property_name.split(".")
+    properties.reverse()
+    req_prop = RequestProperty(properties[0])
+    for prop in properties[1:]:
+        req_prop = ComposedRequestProperty(prop, req_prop)
+    return req_prop
+
+
+
+def make_request(request):
     """Convert a ``request`` to a Request object.
 
     TODO: describe syntaxic sugar.
 
     """
+    if not request:
+        # Empty request: always true.
+        return And()
+    elif isinstance(request, Request):
+        return request
+    elif hasattr(request, "items") and callable(request.items):
+        # If it looks like a dict and smells like a dict, it is a dict.
+        return And(*(Condition(key, "=", value) 
+                     for key, value in request.items()))
+    else:
+        return Condition(*request)
+
+
+def normalize(properties, request):
+    """Convert the condition values
+    
+    Raises an exception if the property is not supplied or if it can't be cast
+    """
     def _inner_normalize(request):
-        if not request:
-            # Empty request: always true.
-            return And()
-        elif hasattr(request, "items") and callable(request.items):
-            # If it looks like a dict and smells like a dict, it is a dict.
-            return And(*(_inner_normalize(Condition(key, "=", value))
-                         for key, value in request.items()))
-        elif isinstance(request, (And, Or)):
+        if isinstance(request, (And, Or)):
             return request.__class__(*(_inner_normalize(r) 
                 for r in request.sub_requests))
         elif isinstance(request, Not):
@@ -90,12 +121,9 @@ def normalize(properties, request):
                     "This access point has no %r property." % root)
             # TODO: validate sub requests 
             value = properties[root].cast((request.value,))[0]
-            return Condition(property = request.property,
-                    operator=request.operator, value=value)
-        else:
-            # Assume a 3-tuple: short for a single cond
-            return _inner_normalize(Condition(*request))
-    return simplify(_inner_normalize(request))
+            return Condition(property = request.property, operator =
+                    request.operator, value = value)
+    return simplify(_inner_normalize(make_request(request)))
 
 
 class Request(object):
@@ -135,17 +163,9 @@ class Condition(Request):
         if property is not None:
             self.property = property
         else:
-            self.property = self.__build_property(property_name)
+            self.property = make_request_property(property_name)
         self.operator = operator
         self.value = value
-
-    def __build_property(self, property_name):
-        properties = property_name.split(".")
-        leaf = RequestProperty(properties[-1])
-        req_prop = leaf
-        for prop in properties[-1:0]:
-            req_prop = ComposedRequestProperty(prop, req_prop)
-        return req_prop
 
 
     def __repr__(self):
@@ -163,16 +183,13 @@ class RequestProperty(object):
 
     def __init__(self, property_name):
         self.property_name = property_name
-
-    def kalamarProperty(self, access_point):
-        return access_point.properties[self.property_name]
+        self.child_property = None
 
     def getValue(self, item):
         return item[self.property_name]
 
     def __repr__(self):
         return self.property_name
-
 
     def __hash__(self):
         return hash(self.property_name)
@@ -185,19 +202,17 @@ class ComposedRequestProperty(RequestProperty):
         self.property_name = property_name
         self.child_property = child_property
 
-    def kalamarProperty(self, access_point):
-        root = super(RequestProperty, self).kalamarProperty(access_point)
-        remote_ap = access_point.site.access_points[root.remote_ap]
-        return self.child_property.kalamarProperty(remote_ap)
-
     def getValue(self, item):
-        return child_property.getValue(item[property_name])
+        return self.child_property.getValue(item[self.property_name])
 
     def __repr__(self):
         return "%s.%r" % (self.property_name, self.child_property)
 
     def __hash__(self):
-        return hash(tuple(hash(self.property_name, hash(self.child_property))))
+        return hash((hash(self.property_name), hash(self.child_property)))
+
+
+
 
     
 
@@ -244,111 +259,6 @@ class Not(Request):
         return not self.sub_request.test(item)
 
 
-class ViewRequest(object):
-    """Class storing the information needed for a view.
-    
-    :attribute aliases: all aliases as defined when calling view
-    :attribute my_aliases: aliases concerning the access_point directly
-      (i.e., the path consists of only a property from the ap)
-    :attribute joins: a dict mapping property name to a boolean indicating 
-      wether the join should be outer or not (True: outer, False: inner)
-    :attribute subviews: a dict mapping property_names to View_Request objects
-    
-    """
-    def __init__(self, aliases, request):
-        # Initialize instance attributes
-        self.aliases = dict(aliases)
-        self._subaliases = {}
-        self._request = And()
-        self._original_request = request
-        self.additional_aliases = {}
-        self.additional_request = And()
-        self.subviews = {}
-        self.joins = {}
-        self.orphan_request = And()
-        # Process
-        self.classify(request)
 
-    @property
-    def request(self):
-        return simplify(And(self._request, self.additional_request))
 
-    def _classify_alias(self):
-        """Classify request aliases.
 
-        Return a dict mapping properties from this access point to to the alias
-        it should manage.
-
-        """
-        aliases = {}
-        for alias, property_path in self.aliases.items():
-            splitted_path = property_path.split(".")
-            if len(splitted_path) > 1:
-                root = splitted_path[0]
-                is_outer_join = root.startswith("<")
-                if is_outer_join:
-                    root = root[1:]
-                subaliases = self._subaliases.get(root, {})
-                subaliases.update({alias: ".".join(splitted_path[1:])})
-                self._subaliases[root] = subaliases
-                self.joins[root] = is_outer_join 
-                self.aliases.pop(alias)
-        return aliases
-
-    def _build_orphan(self, request):
-        if isinstance(request, Or):
-            return Or(*(self._build_orphan(subreq)
-                        for subreq in request.sub_requests))
-        elif isinstance(request, And):
-            return And(*(self._build_orphan(subreq)
-                         for subreq in request.sub_requests))
-        elif isinstance(request, Condition):
-            root, rest = request.root()
-            alias = "_____" + request.property_name
-            remote_aliases = self._subaliases.get(root, {})
-            remote_aliases[alias] = rest
-            self._subaliases[root] = remote_aliases
-            self.additional_aliases[alias] = request.property_name
-            cond = Condition(alias, request.operator, request.value)
-            return cond
-
-    def _classify_request(self, request, conds_by_prop=None):
-        conds_by_prop = conds_by_prop or {}
-        if isinstance(request, Condition):
-            root, rest = request.root()
-            if not rest:
-                self._request = And(self._request, request)
-            else: 
-                newcond = Condition(rest, request.operator, request.value)
-                self.joins[root] = True
-                conds_for_prop = conds_by_prop.get(root, [])
-                conds_for_prop.append(newcond)
-                conds_by_prop[root] = conds_for_prop
-        elif isinstance(request, Or):
-            # TODO: manage Or which belong strictly to the property, and 
-            # should therefore be kept
-            self.orphan_request = And(
-                self.orphan_request,self._build_orphan(request))
-            return {}
-        elif isinstance(request, And):
-            for branch in request.sub_requests:
-                conds_by_prop.update(
-                    self._classify_request(branch, conds_by_prop))
-        elif isinstance(request, Not):
-            conds_by_prop.update(
-                self._classify_request(request.subrequest, conds_by_prop))
-        return conds_by_prop
-
-    def classify(self, request):
-        """Build subviews from the aliases and request."""
-        self.subviews = {}
-        self.joins = {}
-        conditions = {}
-        self._classify_alias()
-        conditions = self._classify_request(request)
-        # Genereates the subviews from the processed aliases and requests
-        for key in self.joins:
-            req = conditions.get(key, [])
-            subview = ViewRequest(
-                self._subaliases.get(key, {}), And(*req))
-            self.subviews[key] = subview
