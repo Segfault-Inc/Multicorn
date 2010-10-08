@@ -24,7 +24,6 @@ Access point base class.
 """
 
 import abc
-from itertools import product
 
 from ..item import Item, ItemWrapper
 from ..request import And, Condition
@@ -90,7 +89,9 @@ class AccessPoint(object):
         raise NotImplementedError("Abstract method")
 
     def view(self, view_query):
-        """
+        """Return an iterable of dict-like objects matching ``view_query``.
+
+        TODO: the real behaviour of this method should be explained
 
         """
         items = self.search(And())
@@ -130,16 +131,13 @@ class AccessPoint(object):
         remote = self.site.access_points[lazy_prop.remote_ap]
         if lazy_prop.relation == "one-to-many":
             local_ref = self.identity_properties[0]
-            condition_property = "%s.%s" % (lazy_prop.remote_property, local_ref)
-            conditions = Condition(condition_property , '=',
-                    properties[local_ref])
-            def loader():
-                return (list(remote.search(conditions)),)
+            condition_prop = "%s.%s" % (lazy_prop.remote_property, local_ref)
+            conditions = Condition(condition_prop, '=', properties[local_ref])
         else:
             raise RuntimeError(
                 "Cannot use default lazy loader"
                 "on %s relation" % lazy_prop.relation)
-        return loader
+        return lambda: (list(remote.search(conditions)),)
 
     @abc.abstractmethod
     def save(self, item):

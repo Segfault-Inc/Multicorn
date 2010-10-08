@@ -72,7 +72,6 @@ def make_request_property(property_name):
     >>> make_request_property("a.id")
     a.id
     
-
     """
     properties = property_name.split(".")
     properties.reverse()
@@ -103,33 +102,33 @@ def make_request(request):
 
 
 def normalize(properties, request):
-    """Convert the condition values
+    """Convert the condition values.
     
-    Raises an exception if the property is not supplied or if it can't be cast
+    Raises an exception if the property is not supplied or if it can't be cast.
+
     """
     def _inner_normalize(request):
         if isinstance(request, (And, Or)):
-            return request.__class__(*(_inner_normalize(r) 
-                for r in request.sub_requests))
+            requests = (_inner_normalize(sub_request)
+                        for sub_request in request.sub_requests)
+            return request.__class__(*requests)
         elif isinstance(request, Not):
             return Not(_inner_normalize(request.sub_request))
         elif isinstance(request, Condition):
             # TODO: decide where the Condition.root method should be
-            root = request.property.property_name
+            root = request.property.name
             if root not in properties:
                 raise KeyError(
                     "This access point has no %r property." % root)
             # TODO: validate sub requests 
             value = properties[root].cast((request.value,))[0]
-            return Condition(property = request.property, operator =
-                    request.operator, value = value)
+            return Condition(request.property.name, request.operator, value)
     return simplify(_inner_normalize(make_request(request)))
 
 
 class Request(object):
     """Abstract class for kalamar requests."""
     __metaclass__ = ABCMeta
-
     _hash_attributes = ""
     
     @abstractmethod
@@ -142,28 +141,21 @@ class Request(object):
             self.__hash__() == other.__hash__()
 
     def __hash__(self):
-        return hash(self.__hash_tuple())
-
-    def __hash_tuple(self):
-        return tuple(
-            getattr(self, attr) for attr in self._hash_attributes.split())
+        return hash(tuple(
+                getattr(self, attr) for attr in self._hash_attributes.split()))
 
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
-
     _hash_attributes = "property operator value"
 
-    def __init__(self, property_name = None, operator='=', value=True, property=None):
+    def __init__(self, property_name=None, operator="=", value=True):
         try:
             self.operator_func = OPERATORS[operator]
         except KeyError:
             raise OperatorNotAvailable(
                 "Operator %r is not supported here." % operator)
-        if property is not None:
-            self.property = property
-        else:
-            self.property = make_request_property(property_name)
+        self.property = make_request_property(property_name)
         self.operator = operator
         self.value = value
 
@@ -177,49 +169,42 @@ class Condition(Request):
     
     def test(self, item):
         """Return if ``item`` matches the request."""
-        return self.operator_func(self.property.getValue(item), self.value)
+        return self.operator_func(self.property.get_value(item), self.value)
 
 class RequestProperty(object):
-
-    def __init__(self, property_name):
-        self.property_name = property_name
+    def __init__(self, name):
+        self.name = name
         self.child_property = None
 
-    def getValue(self, item):
-        return item[self.property_name]
+    def get_value(self, item):
+        return item[self.name]
 
     def __repr__(self):
-        return self.property_name
+        return self.name
 
     def __hash__(self):
-        return hash(self.property_name)
+        return hash(self.name)
 
 
 class ComposedRequestProperty(RequestProperty):
-
-    def __init__(self, property_name, child_property, inner = True):
+    def __init__(self, name, child_property, inner = True):
         self.inner = inner
-        self.property_name = property_name
+        self.name = name
         self.child_property = child_property
 
-    def getValue(self, item):
-        return self.child_property.getValue(item[self.property_name])
+    def get_value(self, item):
+        return self.child_property.get_value(item[self.name])
 
     def __repr__(self):
-        return "%s.%r" % (self.property_name, self.child_property)
+        return "%s.%r" % (self.name, self.child_property)
 
     def __hash__(self):
-        return hash((hash(self.property_name), hash(self.child_property)))
+        return hash((hash(self.name), hash(self.child_property)))
 
-
-
-
-    
 
 class _AndOr(Request):
     """Super class for And and Or that holds identical behavior."""
     __metaclass__ = ABCMeta
-
     _hash_attributes = "sub_requests __class__"
 
     def __init__(self, *sub_requests):
@@ -257,8 +242,3 @@ class Not(Request):
 
     def test(self, item):
         return not self.sub_request.test(item)
-
-
-
-
-
