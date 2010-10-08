@@ -140,6 +140,16 @@ def test_star_request():
     item = items[0]
     assert(all([alias in item for alias in ["label", "id", "children_label",
     "children_id"]]))
+    
+def test_star_request_with_cond():
+    site = init_data()
+    aliases = {'': '*', 'children_' : 'children.*'}
+    request = {'label': 'root', 'children_id' : 1}
+    items = list(site.view("root", aliases, request))
+    eq_(len(items), 1)
+    item = items[0]
+    assert(all([alias in item for alias in ["label", "id", "children_label",
+    "children_id"]]))
 
 
 def test_first_level_with_cond():

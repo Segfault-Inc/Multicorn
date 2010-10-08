@@ -174,7 +174,6 @@ class QuerySelect(Query):
                                  for name, value in (mapping or {}).items()))
         else:
             self.mapping = object_mapping
-        self.__mapping = dict(self.mapping)
         # Classify
         self.sub_selects = {}
         # Dict of dict
@@ -183,7 +182,7 @@ class QuerySelect(Query):
             if prop.child_property is not None:
                 sub_mapping = sub_mappings.setdefault(prop.name, {})
                 sub_mapping[alias] = prop.child_property
-                self.__mapping.pop(alias)
+                self.mapping.pop(alias)
         self.sub_selects = dict(((name, QuerySelect(object_mapping = value))
                                  for name, value in sub_mappings.items()))
 
@@ -192,7 +191,7 @@ class QuerySelect(Query):
             items = (items,)
         for item in items:
             newitem = {}
-            for alias, prop in self.__mapping.items():
+            for alias, prop in self.mapping.items():
                 if prop.name is not '*':
                     newitem[alias] = prop.get_value(item)
                 else:
@@ -210,6 +209,8 @@ class QuerySelect(Query):
                 yield newitem
 
     def validate(self, site, properties):
+        print properties
+        print self.mapping
         new_props = {}
         for name, prop in self.mapping.items():
             if prop.name is not '*':
@@ -229,6 +230,7 @@ class QuerySelect(Query):
             except KeyError:
                 raise BadQueryException(self, "%r is not a valid property" %
                         name)
+            print "SUBSELECTING:"
             new_props.update(sub_select.validate(site, child_properties))
         return new_props 
 

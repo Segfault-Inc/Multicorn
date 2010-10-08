@@ -42,6 +42,8 @@ def translate_request(request, aliases):
             return Condition(aliases.get(name, name),
                              request.operator,
                              request.value)
+        elif ".".join(name.split('.')[:-1] + ["*"])  in aliases:
+            return request
         else:
             new_name = "____%s" % name.replace(".", "_")
             aliases[name] = new_name
