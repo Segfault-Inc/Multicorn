@@ -49,6 +49,15 @@ class Query(object):
         raise NotImplementedError
 
 
+class BadQueryException(Exception):
+    def __init__(self, query, message):
+        self.query = query
+        self.message = message
+
+    def __str__(self):
+        return "This query is not valid: %r" % self.message 
+        
+
 class QueryChain(Query):
     """Chained query.
     
@@ -72,12 +81,10 @@ class QueryChain(Query):
             items = query(items)
         return items
 
-    def validate(self, site, query, properties):
-        for sub_query in query.queries:
-            valid, properties = sub_query.validate(site, sub_query, properties)
-            if not valid:
-                return False, properties
-        return True, properties
+    def validate(self, site, properties):
+        for sub_query in self.queries:
+            properties = sub_query.validate(site,  properties)
+        return properties
 
 
 class QueryDistinct(Query):
@@ -92,8 +99,8 @@ class QueryDistinct(Query):
         return (dict(item_tuple) for item_tuple in
                 set(tuple(item.items()) for item in items))
 
-    def validate(self, site, query, properties):
-        return True, properties
+    def validate(self, site, properties):
+        return properties
 
 
 class QueryFilter(Query):
@@ -113,8 +120,12 @@ class QueryFilter(Query):
     def __call__(self, items):
         return (item for item in items if self.condition.test(item))
 
-    def validate(self, site, query, properties):
-        return normalize(properties, query.condition), properties
+    def validate(self, site, properties):
+        try:
+            normalize(properties, self.condition)
+        except (KeyError, ValueError) as detail:
+            raise BadQueryException(self, detail)
+        return properties
 
 
     
@@ -141,11 +152,11 @@ class QueryOrder(Query):
             items.sort(key=itemgetter(key), reverse=(not order))
         return items
 
-    def validate(self, site, query, properties):
+    def validate(self, site, properties):
         for orderby in self.orderbys:
-            if not hasattr(orderby, "__hash__"):
-                return False, properties
-        return True, properties
+            if not hasattr(orderby, "__hash__") or orderby not in properties:
+                raise BadQueryException(self, "Can't sort on %s" % orderby)
+        return properties
 
 
 class QuerySelect(Query):
@@ -164,7 +175,6 @@ class QuerySelect(Query):
         else:
             self.mapping = object_mapping
         self.__mapping = dict(self.mapping)
-
         # Classify
         self.sub_selects = {}
         # Dict of dict
@@ -181,8 +191,13 @@ class QuerySelect(Query):
         if isinstance(items, Item) or isinstance(items, dict):
             items = (items,)
         for item in items:
-            newitem = dict(((alias, prop.get_value(item))
-                            for alias, prop in self.__mapping.items()))
+            newitem = {}
+            for alias, prop in self.__mapping.items():
+                if prop.name is not '*':
+                    newitem[alias] = prop.get_value(item)
+                else:
+                    newitem.update(dict([(("%s%s" % (alias, key)), value) 
+                        for key, value in item.items()]))
             if self.sub_selects:
                 sub_generators = tuple(
                     sub_select(item[prop]) for prop, sub_select
@@ -194,24 +209,28 @@ class QuerySelect(Query):
             else:
                 yield newitem
 
-    def validate(self, site, query, properties):
-        def derive_property(prop, old_prop):
-            if prop.child_property is None:
-                return old_prop
-            else:
-                childname = prop.child_property.name
-                try:
-                    access_point = site.access_points[old_prop.remote_ap]
-                    child_prop = access_point.properties[childname]
-                except KeyError:
-                    raise KeyError(
-                        "This request has no %r property" % childname)
-                return derive_property(prop.child_property, child_prop)
+    def validate(self, site, properties):
         new_props = {}
-        for name, prop in query.mapping.items():
-            old_prop = properties[prop.name]
-            new_props[name] = derive_property(prop, old_prop)
-        return True, new_props 
+        for name, prop in self.mapping.items():
+            if prop.name is not '*':
+                try:
+                    old_prop = properties[prop.name]
+                except KeyError:
+                    raise BadQueryException(self, 
+                            "This request has no %r property" % prop.name)
+                new_props[name] = old_prop 
+            else:
+                new_props.update(dict([(("%s%s" % (name, oldname)), oldprop) 
+                    for oldname, oldprop in properties.items()]))
+        for name, sub_select in self.sub_selects.items():
+            try:
+                root = properties[name]
+                child_properties = site.access_points[root.remote_ap].properties
+            except KeyError:
+                raise BadQueryException(self, "%r is not a valid property" %
+                        name)
+            new_props.update(sub_select.validate(site, child_properties))
+        return new_props 
 
 
 class QueryRange(Query):
@@ -229,6 +248,6 @@ class QueryRange(Query):
     def __call__(self, items):
         return itertools.islice(items, self.range.start, self.range.stop)
 
-    def validate(self, site, query, properties):
+    def validate(self, site, properties):
         # TODO: validate self.range
-        return True, properties
+        return properties

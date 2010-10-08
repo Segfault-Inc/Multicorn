@@ -28,6 +28,7 @@ from kalamar.request import Condition, Or, Request
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
+from kalamar.query import BadQueryException
 
 
 @nottest
@@ -98,7 +99,7 @@ def test_bad_request():
     site = init_data()
     try:
         list(site.view("root", {"leaf_label": "children.grou"}, {}))
-    except KeyError:
+    except BadQueryException:
         pass
     else:
         assert False, "Expected KeyError."
@@ -106,7 +107,7 @@ def test_bad_request():
     try:
         list(site.view("root", {"leaf_label": "children.label"},
             {"children.grou" : 4}))
-    except KeyError:
+    except BadQueryException:
         pass
     else:
         assert False, "Expected KeyError."
@@ -115,7 +116,7 @@ def test_bad_request():
     try:
         list(site.view("root", {"leaf_label": "children.label"},
             {"children.children.id" : "abc"}))
-    except ValueError:
+    except BadQueryException:
         pass
     else:
         assert False, "Expected ValueError."
@@ -130,6 +131,16 @@ def test_first_level():
     aliases = {"leaf_label": "children.label", "root_label": "label"}
     items = list(site.view("root", aliases, {}))
     eq_(len(items), 2)
+
+def test_star_request():
+    site = init_data()
+    aliases = {'': '*', 'children_' : 'children.*'}
+    items = list(site.view("root", aliases, {}))
+    eq_(len(items), 2)
+    item = items[0]
+    assert(all([alias in item for alias in ["label", "id", "children_label",
+    "children_id"]]))
+
 
 def test_first_level_with_cond():
     site = init_data()

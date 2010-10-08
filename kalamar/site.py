@@ -80,6 +80,8 @@ class Site(object):
 
     def view(self, access_point, aliases=None, request=None, query=None):
         access_point = self.access_points[access_point]
+        if aliases is None:
+            aliases = {'': '*'}
         if query is None:
             # Add dummy selects to be able to filter on those
             aliases = dict(((value, key) for key, value in aliases.items()))
@@ -87,14 +89,11 @@ class Site(object):
             request = translate_request(request, aliases)
             aliases = dict(((value, key) for key, value in aliases.items()))
             query = QueryChain((QuerySelect(aliases), QueryFilter(request)))
-        valid = self.validate_query(access_point, query)[0]
-        if valid:
-            return access_point.view(query)
-        else:
-            raise RuntimeError("Bad Query")
+        self.validate_query(access_point, query)
+        return access_point.view(query)
 
     def validate_query(self, access_point, query):
-        return query.validate(self, query, access_point.properties)
+        return query.validate(self, access_point.properties)
 
     open = deleguate_to_acces_point("open", True)
     search = deleguate_to_acces_point("search", True)
