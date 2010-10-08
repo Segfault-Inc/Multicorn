@@ -209,8 +209,6 @@ class QuerySelect(Query):
                 yield newitem
 
     def validate(self, site, properties):
-        print properties
-        print self.mapping
         new_props = {}
         for name, prop in self.mapping.items():
             if prop.name is not '*':
@@ -230,7 +228,6 @@ class QuerySelect(Query):
             except KeyError:
                 raise BadQueryException(self, "%r is not a valid property" %
                         name)
-            print "SUBSELECTING:"
             new_props.update(sub_select.validate(site, child_properties))
         return new_props 
 
