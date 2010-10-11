@@ -24,6 +24,7 @@ Access point base class.
 """
 
 import abc
+import uuid
 
 from ..item import Item, ItemWrapper
 from ..request import And, Condition
@@ -122,9 +123,28 @@ class AccessPoint(object):
                   and name not in properties and name not in lazy_loaders]))
         for name, value in lazy_refs.items(): 
             lazy_loaders[name] = self._default_loader(properties, value)
+
+        # Create loaders for auto properties
+        for name, prop in self.properties.items():
+            if prop.auto and name not in properties:
+                lazy_loaders[name] = lambda: self._auto_value(prop)
+
         item = Item(self, properties, lazy_loaders)
         item.modified = True
         return item
+
+    def _auto_value(self, prop):
+        """Return a random value corresponding to ``prop`` type."""
+        if prop.type == datetime.datetime:
+            # TODO: find a better random value
+            return datetime.datetime.now()
+        elif prop.type == datetime.date:
+            # TODO: find a better random value
+            return datetime.date.today()
+        elif prop.type == float:
+            return uuid.uuid4().int / float(uuid.uuid4().int)
+        else:
+            return prop.type(uuid.uuid4())
 
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
