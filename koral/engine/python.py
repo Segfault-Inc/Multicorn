@@ -20,10 +20,10 @@ Python engine support for Koral.
 
 """
 
-from koral.engine.base import FileBasedEngine
+from . import BaseEngine
 
 
-class PythonEngine(FileBasedEngine):
+class PythonEngine(BaseEngine):
     """Python engine for Koral.
 
     Simply calls ``handle_request(request)``.
@@ -31,7 +31,7 @@ class PythonEngine(FileBasedEngine):
     """
     name = "py"
     
-    def render(self, template_name, values={}, lang=None, modifiers=None):
+    def render(self, template_name, values, lang, modifiers):
         """Render Python template."""
         local = {}
         execfile(self._build_filename(template_name), local, local)

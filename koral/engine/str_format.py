@@ -21,10 +21,10 @@ See http://docs.python.org/library/string.html#formatstrings
 
 """
 
-from koral.engine.base import FileBasedEngine
+from . import BaseEngine
 
 
-class StrFormatEngine(FileBasedEngine):
+class StrFormatEngine(BaseEngine):
     """Simple Koral engine based on ``str.format``:
     http://docs.python.org/library/string.html#formatstrings
     
@@ -41,8 +41,7 @@ class StrFormatEngine(FileBasedEngine):
         super(StrFormatEngine, self).__init__(path_to_root)
         self.encoding = encoding
         
-    def render(self, template_name, values=None, lang=None, modifiers=None):
+    def render(self, template_name, values, lang, modifiers):
         """Render str-format template."""
-        with open(self._build_filename(template_name)) as f:
-            return f.read().decode(self.encoding).format(**values)
-
+        with open(self._build_filename(template_name)) as file_descriptor:
+            return file_descriptor.read().decode(self.encoding).format(**values)

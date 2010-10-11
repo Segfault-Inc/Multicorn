@@ -44,8 +44,8 @@ class Site(object):
         """
         self.engines[name] = engine_class(self.path_to_root)
     
-    def render(self, site_engine, template_name, values={}, lang=None,
+    def render(self, site_engine, template_name, values=None, lang=None,
                modifiers=None):
         """Shorthand to the engine render method."""
         return self.engines[site_engine].render(
-            template_name, values, lang, modifiers)
+            template_name, values or {}, lang, modifiers)

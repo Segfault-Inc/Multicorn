@@ -20,7 +20,7 @@ Jinja2 engine support for Koral.
 
 """
 
-from koral.engine.base import BaseEngine
+from . import BaseEngine
 
 
 class Jinja2Engine(BaseEngine):
@@ -33,7 +33,7 @@ class Jinja2Engine(BaseEngine):
         from jinja2 import Environment, FileSystemLoader
         self._env = Environment(loader=FileSystemLoader(self.path_to_root))
         
-    def render(self, template_name, values={}, lang=None, modifiers=None):
+    def render(self, template_name, values, lang, modifiers):
         """Render Jinja2 template."""
         template = self._env.get_template(template_name)
         return template.render(**values)

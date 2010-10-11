@@ -20,8 +20,7 @@ Genshi engine support for Koral.
 
 """
 
-
-from koral.engine.base import BaseEngine
+from . import BaseEngine
 
 
 class GenshiEngine(BaseEngine):
@@ -34,7 +33,7 @@ class GenshiEngine(BaseEngine):
         from genshi.template import TemplateLoader
         self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
         
-    def render(self, template_name, values={}, lang=None, modifiers=None):
+    def render(self, template_name, values, lang, modifiers):
         """Render Genshi template."""
         import genshi.input
         values = dict(values, XML=genshi.input.XML)

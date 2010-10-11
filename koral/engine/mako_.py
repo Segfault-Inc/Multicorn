@@ -33,8 +33,7 @@ class MakoEngine(BaseEngine):
         from mako.lookup import TemplateLookup
         self._loader = TemplateLookup(directories=[self.path_to_root])
         
-    def render(self, template_name, values={}, lang=None, modifiers=None):
+    def render(self, template_name, values, lang, modifiers):
         """Render Mako template."""
-        values = dict(values)
         template = self._loader.get_template(template_name)
         return template.render_unicode(**values)
