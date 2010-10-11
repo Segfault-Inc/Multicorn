@@ -20,7 +20,7 @@ Mako engine support for Koral.
 
 """
 
-from koral.engine.base import BaseEngine
+from . import BaseEngine
 
 
 class MakoEngine(BaseEngine):
