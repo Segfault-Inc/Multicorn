@@ -135,19 +135,19 @@ class AccessPoint(object):
         return item
 
     def _auto_value(self, prop):
-        """Return a random value corresponding to ``prop`` type."""
+        """Return a random list of values corresponding to ``prop`` type."""
         if prop.type == datetime.datetime:
             # TODO: find a better random value
-            return datetime.datetime.now()
+            return (datetime.datetime.now(),)
         elif prop.type == datetime.date:
             # TODO: find a better random value
-            return datetime.date.today()
+            return (datetime.date.today(),)
         elif prop.type == float:
-            return uuid.uuid4().int / float(uuid.uuid4().int)
+            return (uuid.uuid4().int / float(uuid.uuid4().int),)
         elif prop.type == iter:
-            return uuid.uuid4().bytes
+            return (uuid.uuid4().bytes,)
         else:
-            return prop.type(uuid.uuid4())
+            return (prop.type(uuid.uuid4()),)
 
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
