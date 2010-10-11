@@ -26,8 +26,7 @@ class Memory(AccessPoint):
 
     """
     def __init__(self, properties, id_property):
-        self.properties = properties
-        self.identity_properties = (id_property,)
+        super(Memory, self).__init__(properties, (id_property,))
         self._id_property = id_property
         self._store = {}
         

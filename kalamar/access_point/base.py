@@ -61,6 +61,10 @@ class AccessPoint(object):
 
     """
     __metaclass__ = abc.ABCMeta
+
+    def __init__(self, properties, identity_properties):
+        self.properties = properties
+        self.identity_properties = identity_properties
     
     def open(self, request, default=DEFAULT_PARAMETER):
         """Return the item in access point matching ``request``.
@@ -162,10 +166,9 @@ class AccessPointWrapper(AccessPoint):
             and values are the names in the wrapped access point.
 
         """
-        super(AccessPointWrapper, self).__init__()
+        super(AccessPointWrapper, self).__init__(wrapped_ap.properties,
+                wrapped_ap.identity_properties)
         self.wrapped_ap = wrapped_ap
-        self.properties = wrapped_ap.properties
-        self.identity_properties = wrapped_ap.identity_properties
     
     def search(self, request):
         for underlying_item in self.wrapped_ap.search(request):

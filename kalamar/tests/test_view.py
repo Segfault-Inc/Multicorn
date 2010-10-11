@@ -28,7 +28,7 @@ from kalamar.request import Condition, Or, Request
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
-from kalamar.query import BadQueryException
+from kalamar.query import BadQueryException, QuerySelect, QueryFilter
 
 
 @nottest
@@ -99,10 +99,10 @@ def test_bad_request():
     site = init_data()
     try:
         list(site.view("root", {"leaf_label": "children.grou"}, {}))
-    except BadQueryException:
-        pass
+    except BadQueryException as e:
+        assert(isinstance(e.query, QuerySelect))
     else:
-        assert False, "Expected KeyError."
+        assert False, "Expected BadQueryException."
 
     try:
         list(site.view("root", {"leaf_label": "children.label"},
@@ -110,16 +110,23 @@ def test_bad_request():
     except BadQueryException:
         pass
     else:
-        assert False, "Expected KeyError."
+        assert False, "Expected BadQueryException."
 
 
     try:
         list(site.view("root", {"leaf_label": "children.label"},
             {"children.children.id" : "abc"}))
-    except BadQueryException:
-        pass
+    except BadQueryException as e:
+        assert(isinstance(e.query, QueryFilter))
     else:
-        assert False, "Expected ValueError."
+        assert False, "Expected BadQueryException."
+
+    try:
+        list(site.view("root", {"leaf_label": "childr.label"}))
+    except BadQueryException as e:
+        assert(isinstance(e.query, QuerySelect))
+    else:
+        assert False, "Expected BadQueryException"
 
     
 

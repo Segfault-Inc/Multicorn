@@ -31,31 +31,34 @@ from kalamar.item import Item
 
 from .request import normalize
 
-
+# pylint: disable-msg=R0903
 class Query(object):
     """Query class.
-
-    TODO: describe this (useless?) class
 
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def __call__(self, items):
+        """Performs the query on the items
+        
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def validate(self, site, query, properties):
+    def validate(self, site, properties):
+        """Validates the query 
+
+        """
         raise NotImplementedError
 
 
 class BadQueryException(Exception):
     def __init__(self, query, message):
+        super(BadQueryException, self).__init__(message)
         self.query = query
         self.message = message
 
-    def __str__(self):
-        return "This query is not valid: %r" % self.message 
         
 
 class QueryChain(Query):
@@ -74,6 +77,7 @@ class QueryChain(Query):
 
     """
     def __init__(self, queries):
+        super(QueryChain, self).__init__()
         self.queries = queries
 
     def __call__(self, items):
@@ -115,6 +119,7 @@ class QueryFilter(Query):
 
     """
     def __init__(self, condition):
+        super(QueryFilter, self).__init__()
         self.condition = condition
 
     def __call__(self, items):
@@ -126,7 +131,6 @@ class QueryFilter(Query):
         except (KeyError, ValueError) as detail:
             raise BadQueryException(self, detail)
         return properties
-
 
     
 class QueryOrder(Query):
@@ -142,6 +146,7 @@ class QueryOrder(Query):
 
     """
     def __init__(self, orderbys):
+        super(QueryOrder, self).__init__()
         self.orderbys = orderbys
     
     def __call__(self, items):
@@ -169,6 +174,7 @@ class QuerySelect(Query):
 
     """
     def __init__(self, mapping=None, object_mapping=None):
+        super(QuerySelect, self).__init__()
         if object_mapping is None:
             self.mapping = dict(((name, make_request_property(value))
                                  for name, value in (mapping or {}).items()))
@@ -242,11 +248,11 @@ class QueryRange(Query):
     
     """
     def __init__(self, query_range):
+        super(QueryRange, self).__init__()
         self.range = query_range
 
     def __call__(self, items):
         return itertools.islice(items, self.range.start, self.range.stop)
 
     def validate(self, site, properties):
-        # TODO: validate self.range
         return properties
