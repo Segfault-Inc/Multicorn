@@ -16,14 +16,14 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Aliases access point
-====================
+Aliases
+=======
 
 Access point giving other names to the properties of the wrapped access point.
 
 """
 
-from .base import AccessPointWrapper
+from . import AccessPointWrapper
 from ..item import MultiMapping, MultiDict, ItemWrapper
 from ..request import Condition, And, Or, Not
 
@@ -47,7 +47,6 @@ class AliasedItem(ItemWrapper):
 
 class Aliases(AccessPointWrapper):
     """Wrapper access point renaming properties."""
-    
     ItemWrapper = AliasedItem
     
     def __init__(self, wrapped_ap, aliases):

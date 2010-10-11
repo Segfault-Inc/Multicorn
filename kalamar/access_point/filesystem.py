@@ -15,22 +15,30 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Filesystem
+==========
+
+Access point storing items in a filesystem.
+
+"""
+
 import os.path
 import re
-from .base import AccessPoint
+
+from . import AccessPoint
 from ..item import Item
 from ..property import Property
 
 
 class FileSystem(AccessPoint):
-    """Store each item in a file.
-
-    """
+    """Store each item in a file."""
     def __init__(self, root_dir, pattern, properties,
-                 content_property='content'):
-        if pattern.count('*') != len(properties):
-            raise ValueError('FileSystem must have as many properties as'
-                             '* wildcards in pattern.')
+                 content_property="content"):
+        if pattern.count("*") != len(properties):
+            raise ValueError(
+                "FileSystem must have as many properties as"
+                "* wildcards in pattern.")
         self.root_dir = unicode(root_dir)
         self.content_property = content_property
 
@@ -45,25 +53,26 @@ class FileSystem(AccessPoint):
         self.identity_properties = tuple(name for name, p in 
                                          self._ordered_properties)
 
-        self._pattern_parts = unicode(pattern).split('/')
+        self._pattern_parts = unicode(pattern).split("/")
 
         properties_iter = iter(self.identity_properties)
         self.properties_per_path_part = tuple(
-            (tuple(next(properties_iter) for i in xrange(part.count('*'))),
-             re.compile('^%s$' % '(.*)'.join(map(re.escape, part.split('*')))),
-             part.replace('*', '%s'))
+            (tuple(next(properties_iter) for i in xrange(part.count("*"))),
+             re.compile("^%s$" % "(.*)".join(map(re.escape, part.split("*")))),
+             part.replace("*", "%s"))
             for part in self._pattern_parts)
-    
+
     def _filename_for(self, item):
         return os.path.join(self.root_dir, *(
             template % tuple(unicode(item[p]) for p in props)
             for props, regexp, template in self.properties_per_path_part))
-        
+
     def search(self, request):
         def defered_open(path):
             def loader():
-                return (open(path, 'rb'),)
+                return (open(path, "rb"),)
             return loader
+
         def walk(root, remaining_path_parts, previous_properties=()):
             props, regexp, template = remaining_path_parts[0]
             remaining_path_parts = remaining_path_parts[1:]
@@ -83,10 +92,9 @@ class FileSystem(AccessPoint):
                     if request.test(item):
                         yield item
         return walk(self.root_dir, self.properties_per_path_part)
-    
+
     def delete(self, item):
         raise NotImplementedError
-    
+
     def save(self, item): 
         raise NotImplementedError
-    
