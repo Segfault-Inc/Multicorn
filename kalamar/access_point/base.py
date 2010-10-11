@@ -143,6 +143,8 @@ class AccessPoint(object):
             return datetime.date.today()
         elif prop.type == float:
             return uuid.uuid4().int / float(uuid.uuid4().int)
+        elif prop.type == iter:
+            return uuid.uuid4().bytes
         else:
             return prop.type(uuid.uuid4())
 
