@@ -31,12 +31,12 @@ class StrFormatEngine(FileBasedEngine):
     This is mainly useful for testing koral and kraken, when other template
     engines may not be installed.
 
-    Equivalent to .format(**values) on the content of the template file.
+    Equivalent to ``str.format(**values)`` on the content of the template file.
 
     """
-    name = 'str-format'
+    name = "str-format"
     
-    def __init__(self, path_to_root, encoding='utf-8'):
+    def __init__(self, path_to_root, encoding="utf-8"):
         super(StrFormatEngine, self).__init__(path_to_root)
         self.encoding = encoding
         
