@@ -25,10 +25,10 @@ from koral.engine.base import FileBasedEngine
 
 
 class StrFormatEngine(FileBasedEngine):
-    """Simple engine for Koral, based on ``str.format``.
-    See http://docs.python.org/library/string.html#formatstrings
+    """Simple Koral engine based on ``str.format``:
+    http://docs.python.org/library/string.html#formatstrings
     
-    This is mainly useful for testing koral and kraken, when other template
+    This is mainly useful for testing Koral and Kraken, when other template
     engines may not be installed.
 
     Equivalent to ``str.format(**values)`` on the content of the template file.
@@ -37,10 +37,12 @@ class StrFormatEngine(FileBasedEngine):
     name = "str-format"
     
     def __init__(self, path_to_root, encoding="utf-8"):
+        """Str-format engine initialisation."""
         super(StrFormatEngine, self).__init__(path_to_root)
         self.encoding = encoding
         
     def render(self, template_name, values=None, lang=None, modifiers=None):
+        """Render str-format template."""
         with open(self._build_filename(template_name)) as f:
             return f.read().decode(self.encoding).format(**values)
 

@@ -27,14 +27,14 @@ from .genshi_ import GenshiEngine
 from .mako_ import MakoEngine
 
 
-BUILTIN_ENGINES = {'py': PythonEngine, 'str-format': StrFormatEngine}
+BUILTIN_ENGINES = {"py": PythonEngine, "str-format": StrFormatEngine}
 
-for name, engine in (('jinja2', Jinja2Engine), ('genshi', GenshiEngine),
-                     ('mako', MakoEngine)):
+for name, engine in (("jinja2", Jinja2Engine), ("genshi", GenshiEngine),
+                     ("mako", MakoEngine)):
     try:
-        engine('/nonexistent-path')
+        engine("/nonexistent-path")
     except ImportError:
-        # not installed/available
+        # Not installed/available
         pass
     else:
         BUILTIN_ENGINES[name] = engine

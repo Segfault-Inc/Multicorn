@@ -24,9 +24,8 @@ from koral.engine.base import BaseEngine
 
 
 class Jinja2Engine(BaseEngine):
-    """Koral engine for Jinja2: http://jinja.pocoo.org/2/
-    """
-    name = 'jinja2'
+    """Koral engine for Jinja2: http://jinja.pocoo.org/2/"""
+    name = "jinja2"
     
     def __init__(self, *args, **kwargs):
         """Jinja2 engine initialisation."""

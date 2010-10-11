@@ -29,7 +29,7 @@ class PythonEngine(FileBasedEngine):
     Simply calls ``handle_request(request)``.
 
     """
-    name = 'py'
+    name = "py"
     
     def render(self, template_name, values={}, lang=None, modifiers=None):
         """Render Python template."""

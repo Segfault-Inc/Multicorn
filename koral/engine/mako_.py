@@ -24,10 +24,8 @@ from koral.engine.base import BaseEngine
 
 
 class MakoEngine(BaseEngine):
-    r"""Koral engine for Mako: http://www.makotemplates.org/
-
-    """
-    name = 'mako'
+    """Koral engine for Mako: http://www.makotemplates.org/"""
+    name = "mako"
     
     def __init__(self, *args, **kwargs):
         """Mako engine initialisation."""
@@ -36,7 +34,7 @@ class MakoEngine(BaseEngine):
         self._loader = TemplateLookup(directories=[self.path_to_root])
         
     def render(self, template_name, values={}, lang=None, modifiers=None):
-        """Render mako template."""
+        """Render Mako template."""
         values = dict(values)
         template = self._loader.get_template(template_name)
         return template.render_unicode(**values)
