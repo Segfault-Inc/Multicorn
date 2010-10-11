@@ -59,7 +59,7 @@ class AccessPoint(object):
         the "identity" of items in this access point.
 
     Moreover, :attr:`site` is added when an access point is registered. This
-    attribute is mandatory for :method:`view`.
+    attribute is mandatory for :meth:`view`.
 
     """
     __metaclass__ = abc.ABCMeta
