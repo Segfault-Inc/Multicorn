@@ -34,22 +34,6 @@ from ..request import And, Condition
 DEFAULT_PARAMETER = object()
 
 
-def auto_value(prop):
-    """Return a random list of values corresponding to ``prop`` type."""
-    if prop.type == datetime.datetime:
-        # TODO: find a better random value
-        return datetime.datetime.now()
-    elif prop.type == datetime.date:
-        # TODO: find a better random value
-        return datetime.date.today()
-    elif prop.type == float:
-        return uuid.uuid4().int / float(uuid.uuid4().int)
-    elif prop.type == iter:
-        return uuid.uuid4().bytes
-    else:
-        return prop.type(uuid.uuid4())
-
-
 class NotOneMatchingItem(Exception):
     """Not one object has been returned."""
 
@@ -149,11 +133,27 @@ class AccessPoint(object):
         for name, prop in self.properties.items():
             if prop.auto and (name not in properties):
                 lazy_loaders[name] = (
-                    lambda prop: lambda: (auto_value(prop),))(prop)
+                    lambda prop: lambda: (self.auto_value(prop),))(prop)
 
         item = Item(self, properties, lazy_loaders)
         item.modified = True
         return item
+
+    @staticmethod
+    def _auto_value(self, prop):
+        """Return a random list of values corresponding to ``prop`` type."""
+        if prop.type == datetime.datetime:
+            # TODO: find a better random value
+            return datetime.datetime.now()
+        elif prop.type == datetime.date:
+            # TODO: find a better random value
+            return datetime.date.today()
+        elif prop.type == float:
+            return uuid.uuid4().int / float(uuid.uuid4().int)
+        elif prop.type == iter:
+            return uuid.uuid4().bytes
+        else:
+            return prop.type(uuid.uuid4())
 
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
