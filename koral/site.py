@@ -38,7 +38,7 @@ class Site(object):
         """Add an engine to this site.
         
         :param name: Identifier string for this engine. Pass the same value
-            to :method:`render` to use the registered engine.
+            to :meth:`render` to use the registered engine.
         :param engine_class: A concrete subclass of :class:`BaseEngine`
         
         """
