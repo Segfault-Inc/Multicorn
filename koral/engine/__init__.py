@@ -30,7 +30,7 @@ import os.path
 class BaseEngine(object):
     """Abstract class for all template engine adaptators in Koral.
 
-    Subclasses must override :method:`render`.
+    Subclasses must override :meth:`render`.
 
     """
     __metaclass__ = abc.ABCMeta
