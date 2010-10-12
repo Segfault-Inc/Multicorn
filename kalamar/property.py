@@ -37,6 +37,25 @@ class MissingRemoteProperty(RuntimeError):
 
 
 class Property(object):
+    """Access point property.
+
+    :param property_type: Type of the property. Supported types are listed in
+        :const:`value.PROPERTY_TYPES`. Additional types may work depending on
+        the access point.
+    :param boolean identity: Boolean defining if the property is identifying the
+        item.
+    :param boolean auto: Boolean defining if the value of the property may be
+        automatically added by the access point when creating an item.
+    :param default: Default value of the property that may be automatically set
+        by the access point when creating an item.
+    :param boolean mandatory: Boolean defining if the property is mandatory.
+    :param relation: Type of the relation created by this property with another
+        access point. Can be ``"many-to-one"``, ``"one-to-many"`` or ``None``.
+    :param remote_ap: Remote access point linked by ``relation``.
+    :param remote_property: Property of the remote access point linked by
+        ``relation``.
+
+    """
     def __init__(self, property_type, identity=False, auto=False,
                  default=None, mandatory=False, relation=None, remote_ap=None,
                  remote_property=None):
