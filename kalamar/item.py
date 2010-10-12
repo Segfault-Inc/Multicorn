@@ -27,7 +27,25 @@ import abc
 import collections
 
 
-Identity = collections.namedtuple("Identity", "access_point, conditions")
+class Identity(collections.namedtuple("Identity", "access_point, conditions")):
+    """Simple class identifying items.
+
+    :param access_point: The access point name of the item.
+    :param conditions: A dict of conditions identifying the item.
+
+    >>> identity = Identity("ap_name", {"id": 1})
+    >>> identity.access_point
+    'ap_name'
+    >>> identity.conditions
+    {'id': 1}
+
+    :class:`Identity` manages equality between equivalent items.
+
+    >>> identity2 = Identity("ap_name", {"id": 1})
+    >>> identity == identity2
+    True
+
+    """
 
 
 class MultiMapping(collections.Mapping):
@@ -43,9 +61,11 @@ class MultiMapping(collections.Mapping):
 
     @abc.abstractmethod
     def getlist(self, key):
-        raise KeyError
+        """Get the tuple of values associated to ``key``."""
+        raise NotImplementedError
 
     def __getitem__(self, key):
+        """Get the first value of the tuple of values associated to ``key``."""
         return self.getlist(key)[0]
 
 
@@ -61,13 +81,20 @@ class MutableMultiMapping(MultiMapping, collections.MutableMapping):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def setlist(self, key, value):
-        raise KeyError
+    def setlist(self, key, values):
+        """Set the ``values`` tuple of values associated to ``key``."""
+        raise NotImplementedError
 
     def __setitem__(self, key, value):
+        """Set ``(value,)`` as the tuple of values associated to ``key``."""
         self.setlist(key, (value,))
     
     def update(self, other):
+        """Add the values of the ``other`` mapping to the current mapping.
+
+        ``other`` can be a regular mapping or a multimapping.
+
+        """
         if isinstance(other, MultiMapping):
             for key in other:
                 self.setlist(key, other.getlist(key))
@@ -246,7 +273,9 @@ class Item(AbstractItem):
 
 
 class ItemWrapper(AbstractItem):
+    """Item wrapping another item."""
     def __init__(self, access_point, wrapped_item):
+        """Wrap ``wrapped_item`` in an item saved in ``access_point``."""
         super(ItemWrapper, self).__init__(access_point)
         self.access_point = access_point
         self.wrapped_item = wrapped_item
@@ -257,7 +286,7 @@ class ItemWrapper(AbstractItem):
     def setlist(self, key, values):
         return self.wrapped_item.setlist(key, values)
     
-    # default to underlying_item for all other methods and attributes
     def __getattr__(self, name):
+        """Default to underlying item for all other methods and attributes."""
         return getattr(self.wrapped_item, name)
 
