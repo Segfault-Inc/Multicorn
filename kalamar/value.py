@@ -64,7 +64,7 @@ class FixedOffsetTimeZone(datetime.tzinfo):
 
 
 def to_datetime(value):
-    """Cast ``value`` into :class:`datetime.datetime`` object.
+    """Cast ``value`` into :class:`datetime.datetime` object.
 
     >>> to_datetime("20100804")
     datetime.datetime(2010, 8, 4, 0, 0)
