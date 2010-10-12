@@ -278,9 +278,13 @@ class Item(AbstractItem):
 
 
 class ItemWrapper(AbstractItem):
-    """Item wrapping another item."""
+    """Item wrapping another item.
+
+    :param wrapped_item: Item wrapped in the current item.
+    :param access_point: Access point where the current item is stored.
+
+    """
     def __init__(self, access_point, wrapped_item):
-        """Wrap ``wrapped_item`` in an item saved in ``access_point``."""
         super(ItemWrapper, self).__init__(access_point)
         self.access_point = access_point
         self.wrapped_item = wrapped_item
