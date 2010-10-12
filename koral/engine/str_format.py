@@ -16,8 +16,12 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Simple engine for Koral, based on ``str.format``.
-See http://docs.python.org/library/string.html#formatstrings
+Format
+======
+
+Simple engine for Koral, based on :meth:`str.format`.
+
+http://docs.python.org/library/string.html#formatstrings
 
 """
 
@@ -25,8 +29,7 @@ from . import BaseEngine
 
 
 class StrFormatEngine(BaseEngine):
-    """Simple Koral engine based on ``str.format``:
-    http://docs.python.org/library/string.html#formatstrings
+    """Simple Koral engine based on :meth:`str.format`.
     
     This is mainly useful for testing Koral and Kraken, when other template
     engines may not be installed.

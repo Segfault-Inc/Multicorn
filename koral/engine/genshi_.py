@@ -16,7 +16,12 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Genshi
+======
+
 Genshi engine support for Koral.
+
+http://genshi.edgewall.org/
 
 """
 
@@ -24,7 +29,7 @@ from . import BaseEngine
 
 
 class GenshiEngine(BaseEngine):
-    """Koral engine for Genshi: http://genshi.edgewall.org/"""
+    """Koral engine for Genshi."""
     name = "genshi"
     
     def __init__(self, *args, **kwargs):

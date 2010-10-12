@@ -16,7 +16,10 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Parser module listing all engine access points.
+Engine
+======
+
+Engine base class.
 
 """
 
@@ -27,7 +30,7 @@ import os.path
 class BaseEngine(object):
     """Abstract class for all template engine adaptators in Koral.
 
-    Subclasses must override the ``render`` method.
+    Subclasses must override :method:`render`.
 
     """
     __metaclass__ = abc.ABCMeta
@@ -48,13 +51,11 @@ class BaseEngine(object):
 
         This method has to be overriden.
 
-        Parameters:
-
-        - ``template_name``: path to the template file used.
-        - ``values``: dictionnary of values used by the template.
-        - ``lang``: lang code like "en-us" or "fr"
-        - ``modifiers``: theming modifiers. These can be specific to each
-          template engine.
+        :param template_name: Path to the template file used.
+        :param values: Mapping of values used by the template.
+        :param lang: Lang code like "en-us" or "fr"
+        :param modifiers: Theming modifiers that can be specific to each
+            template engine.
 
         """
         raise NotImplementedError

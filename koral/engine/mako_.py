@@ -16,7 +16,12 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Mako
+====
+
 Mako engine support for Koral.
+
+http://www.makotemplates.org/
 
 """
 
@@ -24,14 +29,14 @@ from . import BaseEngine
 
 
 class MakoEngine(BaseEngine):
-    """Koral engine for Mako: http://www.makotemplates.org/"""
+    """Koral engine for Mako."""
     name = "mako"
     
     def __init__(self, *args, **kwargs):
         """Mako engine initialisation."""
         super(MakoEngine, self).__init__(*args, **kwargs)
         from mako.lookup import TemplateLookup
-        self._loader = TemplateLookup(directories=[self.path_to_root])
+        self._loader = TemplateLookup(directories=(self.path_to_root,))
         
     def render(self, template_name, values, lang, modifiers):
         """Render Mako template."""

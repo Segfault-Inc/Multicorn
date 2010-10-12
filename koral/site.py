@@ -16,9 +16,10 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Koral Site class.
+Site
+====
 
-Create one for each independent site.
+Site class. Create one for each independent site.
 
 """
 

@@ -16,7 +16,12 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Jinja2
+======
+
 Jinja2 engine support for Koral.
+
+http://jinja.pocoo.org/2/
 
 """
 
@@ -24,7 +29,7 @@ from . import BaseEngine
 
 
 class Jinja2Engine(BaseEngine):
-    """Koral engine for Jinja2: http://jinja.pocoo.org/2/"""
+    """Koral engine for Jinja2."""
     name = "jinja2"
     
     def __init__(self, *args, **kwargs):
