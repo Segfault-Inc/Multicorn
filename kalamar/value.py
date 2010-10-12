@@ -45,6 +45,7 @@ class FixedOffsetTimeZone(datetime.tzinfo):
     """
     def __init__(self, offset_hours, offset_minutes):
         """Initialize timezone information with given offsets and name."""
+        super(FixedOffsetTimeZone, self).__init__()
         self.__offset = datetime.timedelta(
             hours=offset_hours, minutes=offset_minutes)
         self.__name = "UTC%+03i:%02i" % (offset_hours, offset_minutes)
@@ -109,8 +110,9 @@ def to_datetime(value):
                 tzinfo=FixedOffsetTimeZone(int(hours), int(minutes)))
     raise ValueError
 
+
 def to_date(value):
-    """Cast ``value`` into date object.
+    """Cast ``value`` into :class:`datetime.date` object.
 
     >>> to_date("20100804")
     datetime.date(2010, 8, 4)
@@ -127,23 +129,28 @@ def to_date(value):
         return datetime.datetime.strptime(value, "%Y%m%d").date()
     raise ValueError
 
+
 def to_stream(value):
+    """Cast ``value`` into stream-like object."""
     for method in ("read", "write", "close"):
         if not hasattr(value, method):
             # value does not look like a stream
             raise ValueError
     return value
 
+
 def to_iter(value):
+    """Cast ``value`` into iterable object."""
     if hasattr(value, "__iter__"):
         return value
     raise ValueError
+
 
 def to_type(value, data_type):
     """Return ``value`` if instance of ``data_type`` else raise error."""
     if isinstance(value, data_type):
         return value
-    raise ValueError('Value %r is not of type %r' % (value, data_type))
+    raise ValueError
 
 
 PROPERTY_TYPES = {
@@ -155,5 +162,5 @@ PROPERTY_TYPES = {
     datetime.datetime: to_datetime,
     datetime.date: to_date,
     iter: to_iter,
-    bool : bool,
+    bool: bool,
     item.Item: lambda value: to_type(value, item.Item)}
