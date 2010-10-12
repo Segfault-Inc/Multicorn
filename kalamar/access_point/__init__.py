@@ -70,7 +70,7 @@ class AccessPoint(object):
 
     @staticmethod
     def _auto_value(self, prop):
-        """Return a random list of values corresponding to ``prop`` type."""
+        """Return a random value corresponding to ``prop`` type."""
         if prop.type == datetime.datetime:
             # TODO: find a better random value
             return datetime.datetime.now()

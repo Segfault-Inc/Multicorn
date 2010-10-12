@@ -64,7 +64,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
             alchemy_conditions = tuple(
                 to_alchemy_condition(sub_condition)
                 for sub_condition in condition.sub_requests)
-            return condition.alchemy_function(*alchemy_conditions)
+            return condition.alchemy_function(alchemy_conditions)
         else:
             column = properties[condition.property.name].column
             if condition.operator == "=":

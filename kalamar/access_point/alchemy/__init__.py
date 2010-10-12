@@ -19,7 +19,7 @@
 Alchemy
 =======
 
-Access point storing items in a DBMS.
+Access point storing items in a RDBMS.
 
 """
 
@@ -43,13 +43,13 @@ SQLALCHEMYTYPES = {
     bool: Boolean,
     Decimal: Numeric}
 
-And.alchemy_function = lambda self, *conditions: and_(*conditions)
-Or.alchemy_function = lambda self, *conditions: or_(*conditions)
-Not.alchemy_function = lambda self, *conditions: not_(*conditions)
+And.alchemy_function = lambda self, conditions: and_(*conditions)
+Or.alchemy_function = lambda self, conditions: or_(*conditions)
+Not.alchemy_function = lambda self, conditions: not_(*conditions)
 
 
 class AlchemyProperty(Property):
-    """Confiure a property for an Alchemy access point."""
+    """Property for an Alchemy access point."""
     def __init__(self, property_type, column_name, identity=False, auto=False,
                  default=None, mandatory=False, relation=None, remote_ap=None,
                  remote_property=None):
@@ -60,11 +60,11 @@ class AlchemyProperty(Property):
 
 
 class Alchemy(AccessPoint):
-    """Access point used to access data in a RDBMS."""
+    """Access point used to store data in a RDBMS."""
     __metadatas = {}
 
     def __init__(self, url, tablename, properties, identity_property, 
-            createtable=False):
+                 createtable=False):
         super(Alchemy, self).__init__(properties, [identity_property])
         self.url = url
         self.tablename = tablename
@@ -152,7 +152,7 @@ class Alchemy(AccessPoint):
             alchemy_conditions = tuple(
                 self.to_alchemy_condition(sub_condition)
                 for sub_condition in condition.sub_requests)
-            return condition.alchemy_function(*alchemy_conditions)
+            return condition.alchemy_function(alchemy_conditions)
         else:
             column = self.__get_column(condition.property.__repr__())
             if condition.operator == "=":
