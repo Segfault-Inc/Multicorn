@@ -189,8 +189,10 @@ class AccessPointWrapper(AccessPoint):
             and values are the names in the wrapped access point.
 
         """
-        super(AccessPointWrapper, self).__init__(wrapped_ap.properties,
-                wrapped_ap.identity_properties)
+        super(AccessPointWrapper, self).__init__(
+            # copies, not just references
+            dict(wrapped_ap.properties),
+            tuple(wrapped_ap.identity_properties))
         self.wrapped_ap = wrapped_ap
 
     def search(self, request):
