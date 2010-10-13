@@ -24,13 +24,31 @@ Base classes to create kalamar items.
 """
 
 import abc
-import collections
+from collections import namedtuple, Mapping, MutableMapping
 
 
-Identity = collections.namedtuple("Identity", "access_point, conditions")
+class Identity(namedtuple("Identity", "access_point, conditions")):
+    """Simple class identifying items.
+
+    :param access_point: The access point name of the item.
+    :param conditions: A dict of conditions identifying the item.
+
+    >>> identity = Identity("ap_name", {"id": 1})
+    >>> identity.access_point
+    'ap_name'
+    >>> identity.conditions
+    {'id': 1}
+
+    :class:`Identity` manages equality between equivalent items.
+
+    >>> identity2 = Identity("ap_name", {"id": 1})
+    >>> identity == identity2
+    True
+
+    """
 
 
-class MultiMapping(collections.Mapping):
+class MultiMapping(Mapping):
     """A Mapping where each key as associated to multiple values.
     
     Stored values are actually tuples, but :meth:`__getitem__` only gives
@@ -43,13 +61,15 @@ class MultiMapping(collections.Mapping):
 
     @abc.abstractmethod
     def getlist(self, key):
-        raise KeyError
+        """Get the tuple of values associated to ``key``."""
+        raise NotImplementedError
 
     def __getitem__(self, key):
+        """Get the first value of the tuple of values associated to ``key``."""
         return self.getlist(key)[0]
 
 
-class MutableMultiMapping(MultiMapping, collections.MutableMapping):
+class MutableMultiMapping(MultiMapping, MutableMapping):
     """A mutable MultiMapping.
     
     Stored values are actually tuples, but :meth:`__getitem__` only gives
@@ -61,22 +81,33 @@ class MutableMultiMapping(MultiMapping, collections.MutableMapping):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def setlist(self, key, value):
-        raise KeyError
+    def setlist(self, key, values):
+        """Set the ``values`` tuple of values associated to ``key``."""
+        raise NotImplementedError
 
     def __setitem__(self, key, value):
+        """Set ``(value,)`` as the tuple of values associated to ``key``."""
         self.setlist(key, (value,))
     
-    def update(self, other):
+    def update(self, other=()):
+        """Set values of the ``other`` mapping to the current mapping.
+
+        ``other`` can be a regular mapping, a :class:`MultiMapping`, or an
+        iterable of ``(key, value)`` couples.
+
+        """
         if isinstance(other, MultiMapping):
+            # We have a MultiMapping object with a getlist method
+            # pylint: disable=E1103
             for key in other:
                 self.setlist(key, other.getlist(key))
+            # pylint: enable=E1103
         else:
             super(MutableMultiMapping, self).update(other)
 
 
 class MultiDict(MutableMultiMapping):
-    """Simple concrete subclass of MutableMultiMapping based on a dict."""
+    """Concrete subclass of :class:`MutableMultiMapping` based on a dict."""
     def __init__(self, inital=()):
         self.__data = {}
         self.update(inital)
@@ -100,7 +131,7 @@ class MultiDict(MutableMultiMapping):
 class AbstractItem(MutableMultiMapping):
     """Abstract base class for Item-likes.
 
-    :param access_point: The AccessPoint where this item came from.
+    :param access_point: The :class:`AccessPoint` where this item came from.
 
     """
     def __init__(self, access_point):
@@ -125,7 +156,7 @@ class AbstractItem(MutableMultiMapping):
         return len(self.access_point.properties)
 
     def __contains__(self, key):
-        # collections.Mutable’s default implementation is correct
+        # Mutable’s default implementation is correct
         # but based on __getitem__ which may needlessly call a lazy loader.
         return key in self.access_point.properties
 
@@ -161,18 +192,19 @@ class AbstractItem(MutableMultiMapping):
 class Item(AbstractItem):
     """Item base class.
 
-    :param access_point: The AccessPoint where this item came from.
+    :param access_point: The :class:`AccessPoint` where this item came from.
     :param properties: A :class:`Mapping` of initial values for this item’s
-        properties. May be a MultiMapping to have multiple values for a given
-        property.
-    :param lazy_loaders: A :class:`Mapping` of callable "loaders" for
-        lazy properties. These callable should return a tuple of values.
-        When loading a property is expensive, this allows to only load it
-        when it’s needed.
-        When you have only one value, wrap it in a tuple like this: `(value,)`
+        properties. May be a :class:`MultiMapping` to have multiple values for
+        a given property.
+    :param lazy_loaders: A :class:`Mapping` of callable "loaders" for lazy
+        properties. These callable should return a tuple of values.  When
+        loading a property is expensive, this allows to only load it when it’s
+        needed. When you have only one value, wrap it in a tuple like this:
+        `(value,)`
     
+
     Every property defined in the access point must be given in one of
-    :obj:`properties` or :obj:`lazy_loaders`, but not both.
+    ``properties`` or ``lazy_loaders``, but not both.
 
     """
     def __init__(self, access_point, properties=(), lazy_loaders=()):
@@ -246,6 +278,12 @@ class Item(AbstractItem):
 
 
 class ItemWrapper(AbstractItem):
+    """Item wrapping another item.
+
+    :param wrapped_item: Item wrapped in the current item.
+    :param access_point: Access point where the current item is stored.
+
+    """
     def __init__(self, access_point, wrapped_item):
         super(ItemWrapper, self).__init__(access_point)
         self.access_point = access_point
@@ -257,7 +295,7 @@ class ItemWrapper(AbstractItem):
     def setlist(self, key, values):
         return self.wrapped_item.setlist(key, values)
     
-    # default to underlying_item for all other methods and attributes
     def __getattr__(self, name):
+        """Default to underlying item for all other methods and attributes."""
         return getattr(self.wrapped_item, name)
 

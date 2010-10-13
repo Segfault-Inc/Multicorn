@@ -16,17 +16,21 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Jinja2
+======
+
 Jinja2 engine support for Koral.
+
+http://jinja.pocoo.org/2/
 
 """
 
-from koral.engine.base import BaseEngine
+from . import BaseEngine
 
 
 class Jinja2Engine(BaseEngine):
-    """Koral engine for Jinja2: http://jinja.pocoo.org/2/
-    """
-    name = 'jinja2'
+    """Koral engine for Jinja2."""
+    name = "jinja2"
     
     def __init__(self, *args, **kwargs):
         """Jinja2 engine initialisation."""
@@ -34,7 +38,7 @@ class Jinja2Engine(BaseEngine):
         from jinja2 import Environment, FileSystemLoader
         self._env = Environment(loader=FileSystemLoader(self.path_to_root))
         
-    def render(self, template_name, values={}, lang=None, modifiers=None):
+    def render(self, template_name, values, lang, modifiers):
         """Render Jinja2 template."""
         template = self._env.get_template(template_name)
         return template.render(**values)

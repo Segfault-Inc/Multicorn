@@ -16,14 +16,14 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Cache access point
-==================
+Cache
+=====
 
-Factory generating an access point caching properties.
+Access point caching properties.
 
 """
 
-from .base import AccessPointWrapper
+from . import AccessPointWrapper
 from ..item import ItemWrapper
 
 
@@ -59,8 +59,3 @@ class Cache(AccessPointWrapper):
     save = invalidate_cache("save")
     delete_many = invalidate_cache("delete_many")
     delete = invalidate_cache("delete")
-
-    # default to underlying_item for all other methods and attributes
-#    def __getattr__(self, name):
-#        return getattr(self.wrapped_ap, name)
-

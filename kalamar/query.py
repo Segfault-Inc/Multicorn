@@ -31,42 +31,36 @@ from kalamar.item import Item
 
 from .request import normalize
 
-# pylint: disable-msg=R0903
-class Query(object):
-    """Query class.
 
-    """
+class Query(object):
+    """Query class."""
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def __call__(self, items):
-        """Performs the query on the items
-        
-        """
+        """Perform the query on ``items``."""
         raise NotImplementedError
 
     @abstractmethod
     def validate(self, site, properties):
-        """Validates the query 
-
-        """
+        """Validate the query."""
         raise NotImplementedError
 
 
 class BadQueryException(Exception):
+    """Exception raised when a query cannot be validated."""
     def __init__(self, query, message):
         super(BadQueryException, self).__init__(message)
         self.query = query
         self.message = message
 
-        
 
 class QueryChain(Query):
     """Chained query.
     
     >>> from kalamar.request import Condition
-    >>> items = itertools.cycle([{'a':1, 'b':1},{'a':2, 'b': 2}])
-    >>> range = QueryRange(slice(1,4))
+    >>> items = itertools.cycle([{"a":1, "b":1},{"a":2, "b": 2}])
+    >>> range = QueryRange(slice(1, 4))
     >>> cond = QueryFilter(Condition("a", "=", 2))
     >>> chain = QueryChain([range, cond])
     >>> list(chain(items))
@@ -193,14 +187,14 @@ class QuerySelect(Query):
                                  for name, value in sub_mappings.items()))
 
     def __call__(self, items):
-        if isinstance(items, Item) or isinstance(items, dict):
+        if isinstance(items, (Item, dict)):
             items = (items,)
         if not items :
             items = [dict([(prop.name, None) for prop in self.mapping.values()])]
         for item in items:
             newitem = {}
             for alias, prop in self.mapping.items():
-                if prop.name is not '*':
+                if prop.name is not "*":
                     newitem[alias] = prop.get_value(item)
                 else:
                     newitem.update(dict([(("%s%s" % (alias, key)), value) 
@@ -220,7 +214,7 @@ class QuerySelect(Query):
     def validate(self, site, properties):
         new_props = {}
         for name, prop in self.mapping.items():
-            if prop.name is not '*':
+            if prop.name is not "*":
                 try:
                     old_prop = properties[prop.name]
                 except KeyError:
@@ -244,8 +238,8 @@ class QuerySelect(Query):
 class QueryRange(Query):
     """Query selecting a range of items.
 
-    >>> items = itertools.cycle([{'a':1, 'b':1},{'a':2, 'b': 2}])
-    >>> range = QueryRange(slice(1,3))
+    >>> items = itertools.cycle([{"a":1, "b":1},{"a":2, "b": 2}])
+    >>> range = QueryRange(slice(1, 3))
     >>> list(range(items))
     [{'a': 2, 'b': 2}, {'a': 1, 'b': 1}]
     

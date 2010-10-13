@@ -16,19 +16,21 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Genshi
+======
+
 Genshi engine support for Koral.
+
+http://genshi.edgewall.org/
 
 """
 
-
-from koral.engine.base import BaseEngine
+from . import BaseEngine
 
 
 class GenshiEngine(BaseEngine):
-    r"""Koral engine for Genshi: http://genshi.edgewall.org/
-
-    """        
-    name = 'genshi'
+    """Koral engine for Genshi."""
+    name = "genshi"
     
     def __init__(self, *args, **kwargs):
         """Genshi engine initialisation."""
@@ -36,9 +38,9 @@ class GenshiEngine(BaseEngine):
         from genshi.template import TemplateLoader
         self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
         
-    def render(self, template_name, values={}, lang=None, modifiers=None):
-        """Render genshi template."""
+    def render(self, template_name, values, lang, modifiers):
+        """Render Genshi template."""
         import genshi.input
         values = dict(values, XML=genshi.input.XML)
         stream = self._loader.load(template_name).generate(**values)
-        return stream.render(method='html', encoding=None, doctype='html5')
+        return stream.render(method="html", encoding=None, doctype="html5")

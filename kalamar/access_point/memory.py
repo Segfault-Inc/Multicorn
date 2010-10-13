@@ -15,7 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
-from .base import AccessPoint
+"""
+Filesystem
+==========
+
+Access point storing items in memory. Mainly useful for testing.
+
+"""
+
+from . import AccessPoint
 from ..item import Item
 
 
@@ -29,23 +37,22 @@ class Memory(AccessPoint):
         super(Memory, self).__init__(properties, (id_property,))
         self._id_property = id_property
         self._store = {}
-        
+
     def search(self, request):
         for properties in self._store.itervalues():
             item = Item(self, properties)
             if request.test(item):
                 yield item
-    
+
     def delete(self, item):
         del self._store[item[self._id_property]]
-    
+
     def delete_many(self, request):
         # build a temporary list as we can not delete (change the dict size)
         # during iteration
         matching_items = list(self.search(request))
         for item in matching_items:
             self.delete(item)
-    
+
     def save(self, item):
         self._store[item[self._id_property]] = dict(item)
-    

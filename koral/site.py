@@ -16,9 +16,10 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Koral Site class.
+Site
+====
 
-Create one for each independent site.
+Site class. Create one for each independent site.
 
 """
 
@@ -38,14 +39,14 @@ class Site(object):
         """Add an engine to this site.
         
         :param name: Identifier string for this engine. Pass the same value
-            to :method:`render` to use the registered engine.
+            to :meth:`render` to use the registered engine.
         :param engine_class: A concrete subclass of :class:`BaseEngine`
         
         """
         self.engines[name] = engine_class(self.path_to_root)
     
-    def render(self, site_engine, template_name, values={}, lang=None,
+    def render(self, site_engine, template_name, values=None, lang=None,
                modifiers=None):
         """Shorthand to the engine render method."""
         return self.engines[site_engine].render(
-            template_name, values, lang, modifiers)
+            template_name, values or {}, lang, modifiers)
