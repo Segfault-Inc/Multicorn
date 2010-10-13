@@ -78,5 +78,5 @@ def test_one_to_many():
     site = make_test_site()
     aliases = {'local_id' : 'id','local_name' : 'name',  'remote_label' : 'manies.label'}
     items = list(site.view('test_ap', aliases,{}))
-    eq_(len(items), 2)
+    eq_(len(items), 3)
 

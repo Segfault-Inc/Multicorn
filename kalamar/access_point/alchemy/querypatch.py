@@ -81,12 +81,10 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                 if prop.relation == "many-to-one":
                     join_col2 = alchemy_query.corresponding_column(
                         remote_ap.properties[remote_ap.identity_properties[0]])
-                    alchemy_query = alchemy_query.select_from(
-                        access_points[remote_ap._table]).where(
-                        join_col1 == join_col2)
-                    build_join(values, remote_ap.properties, alchemy_query)
+                    alchemy_query = alchemy_query.join(remote_ap._table,
+                            onclause = join_col1 == join_col2)
+                    alchemy_query = build_join(values, remote_ap.properties, alchemy_query)
         return alchemy_query
-
     alchemy_query = build_join(
         self.condition.properties_tree, properties, alchemy_query)
     alchemy_query = alchemy_query.where(to_alchemy_condition(self.condition))
@@ -119,17 +117,27 @@ def query_filter_validator(self, access_point, properties):
 def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method on QuerySelect to convert to alchemy."""
     access_points = access_point.site.access_points
-    for name, sub_select in self.sub_selects.items():
-        remote_ap = access_points[properties[name].remote_ap]
-        remote_property = remote_ap.properties[properties[name].remote_property]
-        col1 = properties[name].column
-        col2 = remote_property.column
-        alchemy_query = alchemy_query.select_from(
-            remote_ap._table).where(col1 == col2)
-        alchemy_query = sub_select.to_alchemy(
-            alchemy_query,  access_point, remote_ap.properties)
-    for name, value in self.mapping.items():
-        alchemy_query.append_column(properties[value.name].column.label(name))
+    def build_join(select, properties, join):
+        for name, sub_select in select.sub_selects.items():
+            remote_ap = access_points[properties[name].remote_ap]
+            remote_property = remote_ap.properties[properties[name].remote_property]
+            col1 = properties[name].column
+            col2 = remote_property.column
+            join = join.outerjoin(remote_ap._table, 
+                onclause = col1 == col2)
+            join = build_join(sub_select, remote_ap.properties, join)
+        return join
+    def build_select(select, properties, alchemy_query):
+        for name, value in select.mapping.items():
+            alchemy_query.append_column(properties[value.name].column.label(name))
+        for name, sub_select in select.sub_selects.items():
+            remote_ap = access_points[properties[name].remote_ap]
+            alchemy_query = build_select(sub_select, remote_ap.properties,
+                    alchemy_query)
+        return alchemy_query
+    join = build_join(self, properties, access_point._table)
+    alchemy_query = alchemy_query.select_from(join)
+    build_select(self, properties, alchemy_query)
     return alchemy_query
 
 
