@@ -16,6 +16,9 @@
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Utils
+=====
+
 Various utilities for Kraken.
 
 """
@@ -41,45 +44,45 @@ def make_absolute_url(request, url):
     """Return a clean absolute URL from ``request`` and ``url``.
 
     # fake request for http://localhost/foo/
-    >>> request = Request(werkzeug.create_environ(path='/foo/'))
+    >>> request = Request(werkzeug.create_environ(path="/foo/"))
     
-    >>> make_absolute_url(request, 'http://localhost/foo/bar/')
+    >>> make_absolute_url(request, "http://localhost/foo/bar/")
     'http://localhost/foo/bar/'
-    >>> make_absolute_url(request, '/foo/bar/')
+    >>> make_absolute_url(request, "/foo/bar/")
     'http://localhost/foo/bar/'
-    >>> make_absolute_url(request, './bar/')
+    >>> make_absolute_url(request, "./bar/")
     'http://localhost/foo/bar/'
-    >>> make_absolute_url(request, 'bar/')
+    >>> make_absolute_url(request, "bar/")
     'http://localhost/foo/bar/'
-    >>> make_absolute_url(request, '../bar/')
+    >>> make_absolute_url(request, "../bar/")
     'http://localhost/bar/'
-    >>> make_absolute_url(request, '/')
+    >>> make_absolute_url(request, "/")
     'http://localhost/'
 
     # Same tests without the trailing slash
-    >>> make_absolute_url(request, 'http://localhost/foo/bar')
+    >>> make_absolute_url(request, "http://localhost/foo/bar")
     'http://localhost/foo/bar'
-    >>> make_absolute_url(request, '/foo/bar')
+    >>> make_absolute_url(request, "/foo/bar")
     'http://localhost/foo/bar'
-    >>> make_absolute_url(request, './bar')
+    >>> make_absolute_url(request, "./bar")
     'http://localhost/foo/bar'
-    >>> make_absolute_url(request, 'bar')
+    >>> make_absolute_url(request, "bar")
     'http://localhost/foo/bar'
-    >>> make_absolute_url(request, '../bar')
+    >>> make_absolute_url(request, "../bar")
     'http://localhost/bar'
 
     """
     if urlparse.urlparse(url).netloc:
-        # The URL has a 'host' part: it’s already absolute
+        # The URL has a "host" part: it’s already absolute
         return url
-    if not url.startswith('/'):
+    if not url.startswith("/"):
         # Relative to the current URL, not the site root
         path = request.base_url[len(request.host_url):]
-        url = '/' + path + '/' + url
-    new_url = request.host_url.rstrip('/') + posixpath.normpath(url)
+        url = "/" + path + "/" + url
+    new_url = request.host_url.rstrip("/") + posixpath.normpath(url)
     # posixpath.normpath always remove trailing slashes
-    if url.endswith('/') and url != '/':
-        new_url += '/'
+    if url.endswith("/") and url != "/":
+        new_url += "/"
     return new_url
 
 
@@ -89,14 +92,14 @@ def redirect(request, url, status=302):
 
     >>> @Request.application
     ... def test_app(request):
-    ...     return redirect(request, request.args['redirect_to'],
-    ...                     int(request.args.get('status', 302)))
+    ...     return redirect(request, request.args["redirect_to"],
+    ...                     int(request.args.get("status", 302)))
     >>> client = werkzeug.Client(test_app)
 
-    >>> client.get('/foo?redirect_to=../bar') # doctest: +ELLIPSIS
+    >>> client.get("/foo?redirect_to=../bar") # doctest: +ELLIPSIS
     (..., '302 FOUND', [...('Location', 'http://localhost/bar')...)
 
-    >>> client.get('/foo?redirect_to=/') # doctest: +ELLIPSIS
+    >>> client.get("/foo?redirect_to=/") # doctest: +ELLIPSIS
     (..., '302 FOUND', [...('Location', 'http://localhost/')...)
 
     """
@@ -136,29 +139,29 @@ class StaticFileResponse(Response):
         """Create the response with the ``filename`` static file."""
         super(StaticFileResponse, self).__init__(filename)
         self.filename = filename
-        self.file_obj = open(self.filename, 'rb')
+        self.file_obj = open(self.filename, "rb")
         self.file_stat = os.stat(self.filename)
     
     def __call__(self, environ, start_response):
         """Return the file and set the response headers."""
-        etag = '%s,%s,%s' % (self.filename.encode('utf-8'),
+        etag = "%s,%s,%s" % (self.filename.encode("utf-8"),
                              self.file_stat.st_size,
                              self.file_stat.st_mtime)
         etag = '"%s"' % hashlib.md5(etag).hexdigest()
-        headers = [('Date', werkzeug.http_date()), ('Etag', etag)]
+        headers = [("Date", werkzeug.http_date()), ("Etag", etag)]
         # round to 1 second precision: no more than the HTTP header
         mtime = datetime.datetime.utcfromtimestamp(int(self.file_stat.st_mtime))
         if not werkzeug.is_resource_modified(environ, etag=etag,
                                              last_modified=mtime):
-            start_response('304 Not Modified', headers)
+            start_response("304 Not Modified", headers)
             return []
        
         mime_type, encoding = mimetypes.guess_type(self.filename)
         headers.extend((
-            ('Content-Type', mime_type or 'application/octet-stream'),
-            ('Content-Length', str(self.file_stat.st_size)),
-            ('Last-Modified', werkzeug.http_date(self.file_stat.st_mtime))))
-        start_response('200 OK', headers)
+            ("Content-Type", mime_type or "application/octet-stream"),
+            ("Content-Length", str(self.file_stat.st_size)),
+            ("Last-Modified", werkzeug.http_date(self.file_stat.st_mtime))))
+        start_response("200 OK", headers)
         return werkzeug.wrap_file(environ, self.file_obj)
 
 
@@ -176,16 +179,16 @@ def runserver(site, args=None):
     Setup test
     >>> real_argv = sys.argv
     >>> import logging
-    >>> logging.getLogger('werkzeug').setLevel(logging.FATAL)
+    >>> logging.getLogger("werkzeug").setLevel(logging.FATAL)
 
     Test
-    >>> runserver(None, ['--help']) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    >>> runserver(None, ["--help"]) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...
     >>> sys.argv = [sys.argv[0]]
-    >>> try: runserver(None, ['--port=1']) # doctest: +ELLIPSIS
+    >>> try: runserver(None, ["--port=1"]) # doctest: +ELLIPSIS
     ... except Exception, e: print e[1]
     Permission denied
-    >>> sys.argv = [sys.argv[0], '--help']
+    >>> sys.argv = [sys.argv[0], "--help"]
     >>> runserver(None) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...    
 
@@ -196,8 +199,8 @@ def runserver(site, args=None):
     # TODO manage other cases
     if not args:
         args = sys.argv[1:]
-    if not args or args[0] != '--help':
-        args = ['runserver'] + args
+    if not args or args[0] != "--help":
+        args = ["runserver"] + args
     action_runserver = werkzeug.script.make_runserver(
         lambda: site,extra_files=[]
         # Files for the reloader to watch
