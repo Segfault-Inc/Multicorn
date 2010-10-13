@@ -129,7 +129,7 @@ class AccessPoint(object):
         TODO: the real behaviour of this method should be explained
 
         """
-        items = self.search(And())
+        items = (dict(item) for item in self.search(And()))
         return view_query(items)
 
     def delete_many(self, request):

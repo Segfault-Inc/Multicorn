@@ -153,7 +153,7 @@ class QueryOrder(Query):
 
     def validate(self, site, properties):
         for orderby in self.orderbys:
-            if not hasattr(orderby, "__hash__") or orderby not in properties:
+            if not hasattr(orderby, "__hash__") or orderby[0] not in properties:
                 raise BadQueryException(self, "Can't sort on %s" % orderby)
         return properties
 
@@ -189,6 +189,8 @@ class QuerySelect(Query):
     def __call__(self, items):
         if isinstance(items, (Item, dict)):
             items = (items,)
+        if not items :
+            items = [dict([(prop.name, None) for prop in self.mapping.values()])]
         for item in items:
             newitem = {}
             for alias, prop in self.mapping.items():
@@ -199,7 +201,7 @@ class QuerySelect(Query):
                         for key, value in item.items()]))
             if self.sub_selects:
                 sub_generators = tuple(
-                    sub_select(item[prop]) for prop, sub_select
+                    sub_select(item[prop])  for prop, sub_select
                     in self.sub_selects.items())
                 for cartesian_item in itertools.product(*sub_generators):
                     for cartesian_atom in cartesian_item:
@@ -207,6 +209,7 @@ class QuerySelect(Query):
                         yield cartesian_atom 
             else:
                 yield newitem
+
 
     def validate(self, site, properties):
         new_props = {}
