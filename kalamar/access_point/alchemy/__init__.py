@@ -23,9 +23,11 @@ Access point storing items in a RDBMS.
 
 """
 
+from . import querypatch
 from .. import AccessPoint
 from ...request import Condition, And, Or, Not
 from ...property import Property
+
 
 from werkzeug import cached_property
 from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
@@ -208,8 +210,9 @@ class Alchemy(AccessPoint):
         item_dict = {}
         for prop, value in item.items():
             if self.properties[prop].relation == 'many-to-one':
-                #TODO: more than one identity property
-                item_dict[prop] = item[prop].identity.conditions.values()[0]
+                if item[prop] is not None:
+                    #TODO: more than one identity property
+                    item_dict[prop] = item[prop].identity.conditions.values()[0]
             elif self.properties[prop].relation == 'one-to-many':
                 pass
             else:
