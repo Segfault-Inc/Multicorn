@@ -29,7 +29,7 @@ from . import BaseEngine
 class PythonEngine(BaseEngine):
     """Python engine for Koral.
 
-    Simply calls ``handle_request(request)``.
+    Simply calls ``render(**values)``.
 
     """
     name = "py"
