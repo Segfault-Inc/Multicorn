@@ -25,6 +25,8 @@ Access point storing items in a filesystem.
 
 import os.path
 import re
+import io
+import shutil
 
 from . import AccessPoint
 from ..item import Item
@@ -48,7 +50,7 @@ class FileSystem(AccessPoint):
             for p in properties)
         self.properties = dict(self._ordered_properties)
         assert content_property not in self.properties
-        self.properties[content_property] = Property(file)
+        self.properties[content_property] = Property(io.IOBase)
         # All properties here are in the identity
         self.identity_properties = tuple(name for name, p in 
                                          self._ordered_properties)
@@ -94,7 +96,12 @@ class FileSystem(AccessPoint):
         return walk(self.root_dir, self.properties_per_path_part)
 
     def delete(self, item):
-        raise NotImplementedError
+        os.remove(self._filename_for(item))
 
-    def save(self, item): 
-        raise NotImplementedError
+    def save(self, item):
+        content = item[self.content_property]
+        if hasattr(content, 'seek'):
+            content.seek(0)
+        with open(self._filename_for(item), 'wb') as fd:
+            shutil.copyfileobj(content, fd)
+
