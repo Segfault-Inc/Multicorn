@@ -208,8 +208,7 @@ class Site(object):
         Traceback (most recent call last):
             ...
         ImportError: No module named inexistent
-
-        >>> site.import_("lorem.ipsum") # doctest: +ELLIPSIS
+        >>> module = site.import_("lorem.ipsum") # doctest: +ELLIPSIS
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken_site_....lorem.ipsum' 
             from '...kraken/tests/site/lorem/ipsum.py...'>
