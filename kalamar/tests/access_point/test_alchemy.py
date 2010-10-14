@@ -27,22 +27,25 @@ from nose.tools import eq_, nottest
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 
-from ..common import run_common, make_site
+from ..common import run_common
 
-def make_ap():
-    return make_testtable()
+
+
+
 
 @run_common
-def test_cache():
-    return make_ap()
-
-url = "sqlite:///"
+def test_alchemy():
+    """Function defined to run the common set of tests"""
+    return make_testtable()
 
 @nottest
 def make_testtable():
     id_property = AlchemyProperty(int, column_name="id")
     name = AlchemyProperty(unicode, column_name="name")
-    ap = Alchemy(url, "test", {"id": id_property, "name": name}, "id", True)
+    ap = Alchemy("sqlite:///", "test", {
+        "id": id_property,
+        "name": name},
+        "id", True)
     return ap
 
 
@@ -78,11 +81,11 @@ class TestAlchemy(object):
         eq_(len(items), 1)
 
     def testupdate(self):
-       item = self.site.open("test", {"id": 1})
-       item["name"] = u"updated"
-       item.save()
-       item = self.site.open("test", {"id": 1})
-       eq_(item["name"], u"updated")
+        item = self.site.open("test", {"id": 1})
+        item["name"] = u"updated"
+        item.save()
+        item = self.site.open("test", {"id": 1})
+        eq_(item["name"], u"updated")
 
     def tearDown(self):
         for item in self.items:

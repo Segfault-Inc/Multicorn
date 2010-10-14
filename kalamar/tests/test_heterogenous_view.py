@@ -25,7 +25,7 @@ Test an heterogeneous view on a memory and an alchemy ap.
 
 
 from nose.tools import eq_, nottest
-from kalamar.access_point.alchemy import AlchemyProperty,Alchemy
+from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.access_point.memory import Memory
 from kalamar.site import Site
 from kalamar.property import Property
@@ -33,21 +33,25 @@ from kalamar.item import Item
 
 
 class TestHeterogeneous(object):
+    """Test class ensuring that view works properly over access points from
+    different classes"""
     def make_alchemy_ap(self):
-        url = "sqlite:///"
+        """Constructs an alchemy access point referencing another access point"""
         id_property = AlchemyProperty(int, column_name="id")
         label = AlchemyProperty(unicode, column_name="label")
         memory = AlchemyProperty(Item, column_name="memory", 
                                  relation="many-to-one", remote_ap="memory")
-        ap = Alchemy(
-            url, "test_heterogeneous",
+        access_point = Alchemy(
+            "sqlite:///", "test_heterogeneous",
             {"id": id_property, "label": label, "memory": memory},
             "id", True)
-        return ap
+        return access_point
 
     def make_memory_ap(self):
-        ap = Memory({"id": Property(int), "label": Property(unicode)}, "id")
-        return ap
+        """Constructs a memory access point referenced by another
+        access_point"""
+        access_point = Memory({"id": Property(int), "label": Property(unicode)}, "id")
+        return access_point
 
     def setUp(self):
         self.site = Site()

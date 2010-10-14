@@ -1,6 +1,10 @@
+"""Common test architecture, allowing to run a set of common tests against every
+access point
+"""
 from nose.tools import nottest
 from kalamar import Site
 from functools import update_wrapper
+
 
 # see at the end of the module for import of all common test files
 
@@ -13,14 +17,14 @@ def fill_site(site):
     site.create("things", {"id": 2, "name": u"bar"}).save()
     site.create("things", {"id": 3, "name": u"bar"}).save()
 
-def make_site(ap, fill=False):
+def make_site(access_point, fill=False):
     '''
-    Create a site from an instance of access point *ap*. *fill* it with tests
+    Create a site from an instance of access point *access_point*. *fill* it with tests
     values.
     '''
 
     site = Site()
-    site.register("things", ap)
+    site.register("things", access_point)
 
     if fill:
         fill_site(site)

@@ -1,8 +1,10 @@
 # coding: utf8
-from nose.tools import eq_, nottest, raises
+"""Common tests run against all access points"""
+from nose.tools import eq_, raises
 from kalamar import MultipleMatchingItems, ItemDoesNotExist
 
 from kalamar.tests.common import nofill, commontest
+
 
 @nofill
 @commontest
@@ -17,37 +19,44 @@ def test_single_item(site):
 
 @commontest
 def test_search(site):
+    """Test a simple search"""
     results = site.search("things", {"name": u"bar"})
     eq_(set(item["id"] for item in results), set([2, 3]))
 
 @commontest
 def test_open_one(site):
+    """Test a standard "open"""
     result = site.open("things", {"name": u"foo"})
     eq_(result["id"], 1)
 
 @commontest
 @raises(MultipleMatchingItems)
 def test_open_two(site):
-    result = site.open("things", {"name": u"bar"})
+    """An exception is raised when muliple items match an open request"""
+    site.open("things", {"name": u"bar"})
 
 @commontest
 @raises(ItemDoesNotExist)
 def test_open_zero(site):
-    result = site.open("things", {"name": u"nonexistent"})
+    """An exception is raised when no item match an open request"""
+    site.open("things", {"name": u"nonexistent"})
 
 @commontest
 def test_delete(site):
+    """Test a simple delete"""
     item = site.open("things", {"name": u"foo"})
     item.delete()
     eq_(list(site.search("things", {"name": u"foo"})), [])
 
 @commontest
 def test_delete_many(site):
+    """Test a multiple delete"""
     site.delete_many("things", {"name": u"bar"})
     eq_(list(site.search("things", {"name": u"bar"})), [])
 
 @commontest
 def test_eq(site):
+    """Test equality between items"""
     item1 = site.open("things", {"name": u"foo"})
     item2 = site.open("things", {"name": u"foo"})
     eq_(item1, item2)
