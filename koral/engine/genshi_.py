@@ -33,13 +33,11 @@ class GenshiEngine(BaseEngine):
     name = "genshi"
     
     def __init__(self, *args, **kwargs):
-        """Genshi engine initialisation."""
         super(GenshiEngine, self).__init__(*args, **kwargs)
         from genshi.template import TemplateLoader
         self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
         
     def render(self, template_name, values, lang, modifiers):
-        """Render Genshi template."""
         import genshi.input
         values = dict(values, XML=genshi.input.XML)
         stream = self._loader.load(template_name).generate(**values)

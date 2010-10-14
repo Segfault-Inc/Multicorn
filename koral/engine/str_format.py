@@ -40,11 +40,9 @@ class StrFormatEngine(BaseEngine):
     name = "str-format"
     
     def __init__(self, path_to_root, encoding="utf-8"):
-        """Str-format engine initialisation."""
         super(StrFormatEngine, self).__init__(path_to_root)
         self.encoding = encoding
         
     def render(self, template_name, values, lang, modifiers):
-        """Render str-format template."""
         with open(self._build_filename(template_name)) as file_descriptor:
             return file_descriptor.read().decode(self.encoding).format(**values)

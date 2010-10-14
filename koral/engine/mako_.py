@@ -33,12 +33,10 @@ class MakoEngine(BaseEngine):
     name = "mako"
     
     def __init__(self, *args, **kwargs):
-        """Mako engine initialisation."""
         super(MakoEngine, self).__init__(*args, **kwargs)
         from mako.lookup import TemplateLookup
         self._loader = TemplateLookup(directories=(self.path_to_root,))
         
     def render(self, template_name, values, lang, modifiers):
-        """Render Mako template."""
         template = self._loader.get_template(template_name)
         return template.render_unicode(**values)

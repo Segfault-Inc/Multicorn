@@ -33,12 +33,10 @@ class Jinja2Engine(BaseEngine):
     name = "jinja2"
     
     def __init__(self, *args, **kwargs):
-        """Jinja2 engine initialisation."""
         super(Jinja2Engine, self).__init__(*args, **kwargs)
         from jinja2 import Environment, FileSystemLoader
         self._env = Environment(loader=FileSystemLoader(self.path_to_root))
         
     def render(self, template_name, values, lang, modifiers):
-        """Render Jinja2 template."""
         template = self._env.get_template(template_name)
         return template.render(**values)

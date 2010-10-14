@@ -35,7 +35,6 @@ class PythonEngine(BaseEngine):
     name = "py"
     
     def render(self, template_name, values, lang, modifiers):
-        """Render Python template."""
         local = {}
         execfile(self._build_filename(template_name), local, local)
         return unicode(local["render"](**values))
