@@ -69,6 +69,7 @@ from .mako_ import MakoEngine
 
 
 BUILTIN_ENGINES = {"py": PythonEngine, "str-format": StrFormatEngine}
+"""Mapping of built-in Koral engines available."""
 
 
 for name, engine in (
