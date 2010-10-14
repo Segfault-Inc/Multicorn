@@ -23,7 +23,7 @@ Kalamar request objects and operator helpers.
 
 """
 
-from operator import eq, ne, gt, ge, lt, le, __add__
+from operator import eq, ne, gt, ge, lt, le
 from abc import ABCMeta, abstractmethod
 
 
@@ -43,6 +43,7 @@ def _flatten(request):
                 yield sub_sub
         else:
             yield sub_request
+
 
 def simplify(request):
     """Return a simplified equivalent request."""
@@ -81,7 +82,6 @@ def make_request_property(property_name):
     return req_prop
 
 
-
 def make_request(request):
     """Convert a ``request`` to a Request object.
 
@@ -108,6 +108,7 @@ def normalize(properties, request):
 
     """
     def _inner_normalize(request):
+        """Recursively normalize ``request``."""
         if isinstance(request, (And, Or)):
             requests = (_inner_normalize(sub_request)
                         for sub_request in request.sub_requests)
@@ -122,7 +123,7 @@ def normalize(properties, request):
             if not request.property.child_property:
                 value = properties[root].cast((request.value,))[0]
                 return Condition(request.property.name, request.operator, value)
-            else :
+            else:
                 return request
     return simplify(_inner_normalize(make_request(request)))
 
@@ -148,7 +149,7 @@ class Request(object):
     @property
     @abstractmethod
     def properties_tree(self):
-        """Returns a tree of properties concerned by this request.
+        """Tree of properties concerned by this request.
         
         >>> cond1 = Condition("test.foo", "=", "a")
         >>> cond2 = Condition("test.bar.baz", "=", "b")
@@ -189,12 +190,14 @@ class Condition(Request):
 
     @property
     def properties_tree(self):
-        def inner_properties(property):
-            if property.child_property:
-                return {property.name: inner_properties(property.child_property)}
+        def inner_properties(prop):
+            """Recursively get children properties of ``prop``."""
+            if prop.child_property:
+                return {prop.name: inner_properties(prop.child_property)}
             else:
-                return {property.name: property}
+                return {prop.name: prop}
         return inner_properties(self.property)
+
 
 class RequestProperty(object):
     """Represents a property from an item.
@@ -207,9 +210,7 @@ class RequestProperty(object):
         self.child_property = None
 
     def get_value(self, item):
-        """Retrieves the value from this property from an item.
-
-        """
+        """Retrieves the value from this property from an item."""
         return item[self.name] if item else None
 
     def __repr__(self):
@@ -240,6 +241,7 @@ class ComposedRequestProperty(RequestProperty):
     def __hash__(self):
         return hash((hash(self.name), hash(self.child_property)))
 
+
 class _AndOr(Request):
     """Super class for And and Or that holds identical behavior."""
     __metaclass__ = ABCMeta
@@ -255,19 +257,21 @@ class _AndOr(Request):
         return "%s(%s)" % (
             self.__class__.__name__,
             ", ".join(repr(request) for request in self.sub_requests))
-
-
-
     
+    @abstractmethod
+    def test(self, item):
+        raise NotImplementedError
+
     @property
     def properties_tree(self):
         def merge_properties(tree_a, tree_b):
+            """Merge two properties trees into one."""
             for name, tree_a_values in tree_a.items():
-                tree_b_values = tree_b.setdefault(name,{})
+                tree_b_values = tree_b.setdefault(name, {})
                 tree_b[name] = merge_properties(tree_b_values, tree_a_values)
             return tree_b
-        return reduce(merge_properties, [sub.properties_tree 
-            for sub in self.sub_requests] or [{}])
+        return reduce(merge_properties, [
+                sub.properties_tree for sub in self.sub_requests] or [{}])
 
 
 class And(_AndOr):

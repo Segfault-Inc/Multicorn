@@ -200,9 +200,9 @@ class QuerySelect(Query):
 
     def __call__(self, items):
         if isinstance(items, (AbstractItem, dict)):
-            items = (items,)
+            items = [items]
         if not items :
-            items = [dict([(prop.name, None) for prop in self.mapping.values()])]
+            items = [dict((prop.name, None) for prop in self.mapping.values())]
         for item in items:
             newitem = {}
             for alias, prop in self.mapping.items():
@@ -221,7 +221,6 @@ class QuerySelect(Query):
                         yield cartesian_atom 
             else:
                 yield newitem
-
 
     def validate(self, site, properties):
         new_props = {}

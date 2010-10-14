@@ -27,7 +27,7 @@ import decimal
 import datetime
 import io
 
-from . import item
+from .item import Item, AbstractItem
 
 
 class FixedOffsetTimeZone(datetime.tzinfo):
@@ -163,4 +163,4 @@ PROPERTY_TYPES = {
     datetime.date: to_date,
     iter: to_iter,
     bool: bool,
-    item.Item: lambda value: to_type(value, item.AbstractItem)}
+    Item: lambda value: to_type(value, AbstractItem)}

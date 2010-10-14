@@ -23,7 +23,6 @@ Site class. Create one for each independent site with its own configuration.
 
 """
 
-from .access_point import AccessPoint
 from .request import normalize, make_request, And, Condition, Or, Not
 from .query import QueryFilter, QuerySelect, QueryChain
 
@@ -66,8 +65,12 @@ def _delegate_to_acces_point(method_name, first_arg_is_a_request=False):
             """Call ``access_point.method_name(*args, **kwargs)``."""
             access_point = self.access_points[access_point_name]
             return getattr(access_point, method_name)(*args, **kwargs)
+    # Redefining documentation and name of the wrappers
+    # pylint: disable=W0622
     wrapper.__name__ = method_name
-    wrapper.__doc__ = getattr(AccessPoint, method_name).__doc__
+    wrapper.__doc__ = \
+        "Call :meth:`kalamar.access_point.AccessPoint.%s`." % method_name
+    # pylint: enable=W0622
     return wrapper
 
 
@@ -77,6 +80,12 @@ class Site(object):
         self.access_points = {}
     
     def register(self, name, access_point):
+        """Add an access point to this site.
+
+        :param name: Identifier string the added access point.
+        :param access_point: A concrete subclass of :class:`AccessPoint`.
+
+        """
         if hasattr(access_point, "site"):
             raise RuntimeError("Access point already registered.")
         if name in self.access_points:
@@ -86,8 +95,16 @@ class Site(object):
         access_point.name = name
         self.access_points[name] = access_point
 
-    def view(self, access_point, aliases=None, request=None, query=None):
-        access_point = self.access_points[access_point]
+    def view(self, access_point_name, aliases=None, request=None, query=None):
+        """Call :meth:`kalamar.access_point.AccessPoint.view`.
+
+        If ``alias`` and ``request`` are given, a query is created from them.
+
+        The query is then validated and then passed to the :meth:`view` method
+        of the acess point called ``access_point_name``.
+
+        """
+        access_point = self.access_points[access_point_name]
         if aliases is None:
             aliases = {"": "*"}
         if query is None:
@@ -97,11 +114,8 @@ class Site(object):
             request = _translate_request(request, aliases)
             aliases = dict(((value, key) for key, value in aliases.items()))
             query = QueryChain((QuerySelect(aliases), QueryFilter(request)))
-        self.validate_query(access_point, query)
+        query.validate(self, access_point.properties)
         return access_point.view(query)
-
-    def validate_query(self, access_point, query):
-        return query.validate(self, access_point.properties)
 
     create = _delegate_to_acces_point("create")
     delete = _delegate_to_acces_point("delete")
