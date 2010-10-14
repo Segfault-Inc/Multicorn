@@ -119,8 +119,11 @@ def normalize(properties, request):
             if root not in properties:
                 raise KeyError(
                     "This access point has no %r property." % root)
-            value = properties[root].cast((request.value,))[0]
-            return Condition(request.property.name, request.operator, value)
+            if not request.property.child_property:
+                value = properties[root].cast((request.value,))[0]
+                return Condition(request.property.name, request.operator, value)
+            else :
+                return request
     return simplify(_inner_normalize(make_request(request)))
 
 
@@ -207,7 +210,7 @@ class RequestProperty(object):
         """Retrieves the value from this property from an item.
 
         """
-        return item[self.name]
+        return item[self.name] if item else None
 
     def __repr__(self):
         return self.name
