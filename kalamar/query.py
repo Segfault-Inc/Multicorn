@@ -27,7 +27,7 @@ import itertools
 from abc import ABCMeta, abstractmethod
 from operator import itemgetter
 from kalamar.request import make_request_property
-from kalamar.item import Item
+from kalamar.item import AbstractItem
 
 from .request import normalize
 
@@ -199,7 +199,7 @@ class QuerySelect(Query):
                                  for name, value in sub_mappings.items()))
 
     def __call__(self, items):
-        if isinstance(items, (Item, dict)):
+        if isinstance(items, (AbstractItem, dict)):
             items = (items,)
         if not items :
             items = [dict([(prop.name, None) for prop in self.mapping.values()])]

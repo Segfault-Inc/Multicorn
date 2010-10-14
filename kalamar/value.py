@@ -163,4 +163,4 @@ PROPERTY_TYPES = {
     datetime.date: to_date,
     iter: to_iter,
     bool: bool,
-    item.Item: lambda value: to_type(value, item.Item)}
+    item.Item: lambda value: to_type(value, item.AbstractItem)}
