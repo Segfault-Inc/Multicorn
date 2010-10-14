@@ -33,9 +33,9 @@ class Site(object):
         self.engines = {}
 
         for name, engine_class in BUILTIN_ENGINES.items():
-            self.register_engine(name, engine_class)
+            self.register(name, engine_class)
     
-    def register_engine(self, name, engine_class):
+    def register(self, name, engine_class):
         """Add an engine to this site.
         
         :param name: Identifier string for this engine. Pass the same value

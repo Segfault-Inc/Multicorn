@@ -46,7 +46,7 @@ class Request(werkzeug.wrappers.Request):
 
     @werkzeug.utils.cached_property
     def session(self):
-        """Return the session."""
+        """Request session."""
         return werkzeug.contrib.securecookie.SecureCookie.load_cookie(
             self, secret_key=self.session_secret_key)
 
@@ -208,7 +208,7 @@ class Site(object):
         Traceback (most recent call last):
             ...
         ImportError: No module named inexistent
-        >>> module = site.import_("lorem.ipsum") # doctest: +ELLIPSIS
+        >>> site.import_("lorem.ipsum") # doctest: +ELLIPSIS
         ...                             # doctest: +NORMALIZE_WHITESPACE
         <module 'kraken_site_....lorem.ipsum' 
             from '...kraken/tests/site/lorem/ipsum.py...'>
