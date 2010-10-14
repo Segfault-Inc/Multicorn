@@ -55,16 +55,16 @@ def _translate_request(request, aliases):
 def _delegate_to_acces_point(method_name, first_arg_is_a_request=False):
     """Create a function delegating ``method_name`` to an access point."""
     if first_arg_is_a_request:
-        def wrapper(self, access_point, request=None, *args, **kwargs):
+        def wrapper(self, access_point_name, request=None, *args, **kwargs):
             """Call ``access_point.method_name(request, *args, **kwargs)``."""
-            access_point = self.access_points[access_point]
+            access_point = self.access_points[access_point_name]
             request = normalize(access_point.properties, request)
             return getattr(access_point, method_name)(
                 request, *args, **kwargs)
     else:
-        def wrapper(self, access_point, *args, **kwargs):
+        def wrapper(self, access_point_name, *args, **kwargs):
             """Call ``access_point.method_name(*args, **kwargs)``."""
-            access_point = self.access_points[access_point]
+            access_point = self.access_points[access_point_name]
             return getattr(access_point, method_name)(*args, **kwargs)
     wrapper.__name__ = method_name
     wrapper.__doc__ = getattr(AccessPoint, method_name).__doc__
