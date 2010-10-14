@@ -68,8 +68,8 @@ from .genshi_ import GenshiEngine
 from .mako_ import MakoEngine
 
 
+#: Mapping of built-in Koral engines available.
 BUILTIN_ENGINES = {"py": PythonEngine, "str-format": StrFormatEngine}
-"""Mapping of built-in Koral engines available."""
 
 
 for name, engine in (
