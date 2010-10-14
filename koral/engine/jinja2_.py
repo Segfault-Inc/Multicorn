@@ -19,9 +19,7 @@
 Jinja2
 ======
 
-Jinja2 engine support for Koral.
-
-http://jinja.pocoo.org/2/
+`Jinja2 <http://jinja.pocoo.org/2/>`_ engine support for Koral.
 
 """
 

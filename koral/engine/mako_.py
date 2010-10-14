@@ -19,9 +19,7 @@
 Mako
 ====
 
-Mako engine support for Koral.
-
-http://www.makotemplates.org/
+`Mako <http://www.makotemplates.org/>`_ engine support for Koral.
 
 """
 

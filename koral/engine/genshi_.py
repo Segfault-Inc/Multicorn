@@ -19,9 +19,7 @@
 Genshi
 ======
 
-Genshi engine support for Koral.
-
-http://genshi.edgewall.org/
+`Genshi <http://genshi.edgewall.org/>`_ engine support for Koral.
 
 """
 

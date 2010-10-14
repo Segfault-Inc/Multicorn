@@ -21,8 +21,6 @@ Format
 
 Simple engine for Koral, based on :meth:`str.format`.
 
-http://docs.python.org/library/string.html#formatstrings
-
 """
 
 from . import BaseEngine
