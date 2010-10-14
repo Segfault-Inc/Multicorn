@@ -25,6 +25,7 @@ from kalamar.request import simplify, normalize, Condition, And, Or, Not
 
 
 def test_simplify():
+    """Assert that the simplify function reduces the condition tree"""
     c1 = Condition('a', '=', 1)
     c2 = Condition('b', '>', 4)
 
@@ -51,6 +52,7 @@ def test_simplify():
     eq_(And(c1, c2), simplify(And(Or(Or(), Or(And(c1))), c2)))
         
 def test_normalize():
+    """Assert the normalize function works properly"""
     # TODO: more unit tests here.
     
     properties = {'a': Property(int), 'b': Property(unicode)}

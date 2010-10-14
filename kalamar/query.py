@@ -27,7 +27,7 @@ import itertools
 from abc import ABCMeta, abstractmethod
 from operator import itemgetter
 from kalamar.request import make_request_property
-from kalamar.item import Item
+from kalamar.item import AbstractItem
 
 from .request import normalize
 
@@ -84,6 +84,9 @@ class QueryChain(Query):
             properties = sub_query.validate(site,  properties)
         return properties
 
+    def __str__(self):
+        return "\n-->".join([str(sub) for sub in self.queries])
+
 
 class QueryDistinct(Query):
     """Query removing duplicate elements.
@@ -99,6 +102,9 @@ class QueryDistinct(Query):
 
     def validate(self, site, properties):
         return properties
+
+    def __str__(self):
+        return "QueryDistinct"
 
 
 class QueryFilter(Query):
@@ -125,6 +131,9 @@ class QueryFilter(Query):
         except (KeyError, ValueError) as detail:
             raise BadQueryException(self, detail)
         return properties
+
+    def __str__(self):
+        return "Filter : %r" % self.condition
 
     
 class QueryOrder(Query):
@@ -157,6 +166,9 @@ class QueryOrder(Query):
                 raise BadQueryException(self, "Can't sort on %s" % orderby)
         return properties
 
+    def __str__(self):
+        return "Order by: %r" % self.orderbys
+
 
 class QuerySelect(Query):
     """Query selecting a partial view of the items.
@@ -187,7 +199,7 @@ class QuerySelect(Query):
                                  for name, value in sub_mappings.items()))
 
     def __call__(self, items):
-        if isinstance(items, (Item, dict)):
+        if isinstance(items, (AbstractItem, dict)):
             items = (items,)
         if not items :
             items = [dict([(prop.name, None) for prop in self.mapping.values()])]
@@ -234,6 +246,9 @@ class QuerySelect(Query):
             new_props.update(sub_select.validate(site, child_properties))
         return new_props 
 
+    def __str__(self):
+        return "SELECT query : %r, %r "  % (self.mapping, self.sub_selects)
+
 
 class QueryRange(Query):
     """Query selecting a range of items.
@@ -253,3 +268,6 @@ class QueryRange(Query):
 
     def validate(self, site, properties):
         return properties
+
+    def __str__(self):
+        return "Range %r " % self.range

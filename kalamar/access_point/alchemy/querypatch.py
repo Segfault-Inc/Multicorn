@@ -36,19 +36,18 @@ def query_chain_to_alchemy(self, alchemy_query, access_point, properties):
 
 
 def query_chain_validator(self, access_point, properties):
-    cants = []
     cans = []
     for sub_query in self.queries:
         managed, not_managed = sub_query.alchemy_validate(
             access_point, properties)
         if not_managed is not None:
-            cants.append(not_managed)         
+            return None, self
         if managed is not None:
             cans.append(managed)
         properties = sub_query.validate(access_point.site, properties)
-    query_can = query.QueryChain(cans) if cans and not cants else None
-    return query_can, query.QueryChain(cants)
-
+    #TODO  : proper cans & cants management
+    query_can = query.QueryChain(cans) 
+    return query_can, None
 
 def standard_validator(self, access_point, properties):
     return self, None
