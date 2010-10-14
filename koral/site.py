@@ -40,7 +40,7 @@ class Site(object):
         
         :param name: Identifier string for this engine. Pass the same value
             to :meth:`render` to use the registered engine.
-        :param engine_class: A concrete subclass of :class:`BaseEngine`
+        :param engine_class: A concrete subclass of :class:`BaseEngine`.
         
         """
         self.engines[name] = engine_class(self.path_to_root)
