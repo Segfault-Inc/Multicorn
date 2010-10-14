@@ -1,14 +1,16 @@
-
 import os.path
 import werkzeug
 
+
 def make_site(secret_key=None):
-    # import kraken here so that coverage sees module-level statements
+    # import kraken and koral here so that coverage sees module-level statements
     import kraken
+    import koral
+    root = os.path.join(os.path.dirname(__file__), 'site')
     return kraken.Site(
-        site_root=os.path.join(os.path.dirname(__file__), 'site'),
-        secret_key=secret_key,
-    )
+        site_root=root,
+        koral_site=koral.Site(root),
+        secret_key=secret_key)
 
 
 class KrakenSiteMixin(object):

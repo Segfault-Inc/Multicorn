@@ -23,5 +23,120 @@ Kraken - HTTP Requests Dispatcher
 
 """
 
-from kraken.site import Site
-from kraken.utils import *
+import datetime
+import hashlib
+import mimetypes
+import os
+import posixpath
+import re
+import sys
+import urlparse
+import werkzeug
+import werkzeug.contrib.securecookie
+import werkzeug.wrappers
+
+from .site import Site
+
+
+def make_absolute_url(request, url):
+    """Return a clean absolute URL from ``request`` and ``url``.
+
+    # fake request for http://localhost/foo/
+    >>> import werkzeug
+    >>> request = werkzeug.Request(werkzeug.create_environ(path="/foo/"))
+
+    >>> make_absolute_url(request, "http://localhost/foo/bar/")
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, "/foo/bar/")
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, "./bar/")
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, "bar/")
+    'http://localhost/foo/bar/'
+    >>> make_absolute_url(request, "../bar/")
+    'http://localhost/bar/'
+    >>> make_absolute_url(request, "/")
+    'http://localhost/'
+
+    # Same tests without the trailing slash
+    >>> make_absolute_url(request, "http://localhost/foo/bar")
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, "/foo/bar")
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, "./bar")
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, "bar")
+    'http://localhost/foo/bar'
+    >>> make_absolute_url(request, "../bar")
+    'http://localhost/bar'
+
+    """
+    # The object returned by urlparse has a "netloc" attribute
+    # pylint: disable=E1101
+    if urlparse.urlparse(url).netloc:
+        # The URL has a "host" part: it’s already absolute
+        return url
+    # pylint: enable=E1101
+    if not url.startswith("/"):
+        # Relative to the current URL, not the site root
+        path = request.base_url[len(request.host_url):]
+        url = "/" + path + "/" + url
+    new_url = request.host_url.rstrip("/") + posixpath.normpath(url)
+    # posixpath.normpath always remove trailing slashes, add it if needed
+    if url.endswith("/") and url != "/":
+        new_url += "/"
+    return new_url
+
+
+def redirect(request, url, status=302):
+    """Redirect client to relative or absolute ``url`` with ``status``.
+
+    >>> from . import site
+    >>> @site.Request.application
+    ... def test_app(request):
+    ...     return redirect(request, request.args["redirect_to"],
+    ...                     int(request.args.get("status", 302)))
+    >>> client = werkzeug.Client(test_app)
+
+    >>> client.get("/foo?redirect_to=../bar") # doctest: +ELLIPSIS
+    (..., '302 FOUND', [...('Location', 'http://localhost/bar')...)
+
+    >>> client.get("/foo?redirect_to=/") # doctest: +ELLIPSIS
+    (..., '302 FOUND', [...('Location', 'http://localhost/')...)
+
+    """
+    return werkzeug.utils.redirect(make_absolute_url(request, url), status)
+
+
+def runserver(site, args=None):
+    """Run a developpement server for the given Kraken ``site``.
+
+    Setup test
+    >>> real_argv = sys.argv
+    >>> import logging
+    >>> logging.getLogger("werkzeug").setLevel(logging.FATAL)
+
+    Test
+    >>> runserver(None, ["--help"]) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    usage: ...
+    >>> sys.argv = [sys.argv[0]]
+    >>> try: runserver(None, ["--port=1"]) # doctest: +ELLIPSIS
+    ... except Exception, e: print e[1]
+    Permission denied
+    >>> sys.argv = [sys.argv[0], "--help"]
+    >>> runserver(None) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+    usage: ...
+
+    Restore real argv
+    >>> sys.argv = real_argv
+
+    """
+    if not args:
+        args = sys.argv[1:]
+    if not args or args[0] != "--help":
+        args = ["runserver"] + args
+    # action_runserver is needed by Werkzeug, this is not useless
+    # pylint: disable=W0612
+    action_runserver = werkzeug.script.make_runserver(lambda: site)
+    # pylint: enable=W0612
+    werkzeug.script.run(args=args)

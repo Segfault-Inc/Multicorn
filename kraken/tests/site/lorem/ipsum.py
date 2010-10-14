@@ -1,4 +1,4 @@
-from kraken.utils import Response
+from werkzeug import Response
 
 
 def handle_request(request):
