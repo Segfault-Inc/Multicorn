@@ -92,6 +92,7 @@ def make_absolute_url(request, url):
 def redirect(request, url, status=302):
     """Redirect client to relative or absolute ``url`` with ``status``.
 
+    >>> # Create a client redirecting to the given "redirect_to" parameter
     >>> from . import site
     >>> @site.Request.application
     ... def test_app(request):
@@ -99,9 +100,9 @@ def redirect(request, url, status=302):
     ...                     int(request.args.get("status", 302)))
     >>> client = werkzeug.Client(test_app)
 
+    >>> # Check that the requests are redirected
     >>> client.get("/foo?redirect_to=../bar") # doctest: +ELLIPSIS
     (..., '302 FOUND', [...('Location', 'http://localhost/bar')...)
-
     >>> client.get("/foo?redirect_to=/") # doctest: +ELLIPSIS
     (..., '302 FOUND', [...('Location', 'http://localhost/')...)
 
@@ -112,12 +113,12 @@ def redirect(request, url, status=302):
 def runserver(site, args=None):
     """Run a developpement server for the given Kraken ``site``.
 
-    Setup test
+    >>> # Setup test
     >>> real_argv = sys.argv
     >>> import logging
     >>> logging.getLogger("werkzeug").setLevel(logging.FATAL)
 
-    Test
+    >>> # Test
     >>> runserver(None, ["--help"]) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...
     >>> sys.argv = [sys.argv[0]]
