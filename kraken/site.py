@@ -46,7 +46,7 @@ class Request(werkzeug.wrappers.Request):
 
     @werkzeug.utils.cached_property
     def session(self):
-        """Return the session cookie."""
+        """Return the session."""
         return werkzeug.contrib.securecookie.SecureCookie.load_cookie(
             self, secret_key=self.session_secret_key)
 
@@ -163,6 +163,9 @@ class Site(object):
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
         request = Request(environ, self.secret_key)
+        request.koral = self.koral_site
+        request.kalamar = self.kalamar_site
+        request.kraken = self
         path = os.path.join(*request.path.split(u"/")).strip(os.path.sep)
 
         try:
@@ -178,9 +181,6 @@ class Site(object):
                 # Handle template
                 values = {
                     "request": request,
-                    "koral": self.koral_site,
-                    "kalamar": self.kalamar_site,
-                    "kraken": self,
                     "import_": self.import_}
                 response = TemplateResponse(self.koral_site, path, values)
                 # We are sure that the response can be given, just check that we
@@ -188,7 +188,6 @@ class Site(object):
                 if not request.path.endswith(u"/"):
                     response = werkzeug.utils.append_slash_redirect(
                         request.environ)
-
         except werkzeug.exceptions.HTTPException, exception:
             # ``exception`` is also a WSGI application
             return exception(environ, start_response)
