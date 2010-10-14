@@ -41,10 +41,11 @@ from .site import Site
 def make_absolute_url(request, url):
     """Return a clean absolute URL from ``request`` and ``url``.
 
-    # fake request for http://localhost/foo/
+    >>> # Fake request for http://localhost/foo/
     >>> import werkzeug
     >>> request = werkzeug.Request(werkzeug.create_environ(path="/foo/"))
 
+    >>> # Various tests
     >>> make_absolute_url(request, "http://localhost/foo/bar/")
     'http://localhost/foo/bar/'
     >>> make_absolute_url(request, "/foo/bar/")
@@ -58,7 +59,7 @@ def make_absolute_url(request, url):
     >>> make_absolute_url(request, "/")
     'http://localhost/'
 
-    # Same tests without the trailing slash
+    >>> # Same tests without the trailing slash
     >>> make_absolute_url(request, "http://localhost/foo/bar")
     'http://localhost/foo/bar'
     >>> make_absolute_url(request, "/foo/bar")
