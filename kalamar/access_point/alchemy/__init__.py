@@ -26,6 +26,7 @@ Access point storing items in a RDBMS.
 from . import querypatch
 from .. import AccessPoint
 from ...request import Condition, And, Or, Not
+from ...query import QueryChain
 from ...property import Property
 
 
@@ -36,6 +37,7 @@ from sqlalchemy.sql import expression, and_, or_, not_
 from datetime import datetime, date
 from decimal import Decimal
 
+import sqlalchemy.sql.expression 
 
 SQLALCHEMYTYPES = {
     unicode: Unicode,
@@ -127,7 +129,7 @@ class Alchemy(AccessPoint):
         """Initialize the sql alchemy engine on first access."""
         metadata = Alchemy.__metadatas.get(self.url, None)
         if not metadata:
-            engine = create_engine(self.url, echo=True)
+            engine = create_engine(self.url, echo=False)
             metadata = MetaData()
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
@@ -169,7 +171,7 @@ class Alchemy(AccessPoint):
         for name, prop in self.properties.items():
             if prop.relation == "one-to-many":
                 lazy_props[name] = None
-            elif prop.relation == "many-to-one":
+            elif prop.relation == "many-to-one" and result[name]:
                 lazy_props[name] = self._many_to_one_lazy_loader(prop, 
                         result[name])
             else: 
@@ -248,12 +250,18 @@ class Alchemy(AccessPoint):
         self._table.delete().where(whereclause).execute()
 
     def view(self, kalamar_query):
-        alchemy_query = self._table.select()
+        alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
             alchemy_query = can.to_alchemy(alchemy_query, self, 
                 self.properties)
+            if not alchemy_query.c:
+                for name, prop in self.properties.items():
+                    alchemy_query.append_column(prop.column.label(name))
             result = alchemy_query.execute()
         else:
             result = self.search(And())
+        result = (dict(line) for line in result)
+        result = list(result)
+        cants = cants or QueryChain([])
         return cants(result)
