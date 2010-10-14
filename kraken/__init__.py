@@ -129,7 +129,7 @@ def runserver(site, args=None):
     >>> runserver(None) # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
     usage: ...
 
-    Restore real argv
+    >>> # Restore real argv
     >>> sys.argv = real_argv
 
     """
