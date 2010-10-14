@@ -16,8 +16,8 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Filesystem
-==========
+Memory
+======
 
 Access point storing items in memory. Mainly useful for testing.
 
