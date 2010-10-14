@@ -45,15 +45,17 @@ class FileSystem(AccessPoint):
         self.content_property = content_property
 
         self._ordered_properties = tuple(
-            (p, Property(unicode)) if isinstance(p, basestring)
-            else p # Assume a (name, Property_instance) tuple.
-            for p in properties)
-        self.properties = dict(self._ordered_properties)
-        assert content_property not in self.properties
-        self.properties[content_property] = Property(io.IOBase)
+            (prop, Property(unicode)) if isinstance(prop, basestring)
+            else prop # Assume a (name, Property_instance) tuple.
+            for prop in properties)
+
+        properties = dict(self._ordered_properties)
+        assert content_property not in properties
+        properties[content_property] = Property(io.IOBase)
         # All properties here are in the identity
-        self.identity_properties = tuple(name for name, p in 
-                                         self._ordered_properties)
+        identity_properties = tuple(
+            name for name, prop in self._ordered_properties)
+        super(FileSystem, self).__init__(properties, identity_properties)
 
         self._pattern_parts = unicode(pattern).split("/")
 
@@ -66,8 +68,8 @@ class FileSystem(AccessPoint):
 
     def _filename_for(self, item):
         return os.path.join(self.root_dir, *(
-            template % tuple(unicode(item[p]) for p in props)
-            for props, regexp, template in self.properties_per_path_part))
+                template % tuple(unicode(item[prop]) for prop in props)
+                for props, regexp, template in self.properties_per_path_part))
 
     def search(self, request):
         def defered_open(path):
@@ -93,6 +95,7 @@ class FileSystem(AccessPoint):
                         defered_open(path)})
                     if request.test(item):
                         yield item
+
         return walk(self.root_dir, self.properties_per_path_part)
 
     def delete(self, item):
@@ -100,8 +103,7 @@ class FileSystem(AccessPoint):
 
     def save(self, item):
         content = item[self.content_property]
-        if hasattr(content, 'seek'):
+        if hasattr(content, "seek"):
             content.seek(0)
-        with open(self._filename_for(item), 'wb') as fd:
+        with open(self._filename_for(item), "wb") as fd:
             shutil.copyfileobj(content, fd)
-

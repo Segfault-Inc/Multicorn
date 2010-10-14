@@ -28,7 +28,7 @@ from kalamar import Site
 
 
 class DummyAccessPoint(object):
-    pass
+    properties = identity_properties = site = None
 
 
 def test_simple_setup():

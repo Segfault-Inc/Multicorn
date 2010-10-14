@@ -86,7 +86,7 @@ class Site(object):
         :param access_point: A concrete subclass of :class:`AccessPoint`.
 
         """
-        if hasattr(access_point, "site"):
+        if access_point.site:
             raise RuntimeError("Access point already registered.")
         if name in self.access_points:
             raise RuntimeError(
@@ -100,8 +100,8 @@ class Site(object):
 
         If ``alias`` and ``request`` are given, a query is created from them.
 
-        The query is then validated and then passed to the :meth:`view` method
-        of the acess point called ``access_point_name``.
+        The query is then validated and then passed to the ``view`` method of
+        the acess point called ``access_point_name``.
 
         """
         access_point = self.access_points[access_point_name]

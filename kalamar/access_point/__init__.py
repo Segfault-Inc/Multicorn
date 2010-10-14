@@ -67,9 +67,10 @@ class AccessPoint(object):
     def __init__(self, properties, identity_properties):
         self.properties = properties
         self.identity_properties = identity_properties
+        self.site = None
 
     @staticmethod
-    def _auto_value(self, prop):
+    def _auto_value(prop):
         """Return a random value corresponding to ``prop`` type."""
         if prop.type == datetime.datetime:
             # TODO: find a better random value

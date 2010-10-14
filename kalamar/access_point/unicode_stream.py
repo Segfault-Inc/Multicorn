@@ -15,6 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Unicode Stream
+==============
+
+Wrapper access point reading and decoding, as unicode, a stream property from
+the underlying items.
+
+"""
 
 import copy
 try:
@@ -37,6 +45,7 @@ from ..request import And
 
 
 class UnicodeStreamItem(ItemWrapper):
+    """Unicode stream item."""
     def getlist(self, key):
         if key != self.access_point.stream_property_name:
             return self.wrapped_item.getlist(key)
@@ -55,10 +64,7 @@ class UnicodeStreamItem(ItemWrapper):
 
 
 class UnicodeStream(AccessPointWrapper):
-    """This access point wrapper reads and decode (as unicode) a stream property
-    from the underlying items.
-
-    """
+    """Unicode stream access point."""
     ItemWrapper = UnicodeStreamItem
     
     def __init__(self, wrapped_ap, stream_property_name, encoding):
@@ -103,10 +109,11 @@ class UnicodeStream(AccessPointWrapper):
 
     def _split_request(self, request):
         # Constraints here:
-        #  * `And(request_for_wrapped_ap, remaining_request)` 
-        #    must be equivalent to `request`.
-        #  * request_for_wrapped_ap must not contain conditions about the
-        #    converted property. (ie. self.stream_property_name)
+        #
+        # - ``And(request_for_wrapped_ap, remaining_request)`` must be
+        #   equivalent to `request`.
+        # - ``request_for_wrapped_ap`` must not contain conditions about the
+        #   converted property, ie. ``self.stream_property_name``.
         
         # TODO: decompose better, at least for simple cases.
         # eg. {'a': 1, 'b': 2} should decompose to {'a': 1} and {'b': 2}
@@ -131,4 +138,3 @@ class UnicodeStream(AccessPointWrapper):
             # use the "stupid" but safe default implementation
             # based on search+delete
             AccessPoint.delete_many(self, request)
-
