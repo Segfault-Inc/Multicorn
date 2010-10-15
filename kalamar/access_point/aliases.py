@@ -29,7 +29,9 @@ from ..request import Condition, And, Or, Not
 
 
 class AliasedItem(ItemWrapper):
+    """Item with aliased properties."""
     def _translate_key(self, key):
+        """Get value of possibly aliased property called ``key``."""
         if key not in self.access_point.properties:
             raise KeyError
         return self.access_point.aliases.get(key, key)
@@ -52,7 +54,8 @@ class Aliases(AccessPointWrapper):
     def __init__(self, wrapped_ap, aliases):
         """Create an access point aliasing ``wrapped_ap`` properties.
 
-        :param aliases: a dict where keys are the new property names,
+        :param wrapped_ap: Access point whose items must be aliased.
+        :param aliases: Mapping where keys are the new property names,
             and values are the names in the wrapped access point.
 
         """
@@ -81,7 +84,7 @@ class Aliases(AccessPointWrapper):
                              request.operator,
                              request.value)
         else:
-            raise ValueError("Unknown request type : %r" % request)
+            raise ValueError("Unknown request type: %r" % request)
     
     def search(self, request):
         return super(Aliases, self).search(self.translate_request(request))

@@ -52,11 +52,10 @@ class AccessPoint(object):
     In addition to abstract methods and properties, concrete access points
     must have three attributes:
     
-    :attr:`properties` is a dict where keys are
-        property names as strings, and value are :class:`kalamar.property.Property`
-        instances.
-    :attr:`identity_properties` is a tuple of property names that compose
-        the "identity" of items in this access point.
+    :param properties: Mapping where keys are property names as strings, and
+        value are :class:`kalamar.property.Property` instances.
+    :param identity_properties: Tuple of property names that compose the
+        "identity" of items in this access point.
 
     Moreover, :attr:`site` is added when an access point is registered. This
     attribute is mandatory for :meth:`view`.
@@ -101,8 +100,8 @@ class AccessPoint(object):
     def open(self, request, default=DEFAULT_PARAMETER):
         """Return the item in access point matching ``request``.
         
-        If there is no result, raise ``Site.ObjectDoesNotExist``. If there are
-        more than one result, raise ``Site.MultipleObjectsReturned``.
+        If there is no result, raise :exc:`Site.ObjectDoesNotExist`. If there
+        are more than one result, raise :exc:`Site.MultipleObjectsReturned`.
         
         """
         results = iter(self.search(request))

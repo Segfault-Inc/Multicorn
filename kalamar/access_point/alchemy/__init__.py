@@ -197,9 +197,8 @@ class Alchemy(AccessPoint):
         query.append_whereclause(self.to_alchemy_condition(request))
         for name, prop in self.properties.items():
             query.append_column(prop.column.label(name))
-        result = query.execute()
-        for line in result:
-            yield self.__item_from_result(line)
+        execution = query.execute()
+        return (self.__item_from_result(line) for line in execution)
 
     def __to_pk_where_clause(self, item):
         """Build an alchemy condition matching this item on its pks."""
