@@ -57,28 +57,31 @@ class FileSystem(AccessPoint):
             name for name, prop in self._ordered_properties)
         super(FileSystem, self).__init__(properties, identity_properties)
 
-        self._pattern_parts = unicode(pattern).split("/")
+        pattern_parts = unicode(pattern).split("/")
+        props_iter = iter(self.identity_properties)
+        self.properties_per_path_part = []
+        for part in pattern_parts:
+            props = tuple(next(props_iter) for i in xrange(part.count("*")))
+            regexp = re.compile(
+                "^%s$" % "(.*)".join(
+                    re.escape(sub_part) for sub_part in part.split("*")))
+            template = part.replace("*", "%s")
+            self.properties_per_path_part.append((props, regexp, template))
 
-        properties_iter = iter(self.identity_properties)
-        self.properties_per_path_part = tuple(
-            (tuple(next(properties_iter) for i in xrange(part.count("*"))),
-             re.compile("^%s$" % "(.*)".join(map(re.escape, part.split("*")))),
-             part.replace("*", "%s"))
-            for part in self._pattern_parts)
-
-    def _filename_for(self, item):
+    def _item_filename(self, item):
+        """Item filename."""
         return os.path.join(self.root_dir, *(
                 template % tuple(unicode(item[prop]) for prop in props)
                 for props, regexp, template in self.properties_per_path_part))
 
     def search(self, request):
         def defered_open(path):
-            def loader():
-                return (open(path, "rb"),)
-            return loader
+            """Opener for ``path``."""
+            return lambda: (open(path, "rb"),)
 
         def walk(root, remaining_path_parts, previous_properties=()):
-            props, regexp, template = remaining_path_parts[0]
+            """Walk through filesystem from ``root`` yielding matching items."""
+            props, regexp = remaining_path_parts[0][:2]
             remaining_path_parts = remaining_path_parts[1:]
             for basename in os.listdir(root):
                 match = regexp.match(basename)
@@ -91,19 +94,19 @@ class FileSystem(AccessPoint):
                     for item in walk(path, remaining_path_parts, properties):
                         yield item
                 if not remaining_path_parts and not os.path.isdir(path):
-                    item = Item(self, properties, {self.content_property: 
-                        defered_open(path)})
+                    lazy_loaders = {self.content_property: defered_open(path)}
+                    item = Item(self, properties, lazy_loaders)
                     if request.test(item):
                         yield item
 
         return walk(self.root_dir, self.properties_per_path_part)
 
     def delete(self, item):
-        os.remove(self._filename_for(item))
+        os.remove(self._item_filename(item))
 
     def save(self, item):
         content = item[self.content_property]
         if hasattr(content, "seek"):
             content.seek(0)
-        with open(self._filename_for(item), "wb") as fd:
-            shutil.copyfileobj(content, fd)
+        with open(self._item_filename(item), "wb") as file_descriptor:
+            shutil.copyfileobj(content, file_descriptor)

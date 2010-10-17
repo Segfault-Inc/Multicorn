@@ -78,7 +78,10 @@ class AccessPoint(object):
             # TODO: find a better random value
             return datetime.date.today()
         elif prop.type == float:
+            # ``uuid4`` object *has* an ``int`` property
+            # pylint: disable=E1101
             return uuid.uuid4().int / float(uuid.uuid4().int)
+            # pylint: enable=E1101
         elif prop.type == iter:
             return uuid.uuid4().bytes
         else:

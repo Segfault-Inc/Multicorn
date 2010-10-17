@@ -69,15 +69,16 @@ class Aliases(AccessPointWrapper):
             self.reversed_aliases.get(name, name)
             for name in wrapped_ap.identity_properties)
     
-    def translate_request(self, request):
+    def _translate_request(self, request):
+        """Translate ``request`` to use aliases."""
         if isinstance(request, And):
-            return And(*(self.translate_request(r)
-                         for r in request.sub_requests))
+            return And(*(self._translate_request(req)
+                         for req in request.sub_requests))
         elif isinstance(request, Or):
-            return Or(*(self.translate_request(r)
-                        for r in request.sub_requests))
+            return Or(*(self._translate_request(req)
+                        for req in request.sub_requests))
         elif isinstance(request, Not):
-            return Not(self.translate_request(request.sub_request))
+            return Not(self._translate_request(request.sub_request))
         elif isinstance(request, Condition):
             name = request.property.name
             return Condition(self.aliases.get(name, name),
@@ -87,10 +88,10 @@ class Aliases(AccessPointWrapper):
             raise ValueError("Unknown request type: %r" % request)
     
     def search(self, request):
-        return super(Aliases, self).search(self.translate_request(request))
+        return super(Aliases, self).search(self._translate_request(request))
     
     def delete_many(self, request):
-        super(Aliases, self).delete_many(self.translate_request(request))
+        super(Aliases, self).delete_many(self._translate_request(request))
     
     def create(self, properties=None, lazy_loaders=None):
         if not properties:
@@ -99,10 +100,13 @@ class Aliases(AccessPointWrapper):
             lazy_loaders = {}
 
         if isinstance(properties, MultiMapping):
+            # ``properties`` is not a dict, it has a ``getlist`` method
+            # pylint: disable=E1103
             props = MultiDict()
             for key in properties:
                 props.setlist(self.aliases.get(key, key), 
                     properties.getlist(key))
+            # pylint: enable=E1103
         else:
             props = dict((self.aliases.get(key, key), value)
                 for key, value in dict(properties).iteritems())

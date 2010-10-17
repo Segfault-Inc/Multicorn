@@ -27,6 +27,18 @@ from . import AccessPointWrapper
 from ..item import ItemWrapper
 
 
+def invalidate_cache(function):
+    """Override ``function`` which needs to invalidate the cache when called."""
+    def wrapper(cache_access_point, *args, **kwargs):
+        """Wrap ``access_point`` by invalidating the cache."""
+        # ``wrapper`` is in a decorator and can access private attributes
+        # pylint: disable=W0212
+        cache_access_point._cache.clear()
+        return function(cache_access_point, *args, **kwargs)
+        # pylint: enable=W0212
+    return wrapper
+
+
 class Cache(AccessPointWrapper):
     """Access point that store a cache in memory for search request.
 
@@ -36,26 +48,25 @@ class Cache(AccessPointWrapper):
     """
     def __init__(self, wrapped_ap):
         super(Cache, self).__init__(wrapped_ap)
-        self.__cache = {}
+        self._cache = {}
 
     def search(self, request):
         # Try to hit the cache
-        values = self.__cache.get(request, None)
+        values = self._cache.get(request, None)
         if not values:
             values = [ItemWrapper(self, item)
                 for item in self.wrapped_ap.search(request)]
-            self.__cache[request] = values
-
+            self._cache[request] = values
         return values
 
-    # Override functions which needs to invalidate the cache when called
-    def invalidate_cache(name):
-        def wrapper(self, *args, **kwargs):
-            self.__cache.clear()
-            return getattr(super(Cache, self), name)(*args, **kwargs)
-        wrapper.__name__ = name
-        return wrapper
+    @invalidate_cache
+    def delete(self, item):
+        super(Cache, self).delete(item)
 
-    save = invalidate_cache("save")
-    delete_many = invalidate_cache("delete_many")
-    delete = invalidate_cache("delete")
+    @invalidate_cache
+    def delete_many(self, request):
+        super(Cache, self).delete_many(request)
+
+    @invalidate_cache
+    def save(self, item):
+        super(Cache, self).save(item)

@@ -49,7 +49,7 @@ def test_filesytem_init():
     
     this = {"package": "kalamar", "module": "filesystem", "extension": ""}
     filename = __file__[:-1] if __file__.endswith(".pyc") else __file__
-    eq_(ap._filename_for(this), filename)
+    eq_(ap._item_filename(this), filename)
     
     f = site.open("tests", this)["content"]
     eq_(f.name, filename)

@@ -83,9 +83,9 @@ def test_aliased_item():
 def test_translate_request():
     ap = Aliases(Memory({}, ""), {"foo": "FOO", "bar": "BAR"})
     C = Condition
-    eq_(ap.translate_request(C("foo", "=", 4)), C("FOO", "=", 4))
-    eq_(ap.translate_request(C("other", "=", 7)), C("other", "=", 7))
-    eq_(ap.translate_request(
+    eq_(ap._translate_request(C("foo", "=", 4)), C("FOO", "=", 4))
+    eq_(ap._translate_request(C("other", "=", 7)), C("other", "=", 7))
+    eq_(ap._translate_request(
             And(C("foo", "=", 4),
                 Not(Or(C("other", "=", 7), C("bar", "!=", 1))))),
         And(Condition("FOO", "=", 4), 
