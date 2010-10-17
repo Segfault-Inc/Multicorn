@@ -27,7 +27,7 @@ from . import AccessPointWrapper
 from ..item import ItemWrapper
 
 
-def invalidate_cache(function):
+def _invalidate_cache(function):
     """Override ``function`` which needs to invalidate the cache when called."""
     def wrapper(cache_access_point, *args, **kwargs):
         """Wrap ``access_point`` by invalidating the cache."""
@@ -59,14 +59,14 @@ class Cache(AccessPointWrapper):
             self._cache[request] = values
         return values
 
-    @invalidate_cache
+    @_invalidate_cache
     def delete(self, item):
         super(Cache, self).delete(item)
 
-    @invalidate_cache
+    @_invalidate_cache
     def delete_many(self, request):
         super(Cache, self).delete_many(request)
 
-    @invalidate_cache
+    @_invalidate_cache
     def save(self, item):
         super(Cache, self).save(item)
