@@ -21,36 +21,37 @@ Test the alchemy backend on an sqlite base
 
 from nose.tools import eq_
 from kalamar.property import Property
-from kalamar.request import simplify, normalize, Condition, And, Or, Not
+from kalamar.request import normalize, Condition, And, Or, Not
 
 
 def test_simplify():
-    """Assert that the simplify function reduces the condition tree"""
+    """Assert that the simplify method reduces the condition tree"""
     c1 = Condition('a', '=', 1)
     c2 = Condition('b', '>', 4)
 
-    eq_(And(), simplify(And()))
-    eq_(And(), simplify(And(And())))
-    eq_(And(), simplify(And(And(), And())))
-    eq_(Or(), simplify(Or()))
-    eq_(Or(), simplify(Or(Or())))
-    eq_(Or(), simplify(Or(Or(), Or())))
+    eq_(And(), And().simplify())
+    eq_(And(), And(And()).simplify())
+    eq_(And(), And(And(), And()).simplify())
+    eq_(Or(), Or().simplify())
+    eq_(Or(), Or(Or()).simplify())
+    eq_(Or(), Or(Or(), Or()).simplify())
 
-    eq_(c1, simplify(And(c1)))
-    eq_(c1, simplify(And(c1, c1)))
-    eq_(c1, simplify(And(c1, And(c1))))
-    eq_(c1, simplify(And(And(c1))))
-    eq_(c1, simplify(And(And(c1), And())))
-    eq_(c1, simplify(Or(c1)))
-    eq_(c1, simplify(Or(c1, c1)))
-    eq_(c1, simplify(Or(c1, Or(c1))))
-    eq_(c1, simplify(Or(Or(c1))))
-    eq_(c1, simplify(Or(Or(c1), Or())))
+    eq_(c1, And(c1).simplify())
+    eq_(c1, And(c1, c1).simplify())
+    eq_(c1, And(c1, And(c1)).simplify())
+    eq_(c1, And(And(c1)).simplify())
+    eq_(c1, And(And(c1), And()).simplify())
+    eq_(c1, Or(c1).simplify())
+    eq_(c1, Or(c1, c1).simplify())
+    eq_(c1, Or(c1, Or(c1)).simplify())
+    eq_(c1, Or(Or(c1)).simplify())
+    eq_(c1, Or(Or(c1), Or()).simplify())
 
-    eq_(c1, simplify(Not(Not(c1))))
-    eq_(c1, simplify(Or(Or(), Or(And(c1)))))
-    eq_(And(c1, c2), simplify(And(Or(Or(), Or(And(c1))), c2)))
-        
+    eq_(c1, Not(Not(c1)).simplify())
+    eq_(c1, Or(Or(), Or(And(c1))).simplify())
+    eq_(And(c1, c2), And(Or(Or(), Or(And(c1))), c2).simplify())
+
+
 def test_normalize():
     """Assert the normalize function works properly"""
     # TODO: more unit tests here.

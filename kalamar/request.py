@@ -35,36 +35,6 @@ class OperatorNotAvailable(KeyError):
     """Operator is unknown or not managed."""
 
 
-def _flatten(request):
-    """Take And or Or ``request``, return a generator of flat sub requests."""
-    for sub_request in request.sub_requests:
-        if sub_request.__class__ is request.__class__:
-            for sub_sub in _flatten(sub_request):
-                yield sub_sub
-        else:
-            yield sub_request
-
-
-def simplify(request):
-    """Return a simplified equivalent request."""
-    if isinstance(request, (And, Or)):
-        # _flatten: And(a, And(b, c))) == And(a, b, c)
-        # Use a set to remove duplicates: And(a, b, b) == And(a, b)
-        new_sub_requests = set(simplify(r) for r in _flatten(request))
-        if len(new_sub_requests) == 1:
-            # And(a) == a
-            return new_sub_requests.pop()
-        return request.__class__(*new_sub_requests)
-    elif isinstance(request, Not):
-        if isinstance(request.sub_request, Not):
-            # Not(Not(a)) == a
-            return simplify(request.sub_request.sub_request)
-        else:
-            return Not(simplify(request.sub_request))
-    else:
-        return request
-
-
 def make_request_property(property_name):
     """Return an instance of RequestProperty
     
@@ -125,7 +95,7 @@ def normalize(properties, request):
                 return Condition(request.property.name, request.operator, value)
             else:
                 return request
-    return simplify(_inner_normalize(make_request(request)))
+    return _inner_normalize(make_request(request)).simplify()
 
 
 class Request(object):
@@ -160,6 +130,10 @@ class Request(object):
         """
         raise NotImplementedError
 
+    def simplify(self):
+        """Return a simplified equivalent request."""
+        return self
+
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""
@@ -175,7 +149,6 @@ class Condition(Request):
         self.property = make_request_property(property_name)
         self.operator = operator
         self.value = value
-
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
@@ -202,7 +175,7 @@ class Condition(Request):
 class RequestProperty(object):
     """Represents a property from an item.
 
-    This object should be used to retrieve a property value from an item
+    This object should be used to retrieve a property value from an item.
 
     """
     def __init__(self, name):
@@ -223,7 +196,7 @@ class RequestProperty(object):
 class ComposedRequestProperty(RequestProperty):
     """Represents a nested property from an item. 
 
-    A nested property is of the following form : "foo.bar.baz"
+    A nested property is of the form ``foo.bar.baz``.
     
     """
     def __init__(self, name, child_property, inner = True):
@@ -273,6 +246,22 @@ class _AndOr(Request):
         return reduce(merge_properties, [
                 sub.properties_tree for sub in self.sub_requests] or [{}])
 
+    def flatten(self):
+        """Return a generator of flat sub requests."""
+        for sub_request in self.sub_requests:
+            if type(sub_request) is type(self):
+                for sub_sub in sub_request.flatten():
+                    yield sub_sub
+            else:
+                yield sub_request
+
+    def simplify(self):
+        new_sub_requests = set(request.simplify() for request in self.flatten())
+        if len(new_sub_requests) == 1:
+            # And(a) == a
+            return new_sub_requests.pop()
+        return type(self)(*new_sub_requests)
+
 
 class And(_AndOr):
     """True if all given requests are true."""
@@ -303,3 +292,10 @@ class Not(Request):
     @property
     def properties_tree(self):
         return self.sub_request.properties_tree
+
+    def simplify(self):
+        if isinstance(self.sub_request, Not):
+            # Not(Not(a)) == a
+            return self.sub_request.sub_request.simplify()
+        else:
+            return Not(self.sub_request.simplify())
