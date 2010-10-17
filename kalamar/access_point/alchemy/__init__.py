@@ -23,21 +23,20 @@ Access point storing items in a RDBMS.
 
 """
 
-from . import querypatch
-from .. import AccessPoint
-from ...request import Condition, And, Or, Not
-from ...query import QueryChain
-from ...property import Property
-
-
 from werkzeug import cached_property
 from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
     Integer, Date, Numeric, DateTime, Boolean, Unicode
 from sqlalchemy.sql import expression, and_, or_, not_
 from datetime import datetime, date
 from decimal import Decimal
-
 import sqlalchemy.sql.expression 
+
+from . import querypatch
+from .. import AccessPoint
+from ...request import Condition, And, Or, Not
+from ...query import QueryChain
+from ...property import Property
+
 
 SQLALCHEMYTYPES = {
     unicode: Unicode,
