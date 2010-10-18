@@ -29,97 +29,105 @@ from kalamar.request import Condition, Not, And, Or
 
 
 def test_hash_condition():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "tortue")
-    c3 = Condition("name", "<", "hibou")
-    c4 = Condition("name", ">", "tortue")
-    c5 = Condition("bob", "<", "tortue")
+    """Asserts that the hash method works on Condition"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "tortue")
+    condition3 = Condition("name", "<", "hibou")
+    condition4 = Condition("name", ">", "tortue")
+    condition5 = Condition("bob", "<", "tortue")
 
-    assert_equal(hash(c1), hash(c2))
-    assert_not_equal(hash(c1), hash(c3))
-    assert_not_equal(hash(c1), hash(c4))
-    assert_not_equal(hash(c1), hash(c5))
+    assert_equal(hash(condition1), hash(condition2))
+    assert_not_equal(hash(condition1), hash(condition3))
+    assert_not_equal(hash(condition1), hash(condition4))
+    assert_not_equal(hash(condition1), hash(condition5))
 
 def test_hash_and():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "hibou")
-    c3 = Condition("name", "<", "tortue")
+    """Asserts that the hash method works on And"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
     
-    c4 = And(c1, c2)
-    c5 = And(c3, c2)
-    c6 = And(c1, c3)
+    condition4 = And(condition1, condition2)
+    condition5 = And(condition3, condition2)
+    condition6 = And(condition1, condition3)
 
-    assert_equal(hash(c4), hash(c5))
-    assert_not_equal(hash(c4), hash(c6))
+    assert_equal(hash(condition4), hash(condition5))
+    assert_not_equal(hash(condition4), hash(condition6))
 
 def test_hash_or():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "hibou")
-    c3 = Condition("name", "<", "tortue")
+    """Asserts that the hash method works on Or"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
     
-    c4 = Or(c1, c2)
-    c5 = Or(c3, c2)
-    c6 = Or(c1, c3)
+    condition4 = Or(condition1, condition2)
+    condition5 = Or(condition3, condition2)
+    condition6 = Or(condition1, condition3)
 
-    assert_equal(hash(c4), hash(c5))
-    assert_not_equal(hash(c4), hash(c6))
+    assert_equal(hash(condition4), hash(condition5))
+    assert_not_equal(hash(condition4), hash(condition6))
 
 def test_hash_not():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "hibou")
-    c3 = Condition("name", "<", "tortue")
+    """Asserts that the hash method works on not"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
     
-    c4 = Not(c1)
-    c5 = Not(c3)
-    c6 = Not(c2)
+    condition4 = Not(condition1)
+    condition5 = Not(condition3)
+    condition6 = Not(condition2)
 
-    assert_equal(hash(c4), hash(c5))
-    assert_not_equal(hash(c4), hash(c6))
+    assert_equal(hash(condition4), hash(condition5))
+    assert_not_equal(hash(condition4), hash(condition6))
 
 def test_eq_condition():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "tortue")
-    c3 = Condition("name", "<", "hibou")
-    c4 = Condition("name", ">", "tortue")
-    c5 = Condition("bob", "<", "tortue")
+    """Assert that the eq operator works on Condition"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "tortue")
+    condition3 = Condition("name", "<", "hibou")
+    condition4 = Condition("name", ">", "tortue")
+    condition5 = Condition("bob", "<", "tortue")
 
-    assert_equal(c1, c2)
-    assert_not_equal(c1, c3)
-    assert_not_equal(c1, c4)
-    assert_not_equal(c1, c5)
+    assert_equal(condition1, condition2)
+    assert_not_equal(condition1, condition3)
+    assert_not_equal(condition1, condition4)
+    assert_not_equal(condition1, condition5)
 
 def test_and():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "hibou")
-    c3 = Condition("name", "<", "tortue")
+    """Assert that the eq operator works on And"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
     
-    c4 = And(c1, c2)
-    c5 = And(c3, c2)
-    c6 = And(c1, c3)
+    condition4 = And(condition1, condition2)
+    condition5 = And(condition3, condition2)
+    condition6 = And(condition1, condition3)
 
-    assert_equal(c4, c5)
-    assert_not_equal(c4, c6)
+    assert_equal(condition4, condition5)
+    assert_not_equal(condition4, condition6)
 
 def test_or():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "hibou")
-    c3 = Condition("name", "<", "tortue")
+    """Assert that the eq operator works on Or"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
     
-    c4 = Or(c1, c2)
-    c5 = Or(c3, c2)
-    c6 = Or(c1, c3)
+    condition4 = Or(condition1, condition2)
+    condition5 = Or(condition3, condition2)
+    condition6 = Or(condition1, condition3)
 
-    assert_equal(c4, c5)
-    assert_not_equal(c4, c6)
+    assert_equal(condition4, condition5)
+    assert_not_equal(condition4, condition6)
 
 def test_not():
-    c1 = Condition("name","<","tortue")
-    c2 = Condition("name", "<", "hibou")
-    c3 = Condition("name", "<", "tortue")
+    """Assert that the eq operator works on Not"""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
     
-    c4 = Not(c1)
-    c5 = Not(c3)
-    c6 = Not(c2)
+    condition4 = Not(condition1)
+    condition5 = Not(condition3)
+    condition6 = Not(condition2)
 
-    assert_equal(c4, c5)
-    assert_not_equal(c4, c6)
+    assert_equal(condition4, condition5)
+    assert_not_equal(condition4, condition6)

@@ -32,7 +32,7 @@ from ..common import run_common, make_site
 
 
 
-url = "sqlite:///"
+URL = "sqlite:///"
 
 
 
@@ -41,13 +41,16 @@ class TestAlchemy(object):
     def setUp(self):
         id_property = AlchemyProperty(int, column_name="id")
         name = AlchemyProperty(unicode, column_name="name")
-        aproot = Alchemy(url, "root", {"id": id_property, "name": name}, "id", True)
+        aproot = Alchemy(URL, "root", {
+            "id": id_property, 
+            "name": name},
+        "id", True)
 
         idchild_property = AlchemyProperty(int, column_name="id")
         namechild = AlchemyProperty(unicode, column_name="name")
-        root_prop = AlchemyProperty(Item, column_name="root", relation="many-to-one",
-                remote_ap='root', remote_property='id')
-        apchild = Alchemy(url, "child", {"id": idchild_property, "name":
+        root_prop = AlchemyProperty(Item, column_name="root", 
+                relation="many-to-one", remote_ap='root', remote_property='id')
+        apchild = Alchemy(URL, "child", {"id": idchild_property, "name":
             namechild, "root" : root_prop}, "id", True)
 
         self.site = Site()

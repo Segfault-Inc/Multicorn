@@ -40,17 +40,21 @@ def test_alchemy():
 
 @nottest
 def make_testtable():
+    """Returns a simple access point"""
     id_property = AlchemyProperty(int, column_name="id")
     name = AlchemyProperty(unicode, column_name="name")
-    ap = Alchemy("sqlite:///", "test", {
+    access_point = Alchemy("sqlite:///", "test", {
         "id": id_property,
         "name": name},
         "id", True)
-    return ap
+    return access_point
 
 
 class TestAlchemy(object):
+    """Class defining some simple tests on an Alchemy access point"""
     def setUp(self):
+        """Setup the class for the tests, creating the kalamar site and
+        populating it with test data"""
         self.site = Site()
         self.site.register("test", make_testtable())
         self.items = []
@@ -62,6 +66,7 @@ class TestAlchemy(object):
         item.save()
 
     def testsearch(self):
+        """Tests a simple search on the access point"""
         items = list(self.site.search("test"))
         eq_(len(items), 2)
         items = list(self.site.search("test", {"id": 1}))
@@ -71,6 +76,7 @@ class TestAlchemy(object):
         eq_(item["name"], "Test")
 
     def testview(self):
+        """Test a simple view on the access point"""
         items = list(
             self.site.view("test", {"truc": "id", "name": u"name"}, {}))
         eq_(len(items), 2)
@@ -81,6 +87,7 @@ class TestAlchemy(object):
         eq_(len(items), 1)
 
     def testupdate(self):
+        """Assert that an item can be updated in the DB"""
         item = self.site.open("test", {"id": 1})
         item["name"] = u"updated"
         item.save()
@@ -88,7 +95,8 @@ class TestAlchemy(object):
         eq_(item["name"], u"updated")
 
     def tearDown(self):
+        """Tears the class down between tests"""
         for item in self.items:
             item.delete()
-        for ap in self.site.access_points.values():
-            ap._table.drop()
+        for access_point in self.site.access_points.values():
+            access_point._table.drop()
