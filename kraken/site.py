@@ -65,7 +65,8 @@ class TemplateResponse(werkzeug.wrappers.Response):
 
         template_name = None
         for dirname, basename in searches:
-            abs_dirname = os.path.join(koral_site.path_to_root, dirname)
+            abs_dirname = os.path.join(koral_site.path_to_root,
+            dirname)
             if os.path.isdir(abs_dirname):
                 for name in os.listdir(abs_dirname):
                     match = re.match(
