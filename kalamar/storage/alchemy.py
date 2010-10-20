@@ -44,7 +44,9 @@ class SqlAlchemyTypes:
           "password" : String,
           "email"    : String,
           "text"     : String,
-          "currency" : Numeric
+          "currency" : Numeric,
+          "int_currency" : Numeric 
+
          }
 
 
