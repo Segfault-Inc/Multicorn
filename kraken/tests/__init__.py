@@ -3,14 +3,10 @@ import werkzeug
 
 
 def make_site(secret_key=None):
-    # import kraken and koral here so that coverage sees module-level statements
+    # import kraken here so that coverage sees module-level statements
     import kraken
-    import koral
     root = os.path.join(os.path.dirname(__file__), 'site')
-    return kraken.Site(
-        site_root=root,
-        koral_site=koral.Site(root),
-        secret_key=secret_key)
+    return kraken.Site(site_root=root, template_root=root, secret_key=secret_key)
 
 
 class KrakenSiteMixin(object):
@@ -29,15 +25,13 @@ class KrakenSiteMixin(object):
 
 
 def make_app(secret_key=None):
-    import koral
     from kraken.routing import KrakenApplication
     root = os.path.join(os.path.dirname(__file__), 'site')
     return KrakenApplication(
             site_root=root,
-            koral_site=koral.Site(root),
+            template_root=root,
             secret_key=secret_key,
-            static_path="__logo/"
-            )
+            static_path="__logo/")
 
 class KrakenApplicationMixin(object):
     test_app = None

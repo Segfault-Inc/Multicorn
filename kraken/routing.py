@@ -76,8 +76,7 @@ def expose(rule=None, template=None, **kw):
         kw['endpoint'] = f
         url_map.add(Rule(rule, **kw))
         def template_renderer(values):
-            return TemplateResponse(local('application').koral_site, template,
-                    values)
+            return TemplateResponse(local('application'), template, values)
         f.response = template_renderer
         return f
     return partial(decorate, rule, template)
@@ -92,8 +91,8 @@ class KrakenApplication(Site):
 
     
 
-    def __init__(self, site_root, kalamar_site=None, 
-            koral_site=None, secret_key=None, static_path="__static",
+    def __init__(self, site_root, template_root=None, kalamar_site=None, 
+            secret_key=None, static_path="__static",
             static_url="static"):
         """
             TODO : copy the doc from kraken site and add static_path and
@@ -105,8 +104,8 @@ class KrakenApplication(Site):
             return filename 
         get_path.response = lambda filename : StaticFileResponse(filename)
         url_map.add(Rule("/%s/<path:path>" % static_url, endpoint=get_path))
-        super(KrakenApplication, self).__init__(site_root, kalamar_site, 
-            koral_site, secret_key)
+        super(KrakenApplication, self).__init__(
+            site_root, template_root, kalamar_site, secret_key)
 
     def __call__(self, environ, start_response):
         local.application = self

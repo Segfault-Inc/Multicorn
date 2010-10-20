@@ -37,6 +37,8 @@ import werkzeug
 import werkzeug.contrib.securecookie
 import werkzeug.wrappers
 
+from .template import BUILTIN_ENGINES
+
 
 class Request(werkzeug.wrappers.Request):
     """Request object managing sessions with encrypted cookies."""
@@ -53,9 +55,9 @@ class Request(werkzeug.wrappers.Request):
 
 class TemplateResponse(werkzeug.wrappers.Response):
     """Response serving a template."""
-    def __init__(self, koral_site, path, values):
+    def __init__(self, site, path, values):
         template_suffix_re = ur"\.(.+)\.(%s)$" % u"|".join(
-            re.escape(engine) for engine in koral_site.engines)
+            re.escape(engine) for engine in site.engines)
 
         searches = [(path, u"index")]
         # If path is empty (ie. path is u"" or u"/")
@@ -65,8 +67,7 @@ class TemplateResponse(werkzeug.wrappers.Response):
 
         template_name = None
         for dirname, basename in searches:
-            abs_dirname = os.path.join(koral_site.path_to_root,
-            dirname)
+            abs_dirname = os.path.join(site.template_root, dirname)
             if os.path.isdir(abs_dirname):
                 for name in os.listdir(abs_dirname):
                     match = re.match(
@@ -81,7 +82,7 @@ class TemplateResponse(werkzeug.wrappers.Response):
             raise werkzeug.exceptions.NotFound
 
         mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
-        content = koral_site.render(engine, template_name, values)
+        content = site.render_template(engine, template_name, values)
         super(TemplateResponse, self).__init__(content, mimetype=mimetype)
 
 
@@ -136,20 +137,24 @@ class StaticFileResponse(werkzeug.wrappers.Response):
 class Site(object):
     """WSGI application from a site root and a kalamar configuration file.
 
-    :param site_root: Directory name of the root of the site.
+    :param site_root: Root folder for the site.
+    :param template_root: Root folder for the templates.
     :param kalamar_site: Kalamar Site instance.
-    :param koral_site: Koral Site instance.
     :param secret_key: String used for signed cookies for sessions. Use
         something like ``os.urandom(20)`` to get one.
 
     """
-    def __init__(self, site_root, kalamar_site=None, koral_site=None,
+    def __init__(self, site_root, template_root, kalamar_site=None,
                  secret_key=None):
         """Initialize the Site."""
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
-        self.koral_site = koral_site
+        self.template_root = os.path.expanduser(unicode(template_root))
         self.kalamar_site = kalamar_site
+
+        self.engines = {}
+        for name, engine_class in BUILTIN_ENGINES.items():
+            self.register_engine(name, engine_class)
 
         # Create a virtual package in sys.modules so that we can import
         # python modules in the site
@@ -157,14 +162,12 @@ class Site(object):
         module = types.ModuleType(self.package_name)
         module.__path__ = [self.site_root]
         module.kraken = self
-        module.koral = self.koral_site
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
         request = Request(environ, self.secret_key)
-        request.koral = self.koral_site
         request.kalamar = self.kalamar_site
         request.kraken = self
         path = os.path.join(*request.path.split(u"/")).strip(os.path.sep)
@@ -183,7 +186,7 @@ class Site(object):
                 values = {
                     "request": request,
                     "import_": self.import_}
-                response = TemplateResponse(self.koral_site, path, values)
+                response = TemplateResponse(self, path, values)
                 # We are sure that the response can be given, just check that we
                 # have a trailing slash. If not, redirect the client.
                 if not request.path.endswith(u"/"):
@@ -223,3 +226,19 @@ class Site(object):
         for attr in name.split(".")[1:]:
             module = getattr(module, attr)
         return module
+
+    def register_engine(self, name, engine_class):
+        """Add a template engine to this site.
+        
+        :param name: Identifier string for this engine. Pass the same value
+            to :meth:`render` to use the registered engine.
+        :param engine_class: A concrete subclass of :class:`BaseEngine`.
+        
+        """
+        self.engines[name] = engine_class(self.template_root)
+    
+    def render_template(self, site_engine, template_name, values=None,
+                        lang=None, modifiers=None):
+        """Shorthand to the engine render method."""
+        return self.engines[site_engine].render(
+            template_name, values or {}, lang, modifiers)
