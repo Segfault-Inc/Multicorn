@@ -36,7 +36,10 @@ import types
 import werkzeug
 import werkzeug.contrib.securecookie
 import werkzeug.wrappers
-
+import werkzeug.local
+from werkzeug.exceptions import HTTPException
+from werkzeug.routing import Map, Rule 
+from functools import partial
 
 class Request(werkzeug.wrappers.Request):
     """Request object managing sessions with encrypted cookies."""
@@ -76,10 +79,8 @@ class TemplateResponse(werkzeug.wrappers.Response):
                             dirname.split(os.path.sep) + [name])
                         extension = match.group(1)
                         engine = match.group(2)
-
         if not template_name:
             raise werkzeug.exceptions.NotFound
-
         mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
         content = koral_site.render(engine, template_name, values)
         super(TemplateResponse, self).__init__(content, mimetype=mimetype)
@@ -133,6 +134,66 @@ class StaticFileResponse(werkzeug.wrappers.Response):
         return werkzeug.wsgi.wrap_file(environ, self.file_obj)
 
 
+local = werkzeug.local.Local()
+local_manager = werkzeug.local.LocalManager([local])
+
+
+url_map = Map()
+
+def find_static_part(rule):
+    """Return a possible template path from a rule.
+    
+    >>> find_static_part("/url/")
+    '/url/'
+    >>> find_static_part("/url/<string:id>")
+    '/url/'
+    >>> find_static_part("/url/<int:foo>/bar")
+    '/url/foo/bar'
+    >>> find_static_part("/url/<int:foo>/bar/<string:baz>")
+    '/url/foo/bar/'
+
+    """
+    regexp = r'<\w+:(\w+)>(/\w+)'
+    first_pass = re.sub(regexp, r'\1\2', rule)
+    return re.sub(r'/<\w+:(\w+)>/?$', '/', first_pass)
+
+    
+
+def expose(rule=None, template=None, **kw):
+    """ Decorator exposing a method as a template filler.
+
+    The decorated function will be registered as an endpoint for the rule.
+    
+    :param rule:
+        a werkzeug url path. If ommitted, will default to the function name
+    :param template:
+        a path to the template which should be filled with the dictionary
+        returned by the decorated function. If ommitted, will default to the
+        rule
+    :param kw:
+        keyword arguments passed directly to the werkzeug.routing.Rule.__init__
+        method
+        
+        
+    """
+    def decorate(rule, template, f):
+        """ Decorator that set a response attribute on a method to a
+            TemplateResponse instance, initialized with the template
+        """
+        rule = rule or "/%s/" % f.__name__
+        template = (template or find_static_part(rule)).strip(os.path.sep)
+        kw['endpoint'] = f
+        url_map.add(Rule(rule, **kw))
+        def template_renderer(values):
+            return TemplateResponse(local('application').koral_site, template,
+                    values)
+        f.response = template_renderer
+        return f
+    return partial(decorate, rule, template)
+
+
+
+
 class Site(object):
     """WSGI application from a site root and a kalamar configuration file.
 
@@ -144,7 +205,8 @@ class Site(object):
 
     """
     def __init__(self, site_root, kalamar_site=None, koral_site=None,
-                 secret_key=None):
+                 static_path="__static", secret_key=None, static_url="static", 
+                 fallback_on_template=True):
         """Initialize the Site."""
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
@@ -160,43 +222,70 @@ class Site(object):
         module.koral = self.koral_site
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
+        local.application = self
+        def get_path(request, path, **kwargs):
+            filename = os.path.join(self.site_root, static_path,  path)
+            return filename 
+        get_path.response = lambda filename : StaticFileResponse(filename)
+        url_map.add(Rule("/%s/<path:path>" % static_url, endpoint=get_path))
+        if fallback_on_template:
+            def simple_template(request, path, **kwargs):
+                if u"/." in path:
+                    raise werkzeug.exceptions.Forbidden
+                path = os.path.join(self.site_root, path.strip(os.path.sep))
+                print path
+                return {"request" : request, "path": path}
+            def template_renderer(values):
+                path = values.pop("path")
+                return TemplateResponse(local('application').koral_site, path,
+                        values)
+            simple_template.response = template_renderer
+            url_map.add(Rule("/<path:path>", endpoint=simple_template))
+
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
+        local.application = self
         request = Request(environ, self.secret_key)
+        local.kalamar = self.kalamar_site
+        local.url_adapter = adapter = url_map.bind_to_environ(environ)
         request.koral = self.koral_site
         request.kalamar = self.kalamar_site
         request.kraken = self
-        path = os.path.join(*request.path.split(u"/")).strip(os.path.sep)
-
         try:
-            if u"/." in request.path:
-                # Hidden files and parent folders are forbidden
-                raise werkzeug.exceptions.Forbidden
-
-            if u"/__" in request.path:
-                # Handle static file
-                filename = os.path.join(self.site_root, path)
-                response = StaticFileResponse(filename)
-            else:
-                # Handle template
-                values = {
-                    "request": request,
-                    "import_": self.import_}
-                response = TemplateResponse(self.koral_site, path, values)
-                # We are sure that the response can be given, just check that we
-                # have a trailing slash. If not, redirect the client.
-                if not request.path.endswith(u"/"):
-                    response = werkzeug.utils.append_slash_redirect(
-                        request.environ)
-        except werkzeug.exceptions.HTTPException, exception:
-            # ``exception`` is also a WSGI application
-            return exception(environ, start_response)
-
-        if "session" in request.__dict__:
-            request.session.save_cookie(response)
-
+            handler, values = adapter.match()
+            response = handler.response(handler(request, **values))
+        except HTTPException, e:
+            response = e
         return response(environ, start_response)
+
+#           if u"/." in request.path:
+#               # Hidden files and parent folders are forbidden
+#               raise werkzeug.exceptions.Forbidden
+
+#           if u"/__" in request.path:
+#               # Handle static file
+#               filename = os.path.join(self.site_root, path)
+#               response = StaticFileResponse(filename)
+#           else:
+#               # Handle template
+#               values = {
+#                   "request": request,
+#                   "import_": self.import_}
+#               response = TemplateResponse(self.koral_site, path, values)
+#               # We are sure that the response can be given, just check that we
+#               # have a trailing slash. If not, redirect the client.
+#               if not request.path.endswith(u"/"):
+#                   response = werkzeug.utils.append_slash_redirect(
+#                       request.environ)
+#       except werkzeug.exceptions.HTTPException, exception:
+#           # ``exception`` is also a WSGI application
+#           return exception(environ, start_response)
+
+#       if "session" in request.__dict__:
+#           request.session.save_cookie(response)
+
+#       return response(environ, start_response)
     
     def import_(self, name):
         """Helper for python controllers to "import" other controllers.

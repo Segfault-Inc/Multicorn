@@ -90,35 +90,17 @@ class KrakenApplication(Site):
 
     """
 
-    
-
     def __init__(self, site_root, kalamar_site=None, 
             koral_site=None, secret_key=None, static_path="__static",
-            static_url="static"):
+            static_url="static", fallback_on_template=True):
         """
             TODO : copy the doc from kraken site and add static_path and
             static_url
         """
-        local.application = self
-        def get_path(request, path, **kwargs):
-            filename = os.path.join(self.site_root, static_path,  path)
-            return filename 
-        get_path.response = lambda filename : StaticFileResponse(filename)
-        url_map.add(Rule("/%s/<path:path>" % static_url, endpoint=get_path))
         super(KrakenApplication, self).__init__(site_root, kalamar_site, 
             koral_site, secret_key)
 
     def __call__(self, environ, start_response):
-        local.application = self
-        request = Request(environ, self.secret_key)
-        local.kalamar = self.kalamar_site
-        local.url_adapter = adapter = url_map.bind_to_environ(environ)
-        try:
-            handler, values = adapter.match()
-            response = handler.response(handler(request, **values))
-        except HTTPException, e:
-            response = e
-        return response(environ, start_response)
 
         
         

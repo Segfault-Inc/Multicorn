@@ -1,8 +1,8 @@
 import os 
 from unittest import TestCase
 
-from . import KrakenApplicationMixin
-from kraken.routing import expose
+from . import KrakenSiteMixin
+from kraken.site import expose
 
 
 @expose("/helloparam/<string:message>/")
@@ -29,7 +29,7 @@ def anothertemplate(request, message, **kwargs):
 def weirdpath(request, hello, **kwargs):
     return {'message': hello} 
 
-class TestSimpleRequests(KrakenApplicationMixin, TestCase):
+class TestSimpleRequests(KrakenSiteMixin, TestCase):
     def test_message(self):
         r = self.client.get('/helloparam/world/')
         self.assertEqual(r.status_code, 200)
