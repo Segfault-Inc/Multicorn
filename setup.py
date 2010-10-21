@@ -12,7 +12,6 @@ setup(
         exclude=["*._test", "*._test.*", "test.*", "test"]),
     package_dir = {
         "kalamar": "kalamar",
-        "koral": "koral",
         "kraken": "kraken"},
     package_data = {
         "": ["AUTHORS"],

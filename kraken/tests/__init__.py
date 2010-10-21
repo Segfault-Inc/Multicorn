@@ -3,16 +3,14 @@ import werkzeug
 
 
 def make_site(secret_key=None):
-    # import kraken and koral here so that coverage sees module-level statements
+    # import kraken here so that coverage sees module-level statements
     import kraken
-    import koral
     root = os.path.join(os.path.dirname(__file__), 'site')
-    return kraken.Site(
-        site_root=root,
-        koral_site=koral.Site(root),
-        static_path="__logo/",
-        static_url="/static/",
-        secret_key=secret_key)
+    return kraken.Site(root,
+            root, 
+            secret_key=secret_key,
+            static_path=os.path.join(root, '__logo'),
+            static_url="/static/")
 
 
 class KrakenSiteMixin(object):
@@ -28,8 +26,14 @@ class KrakenSiteMixin(object):
             )
         
         self.client = werkzeug.Client(self.test_app, werkzeug.BaseResponse)
+    def tearDown(self):
+        from kraken import site
+        self.__class__.test_app = None
+        site.url_map = werkzeug.routing.Map()
+
 
 if __name__ == '__main__':
+    import kraken
     site = make_site()
     kraken.runserver(site)
 

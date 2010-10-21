@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
-# Copyright © 2008-2009 Kozea
+# Copyright © 2008-2010 Kozea
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,27 +16,25 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Genshi
+Jinja2
 ======
 
-`Genshi <http://genshi.edgewall.org/>`_ engine support for Koral.
+`Jinja2 <http://jinja.pocoo.org/2/>`_ engine support for Koral.
 
 """
 
 from . import BaseEngine
 
 
-class GenshiEngine(BaseEngine):
-    """Koral engine for Genshi."""
-    name = "genshi"
+class Jinja2Engine(BaseEngine):
+    """Koral engine for Jinja2."""
+    name = "jinja2"
     
     def __init__(self, *args, **kwargs):
-        super(GenshiEngine, self).__init__(*args, **kwargs)
-        from genshi.template import TemplateLoader
-        self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
+        super(Jinja2Engine, self).__init__(*args, **kwargs)
+        from jinja2 import Environment, FileSystemLoader
+        self._env = Environment(loader=FileSystemLoader(self.path_to_root))
         
     def render(self, template_name, values, lang, modifiers):
-        import genshi.input
-        values = dict(values, XML=genshi.input.XML)
-        stream = self._loader.load(template_name).generate(**values)
-        return stream.render(method="html", encoding=None, doctype="html5")
+        template = self._env.get_template(template_name)
+        return template.render(**values)

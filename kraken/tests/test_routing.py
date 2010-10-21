@@ -5,31 +5,8 @@ from . import KrakenSiteMixin
 from kraken.site import expose
 
 
-@expose("/helloparam/<string:message>/")
-def helloparam(request, message, **kwargs):
-    return {"message" : message}
 
-@expose("/methods/",methods=("GET",))
-def getmethod(request, **kwargs):
-    return {"message": "GET world"}
-
-@expose("/methods/",methods=("POST",))
-def postmethod(request, **kwargs):
-    return {"message": "POST world"}
-
-@expose()
-def hello(request, **kwargs):
-    return {'request' : request}
-
-@expose("/another/template/<string:message>", template="helloparam")
-def anothertemplate(request, message, **kwargs):
-    return {'message': message}
-
-@expose("/<string:hello>/message")
-def weirdpath(request, hello, **kwargs):
-    return {'message': hello} 
-
-class TestSimpleRequests(KrakenSiteMixin, TestCase):
+class TestRoutedRequests(KrakenSiteMixin, TestCase):
     def test_message(self):
         r = self.client.get('/helloparam/world/')
         self.assertEqual(r.status_code, 200)
@@ -114,6 +91,34 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
         ])
         self.assertEqual(response.status_code, 304)
         self.assertEqual(response.data, '')
+
+    def setUp(self):
+        super(TestRoutedRequests, self).setUp()
+        
+        @expose("/helloparam/<string:message>/")
+        def helloparam(request, message, **kwargs):
+            return {"message" : message}
+
+        @expose("/methods/",methods=("GET",))
+        def getmethod(request, **kwargs):
+            return {"message": "GET world"}
+
+        @expose("/methods/",methods=("POST",))
+        def postmethod(request, **kwargs):
+            return {"message": "POST world"}
+
+        @expose()
+        def hello(request, **kwargs):
+            return {'request' : request}
+
+        @expose("/another/template/<string:message>", template="helloparam")
+        def anothertemplate(request, message, **kwargs):
+            return {'message': message}
+
+        @expose("/<string:hello>/message")
+        def weirdpath(request, hello, **kwargs):
+            return {'message': hello} 
+
 
 
 

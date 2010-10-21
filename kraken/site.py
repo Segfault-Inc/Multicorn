@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
-# Copyright © 2008-2009 Kozea
+# Copyright © 2008-2010 Kozea
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,6 +40,8 @@ import werkzeug.local
 from werkzeug.exceptions import HTTPException
 from werkzeug.routing import Map, Rule 
 from functools import partial
+from .template import BUILTIN_ENGINES
+
 
 class Request(werkzeug.wrappers.Request):
     """Request object managing sessions with encrypted cookies."""
@@ -56,20 +58,18 @@ class Request(werkzeug.wrappers.Request):
 
 class TemplateResponse(werkzeug.wrappers.Response):
     """Response serving a template."""
-    def __init__(self, koral_site, path, values):
+    def __init__(self, site, path, values):
         template_suffix_re = ur"\.(.+)\.(%s)$" % u"|".join(
-            re.escape(engine) for engine in koral_site.engines)
+            re.escape(engine) for engine in site.engines)
 
         searches = [(path, u"index")]
         # If path is empty (ie. path is u"" or u"/")
         # there is no path_parts[-1]
         if path:
             searches.append((os.path.dirname(path), os.path.basename(path)))
-
         template_name = None
         for dirname, basename in searches:
-            abs_dirname = os.path.join(koral_site.path_to_root,
-            dirname)
+            abs_dirname = os.path.join(site.template_root, dirname)
             if os.path.isdir(abs_dirname):
                 for name in os.listdir(abs_dirname):
                     match = re.match(
@@ -82,7 +82,7 @@ class TemplateResponse(werkzeug.wrappers.Response):
         if not template_name:
             raise werkzeug.exceptions.NotFound
         mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
-        content = koral_site.render(engine, template_name, values)
+        content = site.render_template(engine, template_name, values)
         super(TemplateResponse, self).__init__(content, mimetype=mimetype)
 
 
@@ -99,7 +99,6 @@ class StaticFileResponse(werkzeug.wrappers.Response):
 
         if not os.path.isfile(filename):
             raise werkzeug.exceptions.NotFound
-
         self.filename = filename
         self.file_obj = open(self.filename, "rb")
         self.file_stat = os.stat(self.filename)
@@ -182,12 +181,11 @@ def expose(rule=None, template=None, **kw):
         """
         rule = rule or "/%s/" % f.__name__
         template = (template or find_static_part(rule)).strip(os.path.sep)
-        kw['endpoint'] = f
+        def template_renderer(request, **kwargs):
+            return TemplateResponse(local('application'), template,
+                    f(request, **kwargs))
+        kw['endpoint'] = template_renderer
         url_map.add(Rule(rule, **kw))
-        def template_renderer(values):
-            return TemplateResponse(local('application').koral_site, template,
-                    values)
-        f.response = template_renderer
         return f
     return partial(decorate, rule, template)
 
@@ -197,50 +195,57 @@ def expose(rule=None, template=None, **kw):
 class Site(object):
     """WSGI application from a site root and a kalamar configuration file.
 
-    :param site_root: Directory name of the root of the site.
+    :param site_root: Root folder for the site.
+    :param template_root: Root folder for the templates.
     :param kalamar_site: Kalamar Site instance.
-    :param koral_site: Koral Site instance.
     :param secret_key: String used for signed cookies for sessions. Use
         something like ``os.urandom(20)`` to get one.
 
     """
-    def __init__(self, site_root, kalamar_site=None, koral_site=None,
-                 static_path="__static", secret_key=None, static_url="static", 
+    def __init__(self, site_root, template_root, kalamar_site=None,
+                 secret_key=None, static_url="static", static_path="__static",
                  fallback_on_template=True):
         """Initialize the Site."""
         self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
-        self.koral_site = koral_site
+        self.template_root = os.path.expanduser(unicode(template_root))
         self.kalamar_site = kalamar_site
-
+        self.engines = {}
+        self.static_path = static_path
+        for name, engine_class in BUILTIN_ENGINES.items():
+            self.register_engine(name, engine_class)
         # Create a virtual package in sys.modules so that we can import
         # python modules in the site
         self.package_name = "kraken_site_%i" % id(self)
         module = types.ModuleType(self.package_name)
         module.__path__ = [self.site_root]
         module.kraken = self
-        module.koral = self.koral_site
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
         local.application = self
         def get_path(request, path, **kwargs):
-            filename = os.path.join(self.site_root, static_path,  path)
-            return filename 
-        get_path.response = lambda filename : StaticFileResponse(filename)
-        url_map.add(Rule("/%s/<path:path>" % static_url, endpoint=get_path))
+            filename = os.path.join(self.static_path,  path)
+            if u"/.." in filename:
+                raise werkzeug.exceptions.Forbidden
+            return StaticFileResponse(filename)
+        url_map.add(Rule("/%s/<path:path>" % static_url.strip("/"), endpoint=get_path))
         if fallback_on_template:
             def simple_template(request, path, **kwargs):
-                if u"/." in path:
+                path = "/%s" % path
+                if u"../" in path or "/." in path:
                     raise werkzeug.exceptions.Forbidden
-                path = os.path.join(self.site_root, path.strip(os.path.sep))
-                print path
-                return {"request" : request, "path": path}
-            def template_renderer(values):
-                path = values.pop("path")
-                return TemplateResponse(local('application').koral_site, path,
-                        values)
-            simple_template.response = template_renderer
+                kwargs['request'] = request
+                kwargs['import_'] = self.import_
+                response = TemplateResponse(local('application'), "%s" %
+                    path.strip(os.path.sep),
+                    kwargs)
+                if not request.path.endswith(u"/"):
+                    response = werkzeug.utils.append_slash_redirect(
+                        request.environ)
+                return response
+
             url_map.add(Rule("/<path:path>", endpoint=simple_template))
+            url_map.add(Rule("/", endpoint=simple_template, defaults={'path':''}))
 
     
     def __call__(self, environ, start_response):
@@ -248,45 +253,18 @@ class Site(object):
         local.application = self
         request = Request(environ, self.secret_key)
         local.kalamar = self.kalamar_site
+        local.kraken = self
         local.url_adapter = adapter = url_map.bind_to_environ(environ)
-        request.koral = self.koral_site
-        request.kalamar = self.kalamar_site
         request.kraken = self
         try:
             handler, values = adapter.match()
-            response = handler.response(handler(request, **values))
+            response = handler(request, **values)
         except HTTPException, e:
             response = e
+        if "session" in request.__dict__:
+            request.session.save_cookie(response)
         return response(environ, start_response)
 
-#           if u"/." in request.path:
-#               # Hidden files and parent folders are forbidden
-#               raise werkzeug.exceptions.Forbidden
-
-#           if u"/__" in request.path:
-#               # Handle static file
-#               filename = os.path.join(self.site_root, path)
-#               response = StaticFileResponse(filename)
-#           else:
-#               # Handle template
-#               values = {
-#                   "request": request,
-#                   "import_": self.import_}
-#               response = TemplateResponse(self.koral_site, path, values)
-#               # We are sure that the response can be given, just check that we
-#               # have a trailing slash. If not, redirect the client.
-#               if not request.path.endswith(u"/"):
-#                   response = werkzeug.utils.append_slash_redirect(
-#                       request.environ)
-#       except werkzeug.exceptions.HTTPException, exception:
-#           # ``exception`` is also a WSGI application
-#           return exception(environ, start_response)
-
-#       if "session" in request.__dict__:
-#           request.session.save_cookie(response)
-
-#       return response(environ, start_response)
-    
     def import_(self, name):
         """Helper for python controllers to "import" other controllers.
 
@@ -312,3 +290,19 @@ class Site(object):
         for attr in name.split(".")[1:]:
             module = getattr(module, attr)
         return module
+
+    def register_engine(self, name, engine_class):
+        """Add a template engine to this site.
+        
+        :param name: Identifier string for this engine. Pass the same value
+            to :meth:`render` to use the registered engine.
+        :param engine_class: A concrete subclass of :class:`BaseEngine`.
+        
+        """
+        self.engines[name] = engine_class(self.template_root)
+    
+    def render_template(self, site_engine, template_name, values=None,
+                        lang=None, modifiers=None):
+        """Shorthand to the engine render method."""
+        return self.engines[site_engine].render(
+            template_name, values or {}, lang, modifiers)

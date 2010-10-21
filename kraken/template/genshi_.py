@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
-# Copyright © 2008-2009 Kozea
+# Copyright © 2008-2010 Kozea
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,31 +16,27 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Format
+Genshi
 ======
 
-Simple engine for Koral, based on :meth:`str.format`.
+`Genshi <http://genshi.edgewall.org/>`_ engine support for Koral.
 
 """
 
 from . import BaseEngine
 
 
-class StrFormatEngine(BaseEngine):
-    """Simple Koral engine based on :meth:`str.format`.
+class GenshiEngine(BaseEngine):
+    """Koral engine for Genshi."""
+    name = "genshi"
     
-    This is mainly useful for testing Koral and Kraken, when other template
-    engines may not be installed.
-
-    Equivalent to ``str.format(**values)`` on the content of the template file.
-
-    """
-    name = "str-format"
-    
-    def __init__(self, path_to_root, encoding="utf-8"):
-        super(StrFormatEngine, self).__init__(path_to_root)
-        self.encoding = encoding
+    def __init__(self, *args, **kwargs):
+        super(GenshiEngine, self).__init__(*args, **kwargs)
+        from genshi.template import TemplateLoader
+        self._loader = TemplateLoader(self.path_to_root, auto_reload=True)
         
     def render(self, template_name, values, lang, modifiers):
-        with open(self._build_filename(template_name)) as file_descriptor:
-            return file_descriptor.read().decode(self.encoding).format(**values)
+        import genshi.input
+        values = dict(values, XML=genshi.input.XML)
+        stream = self._loader.load(template_name).generate(**values)
+        return stream.render(method="html", encoding=None, doctype="html5")

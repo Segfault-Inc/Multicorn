@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
-# Copyright © 2008-2009 Kozea
+# Copyright © 2008-2010 Kozea
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,14 +13,28 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Koral.  If not, see <http://www.gnu.org/licenses/>.
+# along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Koral - Templates Management Library
-====================================
+Python
+======
 
-# TODO: write module documentation
+Python engine support for Koral.
 
 """
 
-from koral.site import Site
+from . import BaseEngine
+
+
+class PythonEngine(BaseEngine):
+    """Python engine for Koral.
+
+    Simply calls ``render(**values)``.
+
+    """
+    name = "py"
+    
+    def render(self, template_name, values, lang, modifiers):
+        local = {}
+        execfile(self._build_filename(template_name), local, local)
+        return unicode(local["render"](**values))

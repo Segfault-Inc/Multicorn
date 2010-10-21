@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
-# Copyright © 2008-2009 Kozea
+# Copyright © 2008-2010 Kozea
 #
 # This library is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
