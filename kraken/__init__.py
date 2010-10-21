@@ -16,8 +16,8 @@
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Kraken - HTTP Requests Dispatcher
-=================================
+Kraken - HTTP Request and Template Manager
+==========================================
 
 # TODO: write module documentation
 

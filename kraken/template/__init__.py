@@ -16,10 +16,10 @@
 # along with Koral library.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Engine
-======
+Template Engine
+===============
 
-Engine base class.
+Template engine manager base class.
 
 """
 
