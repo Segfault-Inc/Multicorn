@@ -44,7 +44,7 @@ class TestHeterogeneous(object):
         access_point = Alchemy(
             "sqlite:///", "test_heterogeneous",
             {"id": id_property, "label": label, "memory": memory},
-            "id", True)
+            ["id"], True)
         return access_point
 
     def make_memory_ap(self):
@@ -80,4 +80,5 @@ class TestHeterogeneous(object):
 
     def tearDown(self):
         self.alchemy_ap._table.drop()
+        Alchemy.__metadatas = {}
         

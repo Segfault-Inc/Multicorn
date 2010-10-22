@@ -66,9 +66,9 @@ class Alchemy(AccessPoint):
     """Access point used to store data in a RDBMS."""
     __metadatas = {}
 
-    def __init__(self, url, tablename, properties, identity_property, 
+    def __init__(self, url, tablename, properties, identity_properties, 
                  createtable=False):
-        super(Alchemy, self).__init__(properties, [identity_property])
+        super(Alchemy, self).__init__(properties, identity_properties)
         self.url = url
         self.tablename = tablename
         self.createtable = createtable
@@ -137,7 +137,7 @@ class Alchemy(AccessPoint):
                 self.properties.values()]
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable:
-            table.create(checkfirst=True)
+            table.create()
         return table
 
     def __get_column(self, propertyname):

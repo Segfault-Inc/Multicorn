@@ -27,16 +27,26 @@ from nose.tools import eq_, nottest
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 
-from ..common import run_common
+from .. import common
 
 
 
 
 
-@run_common
-def test_alchemy():
-    """Function defined to run the common set of tests"""
-    return make_testtable()
+def test_alchemy_common():
+    """Defines a custom test runner for the common tests"""
+    def _runner(test):
+        access_point = make_testtable()
+        try:
+            site = common.make_site(access_point, 
+                fill=not hasattr(test, 'nofill'))
+            test(site)
+        finally:
+            access_point._table.drop()
+            Alchemy.__metadatas = {}
+    for test in common.commontest.tests:
+        yield _runner, test
+
 
 @nottest
 def make_testtable():
@@ -46,7 +56,7 @@ def make_testtable():
     access_point = Alchemy("sqlite:///", "test", {
         "id": id_property,
         "name": name},
-        "id", True)
+        ["id"], True)
     return access_point
 
 
@@ -100,3 +110,4 @@ class TestAlchemy(object):
             item.delete()
         for access_point in self.site.access_points.values():
             access_point._table.drop()
+        Alchemy.__metadatas = {}

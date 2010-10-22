@@ -16,7 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Alchemy test
+Request test
 ============
 
 Test the request module.

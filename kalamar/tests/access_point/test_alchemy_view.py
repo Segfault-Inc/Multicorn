@@ -44,14 +44,14 @@ class TestAlchemy(object):
         aproot = Alchemy(URL, "root", {
             "id": id_property, 
             "name": name},
-        "id", True)
+        ["id"], True)
 
         idchild_property = AlchemyProperty(int, column_name="id")
         namechild = AlchemyProperty(unicode, column_name="name")
         root_prop = AlchemyProperty(Item, column_name="root", 
                 relation="many-to-one", remote_ap='root', remote_property='id')
         apchild = Alchemy(URL, "child", {"id": idchild_property, "name":
-            namechild, "root" : root_prop}, "id", True)
+            namechild, "root" : root_prop}, ["id"], True)
 
         self.site = Site()
         self.site.register("root", aproot)
@@ -102,7 +102,6 @@ class TestAlchemy(object):
         eq_(len(items), 0)
 
     def tearDown(self):
-        for item in self.items:
-            item.delete()
         for ap in self.site.access_points.values():
             ap._table.drop()
+        Alchemy.__metadatas = {}
