@@ -13,6 +13,9 @@ def make_site(secret_key=None):
             static_url="/static/")
 
 
+
+
+
 class KrakenSiteMixin(object):
     test_app = None
     def setUp(self):
@@ -29,11 +32,7 @@ class KrakenSiteMixin(object):
     def tearDown(self):
         from kraken import site
         self.__class__.test_app = None
+
         site.url_map = werkzeug.routing.Map()
 
-
-if __name__ == '__main__':
-    import kraken
-    site = make_site()
-    kraken.runserver(site)
 

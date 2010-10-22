@@ -137,7 +137,6 @@ local = werkzeug.local.Local()
 local_manager = werkzeug.local.LocalManager([local])
 
 
-url_map = Map()
 
 def find_static_part(rule):
     """Return a possible template path from a rule.
@@ -158,7 +157,7 @@ def find_static_part(rule):
 
     
 
-def expose(rule=None, template=None, **kw):
+def expose_template(rule=None, template=None, **kw):
     """ Decorator exposing a method as a template filler.
 
     The decorated function will be registered as an endpoint for the rule.
@@ -185,7 +184,8 @@ def expose(rule=None, template=None, **kw):
             return TemplateResponse(local('application'), template,
                     f(request, **kwargs))
         kw['endpoint'] = template_renderer
-        url_map.add(Rule(rule, **kw))
+        f.kw = kw
+        f.kraken_rule = rule
         return f
     return partial(decorate, rule, template)
 
@@ -211,6 +211,7 @@ class Site(object):
         self.template_root = os.path.expanduser(unicode(template_root))
         self.kalamar_site = kalamar_site
         self.engines = {}
+        self.url_map = Map()
         self.static_path = static_path
         for name, engine_class in BUILTIN_ENGINES.items():
             self.register_engine(name, engine_class)
@@ -228,7 +229,7 @@ class Site(object):
             if u"/.." in filename:
                 raise werkzeug.exceptions.Forbidden
             return StaticFileResponse(filename)
-        url_map.add(Rule("/%s/<path:path>" % static_url.strip("/"), endpoint=get_path))
+        self.url_map.add(Rule("/%s/<path:path>" % static_url.strip("/"), endpoint=get_path))
         if fallback_on_template:
             def simple_template(request, path, **kwargs):
                 path = "/%s" % path
@@ -244,8 +245,8 @@ class Site(object):
                         request.environ)
                 return response
 
-            url_map.add(Rule("/<path:path>", endpoint=simple_template))
-            url_map.add(Rule("/", endpoint=simple_template, defaults={'path':''}))
+            self.url_map.add(Rule("/<path:path>", endpoint=simple_template))
+            self.url_map.add(Rule("/", endpoint=simple_template, defaults={'path':''}))
 
     
     def __call__(self, environ, start_response):
@@ -254,7 +255,7 @@ class Site(object):
         request = Request(environ, self.secret_key)
         local.kalamar = self.kalamar_site
         local.kraken = self
-        local.url_adapter = adapter = url_map.bind_to_environ(environ)
+        local.url_adapter = adapter = self.url_map.bind_to_environ(environ)
         request.kraken = self
         try:
             handler, values = adapter.match()
@@ -290,6 +291,23 @@ class Site(object):
         for attr in name.split(".")[1:]:
             module = getattr(module, attr)
         return module
+
+
+    def register_endpoint(self, function):
+        """Registers function as an endpoint.
+           The function must have an attribute "kraken_rule", defining the rule
+           for werkzeug, and a "kw" attribute, defining the keywords arguments
+           for the werkzeug rule.
+        """
+        self.url_map.add(Rule(function.kraken_rule, **function.kw))
+
+
+
+    def register_controllers(self, module):
+        """Register controllers from a module"""
+        for attr in module.__dict__.values():
+            if hasattr(attr, "__call__") and hasattr(attr, "kraken_rule"):
+                self.register_endpoint(attr)
 
     def register_engine(self, name, engine_class):
         """Add a template engine to this site.

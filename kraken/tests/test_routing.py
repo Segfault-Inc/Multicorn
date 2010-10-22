@@ -2,7 +2,6 @@ import os
 from unittest import TestCase
 
 from . import KrakenSiteMixin
-from kraken.site import expose
 
 
 
@@ -94,30 +93,10 @@ class TestRoutedRequests(KrakenSiteMixin, TestCase):
 
     def setUp(self):
         super(TestRoutedRequests, self).setUp()
+        from . import controllers
+        self.test_app.register_controllers(controllers)
         
-        @expose("/helloparam/<string:message>/")
-        def helloparam(request, message, **kwargs):
-            return {"message" : message}
 
-        @expose("/methods/",methods=("GET",))
-        def getmethod(request, **kwargs):
-            return {"message": "GET world"}
-
-        @expose("/methods/",methods=("POST",))
-        def postmethod(request, **kwargs):
-            return {"message": "POST world"}
-
-        @expose()
-        def hello(request, **kwargs):
-            return {'request' : request}
-
-        @expose("/another/template/<string:message>", template="helloparam")
-        def anothertemplate(request, message, **kwargs):
-            return {'message': message}
-
-        @expose("/<string:hello>/message")
-        def weirdpath(request, hello, **kwargs):
-            return {'message': hello} 
 
 
 
