@@ -54,11 +54,11 @@ class TestAlchemy(object):
         self.access_point = make_testtable()
         self.site.register("test", self.access_point) 
         self.items = []
-        item = self.site.create("test", {"firstname": "John", "lastname": u"Doe",
+        item = self.site.create("test", {"firstname": u"John", "lastname": u"Doe",
                 "birthdate" : date(1950,1,1)})
         self.items.append(item)
         item.save()
-        item = self.site.create("test", {"firstname": "Jane", "lastname": u"Doe",
+        item = self.site.create("test", {"firstname": u"Jane", "lastname": u"Doe",
                 "birthdate" : date(1960,2,2)})
         self.items.append(item)
         item.save()
@@ -67,7 +67,7 @@ class TestAlchemy(object):
         """Tests a simple search on the access point"""
         items = list(self.site.search("test"))
         eq_(len(items), 2)
-        items = list(self.site.search("test", {"firstname": "John"}))
+        items = list(self.site.search("test", {"firstname": u"John"}))
         eq_(len(items), 1)
         item = items[0]
         eq_(item["firstname"], "John")
@@ -82,16 +82,16 @@ class TestAlchemy(object):
         for item in items:
             assert "truc" in item.keys() and "name" in item.keys()
         items = list(
-            self.site.view("test", {"truc": "firstname", "name": u"lastname"},
-                {"firstname": "John"}))
+            self.site.view("test", {"truc": u"firstname", "name": u"lastname"},
+                {"firstname": u"John"}))
         eq_(len(items), 1)
 
     def testupdate(self):
         """Assert that an item can be updated in the DB"""
-        item = self.site.open("test", {"firstname": "John", "lastname" : "Doe"})
+        item = self.site.open("test", {"firstname": u"John", "lastname" : u"Doe"})
         item["birthdate"] = date(1951,12,12)
         item.save()
-        item = self.site.open("test", {"firstname": "John", "lastname" : "Doe"})
+        item = self.site.open("test", {"firstname": u"John", "lastname" : u"Doe"})
         eq_(item["birthdate"],  date(1951,12,12))
 
     def tearDown(self):
