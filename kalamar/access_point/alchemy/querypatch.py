@@ -157,8 +157,19 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     def build_select(select, properties, alchemy_query):
         """Walks the mapping to append column"""
         for name, value in select.mapping.items():
-            column = properties[value.name].column
-            alchemy_query.append_column(column.label(name))
+            if value.name == u'*':
+                for prop_name, prop in properties.items():
+                    column = prop.column
+                    if prop.relation is None:
+                        if name is not u'':
+                            name = prop_name
+                        else:
+                            name = "_".join([name,
+                            prop_name])
+                        alchemy_query.append_column(column.label(name))
+            else:
+                column = properties[value.name].column
+                alchemy_query.append_column(column.label(name))
         for name, sub_select in select.sub_selects.items():
             remote_ap = access_points[properties[name].remote_ap]
             alchemy_query = build_select(sub_select, remote_ap.properties,

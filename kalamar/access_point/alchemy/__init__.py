@@ -117,7 +117,7 @@ class Alchemy(AccessPoint):
                     SQLALCHEMYTYPES.get(foreign_prop.type, None)
                 column = Column(prop.column_name, alchemy_type, **kwargs)
         elif prop.relation == "one-to-many":
-            pass
+            column = None
         else:
             column = Column(prop.column_name, alchemy_type, **kwargs)
         prop.column = column

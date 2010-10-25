@@ -223,35 +223,48 @@ class Site(object):
                 raise werkzeug.exceptions.Forbidden
             return StaticFileResponse(filename)
         self.url_map.add(Rule("/%s/<path:path>" % static_url.strip("/"), endpoint=get_path))
-        if fallback_on_template:
-            def simple_template(request, path, **kwargs):
-                path = "/%s" % path
-                if u"../" in path or "/." in path:
-                    raise werkzeug.exceptions.Forbidden
-                kwargs['request'] = request
-                kwargs['import_'] = self.import_
-                response = TemplateResponse(self, "%s" %
-                    path.strip(os.path.sep),
-                    kwargs)
-                if not request.path.endswith(u"/"):
-                    response = werkzeug.utils.append_slash_redirect(
-                        request.environ)
-                return response
+        self.fallback_on_template = fallback_on_template
 
-            self.url_map.add(Rule("/<path:path>", endpoint=simple_template))
-            self.url_map.add(Rule("/", endpoint=simple_template, defaults={'path':''}))
 
+    def simple_template(self, request):
+        path = request.path
+        if u"../" in path or "/." in path:
+            raise werkzeug.exceptions.Forbidden
+        kwargs = {}
+        kwargs['request'] = request
+        kwargs['import_'] = self.import_
+        response = TemplateResponse(self, "%s" %
+            path.strip(os.path.sep),
+            kwargs)
+        if not request.path.endswith(u"/"):
+            response = werkzeug.utils.append_slash_redirect(
+                request.environ)
+        return response
+
+    def prehandle(self, request):
+        """Dummy method called before trying to match the url"""
+        pass
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
         request = Request(environ, self.secret_key)
         adapter = self.url_map.bind_to_environ(environ)
         request.kraken = self
+        request.kalamar = self.kalamar_site
         try:
+            self.prehandle(request)
             handler, values = adapter.match()
             response = handler(request, **values)
+        except werkzeug.exceptions.NotFound, e:
+            if self.fallback_on_template:
+                try:
+                    response = self.simple_template(request)
+                except HTTPException, e:
+                    return e(environ, start_response)
+            else:
+                return e(environ, start_response)
         except HTTPException, e:
-            response = e
+            return e(environ, start_response)
         if "session" in request.__dict__:
             request.session.save_cookie(response)
         return response(environ, start_response)
