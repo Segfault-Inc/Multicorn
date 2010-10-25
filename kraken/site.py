@@ -36,7 +36,6 @@ import types
 import werkzeug
 import werkzeug.contrib.securecookie
 import werkzeug.wrappers
-import werkzeug.local
 from werkzeug.exceptions import HTTPException
 from werkzeug.routing import Map, Rule 
 from functools import partial
@@ -133,11 +132,6 @@ class StaticFileResponse(werkzeug.wrappers.Response):
         return werkzeug.wsgi.wrap_file(environ, self.file_obj)
 
 
-local = werkzeug.local.Local()
-local_manager = werkzeug.local.LocalManager([local])
-
-
-
 def find_static_part(rule):
     """Return a possible template path from a rule.
     
@@ -181,7 +175,7 @@ def expose_template(rule=None, template=None, **kw):
         rule = rule or "/%s/" % f.__name__
         template = (template or find_static_part(rule)).strip(os.path.sep)
         def template_renderer(request, **kwargs):
-            return TemplateResponse(local('application'), template,
+            return TemplateResponse(f.krakensite, template,
                     f(request, **kwargs))
         kw['endpoint'] = template_renderer
         f.kw = kw
@@ -223,7 +217,6 @@ class Site(object):
         module.kraken = self
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
-        local.application = self
         def get_path(request, path, **kwargs):
             filename = os.path.join(self.static_path,  path)
             if u"/.." in filename:
@@ -237,7 +230,7 @@ class Site(object):
                     raise werkzeug.exceptions.Forbidden
                 kwargs['request'] = request
                 kwargs['import_'] = self.import_
-                response = TemplateResponse(local('application'), "%s" %
+                response = TemplateResponse(self, "%s" %
                     path.strip(os.path.sep),
                     kwargs)
                 if not request.path.endswith(u"/"):
@@ -251,11 +244,8 @@ class Site(object):
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
-        local.application = self
         request = Request(environ, self.secret_key)
-        local.kalamar = self.kalamar_site
-        local.kraken = self
-        local.url_adapter = adapter = self.url_map.bind_to_environ(environ)
+        adapter = self.url_map.bind_to_environ(environ)
         request.kraken = self
         try:
             handler, values = adapter.match()
@@ -299,6 +289,7 @@ class Site(object):
            for werkzeug, and a "kw" attribute, defining the keywords arguments
            for the werkzeug rule.
         """
+        function.krakensite = self
         self.url_map.add(Rule(function.kraken_rule, **function.kw))
 
 

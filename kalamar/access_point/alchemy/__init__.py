@@ -145,7 +145,7 @@ class Alchemy(AccessPoint):
         splitted = propertyname.split(".")
         prop = self.properties[splitted[0]]
         if len(splitted) > 1:
-            return prop.foreign_ap_obj.__get_column(".".join(splitted[1:]))
+            return self.site.access_points[prop.remote_ap].__get_column(".".join(splitted[1:]))
         else:
             return prop.column
 
