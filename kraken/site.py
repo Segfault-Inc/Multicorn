@@ -297,7 +297,7 @@ class Site(object):
     def register_endpoint(self, function):
         """Register ``function`` as an endpoint.
 
-        The function must have an attribute ``kraken_rule``, defining the rule
+        ``function`` must have an attribute ``kraken_rule``, defining the rule
         for werkzeug, and a ``kwargs`` attribute, defining the keywords
         arguments for the werkzeug rule.
 
@@ -306,7 +306,7 @@ class Site(object):
         self.url_map.add(Rule(function.kraken_rule, **function.kwargs))
 
     def register_controllers(self, module):
-        """Register controllers from a module"""
+        """Register controllers from ``module``."""
         for attr in module.__dict__.values():
             if hasattr(attr, "__call__") and hasattr(attr, "kraken_rule"):
                 self.register_endpoint(attr)
