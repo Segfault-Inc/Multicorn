@@ -175,10 +175,11 @@ def expose_template(rule=None, template=None, **kw):
         rule = rule or "/%s/" % f.__name__
         template = (template or find_static_part(rule)).strip(os.path.sep)
         def template_renderer(request, **kwargs):
-            return TemplateResponse(f.krakensite, template,
+            return TemplateResponse(f.krakensite, f.template,
                     f(request, **kwargs))
         kw['endpoint'] = template_renderer
         f.kw = kw
+        f.template = template
         f.kraken_rule = rule
         return f
     return partial(decorate, rule, template)
