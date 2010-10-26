@@ -60,7 +60,7 @@ def _find_static_part(rule):
     return re.sub(r"/<\w+:(\w+)>/?$", "/", first_pass)
 
 
-def expose_template(rule=None, template=None, **kw):
+def expose_template(rule=None, template=None, **kwargs):
     """Decorator exposing a method as a template filler.
 
     The decorated function will be registered as an endpoint for the rule.
@@ -70,21 +70,23 @@ def expose_template(rule=None, template=None, **kw):
     :param template: Path to the template which should be filled with the
         dictionary returned by the decorated function. If ommitted, will
         default to the rule.
-    :param kw: Keyword arguments passed directly to
+    :param kwargs: Keyword arguments passed directly to
         :meth:`werkzeug.routing.Rule.__init__`.
         
     """
-    def decorate(rule, template, f):
-        """ Decorator that set a response attribute on a method to a
-            TemplateResponse instance, initialized with the template
-        """
-        rule = rule or "/%s/" % f.__name__
-        template = (template or _find_static_part(rule)).strip(os.path.sep)
-        f.kw = kw
-        f.template_path = template
-        f.kraken_rule = rule
-        return f
+    def decorate(rule, template, function):
+        """Decorator calling ``function`` and serving ``template`` for ``rule``.
 
+        This function sets a ``response`` attribute on a method to a
+        :class:`TemplateResponse` instance, initialized with the template.
+
+        """
+        rule = rule or "/%s/" % function.__name__
+        template = (template or _find_static_part(rule)).strip(os.path.sep)
+        function.kwargs = kwargs
+        function.template_path = template
+        function.kraken_rule = rule
+        return function
     return partial(decorate, rule, template)
 
 
@@ -196,8 +198,8 @@ class Site(object):
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
 
-        def get_path(request, kwargs):
-            path = kwargs.pop('path')
+        def get_path(request, path, **kwargs):
+            """Get static file at ``path``."""
             filename = os.path.join(self.template_root, self.static_path, path)
             if u"/.." in filename:
                 raise werkzeug.exceptions.Forbidden
@@ -208,16 +210,17 @@ class Site(object):
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
-        adapter = self.url_map.bind_to_environ(environ)
         request = Request(environ, self.secret_key)
         request.kraken = self
         request.kalamar = self.kalamar_site
 
         # Find a static file or a template matching request
         try:
-            self.prehandle(request)
-            handler, values = adapter.match()
-            response = handler(request, values)
+            response = self.prehandle(request)
+            if not response:
+                adapter = self.url_map.bind_to_environ(environ)
+                handler, values = adapter.match()
+                response = handler(request, **values)
         except werkzeug.exceptions.NotFound, exception:
             if self.fallback_on_template:
                 try:
@@ -236,22 +239,23 @@ class Site(object):
         return response(environ, start_response)
 
     def prehandle(self, request):
-        """Dummy method called before trying to match the url"""
-        pass
+        """Method called before trying to match the url.
+
+        Can return a ``response`` object prevailing against default url map.
+
+        """
 
     def simple_template(self, request):
+        """Serve a template corresponding to ``request``."""
         path = request.path
         if u"../" in path or "/." in path:
             raise werkzeug.exceptions.Forbidden
         kwargs = {}
         kwargs["request"] = request
         kwargs["import_"] = self.import_
-        response = TemplateResponse(self, "%s" %
-            path.strip(os.path.sep),
-            kwargs)
+        response = TemplateResponse(self, path.strip(os.path.sep), kwargs)
         if not request.path.endswith(u"/"):
-            response = werkzeug.utils.append_slash_redirect(
-                request.environ)
+            response = werkzeug.utils.append_slash_redirect(request.environ)
         return response
     
     def render_template(self, site_engine, template_name, values=None,
@@ -286,7 +290,7 @@ class Site(object):
             module = getattr(module, attr)
         return module
 
-    def _render_controller(self, function, request, kwargs):
+    def _render_controller(self, function, request, **kwargs):
         values = function(request, **kwargs)
         template_name, extension, engine = function.template
         mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
@@ -296,19 +300,21 @@ class Site(object):
 
 
     def register_endpoint(self, function):
-        """Registers function as an endpoint.
-           The function must have an attribute "kraken_rule", defining the rule
-           for werkzeug, and a "kw" attribute, defining the keywords arguments
-           for the werkzeug rule.
+        """Register ``function`` as an endpoint.
+
+        ``function`` must have an attribute ``kraken_rule``, defining the rule
+        for werkzeug, and a ``kwargs`` attribute, defining the keywords
+        arguments for the werkzeug rule.
+
         """
         function.krakensite = self
         function.template = find_template(function.template_path, self.engines, self.template_root)
-        function.kw['endpoint'] = partial(self._render_controller,
+        function.kwargs['endpoint'] = partial(self._render_controller,
                  function)
-        self.url_map.add(Rule(function.kraken_rule, **function.kw))
+        self.url_map.add(Rule(function.kraken_rule, **function.kwargs))
 
     def register_controllers(self, module):
-        """Register controllers from a module"""
+        """Register controllers from ``module``."""
         for attr in module.__dict__.values():
             if hasattr(attr, "__call__") and hasattr(attr, "kraken_rule"):
                 self.register_endpoint(attr)

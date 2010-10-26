@@ -50,7 +50,7 @@ class AccessPoint(object):
     """Abstract class for all access points.
     
     In addition to abstract methods and properties, concrete access points
-    must have three attributes:
+    must have two attributes:
     
     :param properties: Mapping where keys are property names as strings, and
         value are :class:`kalamar.property.Property` instances.
