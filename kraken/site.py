@@ -291,6 +291,7 @@ class Site(object):
         return module
 
     def _render_controller(self, function, request, **kwargs):
+        """Function used to render an annotated function using its template"""
         values = function(request, **kwargs)
         template_name, extension, engine = function.template
         mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
@@ -304,11 +305,15 @@ class Site(object):
 
         ``function`` must have an attribute ``kraken_rule``, defining the rule
         for werkzeug, and a ``kwargs`` attribute, defining the keywords
-        arguments for the werkzeug rule.
+        arguments for the werkzeug rule, as well as a ``template`` attribute
+        defining the relative path to the template
 
         """
         function.krakensite = self
         function.template = find_template(function.template_path, self.engines, self.template_root)
+        if function.template is None:
+            raise RuntimeError("The template %s used by function %s doesn't \
+                exist" % (function.template_path, function.__name__))
         function.kwargs['endpoint'] = partial(self._render_controller,
                  function)
         self.url_map.add(Rule(function.kraken_rule, **function.kwargs))
