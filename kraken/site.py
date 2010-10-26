@@ -29,8 +29,8 @@ independent site with its own configuration.
 import datetime
 import hashlib
 import mimetypes
-import os
 import re
+import os
 import sys
 import types
 import werkzeug
@@ -39,7 +39,53 @@ import werkzeug.wrappers
 from werkzeug.exceptions import HTTPException
 from werkzeug.routing import Map, Rule 
 from functools import partial
-from .template import BUILTIN_ENGINES
+from .template import BUILTIN_ENGINES, find_template
+
+
+def _find_static_part(rule):
+    """Return a possible template path from a rule.
+    
+    >>> _find_static_part("/url/")
+    '/url/'
+    >>> _find_static_part("/url/<string:id>")
+    '/url/'
+    >>> _find_static_part("/url/<int:foo>/bar")
+    '/url/foo/bar'
+    >>> _find_static_part("/url/<int:foo>/bar/<string:baz>")
+    '/url/foo/bar/'
+
+    """
+    regexp = r"<\w+:(\w+)>(/\w+)"
+    first_pass = re.sub(regexp, r"\1\2", rule)
+    return re.sub(r"/<\w+:(\w+)>/?$", "/", first_pass)
+
+
+def expose_template(rule=None, template=None, **kw):
+    """Decorator exposing a method as a template filler.
+
+    The decorated function will be registered as an endpoint for the rule.
+    
+    :param rule: Werkzeug url path. If ommitted, will default to the function
+        name.
+    :param template: Path to the template which should be filled with the
+        dictionary returned by the decorated function. If ommitted, will
+        default to the rule.
+    :param kw: Keyword arguments passed directly to
+        :meth:`werkzeug.routing.Rule.__init__`.
+        
+    """
+    def decorate(rule, template, f):
+        """ Decorator that set a response attribute on a method to a
+            TemplateResponse instance, initialized with the template
+        """
+        rule = rule or "/%s/" % f.__name__
+        template = (template or _find_static_part(rule)).strip(os.path.sep)
+        f.kw = kw
+        f.template_path = template
+        f.kraken_rule = rule
+        return f
+
+    return partial(decorate, rule, template)
 
 
 class Request(werkzeug.wrappers.Request):
@@ -58,31 +104,14 @@ class Request(werkzeug.wrappers.Request):
 class TemplateResponse(werkzeug.wrappers.Response):
     """Response serving a template."""
     def __init__(self, site, path, values):
-        template_suffix_re = ur"\.(.+)\.(%s)$" % u"|".join(
-            re.escape(engine) for engine in site.engines)
-
-        searches = [(path, u"index")]
-        # If path is empty (ie. path is u"" or u"/")
-        # there is no path_parts[-1]
-        if path:
-            searches.append((os.path.dirname(path), os.path.basename(path)))
-        template_name = None
-        for dirname, basename in searches:
-            abs_dirname = os.path.join(site.template_root, dirname)
-            if os.path.isdir(abs_dirname):
-                for name in os.listdir(abs_dirname):
-                    match = re.match(
-                        re.escape(basename) + template_suffix_re, name)
-                    if match:
-                        template_name = u"/".join(
-                            dirname.split(os.path.sep) + [name])
-                        extension = match.group(1)
-                        engine = match.group(2)
-        if not template_name:
+        template = find_template(path, site.engines, site.template_root)
+        if template:
+            template_name, extension, engine = template
+            mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
+            content = site.render_template(engine, template_name, values)
+            super(TemplateResponse, self).__init__(content, mimetype=mimetype)
+        else:
             raise werkzeug.exceptions.NotFound
-        mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
-        content = site.render_template(engine, template_name, values)
-        super(TemplateResponse, self).__init__(content, mimetype=mimetype)
 
 
 class StaticFileResponse(werkzeug.wrappers.Response):
@@ -132,61 +161,6 @@ class StaticFileResponse(werkzeug.wrappers.Response):
         return werkzeug.wsgi.wrap_file(environ, self.file_obj)
 
 
-def find_static_part(rule):
-    """Return a possible template path from a rule.
-    
-    >>> find_static_part("/url/")
-    '/url/'
-    >>> find_static_part("/url/<string:id>")
-    '/url/'
-    >>> find_static_part("/url/<int:foo>/bar")
-    '/url/foo/bar'
-    >>> find_static_part("/url/<int:foo>/bar/<string:baz>")
-    '/url/foo/bar/'
-
-    """
-    regexp = r'<\w+:(\w+)>(/\w+)'
-    first_pass = re.sub(regexp, r'\1\2', rule)
-    return re.sub(r'/<\w+:(\w+)>/?$', '/', first_pass)
-
-    
-
-def expose_template(rule=None, template=None, **kw):
-    """ Decorator exposing a method as a template filler.
-
-    The decorated function will be registered as an endpoint for the rule.
-    
-    :param rule:
-        a werkzeug url path. If ommitted, will default to the function name
-    :param template:
-        a path to the template which should be filled with the dictionary
-        returned by the decorated function. If ommitted, will default to the
-        rule
-    :param kw:
-        keyword arguments passed directly to the werkzeug.routing.Rule.__init__
-        method
-        
-        
-    """
-    def decorate(rule, template, f):
-        """ Decorator that set a response attribute on a method to a
-            TemplateResponse instance, initialized with the template
-        """
-        rule = rule or "/%s/" % f.__name__
-        template = (template or find_static_part(rule)).strip(os.path.sep)
-        def template_renderer(request, **kwargs):
-            return TemplateResponse(f.krakensite, f.template,
-                    f(request, **kwargs))
-        kw['endpoint'] = template_renderer
-        f.kw = kw
-        f.template = template
-        f.kraken_rule = rule
-        return f
-    return partial(decorate, rule, template)
-
-
-
-
 class Site(object):
     """WSGI application from a site root and a kalamar configuration file.
 
@@ -198,18 +172,21 @@ class Site(object):
 
     """
     def __init__(self, site_root, template_root, kalamar_site=None,
-                 secret_key=None, static_url="static", static_path="__static",
+                 secret_key=None, static_path="static",
                  fallback_on_template=True):
         """Initialize the Site."""
-        self.secret_key = secret_key
         self.site_root = os.path.expanduser(unicode(site_root))
         self.template_root = os.path.expanduser(unicode(template_root))
         self.kalamar_site = kalamar_site
+        self.secret_key = secret_key
+        self.static_path = static_path
+        self.fallback_on_template = fallback_on_template
+
         self.engines = {}
         self.url_map = Map()
-        self.static_path = static_path
         for name, engine_class in BUILTIN_ENGINES.items():
             self.register_engine(name, engine_class)
+
         # Create a virtual package in sys.modules so that we can import
         # python modules in the site
         self.package_name = "kraken_site_%i" % id(self)
@@ -218,22 +195,57 @@ class Site(object):
         module.kraken = self
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
-        def get_path(request, path, **kwargs):
-            filename = os.path.join(self.static_path,  path)
+
+        def get_path(request, kwargs):
+            path = kwargs.pop('path')
+            filename = os.path.join(self.template_root, self.static_path, path)
             if u"/.." in filename:
                 raise werkzeug.exceptions.Forbidden
             return StaticFileResponse(filename)
-        self.url_map.add(Rule("/%s/<path:path>" % static_url.strip("/"), endpoint=get_path))
-        self.fallback_on_template = fallback_on_template
 
+        self.url_map.add(Rule(
+                "/%s/<path:path>" % static_path.strip("/"), endpoint=get_path))
+    
+    def __call__(self, environ, start_response):
+        """WSGI entry point for every HTTP request."""
+        adapter = self.url_map.bind_to_environ(environ)
+        request = Request(environ, self.secret_key)
+        request.kraken = self
+        request.kalamar = self.kalamar_site
+
+        # Find a static file or a template matching request
+        try:
+            self.prehandle(request)
+            handler, values = adapter.match()
+            response = handler(request, values)
+        except werkzeug.exceptions.NotFound, exception:
+            if self.fallback_on_template:
+                try:
+                    response = self.simple_template(request)
+                except HTTPException, exception:
+                    return exception(environ, start_response)
+            else:
+                return exception(environ, start_response)
+        except HTTPException, exception:
+            return exception(environ, start_response)
+
+        # Add session cookie if needed
+        if "session" in request.__dict__:
+            request.session.save_cookie(response)
+
+        return response(environ, start_response)
+
+    def prehandle(self, request):
+        """Dummy method called before trying to match the url"""
+        pass
 
     def simple_template(self, request):
         path = request.path
         if u"../" in path or "/." in path:
             raise werkzeug.exceptions.Forbidden
         kwargs = {}
-        kwargs['request'] = request
-        kwargs['import_'] = self.import_
+        kwargs["request"] = request
+        kwargs["import_"] = self.import_
         response = TemplateResponse(self, "%s" %
             path.strip(os.path.sep),
             kwargs)
@@ -241,34 +253,12 @@ class Site(object):
             response = werkzeug.utils.append_slash_redirect(
                 request.environ)
         return response
-
-    def prehandle(self, request):
-        """Dummy method called before trying to match the url"""
-        pass
     
-    def __call__(self, environ, start_response):
-        """WSGI entry point for every HTTP request."""
-        request = Request(environ, self.secret_key)
-        adapter = self.url_map.bind_to_environ(environ)
-        request.kraken = self
-        request.kalamar = self.kalamar_site
-        try:
-            self.prehandle(request)
-            handler, values = adapter.match()
-            response = handler(request, **values)
-        except werkzeug.exceptions.NotFound, e:
-            if self.fallback_on_template:
-                try:
-                    response = self.simple_template(request)
-                except HTTPException, e:
-                    return e(environ, start_response)
-            else:
-                return e(environ, start_response)
-        except HTTPException, e:
-            return e(environ, start_response)
-        if "session" in request.__dict__:
-            request.session.save_cookie(response)
-        return response(environ, start_response)
+    def render_template(self, site_engine, template_name, values=None,
+                        lang=None, modifiers=None):
+        """Shorthand to the engine render method."""
+        return self.engines[site_engine].render(
+            template_name, values or {}, lang, modifiers)
 
     def import_(self, name):
         """Helper for python controllers to "import" other controllers.
@@ -296,6 +286,14 @@ class Site(object):
             module = getattr(module, attr)
         return module
 
+    def _render_controller(self, function, request, kwargs):
+        values = function(request, **kwargs)
+        template_name, extension, engine = function.template
+        mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
+        content = self.render_template(engine, template_name, values)
+        return werkzeug.wrappers.Response(content, mimetype = mimetype)
+
+
 
     def register_endpoint(self, function):
         """Registers function as an endpoint.
@@ -304,9 +302,10 @@ class Site(object):
            for the werkzeug rule.
         """
         function.krakensite = self
+        function.template = find_template(function.template_path, self.engines, self.template_root)
+        function.kw['endpoint'] = partial(self._render_controller,
+                 function)
         self.url_map.add(Rule(function.kraken_rule, **function.kw))
-
-
 
     def register_controllers(self, module):
         """Register controllers from a module"""
@@ -323,9 +322,3 @@ class Site(object):
         
         """
         self.engines[name] = engine_class(self.template_root)
-    
-    def render_template(self, site_engine, template_name, values=None,
-                        lang=None, modifiers=None):
-        """Shorthand to the engine render method."""
-        return self.engines[site_engine].render(
-            template_name, values or {}, lang, modifiers)

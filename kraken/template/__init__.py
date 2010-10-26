@@ -24,7 +24,42 @@ Template engine manager base class.
 """
 
 import abc
-import os.path
+import collections
+import os
+import re
+
+
+def find_template(path, engines, template_root):
+    """Get a template corresponding to ``path``.
+
+    Return a named tuple ``(template_name, extension, engine)``.
+
+    TODO: explain how the template is found
+
+    """
+    template_suffix_re = ur"\.(.+)\.(%s)$" % u"|".join(
+        re.escape(engine) for engine in engines)
+
+    searches = [(path, u"index")]
+    # If path is empty (ie. path is u"" or u"/")
+    # there is no path_parts[-1]
+    if path:
+        searches.append((os.path.dirname(path), os.path.basename(path)))
+
+    Template = collections.namedtuple(
+        "Template", ("template_name", "extension", "engine"))
+    for dirname, basename in searches:
+        abs_dirname = os.path.join(template_root, dirname)
+        if os.path.isdir(abs_dirname):
+            for name in os.listdir(abs_dirname):
+                match = re.match(
+                    re.escape(basename) + template_suffix_re, name)
+                if match:
+                    template_name = u"/".join(
+                        dirname.split(os.path.sep) + [name])
+                    extension = match.group(1)
+                    engine = match.group(2)
+                    return Template(template_name, extension, engine)
 
 
 class BaseEngine(object):
