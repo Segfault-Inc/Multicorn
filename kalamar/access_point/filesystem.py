@@ -35,14 +35,14 @@ from ..property import Property
 
 class Stream(object):
     """Fake stream opening files on demand."""
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, name):
+        self.name = name
 
     def read(self):
-        return open(self.path, "rb").read()
+        return open(self.name, "rb").read()
 
     def write(self, bytestring):
-        open(self.path, "wb").write(bytestring)
+        open(self.name, "wb").write(bytestring)
 
     def close(self):
         pass
