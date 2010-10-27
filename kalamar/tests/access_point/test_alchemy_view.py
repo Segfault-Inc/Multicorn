@@ -101,6 +101,16 @@ class TestAlchemy(object):
             1}))
         eq_(len(items), 0)
 
+    def teststar(self):
+        mapping = {"root_" : "root.*"}
+        items = list(self.site.view("child", mapping, {}))
+        eq_(len(items), 2)
+        for item in items:
+            assert all([attr in item.keys() for attr in ["root_name",
+                "root_id"]])
+
+
+
     def tearDown(self):
         for ap in self.site.access_points.values():
             ap._table.drop()

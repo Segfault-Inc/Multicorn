@@ -109,8 +109,9 @@ def test_view_star_request(site):
     """Test a view with a wildcard"""
     items = list(site.view("things", {"": "*"}))
     eq_(len(items), 3)
-    assert(all([[attr in item for item in items] for attr in ["name","id"]]))
+    for item in items:
+        assert(all([attr in item for attr in ["name","id"]]))
     items = list(site.view("things", {"prefix_": "*"}))
     eq_(len(items), 3)
-    assert(all([["prefix_%s" % attr in item for item in items] 
-        for attr in ["name","id"]]))
+    for item in items:
+        assert(all(["prefix_%s" % attr in item for attr in ["name","id"]]))

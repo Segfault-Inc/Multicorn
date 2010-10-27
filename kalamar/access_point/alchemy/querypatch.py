@@ -161,12 +161,8 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
                 for prop_name, prop in properties.items():
                     column = prop.column
                     if prop.relation is None:
-                        if name is not u'':
-                            name = prop_name
-                        else:
-                            name = "_".join([name,
-                            prop_name])
-                        alchemy_query.append_column(column.label(name))
+                        label = "%s%s" % (name, prop_name)
+                        alchemy_query.append_column(column.label(label))
             else:
                 column = properties[value.name].column
                 alchemy_query.append_column(column.label(name))
