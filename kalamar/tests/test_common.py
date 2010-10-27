@@ -61,4 +61,56 @@ def test_eq(site):
     item2 = site.open("things", {"name": u"foo"})
     eq_(item1, item2)
 
+@commontest
+def test_view(site):
+    """Test simple view request"""
+    items = list(site.view("things", {"foo": "name"}))
+    eq_(len(items), 3)
+    assert(all(["foo" in item for item in items]))
 
+@commontest
+def test_view_condition(site):
+    """Test simple view condition"""
+    items = list(site.view("things", {"name":"name"}, {"name": u"bar"}))
+    eq_(len(items), 2)
+    assert(all([item["name"] == "bar" for item in items]))
+    items = list(site.view("things", {"foo":"name"}, {"name": u"bar"}))
+    eq_(len(items), 2)
+    assert(all([item["foo"] == "bar" for item in items]))
+    items = list(site.view("things", {"foo":"name"}, {"foo": u"bar"}))
+    eq_(len(items), 2)
+    assert(all([item["foo"] == "bar" for item in items]))
+
+@commontest
+def test_view_order_by(site):
+    """Test order by argument"""
+    items = list(site.view("things", {"name":"name"}, 
+        {}, [("name", True)]))
+    assert(all([n_1["name"] >= n["name"] 
+        for n, n_1 in zip(items, items[1:])]))
+    items = list(site.view("things", {"name":"name", "id":"id"}, 
+        {}, [("name", True),("id",False)]))
+    assert(all([n_1["name"] >= n["name"]
+            and n_1["id"] <= n["id"]
+        for n, n_1 in zip(items, items[1:])]))
+
+@commontest
+def test_view_range(site):
+    """Test range argument"""
+    items = list(site.view("things", select_range=2))
+    eq_(len(items), 2)
+    items = list(site.view("things", order_by=[("id", True)], 
+        select_range=(1, 2)))
+    eq_(len(items), 1)
+    eq_(items[0]["id"], 2)
+
+@commontest
+def test_view_star_request(site):
+    """Test a view with a wildcard"""
+    items = list(site.view("things", {"": "*"}))
+    eq_(len(items), 3)
+    assert(all([[attr in item for item in items] for attr in ["name","id"]]))
+    items = list(site.view("things", {"prefix_": "*"}))
+    eq_(len(items), 3)
+    assert(all([["prefix_%s" % attr in item for item in items] 
+        for attr in ["name","id"]]))
