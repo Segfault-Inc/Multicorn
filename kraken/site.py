@@ -197,7 +197,6 @@ class Site(object):
         module.kraken = self
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
-
         def get_path(request, path, **kwargs):
             """Get static file at ``path``."""
             filename = os.path.join(self.template_root, self.static_path, path)
@@ -309,7 +308,6 @@ class Site(object):
         defining the relative path to the template
 
         """
-        function.krakensite = self
         function.template = find_template(function.template_path, self.engines, self.template_root)
         if function.template is None:
             raise RuntimeError("The template %s used by function %s doesn't \

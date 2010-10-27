@@ -23,3 +23,9 @@ def anothertemplate(request, message, **kwargs):
 @expose_template("/<string:hello>/message")
 def weirdpath(request, hello, **kwargs):
     return {'message': hello} 
+
+@expose_template("/")
+def index(request, **kwargs):
+    """This endpoint isn't actually tested, but ensures that the template is
+    correctly found even on index"""
+    return {}
