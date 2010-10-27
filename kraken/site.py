@@ -250,7 +250,6 @@ class Site(object):
         defining the relative path to the template
 
         """
-        function.krakensite = self
         function.template = find_template(
             function.template_path, self.engines, self.template_root)
         if function.template is None:

@@ -24,7 +24,7 @@ Site class. Create one for each independent site with its own configuration.
 """
 
 from .request import normalize, make_request, And, Condition, Or, Not
-from .query import QueryFilter, QuerySelect, QueryChain
+from .query import QueryFilter, QuerySelect, QueryChain, QueryOrder, QueryRange
 
 
 def _translate_request(request, aliases):
@@ -43,6 +43,8 @@ def _translate_request(request, aliases):
             return Condition(aliases.get(name, name),
                              request.operator,
                              request.value)
+        elif name in aliases.values():
+            return Condition(name, request.operator, request.value)
         elif ".".join(name.split(".")[:-1] + ["*"]) in aliases:
             return request
         else:
@@ -95,7 +97,8 @@ class Site(object):
         access_point.name = name
         self.access_points[name] = access_point
 
-    def view(self, access_point_name, aliases=None, request=None, query=None):
+    def view(self, access_point_name, aliases=None, request=None, order_by=None,
+            select_range=None, query=None):
         """Call :meth:`kalamar.access_point.AccessPoint.view`.
 
         If ``alias`` and ``request`` are given, a query is created from them.
@@ -109,11 +112,22 @@ class Site(object):
             aliases = {"": "*"}
         if query is None:
             # Add dummy selects to be able to filter on those
+            chain = []
             aliases = dict(((value, key) for key, value in aliases.items()))
             request = make_request(request)
             request = _translate_request(request, aliases)
             aliases = dict(((value, key) for key, value in aliases.items()))
-            query = QueryChain((QuerySelect(aliases), QueryFilter(request)))
+            chain.append(QuerySelect(aliases))
+            chain.append(QueryFilter(request))
+            if order_by is not None:
+                chain.append(QueryOrder(order_by))
+            if select_range is not None:
+                if hasattr(select_range, "__iter__"):
+                    select_range = slice(*select_range)
+                else: 
+                    select_range = slice(select_range)
+                chain.append(QueryRange(select_range))
+            query = QueryChain(chain)
         query.validate(self, access_point.properties)
         return access_point.view(query)
 
