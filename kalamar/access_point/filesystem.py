@@ -33,6 +33,21 @@ from ..item import Item
 from ..property import Property
 
 
+class Stream(object):
+    """Fake stream opening files on demand."""
+    def __init__(self, path):
+        self.path = path
+
+    def read(self):
+        return open(self.path, "rb").read()
+
+    def write(self, bytestring):
+        open(self.path, "wb").write(bytestring)
+
+    def close(self):
+        pass
+
+
 class FileSystem(AccessPoint):
     """Store each item in a file."""
     def __init__(self, root_dir, pattern, properties,
@@ -77,7 +92,7 @@ class FileSystem(AccessPoint):
     def search(self, request):
         def defered_open(path):
             """Opener for ``path``."""
-            return lambda: (open(path, "rb"),)
+            return lambda: (Stream(path),)
 
         def walk(root, remaining_path_parts, previous_properties=()):
             """Walk through filesystem from ``root`` yielding matching items."""

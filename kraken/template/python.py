@@ -37,4 +37,4 @@ class PythonEngine(BaseEngine):
     def render(self, template_name, values, lang, modifiers):
         local = {}
         execfile(self._build_filename(template_name), local, local)
-        return unicode(local["render"](**values))
+        return local["render"](**values)
