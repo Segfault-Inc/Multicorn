@@ -177,7 +177,7 @@ class Site(object):
         something like ``os.urandom(20)`` to get one.
 
     """
-    def __init__(self, site_root, template_root, kalamar_site=None,
+    def __init__(self, site_root=".", template_root="views", kalamar_site=None,
                  secret_key=None, static_path="static",
                  fallback_on_template=True):
         """Initialize the Site."""
@@ -204,7 +204,7 @@ class Site(object):
 
         def get_path(request, path, **kwargs):
             """Get static file at ``path``."""
-            filename = os.path.join(self.template_root, self.static_path, path)
+            filename = os.path.join(self.site_root, self.static_path, path)
             if u"/.." in filename:
                 raise werkzeug.exceptions.Forbidden
             return StaticFileResponse(filename)
