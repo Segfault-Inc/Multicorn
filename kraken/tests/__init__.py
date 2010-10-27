@@ -5,8 +5,8 @@ import werkzeug
 def make_site(secret_key=None):
     # import kraken here so that coverage sees module-level statements
     import kraken
-    root = os.path.join(os.path.dirname(__file__), 'site')
-    return kraken.Site(root, root, None, secret_key, "logo")
+    root = os.path.join(os.path.dirname(__file__), "site")
+    return kraken.Site(root, root, None, secret_key)
 
 
 class KrakenSiteMixin(object):

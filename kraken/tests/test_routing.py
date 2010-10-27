@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os 
 from unittest import TestCase
 
@@ -10,7 +11,7 @@ class TestRoutedRequests(KrakenSiteMixin, TestCase):
         r = self.client.get('/helloparam/world/')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<html><body>Hello, world!</body></html>\n')
+        self.assertEqual(r.data, '<html><body>Hello × world!</body></html>\n')
 
     def test_message_redirect(self):
         r = self.client.get('/helloparam/world')
@@ -29,67 +30,29 @@ class TestRoutedRequests(KrakenSiteMixin, TestCase):
         r = self.client.get('/methods/')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<html><body>Hello, GET world!</body></html>\n')
+        self.assertEqual(r.data, '<html><body>Hello × GET world!</body></html>\n')
         r = self.client.post('/methods/')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<html><body>Hello, POST world!</body></html>\n')
+        self.assertEqual(r.data, '<html><body>Hello × POST world!</body></html>\n')
 
     def test_hello(self):
         r = self.client.get('/hello/?name=World')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<html><body>Hello, World!</body></html>\n')
+        self.assertEqual(r.data, '<html><body>Hello × World!</body></html>\n')
 
     def test_othertemplate(self):
         r = self.client.get('/another/template/World')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<html><body>Hello, World!</body></html>\n')
+        self.assertEqual(r.data, '<html><body>Hello × World!</body></html>\n')
 
     def test_weirdpath(self):
         r = self.client.get('/World/message')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
-        self.assertEqual(r.data, '<html><body>Hello, World!</body></html>\n')
-
-    def test_logo(self):
-        r = self.client.get('/logo/dyko.png')
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.headers['Content-Type'], 'image/png')
-        # Maybe check the actual content here instead of just the length ?
-        self.assertEqual(len(r.data), 12677)
-
-    def test_logo_etag(self):
-        # assume that self.test_logo() passed
-        initial_response = self.client.get('/logo/dyko.png')
-        
-        response = self.client.get('/logo/dyko.png', headers=[
-            ('If-None-Match', initial_response.headers['ETag']),
-        ])
-        self.assertEqual(response.status_code, 304)
-        self.assertEqual(response.data, '')
-
-    def test_logo_last_modified(self):
-        # assume that self.test_logo() passed
-        initial_response = self.client.get('/logo/dyko.png')
-        
-        response = self.client.get('/logo/dyko.png', headers=[
-            ('If-Modified-Since', initial_response.headers['Last-Modified']),
-        ])
-        self.assertEqual(response.status_code, 304)
-        self.assertEqual(response.data, '')
-
-    def test_logo_etag_and_last_modified(self):
-        # assume that self.test_logo() passed
-        initial_response = self.client.get('/logo/dyko.png')
-        
-        response = self.client.get('/logo/dyko.png', headers=[
-            ('If-None-Match', initial_response.headers['ETag']),
-            ('If-Modified-Since', initial_response.headers['Last-Modified']),
-        ])
-        self.assertEqual(response.status_code, 304)
-        self.assertEqual(response.data, '')
+        self.assertEqual(r.data, '<html><body>Hello × World!</body></html>\n')
 
     def setUp(self):
         super(TestRoutedRequests, self).setUp()

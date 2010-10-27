@@ -116,51 +116,14 @@ class TemplateResponse(werkzeug.wrappers.Response):
             raise werkzeug.exceptions.NotFound
 
 
-class StaticFileResponse(werkzeug.wrappers.Response):
-    """Response serving a static file.
-
-    Respond with a static file, guessing the mimitype from the filename,
-    and using WSGI’s ``file_wrapper`` when available.
-
-    """
-    def __init__(self, filename):
-        """Create the response with the ``filename`` static file."""
-        super(StaticFileResponse, self).__init__(filename)
-
-        if not os.path.isfile(filename):
-            raise werkzeug.exceptions.NotFound
-        self.filename = filename
-        self.file_obj = open(self.filename, "rb")
-        self.file_stat = os.stat(self.filename)
-
-    def __call__(self, environ, start_response):
-        """Return the file and set the response headers."""
-        etag = "%s,%s,%s" % (
-            self.filename.encode("utf-8"), self.file_stat.st_size,
-            self.file_stat.st_mtime)
-        # The hashlib module has a "md5" function
-        # pylint: disable=E1101
-        etag = '"%s"' % hashlib.md5(etag).hexdigest()
-        # pylint: enable=E1101
-        headers = [("Date", werkzeug.utils.http_date()), ("Etag", etag)]
-        # round to 1 second precision: no more than the HTTP header
-        mtime = datetime.datetime.utcfromtimestamp(int(self.file_stat.st_mtime))
-        if not werkzeug.http.is_resource_modified(
-            environ, etag=etag, last_modified=mtime):
-            start_response("304 Not Modified", headers)
-            return []
-
-        mimetype, encoding = mimetypes.guess_type(self.filename)
-        headers.extend((
-                ("Content-Type", mimetype or "application/octet-stream"),
-                ("Content-Length", str(self.file_stat.st_size)),
-                ("Last-Modified", werkzeug.utils.http_date(
-                        self.file_stat.st_mtime))))
-        if encoding:
-            headers.extend((
-                    ("Content-Encoding", encoding),))
-        start_response("200 OK", headers)
-        return werkzeug.wsgi.wrap_file(environ, self.file_obj)
+class ControllerResponse(werkzeug.wrappers.Response):
+    """Response serving an annotated function using its template."""
+    def __init__(self, site, function, request, **kwargs):
+        values = function(request, **kwargs)
+        template_name, extension, engine = function.template
+        mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
+        content = site.render_template(engine, template_name, values)
+        super(ControllerResponse, self).__init__(content, mimetype=mimetype)
 
 
 class Site(object):
@@ -174,14 +137,12 @@ class Site(object):
 
     """
     def __init__(self, site_root=".", template_root="views", kalamar_site=None,
-                 secret_key=None, static_path="static",
-                 fallback_on_template=True):
+                 secret_key=None, fallback_on_template=True):
         """Initialize the Site."""
         self.site_root = os.path.expanduser(unicode(site_root))
         self.template_root = os.path.expanduser(unicode(template_root))
         self.kalamar_site = kalamar_site
         self.secret_key = secret_key
-        self.static_path = static_path
         self.fallback_on_template = fallback_on_template
 
         self.engines = {}
@@ -197,16 +158,6 @@ class Site(object):
         module.kraken = self
         module.kalamar = self.kalamar_site
         sys.modules[self.package_name] = module
-
-        def get_path(request, path, **kwargs):
-            """Get static file at ``path``."""
-            filename = os.path.join(self.site_root, self.static_path, path)
-            if u"/.." in filename:
-                raise werkzeug.exceptions.Forbidden
-            return StaticFileResponse(filename)
-
-        self.url_map.add(Rule(
-                "/%s/<path:path>" % static_path.strip("/"), endpoint=get_path))
     
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
@@ -214,7 +165,7 @@ class Site(object):
         request.kraken = self
         request.kalamar = self.kalamar_site
 
-        # Find a static file or a template matching request
+        # Find an endpoint for the request
         try:
             response = self.prehandle(request)
             if not response:
@@ -290,16 +241,6 @@ class Site(object):
             module = getattr(module, attr)
         return module
 
-    def _render_controller(self, function, request, **kwargs):
-        """Function used to render an annotated function using its template"""
-        values = function(request, **kwargs)
-        template_name, extension, engine = function.template
-        mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
-        content = self.render_template(engine, template_name, values)
-        return werkzeug.wrappers.Response(content, mimetype = mimetype)
-
-
-
     def register_endpoint(self, function):
         """Register ``function`` as an endpoint.
 
@@ -310,12 +251,13 @@ class Site(object):
 
         """
         function.krakensite = self
-        function.template = find_template(function.template_path, self.engines, self.template_root)
+        function.template = find_template(
+            function.template_path, self.engines, self.template_root)
         if function.template is None:
-            raise RuntimeError("The template %s used by function %s doesn't \
-                exist" % (function.template_path, function.__name__))
-        function.kwargs['endpoint'] = partial(self._render_controller,
-                 function)
+            raise RuntimeError(
+                "The template %s used by function %s doesn't exist" % (
+                    function.template_path, function.__name__))
+        function.kwargs["endpoint"] = partial(ControllerResponse, self, function)
         self.url_map.add(Rule(function.kraken_rule, **function.kwargs))
 
     def register_controllers(self, module):
