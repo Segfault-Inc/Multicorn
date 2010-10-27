@@ -83,14 +83,10 @@ def expose_template(rule=None, template=None, **kwargs):
         """
         rule = rule or "/%s/" % function.__name__
         template = (template or _find_static_part(rule)).strip(os.path.sep)
-        def template_renderer(request, **kwargs):
-            return TemplateResponse(
-                function.kraken_site, template, function(request, **kwargs))
-        kwargs["endpoint"] = template_renderer
         function.kwargs = kwargs
+        function.template_path = template
         function.kraken_rule = rule
         return function
-
     return partial(decorate, rule, template)
 
 
@@ -294,15 +290,32 @@ class Site(object):
             module = getattr(module, attr)
         return module
 
+    def _render_controller(self, function, request, **kwargs):
+        """Function used to render an annotated function using its template"""
+        values = function(request, **kwargs)
+        template_name, extension, engine = function.template
+        mimetype = mimetypes.guess_type(u"_." + str(extension))[0]
+        content = self.render_template(engine, template_name, values)
+        return werkzeug.wrappers.Response(content, mimetype = mimetype)
+
+
+
     def register_endpoint(self, function):
         """Register ``function`` as an endpoint.
 
         ``function`` must have an attribute ``kraken_rule``, defining the rule
         for werkzeug, and a ``kwargs`` attribute, defining the keywords
-        arguments for the werkzeug rule.
+        arguments for the werkzeug rule, as well as a ``template`` attribute
+        defining the relative path to the template
 
         """
-        function.kraken_site = self
+        function.krakensite = self
+        function.template = find_template(function.template_path, self.engines, self.template_root)
+        if function.template is None:
+            raise RuntimeError("The template %s used by function %s doesn't \
+                exist" % (function.template_path, function.__name__))
+        function.kwargs['endpoint'] = partial(self._render_controller,
+                 function)
         self.url_map.add(Rule(function.kraken_rule, **function.kwargs))
 
     def register_controllers(self, module):
