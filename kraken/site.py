@@ -26,8 +26,6 @@ independent site with its own configuration.
 
 """
 
-import datetime
-import hashlib
 import mimetypes
 import re
 import os
@@ -162,8 +160,7 @@ class Site(object):
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
         request = Request(environ, self.secret_key)
-        request.kraken = self
-        request.kalamar = self.kalamar_site
+        sites = {"kraken": self, "kalamar": self.kalamar_site}
 
         # Find an endpoint for the request
         try:
@@ -171,11 +168,12 @@ class Site(object):
             if not response:
                 adapter = self.url_map.bind_to_environ(environ)
                 handler, values = adapter.match()
+                values.update(sites)
                 response = handler(request, **values)
         except werkzeug.exceptions.NotFound, exception:
             if self.fallback_on_template:
                 try:
-                    response = self.simple_template(request)
+                    response = self.simple_template(request, **sites)
                 except HTTPException, exception:
                     return exception(environ, start_response)
             else:
@@ -196,12 +194,11 @@ class Site(object):
 
         """
 
-    def simple_template(self, request):
+    def simple_template(self, request, **kwargs):
         """Serve a template corresponding to ``request``."""
         path = request.path
         if u"../" in path or "/." in path:
             raise werkzeug.exceptions.Forbidden
-        kwargs = {}
         kwargs["request"] = request
         kwargs["import_"] = self.import_
         response = TemplateResponse(self, path.strip(os.path.sep), kwargs)
@@ -256,7 +253,8 @@ class Site(object):
             raise RuntimeError(
                 "The template %s used by function %s doesn't exist" % (
                     function.template_path, function.__name__))
-        function.kwargs["endpoint"] = partial(ControllerResponse, self, function)
+        function.kwargs["endpoint"] = partial(
+            ControllerResponse, self, function)
         self.url_map.add(Rule(function.kraken_rule, **function.kwargs))
 
     def register_controllers(self, module):
