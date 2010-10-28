@@ -73,20 +73,23 @@ def expose_template(rule=None, template=None, **kwargs):
         
     """
     def decorate(rule, template, function):
-        """Decorator calling ``function`` and serving ``template`` for ``rule``.
-
-        This function sets a ``response`` attribute on a method to a
-        :class:`TemplateResponse` instance, initialized with the template.
-
+        """Decorator marking a function to be registered as a template.
         """
-        rule = rule or "/%s/" % function.__name__
-        template = (template or _find_static_part(rule)).strip(os.path.sep)
-        function.kwargs = kwargs
+        function = expose(rule, **kwargs)(function)
+        template = (template or 
+                _find_static_part(function.kraken_rule)).strip(os.path.sep)
         function.template_path = template
-        function.kraken_rule = rule
         return function
     return partial(decorate, rule, template)
 
+def expose(rule=None, **kwargs):
+    """Decorator marking a method as to be exposed to the site to the site"""
+    def decorate(rule, function):
+        rule = rule or "/%s/" % function.__name__
+        function.kwargs = kwargs
+        function.kraken_rule = rule
+        return function
+    return partial(decorate, rule)
 
 class Request(werkzeug.wrappers.Request):
     """Request object managing sessions with encrypted cookies."""
@@ -247,14 +250,17 @@ class Site(object):
         defining the relative path to the template
 
         """
-        function.template = find_template(
-            function.template_path, self.engines, self.template_root)
-        if function.template is None:
-            raise RuntimeError(
-                "The template %s used by function %s doesn't exist" % (
-                    function.template_path, function.__name__))
-        function.kwargs["endpoint"] = partial(
-            ControllerResponse, self, function)
+        if hasattr(function, "template_path"):
+            function.template = find_template(
+                function.template_path, self.engines, self.template_root)
+            if function.template is None:
+                raise RuntimeError(
+                    "The template %s used by function %s doesn't exist" % (
+                        function.template_path, function.__name__))
+            function.kwargs["endpoint"] = partial(
+                ControllerResponse, self, function)
+        else:
+            function.kwargs["endpoint"] = function
         self.url_map.add(Rule(function.kraken_rule, **function.kwargs))
 
     def register_controllers(self, module):

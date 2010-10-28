@@ -195,7 +195,8 @@ class Alchemy(AccessPoint):
             None, None, from_obj=self._table, use_labels=True)
         query.append_whereclause(self.to_alchemy_condition(request))
         for name, prop in self.properties.items():
-            query.append_column(prop.column.label(name))
+            if prop.relation != "one-to-many":
+                query.append_column(prop.column.label(name))
         execution = query.execute()
         return (self.__item_from_result(line) for line in execution)
 

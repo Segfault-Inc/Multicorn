@@ -1,4 +1,5 @@
-from kraken.site import expose_template
+from kraken.site import expose_template, expose
+from werkzeug.wrappers import Response
 
 @expose_template("/helloparam/<string:message>/")
 def helloparam(request, message, **kwargs):
@@ -29,3 +30,12 @@ def index(request, **kwargs):
     """This endpoint isn't actually tested, but ensures that the template is
     correctly found even on index"""
     return {}
+
+@expose()
+def simple_expose(request, **kwargs):
+    """Endpoint returning raw text"""
+    return Response("Raw text from a controller", mimetype="text/plain")
+
+
+    
+

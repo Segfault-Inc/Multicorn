@@ -54,6 +54,13 @@ class TestRoutedRequests(KrakenSiteMixin, TestCase):
         self.assertEqual(r.headers['Content-Type'], 'text/html; charset=utf-8')
         self.assertEqual(r.data, '<html><body>Hello × World!</body></html>\n')
 
+    def test_simple_expose(self):
+        r = self.client.get('/simple_expose/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.headers['Content-Type'], 'text/plain; charset=utf-8')
+        self.assertEqual(r.data, 'Raw text from a controller')
+
+
     def setUp(self):
         super(TestRoutedRequests, self).setUp()
         from . import controllers
