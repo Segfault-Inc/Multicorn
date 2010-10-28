@@ -32,6 +32,25 @@ from ..item import ItemWrapper, MultiDict
 from ..request import And
 
 
+def _split_request(request):
+    """Split ``request`` into ``non_stream, stream`` properties."""
+    # Constraints here to rewrite this function:
+    #
+    # - ``And(request_for_wrapped_ap, remaining_request)`` must be
+    #   equivalent to `request`.
+    # - ``request_for_wrapped_ap`` must not contain conditions about the
+    #   converted property, ie. ``self.stream_property_name``.
+
+    # TODO: decompose better, at least for simple cases.
+    # eg. {"a": 1, "b": 2} should decompose to {"a": 1} and {"b": 2}
+    # (assuming ``site.stream_property_name`` == "b")
+
+    # Note that this function could be a method of :class:`UnicodeStream`
+    request_for_wrapped_ap = And()
+    remaining_request = request
+    return request_for_wrapped_ap, remaining_request
+
+
 class UnicodeStreamItem(ItemWrapper):
     """Unicode stream item."""
     # Unicode items can access access point private methods
@@ -87,30 +106,14 @@ class UnicodeStream(AccessPointWrapper):
 
         return super(UnicodeStream, self).create(properties, lazy_loaders)
 
-    def _split_request(self, request):
-        """Split ``request`` into ``non_stream, stream`` properties."""
-        # Constraints here:
-        #
-        # - ``And(request_for_wrapped_ap, remaining_request)`` must be
-        #   equivalent to `request`.
-        # - ``request_for_wrapped_ap`` must not contain conditions about the
-        #   converted property, ie. ``self.stream_property_name``.
-        
-        # TODO: decompose better, at least for simple cases.
-        # eg. {"a": 1, "b": 2} should decompose to {"a": 1} and {"b": 2}
-        # (assuming ``self.stream_property_name`` == "b")
-        request_for_wrapped_ap = And()
-        remaining_request = request
-        return request_for_wrapped_ap, remaining_request
-        
     def search(self, request):
-        request_for_wrapped_ap, remaining_request = self._split_request(request)
+        request_for_wrapped_ap, remaining_request = _split_request(request)
         for item in super(UnicodeStream, self).search(request_for_wrapped_ap):
             if remaining_request.test(item):
                 yield item
 
     def delete_many(self, request):
-        remaining_request = self._split_request(request)[1]
+        remaining_request = _split_request(request)[1]
         if remaining_request == And():
             # ``request`` is not about ``self.stream_property_name``, we can
             # safely pass it to the underlying access point’s ``delete_many``
