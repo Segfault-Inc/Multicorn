@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
 # Copyright © 2008-2010 Kozea
@@ -21,48 +22,57 @@ Tests for kraken controllers.
 """
 
 from kraken.site import expose_template
+=======
+from kraken.site import expose_template, expose
+from werkzeug.wrappers import Response
+>>>>>>> 81b8cc27fb69b3c78f95a9561ca59aad0fdf6e93
 
 # Tests don't use all controllers parameters
 # pylint: disable=W0613
 
 @expose_template("/helloparam/<string:message>/")
 def helloparam(request, message, **kwargs):
-    """Template with parameters."""
+    """Endpoint with parameters."""
     return {"message": message}
 
 @expose_template("/methods/", methods=("GET",))
 def getmethod(request, **kwargs):
-    """Template available by GET method."""
+    """Endpoint available by GET method."""
     return {"message": "GET world"}
 
 @expose_template("/methods/", methods=("POST",))
 def postmethod(request, **kwargs):
-    """Template available by POST method."""
+    """Endpoint available by POST method."""
     return {"message": "POST world"}
 
 @expose_template()
 def hello(request, **kwargs):
-    """Template automatically called ``hello`` from the function name."""
+    """Endpoint automatically called ``hello`` from the function name."""
     return {"request": request}
 
 @expose_template("/another/template/<string:message>", template="helloparam")
 def anothertemplate(request, message, **kwargs):
-    """Template available from another name."""
+    """Endpoint available from another name."""
     return {"message": message}
 
 @expose_template("/<string:hellostring>/message")
 def weirdpath(request, hellostring, **kwargs):
-    """Template with a weird path."""
+    """Endpoint with a weird path."""
     return {"message": hellostring}
 
 @expose_template("/")
 def index(request, **kwargs):
-    """Index template with a ``/`` path.
+    """Index endpoint with a ``/`` path.
 
     This endpoint isn't actually tested, but ensures that the template is
     correctly found even on index.
 
     """
     return {}
+
+@expose()
+def simple_expose(request, **kwargs):
+    """Endpoint returning raw text."""
+    return Response("Raw text from a controller", mimetype="text/plain")
 
 # pylint: enable=W0613
