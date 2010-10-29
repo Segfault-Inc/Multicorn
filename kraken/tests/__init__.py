@@ -57,3 +57,16 @@ class KrakenSiteMixin(object):
         self.__class__.test_app = None
         site.url_map = werkzeug.routing.Map()
     # pylint: enable=C0103
+
+    def _check_hello_template(self, response, message="World"):
+        """Check that response is 200 with good html utf-8 content.
+
+        :param str message: word that should be included in the variable hello
+            template string.
+
+        """
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["Content-Type"], "text/html; charset=utf-8")
+        self.assertEqual(
+            response.data, "<html><body>Hello × %s!</body></html>\n" % message)

@@ -107,12 +107,12 @@ from .mako_ import MakoEngine
 BUILTIN_ENGINES = {"py": PythonEngine, "str-format": StrFormatEngine}
 
 
-for name, engine in (
+for engine_name, engine_class in (
     ("jinja2", Jinja2Engine), ("genshi", GenshiEngine), ("mako", MakoEngine)):
     try:
-        engine("/nonexistent-path")
-    except ImportError:
+        engine_class("/nonexistent-path")
+    except ImportError: # pragma: no cover
         # Not installed/available
         pass
     else:
-        BUILTIN_ENGINES[name] = engine
+        BUILTIN_ENGINES[engine_name] = engine_class

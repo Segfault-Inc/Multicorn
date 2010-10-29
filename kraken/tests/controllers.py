@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
 # Copyright © 2008-2010 Kozea
@@ -17,15 +16,13 @@
 # along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Tests for kraken controllers.
+Collection of kraken controllers for testing purpose.
 
 """
 
-from kraken.site import expose_template
-=======
 from kraken.site import expose_template, expose
 from werkzeug.wrappers import Response
->>>>>>> 81b8cc27fb69b3c78f95a9561ca59aad0fdf6e93
+
 
 # Tests don't use all controllers parameters
 # pylint: disable=W0613
@@ -37,12 +34,12 @@ def helloparam(request, message, **kwargs):
 
 @expose_template("/methods/", methods=("GET",))
 def getmethod(request, **kwargs):
-    """Endpoint available by GET method."""
+    """Endpoint available with GET method."""
     return {"message": "GET world"}
 
 @expose_template("/methods/", methods=("POST",))
 def postmethod(request, **kwargs):
-    """Endpoint available by POST method."""
+    """Endpoint available with POST method."""
     return {"message": "POST world"}
 
 @expose_template()
@@ -55,10 +52,10 @@ def anothertemplate(request, message, **kwargs):
     """Endpoint available from another name."""
     return {"message": message}
 
-@expose_template("/<string:hellostring>/message")
-def weirdpath(request, hellostring, **kwargs):
+@expose_template("/<string:hello>/message")
+def weirdpath(request, hello, **kwargs):
     """Endpoint with a weird path."""
-    return {"message": hellostring}
+    return {"message": hello}
 
 @expose_template("/")
 def index(request, **kwargs):
@@ -68,11 +65,10 @@ def index(request, **kwargs):
     correctly found even on index.
 
     """
-    return {}
 
 @expose()
 def simple_expose(request, **kwargs):
     """Endpoint returning raw text."""
-    return Response("Raw text from a controller", mimetype="text/plain")
+    return Response(u"Raw text from a controller ×", mimetype="text/plain")
 
 # pylint: enable=W0613
