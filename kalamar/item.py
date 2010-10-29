@@ -27,6 +27,9 @@ import abc
 from collections import namedtuple, Mapping, MutableMapping
 
 
+# Identity and *MultiMapping do not need an __init__ method
+# pylint: disable=W0232
+
 class Identity(namedtuple("Identity", "access_point, conditions")):
     """Simple class identifying items.
 
@@ -104,6 +107,8 @@ class MutableMultiMapping(MultiMapping, MutableMapping):
             # pylint: enable=E1103
         else:
             super(MutableMultiMapping, self).update(other)
+
+# pylint: enable=W0232
 
 
 class MultiDict(MutableMultiMapping):

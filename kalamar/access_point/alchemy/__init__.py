@@ -23,7 +23,7 @@ Access point storing items in a RDBMS.
 
 """
 
-from werkzeug import cached_property
+from werkzeug.utils import cached_property
 from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
     Integer, Date, Numeric, DateTime, Boolean, Unicode
 from sqlalchemy.sql import expression, and_, or_, not_
@@ -73,6 +73,7 @@ class Alchemy(AccessPoint):
         self.tablename = tablename
         self.createtable = createtable
         self.remote_alchemy_props = []
+        self.metadata = None
         for name, prop in self.properties.items():
             prop.name = name 
             if prop.relation is None:
@@ -123,6 +124,7 @@ class Alchemy(AccessPoint):
         prop.column = column
         return column
 
+    # TODO: remove the werkzeug depedency
     @cached_property
     def _table(self):
         """Initialize the sql alchemy engine on first access."""
@@ -145,7 +147,11 @@ class Alchemy(AccessPoint):
         splitted = propertyname.split(".")
         prop = self.properties[splitted[0]]
         if len(splitted) > 1:
-            return self.site.access_points[prop.remote_ap].__get_column(".".join(splitted[1:]))
+            # __get_column isn't really protected but shared between Alchemy APs
+            # pylint: disable=W0212
+            return self.site.access_points[prop.remote_ap].__get_column(
+                ".".join(splitted[1:]))
+            # pylint: enable=W0212
         else:
             return prop.column
 
@@ -186,8 +192,9 @@ class Alchemy(AccessPoint):
         """
         remote_ap = self.site.access_points[prop.remote_ap]
         def loader():
-            cond = Condition(remote_ap.identity_properties[0], "=", value)
-            return (remote_ap.open(cond), )
+            """Wrapper function opening remote item when called."""
+            condition = Condition(remote_ap.identity_properties[0], "=", value)
+            return (remote_ap.open(condition), )
         return loader
                 
     def search(self, request):
