@@ -22,7 +22,7 @@ Test the alchemy backend on an sqlite base
 
 """
 
-from nose.tools import eq_
+from nose.tools import eq_, raises
 
 from kalamar.property import Property
 from kalamar.request import normalize, Condition, And, Or, Not
@@ -57,6 +57,7 @@ def test_simplify():
         And(Or(Or(), Or(And(condition1))), condition2).simplify())
 
 
+@raises(ValueError)
 def test_normalize():
     """Assert the normalize function works properly."""
     # TODO: more unit tests here.
@@ -69,10 +70,5 @@ def test_normalize():
         And(Condition(u"a", "=", 1.0), Condition(u"b", "=", u"foo")))
 
     properties = {"a": Property(float), "b": Property(int)}
-    try:
-        normalize(properties, {u"a": 1, u"b": "foo"})
-    except ValueError:
-        pass
-    else:
-        assert False, "Expected ValueError."
+    normalize(properties, {u"a": 1, u"b": "foo"})
 
