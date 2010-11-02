@@ -16,8 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Property test
-=============
+Property test.
 
 Test the Property class.
 
@@ -27,11 +26,19 @@ from nose.tools import eq_, raises
 
 from .access_point import test_memory
 from .common import make_site
-from ..property import Property, MissingRemoteAP, MissingRemoteProperty
+from kalamar.property import Property, MissingRemoteAP, MissingRemoteProperty
 
+
+# Some properties are just used to test equality
+# pylint: disable=C0103
+
+# Function name are quite long but explicit
+# pylint: disable=W0612
 
 def test_property_creation():
-    remote_ap = make_site(test_memory.make_ap(), fill=True).access_points["things"]
+    """Test the creation of access point properties."""
+    remote_ap = make_site(
+        test_memory.make_ap(), fill=True).access_points["things"]
     prop = Property(unicode)
     eq_(prop.type, unicode)
     prop = Property(int, True, True, 42, True, "many-to-one", remote_ap, "name")
@@ -39,13 +46,20 @@ def test_property_creation():
 
 @raises(MissingRemoteAP)
 def test_property_creation_missing_remote_ap():
+    """Check that property for a missing access point raises an exception."""
     prop = Property(float, relation="many-to-one")
 
 @raises(MissingRemoteProperty)
 def test_property_creation_missing_remote_property():
-    remote_ap = make_site(test_memory.make_ap(), fill=True).access_points["things"]
+    """Check that a property missing for an access point raises an exception."""
+    remote_ap = make_site(
+        test_memory.make_ap(), fill=True).access_points["things"]
     prop = Property(float, relation="one-to-many", remote_ap=remote_ap)
 
 @raises(RuntimeError)
 def test_property_creation_missing_remote_property_and_ap():
+    """Check that a one-to-many prop missing prop and ap raises an exception."""
     prop = Property(float, relation="one-to-many")
+
+# pylint: enable=C0103
+# pylint: enable=W0612

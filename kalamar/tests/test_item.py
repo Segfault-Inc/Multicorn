@@ -16,20 +16,20 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Memory test
-===========
+Item test.
 
-Test the Memory access point.
+Test the Item class.
 
 """
-
-from nose.tools import eq_
 
 from .access_point import test_memory
 from .common import make_site
 
 
 def test_modification_tracking():
+    """Test the modification tracking system."""
+    # Some statements seem useless here, but they are useful
+    # pylint: disable=W0104
     site = make_site(test_memory.make_ap(), fill=True)
     item = tuple(site.search("things"))[0]
     assert not item.modified
@@ -45,3 +45,4 @@ def test_modification_tracking():
     assert item.modified
     item.save()
     assert not item.modified
+    # pylint: enable=W0104

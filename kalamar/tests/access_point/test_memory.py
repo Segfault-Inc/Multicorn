@@ -16,8 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Memory test
-===========
+Memory test.
 
 Test the Memory access point.
 
@@ -29,8 +28,10 @@ from kalamar.property import Property
 from ..common import run_common
 
 def make_ap():
+    """Create a simple access point."""
     return Memory({"id": Property(int), "name": Property(unicode)}, "id")
 
 @run_common
 def test_common():
+    """Launch common tests for memory."""
     return make_ap()

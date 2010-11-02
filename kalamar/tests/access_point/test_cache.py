@@ -16,18 +16,20 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Memory test
-===========
+Memory test.
 
 Test the Memory access point.
 
 """
 
+# Nose redefines assert_raises
+# pylint: disable=E0611
 from nose.tools import eq_, assert_raises
+# pylint: enable=E0611
+
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.access_point.cache import Cache
-
 from ..common import run_common, make_site
 
 def make_ap():
@@ -40,8 +42,7 @@ def test_cache():
     return make_ap()
 
 def test_without_underlying_ap():
-    """Asserts that the cached data does not need the underlying access point.
-    """
+    """Assert that the cached data does not need the underlying access point."""
     site = make_site(make_ap(), fill=True)
     access_point = site.access_points['things']
 
@@ -53,8 +54,6 @@ def test_without_underlying_ap():
     eq_(item["name"], "foo")
 
     # Monkey patch to disable ap
-#    old_search = access_point.__class__.__bases__[0].search
-#    access_point.__class__.__bases__[0].search = None
     old_search = access_point.wrapped_ap.search
     access_point.wrapped_ap.search = None
     
@@ -68,21 +67,18 @@ def test_without_underlying_ap():
 
     # Restore ap
     access_point.wrapped_ap.search = old_search
-#    access_point.__class__.__bases__[0].search = old_search
 
     # Update the item
     item["name"] = 'bob'
     site.save("things", item)
 
     # Monkey patch to disable ap
-#    access_point.__class__.__bases__[0].search = None
     access_point.wrapped_ap.search = None
 
     # This may fail because cache is invalided and ap is None
     assert_raises(TypeError, site.search, "things")
 
     # Restore the ap
-#    access_point.__class__.__bases__[0].search = old_search
     access_point.wrapped_ap.search = old_search
     
     # Search one item
@@ -102,11 +98,8 @@ def test_without_underlying_ap():
     eq_(item["id"], 1)
     eq_(item["name"], "bob")
     
-    # Restore it
-#    access_point.wrapped_ap.search = wrapped_ap.
-
 def test_delegate():
-    """Test that the delegated class behave correctly"""
+    """Test that the delegated class behave correctly."""
     site = make_site(make_ap(), fill=True)
 
     # Search one item
@@ -115,5 +108,7 @@ def test_delegate():
     item = all_items[0]
 
     # We previously had issues with item not knowing their access point
+    # pylint: disable=W0104
     repr(item)
     item.identity
+    # pylint: enable=W0104

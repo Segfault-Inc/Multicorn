@@ -16,14 +16,16 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Request test
-============
+Request test.
 
 Test the request module.
 
 """
 
+# Nose redefines assert_equal and assert_not_equal
+# pylint: disable=E0611
 from nose.tools import assert_equal, assert_not_equal
+# pylint: enable=E0611
 
 from kalamar.request import Condition, Not, And, Or
 

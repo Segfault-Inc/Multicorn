@@ -16,8 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-View test
-=========
+View test.
 
 Test the view request algorithm.
 
@@ -33,8 +32,7 @@ from kalamar.query import BadQueryException, QuerySelect, QueryFilter
 
 @nottest
 def make_test_site():
-    """Returns a test site containing three access points, forming a tree
-    structure
+    """Create a test site with 3 access points forming a tree structure.
 
     root -> level1 -> level2
 
@@ -67,14 +65,15 @@ def make_test_site():
 
 @nottest
 def init_data():
-    """Fills the test site with test data. 
+    """Fill the test site with test data.
 
     The data looks like this:
 
-    root -> 1   -> 1.1
-                -> 1.2
-         -> 2   -> 2.1
-                -> 2.2
+    root -> 1 -> 1.1
+              -> 1.2
+         -> 2 -> 2.1
+              -> 2.2
+
     """
     site = make_test_site()
     rootitem = site.create("root", {"label": "root", "id": 0})
@@ -106,15 +105,13 @@ def init_data():
     return site
 
 def test_lazy():
-    """Assert that the lazy properties (one to many relationships) are correctly
-    set up"""
+    """Assert that the lazy props (one to many relationships) are set up."""
     site = init_data()
     root = site.open("root", {"id": 0})
     eq_(len(list(root["children"])), 2)
 
 def test_bad_request():
-    """Assert that common programmer error while building request raise a
-    BadQueryException"""
+    """Assert that common programmer error raises a BadQueryException."""
     site = init_data()
     try:
         list(site.view("root", {"leaf_label": "children.grou"}, {}))
@@ -125,7 +122,7 @@ def test_bad_request():
 
     try:
         list(site.view("root", {"leaf_label": "children.label"},
-            {"children.grou" : 4}))
+            {"children.grou": 4}))
     except BadQueryException:
         pass
     else:
@@ -134,7 +131,7 @@ def test_bad_request():
 
     try:
         list(site.view("root", {"leaf_label": "children.label"},
-            {"children.children.id" : "abc"}))
+            {"children.children.id": "abc"}))
     except BadQueryException as detail:
         assert(isinstance(detail.query, QueryFilter))
     else:
@@ -147,72 +144,62 @@ def test_bad_request():
     else:
         assert False, "Expected BadQueryException"
 
-    
-
-
-    
-
 def test_first_level():
-    """Assert the tree can be viewed to the first level"""
+    """Assert that the tree can be viewed to the first level."""
     site = init_data()
     aliases = {"leaf_label": "children.label", "root_label": "label"}
     items = list(site.view("root", aliases, {}))
     eq_(len(items), 2)
 
 def test_star_request():
-    """Asserts that an "*" request correctly selects the properties"""
+    """Assert that an ``*`` request correctly selects the properties"""
     site = init_data()
-    aliases = {'': '*', 'children_' : 'children.*'}
+    aliases = {"": "*", "children_": "children.*"}
     items = list(site.view("root", aliases, {}))
     eq_(len(items), 2)
     item = items[0]
-    assert(all([alias in item for alias in ["label", "id", "children_label",
-    "children_id"]]))
+    assert(all(alias in item for alias
+               in ("label", "id", "children_label", "children_id")))
     
 def test_star_request_with_cond():
-    """Asserts that a "*"-request-generated alias can be tested in a
-    condition"""
+    """Assert that ``*``-request-generated alias can be tested in conditions."""
     site = init_data()
-    aliases = {'': '*', 'children_' : 'children.*'}
-    request = {'label': 'root', 'children_id' : 1}
+    aliases = {"": "*", "children_": "children.*"}
+    request = {"label": "root", "children_id": 1}
     items = list(site.view("root", aliases, request))
     eq_(len(items), 1)
     item = items[0]
-    assert(all([alias in item for alias in ["label", "id", "children_label",
-    "children_id"]]))
-
+    assert(all(alias in item for alias
+               in ("label", "id", "children_label", "children_id")))
 
 def test_first_level_with_cond():
-    """Asserts that remote properties can be used in conditions"""
+    """Assert that remote properties can be used in conditions."""
     site = init_data()
     aliases = {"leaf_label": "children.label", "root_label": "label"}
     conditions = {"children.label": "1"}
     items = list(site.view("root", aliases, conditions))
     eq_(len(items), 1)
 
-
 def test_leaf_nodes():
-    """Asserts that query involving more than 2 chained access point can be
-    executed"""
+    """Assert that query involving 2+ chained access point can be executed."""
     site = init_data()
     aliases = {
         "leaf_label": "children.children.label", "root_label": "label",
-        "middle_label":"children.label"}
+        "middle_label": "children.label"}
     condition = Condition("children.children.label", "=", "2.2")
     items = list(site.view("root", aliases, condition))
     eq_(len(items), 1)
-    assert(all([item["leaf_label"] == "2.2" for item in items]))
+    assert(all(item["leaf_label"] == "2.2" for item in items))
     condition = Condition("children.label", "=", "2")
     items = list(site.view("root", aliases, condition))
     eq_(len(items), 2)
-    assert(all([item["middle_label"] == "2" for item in items]))
+    assert(all(item["middle_label"] == "2" for item in items))
     condition = {"children.label": "2", "children.children.label": "1.1"}
     items = list(site.view("root", aliases, condition))
     eq_(len(items), 0)
     
 def test_complex_condition():
-    """Asserts that complex conditions can be tested accross multiple access
-    points"""
+    """Assert that complex conditions can be tested accross multiple APs."""
     site = init_data()
     aliases = {"root_label": "label", "middle_label": "children.label"}
     condition = Or(Condition("children.label", "=", "1"),
