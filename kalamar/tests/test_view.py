@@ -50,15 +50,15 @@ class TestView(unittest.TestCase):
 
         try:
             list(self.site.view("root", {"leaf_label": "children.label"},
-                {"children.grou": 4}))
+                                {"children.grou": 4}))
         except BadQueryException:
-            pass
+            assert(isinstance(detail.query, (QuerySelect, QueryFilter)))
         else:
             assert False, "Expected BadQueryException."
 
         try:
             list(self.site.view("root", {"leaf_label": "children.label"},
-                {"children.children.id": "abc"}))
+                                {"children.children.id": "abc"}))
         except BadQueryException as detail:
             assert(isinstance(detail.query, QueryFilter))
         else:
