@@ -67,8 +67,6 @@ def make_request(request):
         # If it looks like a dict and smells like a dict, it is a dict.
         return And(*(Condition(key, "=", value) 
                      for key, value in request.items()))
-    else:
-        return Condition(*request)
 
 
 def normalize(properties, request):
@@ -173,7 +171,7 @@ class Condition(Request):
 
 
 class RequestProperty(object):
-    """Represents a property from an item.
+    """Property from an item.
 
     This object should be used to retrieve a property value from an item.
 
@@ -183,7 +181,7 @@ class RequestProperty(object):
         self.child_property = None
 
     def get_value(self, item):
-        """Retrieves the value from this property from an item."""
+        """Retrieve the value from this property from an item."""
         return item[self.name] if item else None
 
     def __repr__(self):
@@ -194,16 +192,16 @@ class RequestProperty(object):
 
 
 class ComposedRequestProperty(RequestProperty):
-    """Represents a nested property from an item. 
+    """Nested property from an item.
 
     A nested property is of the form ``foo.bar.baz``.
     
     """
-    def __init__(self, name, child_property, inner = True):
+    def __init__(self, name, child_property, inner=True):
         super(ComposedRequestProperty, self).__init__(name)
-        self.inner = inner
         self.name = name
         self.child_property = child_property
+        self.inner = inner
 
     def get_value(self, item):
         return self.child_property.get_value(item[self.name])
@@ -223,7 +221,7 @@ class _AndOr(Request):
     def __init__(self, *sub_requests):
         super(_AndOr, self).__init__()
         # A frozenset in unordered: And(a, b) == And(b, a)
-        # and it’s elements are unique : And(a, a) = And(a)
+        # and its elements are unique: And(a, a) = And(a)
         self.sub_requests = frozenset(sub_requests)
     
     def __repr__(self):
@@ -270,7 +268,7 @@ class And(_AndOr):
 
 
 class Or(_AndOr):
-    """True if at least one given requests are true."""
+    """True if at least one given requests is true."""
     def test(self, item):
         return any(request.test(item) for request in self.sub_requests)
 
@@ -284,7 +282,7 @@ class Not(Request):
         self.sub_request = sub_request
     
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.sub_request)
+        return "Not(%r)" % self.sub_request
 
     def test(self, item):
         return not self.sub_request.test(item)

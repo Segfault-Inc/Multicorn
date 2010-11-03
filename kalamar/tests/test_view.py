@@ -23,7 +23,7 @@ Test the view request algorithm.
 """
 
 from nose.tools import eq_, nottest
-from kalamar.request import Condition, Or
+from kalamar.request import Condition, And, Or, Not
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
@@ -197,9 +197,18 @@ def test_leaf_nodes():
     condition = {"children.label": "2", "children.children.label": "1.1"}
     items = list(site.view("root", aliases, condition))
     eq_(len(items), 0)
-    
-def test_complex_condition():
-    """Assert that complex conditions can be tested accross multiple APs."""
+
+def test_and_condition():
+    """Assert that And conditions can be tested accross multiple APs."""
+    site = init_data()
+    aliases = {"root_label": "label", "middle_label": "children.label"}
+    condition = And(Condition("children.label", "=", "1"),
+                    Condition("children.children.label", "=", "1.1"))
+    items = list(site.view("root", aliases, condition))
+    eq_(len(items), 1)
+
+def test_or_condition():
+    """Assert that Or conditions can be tested accross multiple APs."""
     site = init_data()
     aliases = {"root_label": "label", "middle_label": "children.label"}
     condition = Or(Condition("children.label", "=", "1"),
@@ -207,3 +216,30 @@ def test_complex_condition():
     items = list(site.view("root", aliases, condition))
     eq_(len(items), 3)
 
+def test_not_condition():
+    """Assert that Not conditions can be tested accross multiple APs."""
+    site = init_data()
+    aliases = {"root_label": "label", "middle_label": "children.label"}
+    condition = Not(Condition("children.children.label", "=", "1.1"))
+    items = list(site.view("root", aliases, condition))
+    eq_(len(items), 3)
+
+def test_parent_property():
+    """Assert that testing many-to-one properties works across multiple APs."""
+    site = init_data()
+    aliases = {"label": "label", "parent": "parent"}
+    items = list(site.view("level2", aliases, {"parent.label": "1"}))
+    eq_(len(items), 2)
+    for item in items:
+        eq_(item["parent"].access_point.name, "level1")
+
+def test_children_property():
+    """Assert that testing one-to-many properties works across multiple APs."""
+    site = init_data()
+    aliases = {"label": "label", "children": "children"}
+    items = list(site.view("level1", aliases, {"children.label": "1.1"}))
+    eq_(len(items), 1)
+    item = items[0]
+    eq_(len(item["children"]), 2)
+    for child in item["children"]:
+        eq_(child.access_point.name, "level2")
