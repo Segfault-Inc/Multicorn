@@ -224,8 +224,15 @@ def test_not_condition():
     items = list(site.view("root", aliases, condition))
     eq_(len(items), 3)
 
+def test_empty_view():
+    """Assert that ``view`` with properties matching nothing return nothing."""
+    site = init_data()
+    aliases = {"label": "label"}
+    items = list(site.view("level2", aliases, {"label": "3"}))
+    eq_(len(items), 0)
+
 def test_parent_property():
-    """Assert that testing many-to-one properties works across multiple APs."""
+    """Assert that many-to-one properties works across multiple APs."""
     site = init_data()
     aliases = {"label": "label", "parent": "parent"}
     items = list(site.view("level2", aliases, {"parent.label": "1"}))
@@ -233,8 +240,18 @@ def test_parent_property():
     for item in items:
         eq_(item["parent"].access_point.name, "level1")
 
+def test_deep_parent_property():
+    """Assert that deep many-to-one properties works across multiple APs."""
+    site = init_data()
+    aliases = {"label": "label", "parent": "parent"}
+    items = list(site.view("level2", aliases, {"parent.parent.label": "root"}))
+    eq_(len(items), 4)
+    for item in items:
+        eq_(item["parent"].access_point.name, "level1")
+        eq_(item["parent"]["parent"].access_point.name, "root")
+
 def test_children_property():
-    """Assert that testing one-to-many properties works across multiple APs."""
+    """Assert that one-to-many properties works across multiple APs."""
     site = init_data()
     aliases = {"label": "label", "children": "children"}
     items = list(site.view("level1", aliases, {"children.label": "1.1"}))
@@ -243,3 +260,18 @@ def test_children_property():
     eq_(len(item["children"]), 2)
     for child in item["children"]:
         eq_(child.access_point.name, "level2")
+
+def test_deep_children_property():
+    """Assert that deep one-to-many properties works across multiple APs."""
+    site = init_data()
+    aliases = {"label": "label", "children": "children"}
+    items = list(site.view("root", aliases, {"children.children.label": "1.1"}))
+    eq_(len(items), 1)
+    item = items[0]
+    eq_(len(item["children"]), 2)
+    for child in item["children"]:
+        eq_(child.access_point.name, "level1")
+        grandchildren = child["children"]
+        eq_(len(grandchildren), 2)
+        for grandchild in grandchildren:
+            eq_(grandchild.access_point.name, "level2")
