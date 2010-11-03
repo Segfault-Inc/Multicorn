@@ -170,7 +170,7 @@ class Alchemy(AccessPoint):
         for name, prop in self.properties.items():
             if prop.relation == "one-to-many":
                 lazy_props[name] = None
-            elif prop.relation == "many-to-one" and result[name]:
+            elif prop.relation == "many-to-one" and result[name] is not None:
                 lazy_props[name] = self._many_to_one_lazy_loader(prop, 
                         result[name])
             else: 
