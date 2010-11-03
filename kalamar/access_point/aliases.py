@@ -69,16 +69,16 @@ class Aliases(AccessPointWrapper):
             self.reversed_aliases.get(name, name)
             for name in wrapped_ap.identity_properties)
     
-    def _translate_request(self, request):
+    def _alias_request(self, request):
         """Translate ``request`` to use aliases."""
         if isinstance(request, And):
-            return And(*(self._translate_request(req)
+            return And(*(self._alias_request(req)
                          for req in request.sub_requests))
         elif isinstance(request, Or):
-            return Or(*(self._translate_request(req)
+            return Or(*(self._alias_request(req)
                         for req in request.sub_requests))
         elif isinstance(request, Not):
-            return Not(self._translate_request(request.sub_request))
+            return Not(self._alias_request(request.sub_request))
         elif isinstance(request, Condition):
             name = request.property.name
             return Condition(self.aliases.get(name, name),
@@ -88,10 +88,10 @@ class Aliases(AccessPointWrapper):
             raise ValueError("Unknown request type: %r" % request)
     
     def search(self, request):
-        return super(Aliases, self).search(self._translate_request(request))
+        return super(Aliases, self).search(self._alias_request(request))
     
     def delete_many(self, request):
-        super(Aliases, self).delete_many(self._translate_request(request))
+        super(Aliases, self).delete_many(self._alias_request(request))
     
     def create(self, properties=None, lazy_loaders=None):
         if not properties:
