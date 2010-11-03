@@ -33,19 +33,23 @@ from ..item import Item
 from ..property import Property
 
 
-class Stream(object):
+# io.IOBase has no __init__ method
+# pylint: disable=W0231
+
+class Stream(io.IOBase):
     """Fake stream opening files on demand."""
     def __init__(self, name):
         self.name = name
 
     def read(self):
+        """Read the whole content of the file as bytes."""
         return open(self.name, "rb").read()
 
     def write(self, bytestring):
+        """Write ``bytestring`` into the file."""
         open(self.name, "wb").write(bytestring)
 
-    def close(self):
-        pass
+# pylint: enable=W0231
 
 
 class FileSystem(AccessPoint):

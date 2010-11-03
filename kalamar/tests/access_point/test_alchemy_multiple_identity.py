@@ -16,55 +16,46 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Alchemy test
-============
+Alchemy test with multiple identities.
 
-Test the alchemy backend on an sqlite base.
+Test the alchemy backend on an sqlite base with multiple primary keys.
 
 """
 
+# TODO: write interesting functions really testing multiple identities
+
+import unittest
+from datetime import date
 from nose.tools import eq_, nottest
+
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
-from datetime import date
 
 
 @nottest
 def make_testtable():
-    """Returns a simple access point"""
+    """Return an access point with multiple identities."""
     Alchemy.__metadatas = {}
     firstname = AlchemyProperty(unicode, column_name="firstname")
     lastname = AlchemyProperty(unicode, column_name="lastname")
     birthdate = AlchemyProperty(date, column_name="birthdate")
-    access_point = Alchemy("sqlite:///", "test_multiple_keys", {
-        "firstname": firstname,
-        "lastname": lastname,
-        "birthdate" : birthdate},
-        ["firstname","lastname"], True)
+    access_point = Alchemy(
+        "sqlite:///", "test_multiple_keys", {
+            "firstname": firstname,
+            "lastname": lastname,
+            "birthdate": birthdate},
+        ["firstname", "lastname"], True)
+    # Accessing access_point._table calls access_point._table()
+    # pylint: disable=W0104
     access_point._table
+    # pylint: enable=W0104
     return access_point
 
 
-class TestAlchemy(object):
-    """Class defining some simple tests on an Alchemy access point"""
-    def setUp(self):
-        """Setup the class for the tests, creating the kalamar site and
-        populating it with test data"""
-        self.site = Site()
-        self.access_point = make_testtable()
-        self.site.register("test", self.access_point) 
-        self.items = []
-        item = self.site.create("test", {"firstname": u"John", "lastname": u"Doe",
-                "birthdate" : date(1950,1,1)})
-        self.items.append(item)
-        item.save()
-        item = self.site.create("test", {"firstname": u"Jane", "lastname": u"Doe",
-                "birthdate" : date(1960,2,2)})
-        self.items.append(item)
-        item.save()
-
-    def testsearch(self):
-        """Tests a simple search on the access point"""
+class TestAlchemy(unittest.TestCase):
+    """Class defining some simple tests on an Alchemy access point."""
+    def test_search(self):
+        """Test a simple search on the access point."""
         items = list(self.site.search("test"))
         eq_(len(items), 2)
         items = list(self.site.search("test", {"firstname": u"John"}))
@@ -72,12 +63,13 @@ class TestAlchemy(object):
         item = items[0]
         eq_(item["firstname"], "John")
         eq_(item["lastname"], "Doe")
-        eq_(item["birthdate"], date(1950,1,1))
+        eq_(item["birthdate"], date(1950, 1, 1))
 
-    def testview(self):
-        """Test a simple view on the access point"""
+    def test_view(self):
+        """Test a simple view on the access point."""
         items = list(
-            self.site.view("test", {"truc": "firstname", "name": u"lastname"}, {}))
+            self.site.view(
+                "test", {"truc": "firstname", "name": u"lastname"}, {}))
         eq_(len(items), 2)
         for item in items:
             assert "truc" in item.keys() and "name" in item.keys()
@@ -86,15 +78,35 @@ class TestAlchemy(object):
                 {"firstname": u"John"}))
         eq_(len(items), 1)
 
-    def testupdate(self):
-        """Assert that an item can be updated in the DB"""
-        item = self.site.open("test", {"firstname": u"John", "lastname" : u"Doe"})
-        item["birthdate"] = date(1951,12,12)
+    def test_update(self):
+        """Assert that an item can be updated in the DB."""
+        item = self.site.open(
+            "test", {"firstname": u"John", "lastname" : u"Doe"})
+        item["birthdate"] = date(1951, 12, 12)
         item.save()
-        item = self.site.open("test", {"firstname": u"John", "lastname" : u"Doe"})
-        eq_(item["birthdate"],  date(1951,12,12))
+        item = self.site.open(
+            "test", {"firstname": u"John", "lastname" : u"Doe"})
+        eq_(item["birthdate"],  date(1951, 12, 12))
+
+    # camelCase function names come from unittest
+    # pylint: disable=C0103
+    def setUp(self):
+        self.site = Site()
+        self.access_point = make_testtable()
+        self.site.register("test", self.access_point) 
+        self.items = []
+        item = self.site.create(
+            "test", {"firstname": u"John", "lastname": u"Doe",
+                     "birthdate": date(1950, 1, 1)})
+        self.items.append(item)
+        item.save()
+        item = self.site.create(
+            "test", {"firstname": u"Jane", "lastname": u"Doe",
+                     "birthdate": date(1960, 2, 2)})
+        self.items.append(item)
+        item.save()
 
     def tearDown(self):
-        """Tears the class down between tests"""
         for access_point in self.site.access_points.values(): 
             access_point._table.drop()
+    # pylint: enable=C0103

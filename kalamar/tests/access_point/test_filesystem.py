@@ -16,8 +16,7 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Filesystem test
-===============
+Filesystem test.
 
 Test the filesystem backend.
 
@@ -32,54 +31,57 @@ import kalamar
 from kalamar.property import Property
 from kalamar.access_point.filesystem import FileSystem
 from kalamar.access_point.unicode_stream import UnicodeStream
+from ..common import make_site, COMMON_TESTS
 
-from .. import common
+
+class TemporaryDirectory(object):
+    """Utility class for the tests."""
+    def __init__(self):
+        self.directory = None
+
+    def __enter__(self):
+        self.directory = tempfile.mkdtemp()
+        return self.directory
+    
+    def __exit__(self, exit_type, value, traceback):
+        shutil.rmtree(self.directory)
 
 
 def test_filesytem_init():
-    """Assert that the filesystem access point can be properly initialized"""
+    """Assert that the filesystem access point can be properly initialized."""
     # Project root, contains kalamar dir
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
-    access_point = FileSystem(root, "*/tests/access_point/test_*.py*",
-                    ["package", ("module", Property(unicode)), "extension"])
+    access_point = FileSystem(
+        root, "*/tests/access_point/test_*.py*",
+        ["package", ("module", Property(unicode)), "extension"])
     site = kalamar.Site()
     site.register("tests", access_point)
     eq_(set(access_point.properties.keys()),
         set(["package", "module", "extension", "content"]))
     eq_(set(access_point.identity_properties), 
-            set(["package", "module", "extension"]))
+        set(["package", "module", "extension"]))
     
-    this = {"package": "kalamar", "module": "filesystem", "extension": ""}
+    properties = {"package": "kalamar", "module": "filesystem", "extension": ""}
     filename = __file__[:-1] if __file__.endswith(".pyc") else __file__
-    eq_(access_point._item_filename(this), filename)
+    eq_(access_point._item_filename(properties), filename)
     
-    items_file = site.open("tests", this)["content"]
+    items_file = site.open("tests", properties)["content"]
     eq_(items_file.name, filename)
     # This test tests its own presence!
     assert "RANDOM STRING A6buCMTbAdCV98j00vK455UIAPCJ" in items_file.read()
 
-
-class TemporaryDirectory(object):
-    """Utility class for the tests"""
-    def __enter__(self):
-        self.directory = tempfile.mkdtemp()
-        return self.directory
-    
-    def __exit__(self, type, value, traceback):
-        shutil.rmtree(self.directory)
-
-def test_TemporaryDirectory():
-    """Assert the TemporaryDirectory class works as intented"""
+def test_temporary_directory():
+    """Assert :class:`TemporaryDirectory` works as intented."""
     with TemporaryDirectory() as temp_dir:
         assert os.path.isdir(temp_dir)
         
         # Test that we can write and read files.
         # Maybe this isn’t needed after we asserted isdir(temp_dir).
-        filename = os.path.join(temp_dir, 'test_file')
-        with open(filename, 'w') as fd:
-            fd.write('RANDOM STRING Nj0CmS6GMVwRIhxGQIQy4CaVHY6XS2')
-        with open(filename) as fd:
-            eq_(fd.read(), 'RANDOM STRING Nj0CmS6GMVwRIhxGQIQy4CaVHY6XS2')
+        filename = os.path.join(temp_dir, "test_file")
+        with open(filename, "w") as file_descriptor:
+            file_descriptor.write("RANDOM STRING Nj0CmS6GMVwRIhxGQIQy4C")
+        with open(filename) as file_descriptor:
+            eq_(file_descriptor.read(), "RANDOM STRING Nj0CmS6GMVwRIhxGQIQy4C")
     
     # Make sure every thing is correctly cleaned-up.
     assert not os.path.exists(filename)
@@ -87,18 +89,17 @@ def test_TemporaryDirectory():
 
 
 def test_filesytem_common():
-    """Defines a custom test runner for the common tests"""
+    """Define a custom test runner for the common tests."""
     def _runner(test):
+        """Test runner for ``test``."""
         with TemporaryDirectory() as temp_dir:
-            access_point = FileSystem(temp_dir, '*.txt', 
-                    [('id', Property(int))], 
-                    content_property='name')
-            access_point = UnicodeStream(access_point, 'name', 'utf-8')
-            site = common.make_site(access_point, 
-                    fill=not hasattr(test, 'nofill'))
+            access_point = FileSystem(temp_dir, "*.txt", 
+                    [("id", Property(int))], 
+                    content_property="name")
+            access_point = UnicodeStream(access_point, "name", "utf-8")
+            site = make_site(access_point,
+                    fill=not hasattr(test, "nofill"))
             test(site)
 
-    for test in common.commontest.tests:
+    for test in COMMON_TESTS:
         yield _runner, test
-
-

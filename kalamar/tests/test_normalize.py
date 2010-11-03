@@ -16,18 +16,22 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+Normalize test.
+
 Test the alchemy backend on an sqlite base
+
 """
 
-from nose.tools import eq_
+from nose.tools import eq_, raises
+
 from kalamar.property import Property
 from kalamar.request import normalize, Condition, And, Or, Not
 
 
 def test_simplify():
-    """Assert that the simplify method reduces the condition tree"""
-    c1 = Condition('a', '=', 1)
-    c2 = Condition('b', '>', 4)
+    """Assert that the simplify method reduces the condition tree."""
+    condition1 = Condition("a", "=", 1)
+    condition2 = Condition("b", ">", 4)
 
     eq_(And(), And().simplify())
     eq_(And(), And(And()).simplify())
@@ -36,38 +40,35 @@ def test_simplify():
     eq_(Or(), Or(Or()).simplify())
     eq_(Or(), Or(Or(), Or()).simplify())
 
-    eq_(c1, And(c1).simplify())
-    eq_(c1, And(c1, c1).simplify())
-    eq_(c1, And(c1, And(c1)).simplify())
-    eq_(c1, And(And(c1)).simplify())
-    eq_(c1, And(And(c1), And()).simplify())
-    eq_(c1, Or(c1).simplify())
-    eq_(c1, Or(c1, c1).simplify())
-    eq_(c1, Or(c1, Or(c1)).simplify())
-    eq_(c1, Or(Or(c1)).simplify())
-    eq_(c1, Or(Or(c1), Or()).simplify())
+    eq_(condition1, And(condition1).simplify())
+    eq_(condition1, And(condition1, condition1).simplify())
+    eq_(condition1, And(condition1, And(condition1)).simplify())
+    eq_(condition1, And(And(condition1)).simplify())
+    eq_(condition1, And(And(condition1), And()).simplify())
+    eq_(condition1, Or(condition1).simplify())
+    eq_(condition1, Or(condition1, condition1).simplify())
+    eq_(condition1, Or(condition1, Or(condition1)).simplify())
+    eq_(condition1, Or(Or(condition1)).simplify())
+    eq_(condition1, Or(Or(condition1), Or()).simplify())
 
-    eq_(c1, Not(Not(c1)).simplify())
-    eq_(c1, Or(Or(), Or(And(c1))).simplify())
-    eq_(And(c1, c2), And(Or(Or(), Or(And(c1))), c2).simplify())
+    eq_(condition1, Not(Not(condition1)).simplify())
+    eq_(condition1, Or(Or(), Or(And(condition1))).simplify())
+    eq_(And(condition1, condition2),
+        And(Or(Or(), Or(And(condition1))), condition2).simplify())
 
 
+@raises(ValueError)
 def test_normalize():
-    """Assert the normalize function works properly"""
+    """Assert the normalize function works properly."""
     # TODO: more unit tests here.
     
-    properties = {'a': Property(int), 'b': Property(unicode)}
-    eq_(normalize(properties, {u'a': 1, u'b': u'foo'}),
-        And(Condition(u'a', '=', 1), Condition(u'b', '=', u'foo')))
-    properties = {'a': Property(float), 'b': Property(unicode)}
-    eq_(normalize(properties, {u'a': 1, u'b': 'foo'}),
-        And(Condition(u'a', '=', 1.0), Condition(u'b', '=', u'foo')))
+    properties = {"a": Property(int), "b": Property(unicode)}
+    eq_(normalize(properties, {u"a": 1, u"b": u"foo"}),
+        And(Condition(u"a", "=", 1), Condition(u"b", "=", u"foo")))
+    properties = {"a": Property(float), "b": Property(unicode)}
+    eq_(normalize(properties, {u"a": 1, u"b": "foo"}),
+        And(Condition(u"a", "=", 1.0), Condition(u"b", "=", u"foo")))
 
-    properties = {'a': Property(float), 'b': Property(int)}
-    try:
-        normalize(properties, {u'a': 1, u'b': 'foo'})
-    except ValueError:
-        pass
-    else:
-        assert False, "Expected ValueError."
+    properties = {"a": Property(float), "b": Property(int)}
+    normalize(properties, {u"a": 1, u"b": "foo"})
 

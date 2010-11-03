@@ -16,55 +16,79 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Alchemy test
-============
+Alchemy test.
 
 Test the alchemy backend on an sqlite base.
 
 """
 
+import unittest
 from nose.tools import eq_, nottest
+
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
-
-from .. import common
-
-
-
+from ..common import make_site, COMMON_TESTS
 
 
 def test_alchemy_common():
-    """Defines a custom test runner for the common tests"""
+    """Define a custom test runner for the common tests."""
     def _runner(test):
+        """Test runner for ``test``."""
         access_point = make_testtable()
         try:
-            site = common.make_site(access_point, 
-                fill=not hasattr(test, 'nofill'))
+            site = make_site(access_point,
+                fill=not hasattr(test, "nofill"))
             test(site)
         finally:
             access_point._table.drop()
             Alchemy.__metadatas = {}
-    for test in common.commontest.tests:
+    for test in COMMON_TESTS:
         yield _runner, test
-
 
 @nottest
 def make_testtable():
-    """Returns a simple access point"""
+    """Create a simple access point."""
     id_property = AlchemyProperty(int, column_name="id")
     name = AlchemyProperty(unicode, column_name="name")
-    access_point = Alchemy("sqlite:///", "test", {
-        "id": id_property,
-        "name": name},
+    access_point = Alchemy(
+        "sqlite:///", "test", {"id": id_property, "name": name},
         ["id"], True)
     return access_point
 
+class TestAlchemy(unittest.TestCase):
+    """Class defining some simple tests on an Alchemy access point."""
+    def test_search(self):
+        """Test a simple search on the access point."""
+        items = list(self.site.search("test"))
+        eq_(len(items), 2)
+        items = list(self.site.search("test", {"id": 1}))
+        eq_(len(items), 1)
+        item = items[0]
+        eq_(item["id"], 1)
+        eq_(item["name"], "Test")
 
-class TestAlchemy(object):
-    """Class defining some simple tests on an Alchemy access point"""
+    def test_view(self):
+        """Test a simple view on the access point."""
+        items = list(
+            self.site.view("test", {"truc": "id", "name": u"name"}, {}))
+        eq_(len(items), 2)
+        for item in items:
+            assert "truc" in item.keys() and "name" in item.keys()
+        items = list(
+            self.site.view("test", {"truc": "id", "name": u"name"}, {"id": 1}))
+        eq_(len(items), 1)
+
+    def test_update(self):
+        """Assert that an item can be updated in the DB."""
+        item = self.site.open("test", {"id": 1})
+        item["name"] = u"updated"
+        item.save()
+        item = self.site.open("test", {"id": 1})
+        eq_(item["name"], u"updated")
+
+    # camelCase function names come from unittest
+    # pylint: disable=C0103
     def setUp(self):
-        """Setup the class for the tests, creating the kalamar site and
-        populating it with test data"""
         self.site = Site()
         self.site.register("test", make_testtable())
         self.items = []
@@ -75,39 +99,10 @@ class TestAlchemy(object):
         self.items.append(item)
         item.save()
 
-    def testsearch(self):
-        """Tests a simple search on the access point"""
-        items = list(self.site.search("test"))
-        eq_(len(items), 2)
-        items = list(self.site.search("test", {"id": 1}))
-        eq_(len(items), 1)
-        item = items[0]
-        eq_(item["id"], 1)
-        eq_(item["name"], "Test")
-
-    def testview(self):
-        """Test a simple view on the access point"""
-        items = list(
-            self.site.view("test", {"truc": "id", "name": u"name"}, {}))
-        eq_(len(items), 2)
-        for item in items:
-            assert "truc" in item.keys() and "name" in item.keys()
-        items = list(
-            self.site.view("test", {"truc": "id", "name": u"name"}, {"id": 1}))
-        eq_(len(items), 1)
-
-    def testupdate(self):
-        """Assert that an item can be updated in the DB"""
-        item = self.site.open("test", {"id": 1})
-        item["name"] = u"updated"
-        item.save()
-        item = self.site.open("test", {"id": 1})
-        eq_(item["name"], u"updated")
-
     def tearDown(self):
-        """Tears the class down between tests"""
         for item in self.items:
             item.delete()
         for access_point in self.site.access_points.values():
             access_point._table.drop()
         Alchemy.__metadatas = {}
+    # pylint: enable=C0103

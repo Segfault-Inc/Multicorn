@@ -20,11 +20,15 @@ Query helpers for the Alchemy access point.
 
 """
 
-from ... import query
 from ...request import And, Or, Not
+from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
+    QueryRange, QuerySelect
 
 from sqlalchemy.sql import expression
 
+
+# Monky-patchers are allowed to skip some arguments
+# pylint: disable=W0613
 
 def query_chain_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method on QueryChain to convert to alchemy."""
@@ -36,11 +40,14 @@ def query_chain_to_alchemy(self, alchemy_query, access_point, properties):
 
 
 def query_chain_validator(self, access_point, properties):
-    """Monkey patched method on QueryChain to validate what can be managed
-    within sql alchemy and what can't.
+    """Monkey-patched method on QueryChain to validate properties management.
+
+    This function split the queries between what can be managed within sql
+    alchemy and what can't.
     
     A QueryChain can be managed by sqlalchemy if every subquery can be managed.
     Otherwise, it is (for now) considered unmanageable
+
     """
     cans = []
     for sub_query in self.queries:
@@ -51,13 +58,13 @@ def query_chain_validator(self, access_point, properties):
         if managed is not None:
             cans.append(managed)
         properties = sub_query.validate(access_point.site, properties)
-    #TODO  : proper cans & cants management
-    query_can = query.QueryChain(cans) 
+    # TODO: proper cans & cants management
+    query_can = QueryChain(cans) 
     return query_can, None
 
+
 def standard_validator(self, access_point, properties):
-    """Default validator for query types which can always be managed by
-    sqlalchemy"""
+    """Validator for query types which can always be managed by sqlalchemy."""
     return self, None
 
 
@@ -80,7 +87,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                 return column.op(condition.operator)(condition.value)
 
     def build_join(tree, properties, alchemy_query):
-        """Builds the necessary joins for a condition"""
+        """Builds the necessary joins for a condition."""
         for name, values in tree.items():
             prop = properties[name]
             if prop.remote_ap:
@@ -89,8 +96,11 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                 if prop.relation == "many-to-one":
                     join_col2 = alchemy_query.corresponding_column(
                         remote_ap.properties[remote_ap.identity_properties[0]])
+                    # _table isn't really private, just not in the public API
+                    # pylint: disable=W0212
                     alchemy_query = alchemy_query.join(remote_ap._table,
                             onclause = join_col1 == join_col2)
+                    # pylint: enable=W0212
                     alchemy_query = build_join(values, 
                             remote_ap.properties, alchemy_query)
         return alchemy_query
@@ -101,11 +111,11 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
 
 
 def query_filter_validator(self, access_point, properties):
-    """Monkey-patched method on QueryFilter to assert the query can be managed
-    from within sqlalchemy.
+    """Monkey-patched method on QueryFilter checking properties management.
 
     A query filter can be managed from within alchemy if every property which
-    must be tested belongs to an alchemy access point
+    must be tested belongs to an alchemy access point.
+
     """
     from . import Alchemy
     cond_tree = self.condition.properties_tree
@@ -138,22 +148,26 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     access points.
 
     Then, they are walked a second time to find what should be added to the
-    SELECT clause
+    SELECT clause.
+
     """
     access_points = access_point.site.access_points
+
     def build_join(select, properties, join):
         """Walks the mapping to build the joins"""
-        
         for name, sub_select in select.sub_selects.items():
             remote_ap = access_points[properties[name].remote_ap]
             remote_property_name = properties[name].remote_property
             remote_property = remote_ap.properties[remote_property_name]
             col1 = properties[name].column
             col2 = remote_property.column
-            join = join.outerjoin(remote_ap._table, 
-                onclause = col1 == col2)
+            # _table isn't really private, just not in the public API
+            # pylint: disable=W0212
+            join = join.outerjoin(remote_ap._table, onclause = col1 == col2)
+            # pylint: enable=W0212
             join = build_join(sub_select, remote_ap.properties, join)
         return join
+
     def build_select(select, properties, alchemy_query):
         """Walks the mapping to append column"""
         for name, value in select.mapping.items():
@@ -171,7 +185,11 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
             alchemy_query = build_select(sub_select, remote_ap.properties,
                     alchemy_query)
         return alchemy_query
+
+    # _table isn't really private, just not in the public API
+    # pylint: disable=W0212
     join = build_join(self, properties, access_point._table)
+    # pylint: enable=W0212
     alchemy_query = alchemy_query.select_from(join)
     build_select(self, properties, alchemy_query)
     return alchemy_query
@@ -188,6 +206,7 @@ def query_select_validator(self, access_point, properties):
     access_points = access_point.site.access_points
 
     def isvalid(select, properties):
+        """Check if ``select`` is valid according to ``properties``."""
         for name, sub_select in select.sub_selects.items():
             remote_ap = access_points[properties[name].remote_ap]
             if not isinstance(remote_ap, Alchemy) or \
@@ -202,13 +221,12 @@ def query_select_validator(self, access_point, properties):
 
 
 def query_distinct_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey patched method converting a QueryDistinct to an sqlalchemy
-    query"""
+    """Monkey-patched method converting QueryDistinct to sqlalchemy query."""
     return alchemy_query.distinct()
     
 
 def query_range_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey patched method converting a QueryRange to an sqlalchemy query"""
+    """Monkey-patched method converting QueryRange to sqlalchemy query."""
     if self.range.start:
         alchemy_query = alchemy_query.offset(self.range.start)
     if self.range.stop:
@@ -218,23 +236,25 @@ def query_range_to_alchemy(self, alchemy_query, access_point, properties):
 
 
 def query_order_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey patched method converting a QueryOrder to an sqlalchemy query"""
+    """Monkey-patched method converting QueryOrder to sqlalchemy query."""
     for key, order in self.orderbys:
         alchemy_query = alchemy_query.order_by(
             expression.asc(key) if order else expression.desc(key))
     return alchemy_query
 
 
-query.QueryChain.alchemy_validate = query_chain_validator
-query.QueryDistinct.alchemy_validate = standard_validator
-query.QueryFilter.alchemy_validate = query_filter_validator
-query.QueryOrder.alchemy_validate = standard_validator
-query.QueryRange.alchemy_validate = standard_validator
-query.QuerySelect.alchemy_validate = query_select_validator
+QueryChain.alchemy_validate = query_chain_validator
+QueryDistinct.alchemy_validate = standard_validator
+QueryFilter.alchemy_validate = query_filter_validator
+QueryOrder.alchemy_validate = standard_validator
+QueryRange.alchemy_validate = standard_validator
+QuerySelect.alchemy_validate = query_select_validator
 
-query.QueryChain.to_alchemy = query_chain_to_alchemy
-query.QueryDistinct.to_alchemy = query_distinct_to_alchemy
-query.QueryFilter.to_alchemy = query_filter_to_alchemy
-query.QueryOrder.to_alchemy = query_order_to_alchemy
-query.QueryRange.to_alchemy = query_range_to_alchemy
-query.QuerySelect.to_alchemy = query_select_to_alchemy
+QueryChain.to_alchemy = query_chain_to_alchemy
+QueryDistinct.to_alchemy = query_distinct_to_alchemy
+QueryFilter.to_alchemy = query_filter_to_alchemy
+QueryOrder.to_alchemy = query_order_to_alchemy
+QueryRange.to_alchemy = query_range_to_alchemy
+QuerySelect.to_alchemy = query_select_to_alchemy
+
+# pylint: enable=W0613

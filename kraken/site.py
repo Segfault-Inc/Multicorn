@@ -73,23 +73,24 @@ def expose_template(rule=None, template=None, **kwargs):
         
     """
     def decorate(rule, template, function):
-        """Decorator marking a function to be registered as a template.
-        """
+        """Decorator marking a function to be registered as a template."""
         function = expose(rule, **kwargs)(function)
-        template = (template or 
-                _find_static_part(function.kraken_rule)).strip(os.path.sep)
-        function.template_path = template
+        template = template or _find_static_part(function.kraken_rule)
+        function.template_path = template.strip(os.path.sep)
         return function
     return partial(decorate, rule, template)
 
+
 def expose(rule=None, **kwargs):
-    """Decorator marking a method as to be exposed to the site to the site"""
+    """Decorator marking a method as to be exposed to the site."""
     def decorate(rule, function):
+        """Decorator marking a function to be registered."""
         rule = rule or "/%s/" % function.__name__
         function.kwargs = kwargs
         function.kraken_rule = rule
         return function
     return partial(decorate, rule)
+
 
 class Request(werkzeug.wrappers.Request):
     """Request object managing sessions with encrypted cookies."""
@@ -226,10 +227,10 @@ class Site(object):
         Traceback (most recent call last):
             ...
         ImportError: No module named inexistent
-        >>> site.import_("lorem.ipsum") # doctest: +ELLIPSIS
-        ...                             # doctest: +NORMALIZE_WHITESPACE
-        <module 'kraken_site_....lorem.ipsum' 
-            from '...kraken/tests/site/lorem/ipsum.py...'>
+        >>> lipsum = site.import_("lorem.ipsum")
+        >>> lipsum.render(None).data # doctest: +ELLIPSIS
+        ...                          # doctest: +NORMALIZE_WHITESPACE
+        '\\n Lorem ipsum dolor...'
 
         """
         name = "%s.%s" % (self.package_name, name)
