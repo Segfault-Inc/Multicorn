@@ -47,7 +47,7 @@ def make_ap():
     return Aliases(underlying_access_point, {"name": "nom"})
 
 @run_common
-def test_common():
+def test_alias():
     """Launch common tests for aliases."""
     return make_ap()
 
