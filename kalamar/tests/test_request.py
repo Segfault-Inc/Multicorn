@@ -31,7 +31,7 @@ from kalamar.request import Condition, Not, And, Or
 
 
 def test_hash_condition():
-    """Asserts that the hash method works on Condition"""
+    """Assert that the hash method works on Condition."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "tortue")
     condition3 = Condition("name", "<", "hibou")
@@ -44,7 +44,7 @@ def test_hash_condition():
     assert_not_equal(hash(condition1), hash(condition5))
 
 def test_hash_and():
-    """Asserts that the hash method works on And"""
+    """Assert that the hash method works on And."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
@@ -57,7 +57,7 @@ def test_hash_and():
     assert_not_equal(hash(condition4), hash(condition6))
 
 def test_hash_or():
-    """Asserts that the hash method works on Or"""
+    """Assert that the hash method works on Or."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
@@ -70,7 +70,7 @@ def test_hash_or():
     assert_not_equal(hash(condition4), hash(condition6))
 
 def test_hash_not():
-    """Asserts that the hash method works on not"""
+    """Assert that the hash method works on Not."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
@@ -83,7 +83,7 @@ def test_hash_not():
     assert_not_equal(hash(condition4), hash(condition6))
 
 def test_eq_condition():
-    """Assert that the eq operator works on Condition"""
+    """Assert that the eq operator works on Condition."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "tortue")
     condition3 = Condition("name", "<", "hibou")
@@ -96,7 +96,7 @@ def test_eq_condition():
     assert_not_equal(condition1, condition5)
 
 def test_and():
-    """Assert that the eq operator works on And"""
+    """Assert that the eq operator works on And."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
@@ -109,7 +109,7 @@ def test_and():
     assert_not_equal(condition4, condition6)
 
 def test_or():
-    """Assert that the eq operator works on Or"""
+    """Assert that the eq operator works on Or."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
@@ -122,7 +122,7 @@ def test_or():
     assert_not_equal(condition4, condition6)
 
 def test_not():
-    """Assert that the eq operator works on Not"""
+    """Assert that the eq operator works on Not."""
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")

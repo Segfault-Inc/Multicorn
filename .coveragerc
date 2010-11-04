@@ -2,3 +2,7 @@
 exclude_lines =
     pragma: no cover
     raise NotImplementedError
+    assert False
+    __repr__
+    __str__
+    __unicode__

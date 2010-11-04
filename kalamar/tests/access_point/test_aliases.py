@@ -47,7 +47,7 @@ def make_ap():
     return Aliases(underlying_access_point, {"name": "nom"})
 
 @run_common
-def test_common():
+def test_alias():
     """Launch common tests for aliases."""
     return make_ap()
 
@@ -88,14 +88,19 @@ def test_aliased_item():
     eq_(wrapped_item["FOO"], 2)
     eq_(wrapped_item.getlist("FOO"), (2, 3))
 
-def test_translate_request():
+def test_alias_request():
     """Test request translations."""
     access_point = Aliases(Memory({}, ""), {"foo": "FOO", "bar": "BAR"})
-    eq_(access_point._translate_request(Condition("foo", "=", 4)),
+    eq_(access_point._alias_request(Condition("foo", "=", 4)),
         Condition("FOO", "=", 4))
-    eq_(access_point._translate_request(Condition("other", "=", 7)),
+    eq_(access_point._alias_request(Condition("other", "=", 7)),
         Condition("other", "=", 7))
-    eq_(access_point._translate_request(
+    eq_(access_point._alias_request(
+            Not(Or(Condition("other", "=", 7),
+                   Condition("bar", "!=", 1)))),
+        Not(Or(Condition("other", "=", 7),
+               Condition("BAR", "!=", 1))))
+    eq_(access_point._alias_request(
             And(Condition("foo", "=", 4),
                 Not(Or(Condition("other", "=", 7),
                        Condition("bar", "!=", 1))))),

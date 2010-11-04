@@ -38,11 +38,10 @@ def _translate_request(request, aliases):
     elif isinstance(request, Not):
         return Not(_translate_request(request.sub_request, aliases))
     elif isinstance(request, Condition):
-        name = request.property.__repr__()
+        name = repr(request.property)
         if name in aliases:
-            return Condition(aliases.get(name, name),
-                             request.operator,
-                             request.value)
+            return Condition(
+                aliases.get(name, name), request.operator, request.value)
         elif name in aliases.values():
             return Condition(name, request.operator, request.value)
         elif ".".join(name.split(".")[:-1] + ["*"]) in aliases:

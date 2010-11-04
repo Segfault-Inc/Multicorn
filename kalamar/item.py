@@ -144,11 +144,11 @@ class AbstractItem(MutableMultiMapping):
 
     @abc.abstractmethod    
     def getlist(self, key):
-        pass
+        raise NotImplementedError
     
     @abc.abstractmethod
     def setlist(self, key, values):
-        pass
+        raise NotImplementedError
 
     def __delitem__(self, key):
         raise TypeError("%s object doesn't support item deletion." %

@@ -22,188 +22,248 @@ Test the view request algorithm.
 
 """
 
+import unittest
 from nose.tools import eq_, nottest
-from kalamar.request import Condition, Or
+
+from kalamar.request import Condition, And, Or, Not
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
 from kalamar.query import BadQueryException, QuerySelect, QueryFilter
 
 
-@nottest
-def make_test_site():
-    """Create a test site with 3 access points forming a tree structure.
+class TestView(unittest.TestCase):
+    """Test class testing simple ``view`` requests."""
+    def test_lazy(self):
+        """Assert that the lazy props (one to many relationships) are set up."""
+        root = self.site.open("root", {"id": 0})
+        eq_(len(list(root["children"])), 2)
 
-    root -> level1 -> level2
+    def test_bad_request(self):
+        """Assert that common programmer error raises a BadQueryException."""
+        try:
+            list(self.site.view("root", {"leaf_label": "children.grou"}, {}))
+        except BadQueryException as detail:
+            assert(isinstance(detail.query, QuerySelect))
+        else:
+            assert False, "Expected BadQueryException."
 
-    """
-    child_property = Property(
-        iter, relation="one-to-many", remote_ap="level1",
-        remote_property="parent")
-    root_ap = Memory(
-        {"id": Property(int), "label": Property(unicode),
-         "children": child_property}, "id")
+        try:
+            list(self.site.view("root", {"leaf_label": "children.label"},
+                                {"children.grou": 4}))
+        except BadQueryException:
+            assert(isinstance(detail.query, (QuerySelect, QueryFilter)))
+        else:
+            assert False, "Expected BadQueryException."
 
-    parent_property = Property(iter, relation="many-to-one", remote_ap="root")
-    child_property = Property(
-        iter, relation="one-to-many", remote_ap="level2",
-        remote_property="parent")
-    level1_ap = Memory(
-        {"id": Property(int), "label": Property(unicode),
-         "parent": parent_property, "children": child_property}, "id")
+        try:
+            list(self.site.view("root", {"leaf_label": "children.label"},
+                                {"children.children.id": "abc"}))
+        except BadQueryException as detail:
+            assert(isinstance(detail.query, QueryFilter))
+        else:
+            assert False, "Expected BadQueryException."
 
-    parent_property = Property(iter, relation="many-to-one", remote_ap="level1")
-    level2_ap = Memory(
-        {"id": Property(int), "label": Property(unicode),
-         "parent": parent_property}, "id")
+        try:
+            list(self.site.view("root", {"leaf_label": "childr.label"}))
+        except BadQueryException as detail:
+            assert(isinstance(detail.query, QuerySelect))
+        else:
+            assert False, "Expected BadQueryException"
 
-    site = Site()
-    site.register("root", root_ap)
-    site.register("level1", level1_ap)
-    site.register("level2", level2_ap)
-    return site
+    def test_first_level(self):
+        """Assert that the tree can be viewed to the first level."""
+        aliases = {"leaf_label": "children.label", "root_label": "label"}
+        items = list(self.site.view("root", aliases, {}))
+        eq_(len(items), 2)
 
-@nottest
-def init_data():
-    """Fill the test site with test data.
+    def test_star_request(self):
+        """Assert that an ``*`` request correctly selects the properties"""
+        aliases = {"": "*", "children_": "children.*"}
+        items = list(self.site.view("root", aliases, {}))
+        eq_(len(items), 2)
+        item = items[0]
+        assert(all(alias in item for alias
+                   in ("label", "id", "children_label", "children_id")))
 
-    The data looks like this:
+    def test_star_request_with_cond(self):
+        """Assert that ``*``-request-generated alias can be tested in conds."""
+        aliases = {"": "*", "children_": "children.*"}
+        request = {"label": "root", "children_id": 1}
+        items = list(self.site.view("root", aliases, request))
+        eq_(len(items), 1)
+        item = items[0]
+        assert(all(alias in item for alias
+                   in ("label", "id", "children_label", "children_id")))
 
-    root -> 1 -> 1.1
-              -> 1.2
-         -> 2 -> 2.1
-              -> 2.2
+    def test_first_level_with_cond(self):
+        """Assert that remote properties can be used in conditions."""
+        aliases = {"leaf_label": "children.label", "root_label": "label"}
+        conditions = {"children.label": "1"}
+        items = list(self.site.view("root", aliases, conditions))
+        eq_(len(items), 1)
 
-    """
-    site = make_test_site()
-    rootitem = site.create("root", {"label": "root", "id": 0})
-    rootitem.save()
+    def test_leaf_nodes(self):
+        """Assert that query involving 2+ chained APs can be executed."""
+        aliases = {
+            "leaf_label": "children.children.label", "root_label": "label",
+            "middle_label": "children.label"}
+        condition = Condition("children.children.label", "=", "2.2")
+        items = list(self.site.view("root", aliases, condition))
+        eq_(len(items), 1)
+        assert(all(item["leaf_label"] == "2.2" for item in items))
+        condition = Condition("children.label", "=", "2")
+        items = list(self.site.view("root", aliases, condition))
+        eq_(len(items), 2)
+        assert(all(item["middle_label"] == "2" for item in items))
+        condition = {"children.label": "2", "children.children.label": "1.1"}
+        items = list(self.site.view("root", aliases, condition))
+        eq_(len(items), 0)
 
-    item1 = site.create("level1", {"label": "1", "id": 1, "parent": rootitem})
-    item1.save()
-    item2 = site.create("level1", {"label": "2", "id": 2, "parent": rootitem})
-    item2.save()
+    def test_and_condition(self):
+        """Assert that And conditions can be tested accross multiple APs."""
+        aliases = {"root_label": "label", "middle_label": "children.label"}
+        condition = And(Condition("children.label", "=", "1"),
+                        Condition("children.children.label", "=", "1.1"))
+        items = list(self.site.view("root", aliases, condition))
+        eq_(len(items), 1)
 
-    item11 = site.create("level2", {"label": "1.1", "id": 1, "parent": item1})
-    item11.save()
-    item12 = site.create("level2", {"label": "1.2", "id": 2, "parent": item1})
-    item12.save()
+    def test_or_condition(self):
+        """Assert that Or conditions can be tested accross multiple APs."""
+        aliases = {"root_label": "label", "middle_label": "children.label"}
+        condition = Or(Condition("children.label", "=", "1"),
+                       Condition("children.children.label", "=", "2.1"))
+        items = list(self.site.view("root", aliases, condition))
+        eq_(len(items), 3)
 
-    item21 = site.create("level2", {"label": "2.1", "id": 3, "parent": item2})
-    item21.save()
-    item22 = site.create("level2", {"label": "2.2", "id": 4, "parent": item2})
-    item22.save()
+    def test_not_condition(self):
+        """Assert that Not conditions can be tested accross multiple APs."""
+        aliases = {"root_label": "label", "middle_label": "children.label"}
+        condition = Not(Condition("children.children.label", "=", "1.1"))
+        items = list(self.site.view("root", aliases, condition))
+        eq_(len(items), 3)
 
-    rootitem["children"] = [item1, item2]
-    rootitem.save()
+    def test_empty_view(self):
+        """Assert that ``view`` with props matching nothing return nothing."""
+        aliases = {"label": "label"}
+        items = list(self.site.view("level2", aliases, {"label": "3"}))
+        eq_(len(items), 0)
 
-    item1["children"] = [item11, item12]
-    item1.save()
-    item2["children"] = [item21, item22]
-    item2.save()
+    def test_parent_property(self):
+        """Assert that many-to-one properties works across multiple APs."""
+        aliases = {"label": "label", "parent": "parent"}
+        items = list(self.site.view("level2", aliases, {"parent.label": "1"}))
+        eq_(len(items), 2)
+        for item in items:
+            eq_(item["parent"].access_point.name, "level1")
 
-    return site
+    def test_deep_parent_property(self):
+        """Assert that deep many-to-one properties works across multiple APs."""
+        aliases = {"label": "label", "parent": "parent"}
+        items = list(
+            self.site.view("level2", aliases, {"parent.parent.label": "root"}))
+        eq_(len(items), 4)
+        for item in items:
+            eq_(item["parent"].access_point.name, "level1")
+            eq_(item["parent"]["parent"].access_point.name, "root")
 
-def test_lazy():
-    """Assert that the lazy props (one to many relationships) are set up."""
-    site = init_data()
-    root = site.open("root", {"id": 0})
-    eq_(len(list(root["children"])), 2)
+    def test_children_property(self):
+        """Assert that one-to-many properties works across multiple APs."""
+        aliases = {"label": "label", "children": "children"}
+        items = list(
+            self.site.view("level1", aliases, {"children.label": "1.1"}))
+        eq_(len(items), 1)
+        item = items[0]
+        eq_(len(item["children"]), 2)
+        for child in item["children"]:
+            eq_(child.access_point.name, "level2")
 
-def test_bad_request():
-    """Assert that common programmer error raises a BadQueryException."""
-    site = init_data()
-    try:
-        list(site.view("root", {"leaf_label": "children.grou"}, {}))
-    except BadQueryException as detail:
-        assert(isinstance(detail.query, QuerySelect))
-    else:
-        assert False, "Expected BadQueryException."
+    def test_deep_children_property(self):
+        """Assert that deep one-to-many properties works across multiple APs."""
+        aliases = {"label": "label", "children": "children"}
+        items = list(
+            self.site.view("root", aliases, {"children.children.label": "1.1"}))
+        eq_(len(items), 1)
+        item = items[0]
+        eq_(len(item["children"]), 2)
+        for child in item["children"]:
+            eq_(child.access_point.name, "level1")
+            grandchildren = child["children"]
+            eq_(len(grandchildren), 2)
+            for grandchild in grandchildren:
+                eq_(grandchild.access_point.name, "level2")
 
-    try:
-        list(site.view("root", {"leaf_label": "children.label"},
-            {"children.grou": 4}))
-    except BadQueryException:
-        pass
-    else:
-        assert False, "Expected BadQueryException."
+    # camelCase function names come from unittest
+    # pylint: disable=C0103
+    def setUp(self):
+        """Create a test site with 3 access points forming a tree structure.
 
+        The structure looks like this::
 
-    try:
-        list(site.view("root", {"leaf_label": "children.label"},
-            {"children.children.id": "abc"}))
-    except BadQueryException as detail:
-        assert(isinstance(detail.query, QueryFilter))
-    else:
-        assert False, "Expected BadQueryException."
+            root -> level1 -> level2
 
-    try:
-        list(site.view("root", {"leaf_label": "childr.label"}))
-    except BadQueryException as detail:
-        assert(isinstance(detail.query, QuerySelect))
-    else:
-        assert False, "Expected BadQueryException"
+        The structure is filled with test data::
 
-def test_first_level():
-    """Assert that the tree can be viewed to the first level."""
-    site = init_data()
-    aliases = {"leaf_label": "children.label", "root_label": "label"}
-    items = list(site.view("root", aliases, {}))
-    eq_(len(items), 2)
+            root -> 1 -> 1.1
+                      -> 1.2
+                 -> 2 -> 2.1
+                      -> 2.2
 
-def test_star_request():
-    """Assert that an ``*`` request correctly selects the properties"""
-    site = init_data()
-    aliases = {"": "*", "children_": "children.*"}
-    items = list(site.view("root", aliases, {}))
-    eq_(len(items), 2)
-    item = items[0]
-    assert(all(alias in item for alias
-               in ("label", "id", "children_label", "children_id")))
-    
-def test_star_request_with_cond():
-    """Assert that ``*``-request-generated alias can be tested in conditions."""
-    site = init_data()
-    aliases = {"": "*", "children_": "children.*"}
-    request = {"label": "root", "children_id": 1}
-    items = list(site.view("root", aliases, request))
-    eq_(len(items), 1)
-    item = items[0]
-    assert(all(alias in item for alias
-               in ("label", "id", "children_label", "children_id")))
+        """
+        child_property = Property(
+            iter, relation="one-to-many", remote_ap="level1",
+            remote_property="parent")
+        root_ap = Memory(
+            {"id": Property(int), "label": Property(unicode),
+             "children": child_property}, "id")
 
-def test_first_level_with_cond():
-    """Assert that remote properties can be used in conditions."""
-    site = init_data()
-    aliases = {"leaf_label": "children.label", "root_label": "label"}
-    conditions = {"children.label": "1"}
-    items = list(site.view("root", aliases, conditions))
-    eq_(len(items), 1)
+        parent_property = Property(iter, relation="many-to-one", remote_ap="root")
+        child_property = Property(
+            iter, relation="one-to-many", remote_ap="level2",
+            remote_property="parent")
+        level1_ap = Memory(
+            {"id": Property(int), "label": Property(unicode),
+             "parent": parent_property, "children": child_property}, "id")
 
-def test_leaf_nodes():
-    """Assert that query involving 2+ chained access point can be executed."""
-    site = init_data()
-    aliases = {
-        "leaf_label": "children.children.label", "root_label": "label",
-        "middle_label": "children.label"}
-    condition = Condition("children.children.label", "=", "2.2")
-    items = list(site.view("root", aliases, condition))
-    eq_(len(items), 1)
-    assert(all(item["leaf_label"] == "2.2" for item in items))
-    condition = Condition("children.label", "=", "2")
-    items = list(site.view("root", aliases, condition))
-    eq_(len(items), 2)
-    assert(all(item["middle_label"] == "2" for item in items))
-    condition = {"children.label": "2", "children.children.label": "1.1"}
-    items = list(site.view("root", aliases, condition))
-    eq_(len(items), 0)
-    
-def test_complex_condition():
-    """Assert that complex conditions can be tested accross multiple APs."""
-    site = init_data()
-    aliases = {"root_label": "label", "middle_label": "children.label"}
-    condition = Or(Condition("children.label", "=", "1"),
-                   Condition("children.children.label", "=", "2.1"))
-    items = list(site.view("root", aliases, condition))
-    eq_(len(items), 3)
+        parent_property = Property(iter, relation="many-to-one", remote_ap="level1")
+        level2_ap = Memory(
+            {"id": Property(int), "label": Property(unicode),
+             "parent": parent_property}, "id")
 
+        self.site = Site()
+        self.site.register("root", root_ap)
+        self.site.register("level1", level1_ap)
+        self.site.register("level2", level2_ap)
+
+        rootitem = self.site.create("root", {"label": "root", "id": 0})
+        rootitem.save()
+
+        item1 = self.site.create(
+            "level1", {"label": "1", "id": 1, "parent": rootitem})
+        item1.save()
+        item2 = self.site.create(
+            "level1", {"label": "2", "id": 2, "parent": rootitem})
+        item2.save()
+
+        item11 = self.site.create(
+            "level2", {"label": "1.1", "id": 1, "parent": item1})
+        item11.save()
+        item12 = self.site.create(
+            "level2", {"label": "1.2", "id": 2, "parent": item1})
+        item12.save()
+
+        item21 = self.site.create(
+            "level2", {"label": "2.1", "id": 3, "parent": item2})
+        item21.save()
+        item22 = self.site.create(
+            "level2", {"label": "2.2", "id": 4, "parent": item2})
+        item22.save()
+
+        rootitem["children"] = [item1, item2]
+        rootitem.save()
+
+        item1["children"] = [item11, item12]
+        item1.save()
+        item2["children"] = [item21, item22]
+        item2.save()
+    # pylint: enable=C0103

@@ -24,7 +24,8 @@ Test registering access points to a Site.
 
 from nose.tools import eq_, raises
 
-from kalamar import Site
+from kalamar.site import Site, _translate_request
+from kalamar.request import Condition, And, Or, Not
 
 
 class DummyAccessPoint(object):
@@ -53,5 +54,23 @@ def test_ap_name_conflict():
     site = Site()
     site.register("things", DummyAccessPoint())
     site.register("things", DummyAccessPoint())
-    
 
+def test_translate_request():
+    """Test request translations."""
+    aliases = {"id": "id", "name": "name", "title": "name"}
+    eq_(_translate_request(Condition("id", "=", 1), aliases),
+        Condition("id", "=", 1))
+    eq_(_translate_request(Condition("name", "=", "foo"), aliases),
+        Condition("name", "=", "foo"))
+    eq_(_translate_request(
+            Not(Or(Condition("id", "=", 7),
+                   Condition("title", "!=", "spam"))), aliases),
+        Not(Or(Condition("id", "=", 7),
+               Condition("name", "!=", "spam"))))
+    eq_(_translate_request(
+            And(Condition("id", "=", 4),
+                Not(Or(Condition("name", "=", "spam"),
+                       Condition("title", "!=", "egg")))), aliases),
+        And(Condition("id", "=", 4),
+            Not(Or(Condition("name", "=", "spam"),
+                   Condition("name", "!=", "egg")))))

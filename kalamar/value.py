@@ -66,6 +66,10 @@ class FixedOffsetTimeZone(datetime.tzinfo):
 def to_datetime(value):
     """Cast ``value`` into :class:`datetime.datetime` object.
 
+    >>> to_datetime(datetime.date(2010, 8, 4))
+    datetime.datetime(2010, 8, 4, 0, 0)
+    >>> to_datetime(datetime.datetime(2010, 8, 4, 0, 0))
+    datetime.datetime(2010, 8, 4, 0, 0)
     >>> to_datetime("20100804")
     datetime.datetime(2010, 8, 4, 0, 0)
     >>> to_datetime("2010-08-04")
@@ -88,12 +92,16 @@ def to_datetime(value):
     ... # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
     datetime.datetime(2010, 8, 4, 20, 34, 31,
         tzinfo=<kalamar.value.FixedOffsetTimeZone object at ...>)
+    >>> to_datetime(10) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ....
+    ValueError: 10 cannot be cast to datetime.
 
     """
     if isinstance(value, datetime.datetime):
         return value
     elif isinstance(value, datetime.date):
-        return value.datetime(value.year, value.month, value.day)
+        return datetime.datetime(value.year, value.month, value.day)
     elif isinstance(value, basestring):
         value = value.replace("-", "").replace(":", "").replace("T", "")
         if len(value) == 8:
@@ -108,7 +116,7 @@ def to_datetime(value):
             time = datetime.datetime.strptime(time, "%Y%m%d%H%M%S")
             return time.replace(
                 tzinfo=FixedOffsetTimeZone(int(hours), int(minutes)))
-    raise ValueError
+    raise ValueError("%s cannot be cast to datetime." % value)
 
 
 def to_date(value):

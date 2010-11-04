@@ -82,7 +82,7 @@ class Alchemy(AccessPoint):
     def _column_from_prop(self, prop):
         """For a given property, return the alchemy Column instance.
 
-        If the instance has not been create yet, creates it.
+        If the instance has not been created yet, create it.
 
         """
         if prop.column is not None:
@@ -127,7 +127,7 @@ class Alchemy(AccessPoint):
     # TODO: remove the werkzeug depedency
     @cached_property
     def _table(self):
-        """Initialize the sql alchemy engine on first access."""
+        """Initialize the Alchemy engine on first access."""
         metadata = Alchemy.__metadatas.get(self.url, None)
         if not metadata:
             engine = create_engine(self.url, echo=False)
@@ -136,7 +136,7 @@ class Alchemy(AccessPoint):
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
         columns = [self._column_from_prop(prop) for prop in
-                self.properties.values()]
+                   self.properties.values()]
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable:
             table.create()

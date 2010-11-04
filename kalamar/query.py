@@ -59,7 +59,7 @@ class QueryChain(Query):
     """Chained query.
     
     >>> from kalamar.request import Condition
-    >>> items = itertools.cycle([{"a":1, "b":1},{"a":2, "b": 2}])
+    >>> items = itertools.cycle([{"a": 1, "b": 1}, {"a": 2, "b": 2}])
     >>> range = QueryRange(slice(1, 4))
     >>> cond = QueryFilter(Condition("a", "=", 2))
     >>> chain = QueryChain([range, cond])
@@ -84,7 +84,7 @@ class QueryChain(Query):
             properties = sub_query.validate(site,  properties)
         return properties
 
-    def __str__(self):
+    def __repr__(self):
         return "\n-->".join([str(sub) for sub in self.queries])
 
 
