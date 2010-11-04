@@ -47,21 +47,38 @@ def test_search(site):
 
 @common
 def test_open_one(site):
-    """Test a standard ``open``."""
+    """Standard ``open``."""
     result = site.open("things", {"name": u"foo"})
     eq_(result["id"], 1)
 
 @common
 @raises(MultipleMatchingItems)
 def test_open_two(site):
-    """An exception is raised when muliple items match an open request."""
+    """Exception raised when muliple items match ``open``."""
     site.open("things", {"name": u"bar"})
 
 @common
 @raises(ItemDoesNotExist)
 def test_open_zero(site):
-    """An exception is raised when no item match an open request."""
+    """Exception raised when no item match ``open``."""
     site.open("things", {"name": u"nonexistent"})
+
+@common
+def test_open_one_default(site):
+    """Standard ``open`` with ``default``."""
+    result = site.open("things", {"name": u"foo"}, "spam")
+    eq_(result["id"], 1)
+
+@common
+@raises(MultipleMatchingItems)
+def test_open_two_default(site):
+    """Exception raised when muliple items match ``open`` with ``default``."""
+    site.open("things", {"name": u"bar"}, "spam")
+
+@common
+def test_open_zero_default(site):
+    """Default returned when no item match ``open`` with ``default``."""
+    eq_(site.open("things", {"name": u"nonexistent"}, "spam"), "spam")
 
 @common
 def test_delete(site):
