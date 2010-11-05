@@ -22,7 +22,7 @@ Common tests run against all access points.
 
 """
 
-from nose.tools import eq_, raises
+from nose.tools import eq_, raises, assert_raises
 
 from kalamar import MultipleMatchingItems, ItemDoesNotExist
 from .common import nofill, common
@@ -50,6 +50,19 @@ def test_open_one(site):
     """Standard ``open``."""
     result = site.open("things", {"name": u"foo"})
     eq_(result["id"], 1)
+
+@common
+def test_modify_identity(site):
+    def change_item_id(item):
+        item['id'] = 500
+    item = site.open("things", {"name": u"foo"})
+    assert_raises(KeyError, change_item_id, item)
+    item = site.create("things", {"name": u"bar", "id": 400})
+    change_item_id(item)
+    item.save()
+    assert_raises(KeyError, change_item_id, item)
+
+
 
 @common
 @raises(MultipleMatchingItems)

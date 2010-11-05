@@ -173,7 +173,9 @@ class Alchemy(AccessPoint):
                         result[name])
             else: 
                 props[name] = result[name]
-        return self.create(props, lazy_props)
+        item = self.create(props, lazy_props)
+        item.saved = True
+        return item
 
     def _many_to_one_lazy_loader(self, prop, value):
         """Creates a lazy loader for many_to_ones properties.
@@ -246,6 +248,7 @@ class Alchemy(AccessPoint):
                 raise
         finally:
             connection.close()
+        item.saved = True
 
     def delete(self, item):
         whereclause = self.__to_pk_where_clause(item)

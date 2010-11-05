@@ -116,6 +116,7 @@ class FileSystem(AccessPoint):
                     item_properties = dict(
                         (prop.name, value) for prop, value in properties.items())
                     item = Item(self, item_properties, lazy_loaders)
+                    item.saved = True
                     if request.test(item):
                         yield item
 
@@ -130,3 +131,4 @@ class FileSystem(AccessPoint):
             content.seek(0)
         with open(self._item_filename(item), "wb") as file_descriptor:
             shutil.copyfileobj(content, file_descriptor)
+        item.saved = True

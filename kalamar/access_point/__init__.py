@@ -203,6 +203,7 @@ class AccessPoint(object):
 
         item = Item(self, properties, lazy_loaders)
         item.modified = True
+        item.saved = False
         return item
 
     @abc.abstractmethod

@@ -141,6 +141,10 @@ class AbstractItem(MutableMultiMapping):
     """
     def __init__(self, access_point):
         self.access_point = access_point
+        #An item is usually saved, if it isnt, its because it has just been
+        #created, and the access point is responsible for setting the flag to
+        #false
+        self.saved = False
 
     @abc.abstractmethod    
     def getlist(self, key):
@@ -264,7 +268,8 @@ class Item(AbstractItem):
         if key not in self:
             raise KeyError("%s object doesn't support adding new keys." %
                 self.__class__.__name__)
-        if key in self.access_point.identity_properties:
+        if self.access_point.properties[key] in \
+            self.access_point.identity_properties  and self.saved:
             raise KeyError("Can not modify identity property %r." % key)
         self.modified = True
         values = self.access_point.properties[key].cast(values)
