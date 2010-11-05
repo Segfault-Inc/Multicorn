@@ -76,9 +76,12 @@ class Property(object):
 
     def cast(self, values):
         """Cast an iterable of values, return a tuple of cast values."""
-        if not self.mandatory and values == (None,):
-            return values
-        if self.type in PROPERTY_TYPES:
-            return tuple(PROPERTY_TYPES[self.type](value) for value in values)
-        else:
-            return tuple(to_type(value, self.type) for value in values)
+        try:
+            if not self.mandatory and values == (None,):
+                return values
+            if self.type in PROPERTY_TYPES:
+                return tuple(PROPERTY_TYPES[self.type](value) for value in values)
+            else:
+                return tuple(to_type(value, self.type) for value in values)
+        except:
+            raise ValueError

@@ -216,15 +216,18 @@ class Alchemy(AccessPoint):
     def __transform_to_table(self, item):
         """Transform an item to a dict so that it can be saved."""
         item_dict = {}
-        for prop, value in item.items():
-            if self.properties[prop].relation == 'many-to-one':
-                if item[prop] is not None:
-                    #TODO: more than one identity property
-                    item_dict[prop] = item[prop].identity.conditions.values()[0]
-            elif self.properties[prop].relation == 'one-to-many':
+        for name, prop in self.properties.items():
+            if prop.auto:
                 pass
+            elif prop.relation == 'one-to-many':
+                pass
+            elif prop.relation == 'many-to-one':
+                if item[name] is not None:
+                    item_dict[name] = item[name].identity.conditions.values()[0]
+                else:
+                    item_dict[name] = None
             else:
-                item_dict[prop] = value
+                item_dict[name] = item[name]
         return item_dict
 
     def save(self, item):

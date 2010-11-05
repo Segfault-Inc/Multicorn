@@ -157,14 +157,14 @@ class AccessPoint(object):
             dict([(name, prop) for name, prop in self.properties.items()
                   if prop.relation == "one-to-many"
                   and name not in properties and name not in lazy_loaders]))
-        for name, value in lazy_refs.items(): 
-            lazy_loaders[name] = self._default_loader(properties, value)
 
         # Create loaders for auto properties
         for name, prop in self.properties.items():
             if prop.auto and (name not in properties):
-                lazy_loaders[name] = (
-                    lambda prop: lambda: (self.auto_value(prop),))(prop)
+                properties[name] = self._auto_value(prop)
+
+        for name, value in lazy_refs.items(): 
+            lazy_loaders[name] = self._default_loader(properties, value)
 
         item = Item(self, properties, lazy_loaders)
         item.modified = True
