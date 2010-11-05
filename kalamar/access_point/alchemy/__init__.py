@@ -233,7 +233,7 @@ class Alchemy(AccessPoint):
             statement = self._table.insert().values(value).execute()
             for (gen_id, id_prop) in zip(statement.inserted_primary_key, 
                     self.identity_properties):
-                item[id_prop] = gen_id 
+                item[id_prop.name] = gen_id 
             transaction.commit()
         except:
             try:
