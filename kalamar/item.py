@@ -258,8 +258,8 @@ class Item(AbstractItem):
             values = loader()
             if not isinstance(values, tuple):
                 raise ValueError("Lazy loaders must return a tuple, not %s. "
-                    "To return a single value, wrap it in a tuple: (value,)"
-                    % type(values))
+                    "To return a single value, wrap it in a tuple: (value,)."
+                    % type(values).__name__)
             self._loaded_properties.setlist(key, values)
             del self._lazy_loaders[key]
             return values

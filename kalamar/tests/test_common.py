@@ -62,8 +62,6 @@ def test_modify_identity(site):
     item.save()
     assert_raises(KeyError, change_item_id, item)
 
-
-
 @common
 @raises(MultipleMatchingItems)
 def test_open_two(site):
