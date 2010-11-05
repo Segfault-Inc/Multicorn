@@ -122,20 +122,28 @@ def to_datetime(value):
 def to_date(value):
     """Cast ``value`` into :class:`datetime.date` object.
 
+    >>> to_date(datetime.date(2010, 8, 4))
+    datetime.date(2010, 8, 4)
+    >>> to_date(datetime.datetime(2010, 8, 4, 0, 0))
+    datetime.date(2010, 8, 4)
     >>> to_date("20100804")
     datetime.date(2010, 8, 4)
     >>> to_date("2010-08-04")
     datetime.date(2010, 8, 4)
+    >>> to_date(10) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ....
+    ValueError: 10 cannot be cast to date.
 
     """
-    if isinstance(value, datetime.date):
-        return value
-    elif isinstance(value, datetime.datetime):
+    if isinstance(value, datetime.datetime):
         return value.date()
+    elif isinstance(value, datetime.date):
+        return value
     elif isinstance(value, basestring):
         value = value.replace("-", "").replace(":", "")
         return datetime.datetime.strptime(value, "%Y%m%d").date()
-    raise ValueError
+    raise ValueError("%s cannot be cast to date." % value)
 
 
 def to_stream(value):
