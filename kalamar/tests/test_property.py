@@ -41,7 +41,8 @@ def test_property_creation():
         test_memory.make_ap(), fill=True).access_points["things"]
     prop = Property(unicode)
     eq_(prop.type, unicode)
-    prop = Property(int, True, True, 42, True, "many-to-one", remote_ap, "name")
+    prop = Property(
+        int, True, True, lambda prop: 42, "many-to-one", remote_ap, "name")
     eq_(prop.type, int)
 
 @raises(MissingRemoteAP)

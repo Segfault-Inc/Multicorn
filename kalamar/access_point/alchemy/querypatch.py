@@ -156,9 +156,8 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     def build_join(select, properties, join):
         """Walks the mapping to build the joins"""
         for name, sub_select in select.sub_selects.items():
-            remote_ap = access_points[properties[name].remote_ap]
-            remote_property_name = properties[name].remote_property
-            remote_property = remote_ap.properties[remote_property_name]
+            remote_ap = properties[name].remote_ap
+            remote_property = properties[name].remote_property
             col1 = properties[name].column
             col2 = remote_property.column
             # _table isn't really private, just not in the public API
@@ -181,9 +180,9 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
                 column = properties[value.name].column
                 alchemy_query.append_column(column.label(name))
         for name, sub_select in select.sub_selects.items():
-            remote_ap = access_points[properties[name].remote_ap]
-            alchemy_query = build_select(sub_select, remote_ap.properties,
-                    alchemy_query)
+            alchemy_query = build_select(
+                sub_select, properties[name].remote_ap.properties,
+                alchemy_query)
         return alchemy_query
 
     # _table isn't really private, just not in the public API
@@ -203,12 +202,11 @@ def query_select_validator(self, access_point, properties):
     
     """
     from . import Alchemy
-    access_points = access_point.site.access_points
 
     def isvalid(select, properties):
         """Check if ``select`` is valid according to ``properties``."""
         for name, sub_select in select.sub_selects.items():
-            remote_ap = access_points[properties[name].remote_ap]
+            remote_ap = properties[name].remote_ap
             if not isinstance(remote_ap, Alchemy) or \
                     not isvalid(sub_select, remote_ap.properties):
                 return False

@@ -28,12 +28,17 @@ from .value import PROPERTY_TYPES, to_type
 
 class MissingRemoteAP(RuntimeError):
     """Remote access point is missing in property definition."""
-    value = "remote_ap missing in property definition"
+    value = __doc__
 
 
 class MissingRemoteProperty(RuntimeError):
     """Remote property is missing in property definition."""
-    value = "remote_property missing in property definition"
+    value = __doc__
+
+
+class AlreadyRegistered(RuntimeError):
+    """Property is already registered so a site."""
+    value = __doc__
 
 
 class Property(object):
@@ -44,10 +49,8 @@ class Property(object):
         the access point.
     :param boolean identity: Boolean defining if the property is identifying the
         item.
-    :param boolean auto: Boolean defining if the value of the property may be
-        automatically added by the access point when creating an item.
-    :param default: Default value of the property that may be automatically set
-        by the access point when creating an item.
+    :param auto: Function taking a :class:`Property` instance and returning a
+        default value for the property.
     :param boolean mandatory: Boolean defining if the property is mandatory.
     :param relation: Type of the relation created by this property with another
         access point. Can be ``"many-to-one"``, ``"one-to-many"`` or ``None``.
@@ -57,22 +60,33 @@ class Property(object):
 
     """
     def __init__(self, property_type, identity=False, auto=False,
-                 default=None, mandatory=False, relation=None, remote_ap=None,
+                 mandatory=False, relation=None, remote_ap=None,
                  remote_property=None):
         self.type = property_type
         self.identity = identity
         self.auto = auto
-        self.default = default
-        self.remote_ap = remote_ap
         self.mandatory = mandatory
         self.relation = relation
-        self.remote_property = remote_property
+        self._remote_ap_name = remote_ap
+        self._remote_property_name = remote_property
+        self.access_point = None
+        self.name = None
+        self.__remote_ap = None
+        self.__remote_property = None
 
         # Raise an exception if something is wrong in the relation
-        if self.relation and not self.remote_ap:
+        if self.relation and not self._remote_ap_name:
             raise MissingRemoteAP()
-        if self.relation == "one-to-many" and not self.remote_property:
+        if self.relation == "one-to-many" and not self._remote_property_name:
             raise MissingRemoteProperty()
+
+    def bind(self, access_point, name):
+        """Link the property to ``access_point`` and call it ``name``."""
+        if not self.access_point and not self.name:
+            self.access_point = access_point
+            self.name = name
+        else:
+            raise AlreadyRegistered
 
     def cast(self, values):
         """Cast an iterable of values, return a tuple of cast values."""
@@ -85,3 +99,23 @@ class Property(object):
                 return tuple(to_type(value, self.type) for value in values)
         except:
             raise ValueError
+
+    def copy(self):
+        """Return an empty copy of the property."""
+        return Property(
+            self.type, self.identity, self.auto, self.mandatory, self.relation,
+            self._remote_ap_name, self._remote_property_name)
+
+    @property
+    def remote_ap(self):
+        if not self.__remote_ap:
+            access_points = self.access_point.site.access_points
+            self.__remote_ap = access_points.get(self._remote_ap_name)
+        return self.__remote_ap
+
+    @property
+    def remote_property(self):
+        if not self.__remote_property:
+            properties = self.remote_ap.properties
+            self.__remote_property = properties[self._remote_property_name]
+        return self.__remote_property

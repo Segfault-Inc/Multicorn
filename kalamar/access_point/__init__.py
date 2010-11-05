@@ -36,14 +36,22 @@ DEFAULT_PARAMETER = object()
 
 class NotOneMatchingItem(Exception):
     """Not one object has been returned."""
+    value = __doc__
 
 
 class MultipleMatchingItems(NotOneMatchingItem):
     """More than one object have been returned."""
+    value = __doc__
 
 
 class ItemDoesNotExist(NotOneMatchingItem):
     """No object has been returned."""
+    value = __doc__
+
+
+class AlreadyRegistered(RuntimeError):
+    """Access point is already registered so a site."""
+    value = __doc__
 
 
 class AccessPoint(object):
@@ -64,9 +72,13 @@ class AccessPoint(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, properties, identity_properties):
-        self.properties = properties
-        self.identity_properties = identity_properties
+        self.properties = {}
+        for name, prop in properties.items():
+            self.register(name, prop)
+        self._identity_property_names = identity_properties
         self.site = None
+        self.name = None
+        self.__identity_properties = None
 
     @staticmethod
     def _auto_value(prop):
@@ -89,22 +101,45 @@ class AccessPoint(object):
 
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
-        remote = self.site.access_points[lazy_prop.remote_ap]
-        if lazy_prop.relation == "one-to-many":
-            local_ref = self.identity_properties[0]
-            condition_prop = "%s.%s" % (lazy_prop.remote_property, local_ref)
-            conditions = Condition(condition_prop, '=', properties[local_ref])
+        local_ref = self.identity_properties[0]
+        condition_prop = "%s.%s" % (lazy_prop.remote_property, local_ref.name)
+        conditions = Condition(condition_prop, "=", local_ref)
+        return lambda: (list(lazy_prop.remote_ap.search(conditions)),)
+
+    @property
+    def identity_properties(self):
+        if not self.__identity_properties:
+            self.__identity_properties = []
+            for name in self._identity_property_names:
+                self.__identity_properties.append(self.properties[name])
+        return self.__identity_properties
+
+    def bind(self, site, name):
+        """Link the access point to ``site`` and call it ``name``."""
+        if not self.site and not self.name:
+            self.site = site
+            self.name = name
         else:
-            raise RuntimeError(
-                "Cannot use default lazy loader"
-                "on %s relation" % lazy_prop.relation)
-        return lambda: (list(remote.search(conditions)),)
+            raise AlreadyRegistered
+
+    def register(self, name, prop):
+        """Add a property to this access point.
+
+        :param name: Identifier string of the added property.
+        :param prop: Instance of :class:`Property`.
+
+        """
+        self.properties[name] = prop
+        prop.bind(self, name)
 
     def open(self, request, default=DEFAULT_PARAMETER):
         """Return the item in access point matching ``request``.
         
         If there is no result, raise :exc:`Site.ObjectDoesNotExist`. If there
         are more than one result, raise :exc:`Site.MultipleObjectsReturned`.
+
+        If there is no result but the ``default`` parameter is given,
+        ``default`` is returned.
         
         """
         results = iter(self.search(request))
@@ -124,7 +159,7 @@ class AccessPoint(object):
     @abc.abstractmethod
     def search(self, request):
         """Return an iterable of every item matching request."""
-        raise NotImplementedError("Abstract method")
+        raise NotImplementedError
 
     def view(self, view_query):
         """Return an iterable of dict-like objects matching ``view_query``.
@@ -147,7 +182,7 @@ class AccessPoint(object):
         This method has to be overridden.
 
         """
-        raise NotImplementedError("Abstract method")
+        raise NotImplementedError
     
     def create(self, properties=None, lazy_loaders=None):
         """Create and return a new item."""
@@ -177,7 +212,7 @@ class AccessPoint(object):
         This method has to be overriden.
 
         """
-        raise NotImplementedError("Abstract method")
+        raise NotImplementedError
 
 
 class AccessPointWrapper(AccessPoint):
@@ -192,10 +227,12 @@ class AccessPointWrapper(AccessPoint):
             and values are the names in the wrapped access point.
 
         """
+        copied_properties = dict(
+            (name, prop.copy()) for name, prop in wrapped_ap.properties.items())
+        copied_identity_properties = [
+            prop.name for prop in wrapped_ap.identity_properties]
         super(AccessPointWrapper, self).__init__(
-            # copies, not just references
-            dict(wrapped_ap.properties),
-            tuple(wrapped_ap.identity_properties))
+            copied_properties, copied_identity_properties)
         self.wrapped_ap = wrapped_ap
 
     def search(self, request):

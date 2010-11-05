@@ -58,7 +58,7 @@ def test_filesytem_init():
     site.register("tests", access_point)
     eq_(set(access_point.properties.keys()),
         set(["package", "module", "extension", "content"]))
-    eq_(set(access_point.identity_properties), 
+    eq_(set((prop.name for prop in access_point.identity_properties)),
         set(["package", "module", "extension"]))
     
     properties = {"package": "kalamar", "module": "filesystem", "extension": ""}
@@ -86,7 +86,6 @@ def test_temporary_directory():
     # Make sure every thing is correctly cleaned-up.
     assert not os.path.exists(filename)
     assert not os.path.exists(temp_dir)
-
 
 def test_filesytem_common():
     """Define a custom test runner for the common tests."""

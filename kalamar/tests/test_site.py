@@ -26,11 +26,19 @@ from nose.tools import eq_, raises
 
 from kalamar.site import Site, _translate_request
 from kalamar.request import Condition, And, Or, Not
+from kalamar.access_point import AlreadyRegistered, AccessPoint
 
 
 class DummyAccessPoint(object):
     """Dummy access point for testing purpose."""
-    properties = identity_properties = site = None
+    properties = identity_properties = site = name = None
+
+    def bind(self, site, name):
+        if not self.site and not self.name:
+            self.site = site
+            self.name = name
+        else:
+            raise AlreadyRegistered
 
 
 def test_simple_setup():
@@ -40,7 +48,7 @@ def test_simple_setup():
     site.register("things", access_point)
     eq_(site.access_points, {"things": access_point})
     
-@raises(RuntimeError)
+@raises(AlreadyRegistered)
 def test_double_register():
     """Registering the same AP twice raises an exception."""
     site = Site()

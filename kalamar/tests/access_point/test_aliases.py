@@ -90,7 +90,9 @@ def test_aliased_item():
 
 def test_alias_request():
     """Test request translations."""
-    access_point = Aliases(Memory({}, ""), {"foo": "FOO", "bar": "BAR"})
+    access_point = Aliases(
+        Memory({"foo": Property(str), "bar": Property(str)}, "foo"),
+        {"foo": "FOO", "bar": "BAR"})
     eq_(access_point._alias_request(Condition("foo", "=", 4)),
         Condition("FOO", "=", 4))
     eq_(access_point._alias_request(Condition("other", "=", 7)),
