@@ -53,11 +53,8 @@ Not.alchemy_function = lambda self, conditions: not_(*conditions)
 
 class AlchemyProperty(Property):
     """Property for an Alchemy access point."""
-    def __init__(self, property_type, column_name, identity=False, auto=False,
-                 default=None, mandatory=False, relation=None, remote_ap=None,
-                 remote_property=None):
-        super(AlchemyProperty, self).__init__(property_type, identity, auto, 
-                default, mandatory, relation, remote_ap, remote_property)
+    def __init__(self, property_type, column_name, **kwargs):
+        super(AlchemyProperty, self).__init__(property_type, **kwargs)
         self.column_name = column_name
         self.column = None
 
@@ -91,17 +88,15 @@ class Alchemy(AccessPoint):
         kwargs = {"key": prop.name}
         if prop.name in self.identity_properties:
             kwargs["primary_key"] = True
-        if prop.default:
-            kwargs["default"] = prop.default
         if prop.relation == "many-to-one":
-            foreign_ap = self.site.access_points[prop.remote_ap]
+            foreign_ap = prop.remote_ap
             prop.foreign_ap_obj = foreign_ap
             #Transpose the kalamar relation in alchemy if possible
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
                 #TODO: Fix this for circular dependencies
                 foreign_column = self.__get_column("%s.%s" % (prop.name,
-                    prop.remote_property))
+                    prop.remote_property.name))
                 foreign_name = "%s.%s" % (foreign_table, foreign_column)
                 foreign_key = ForeignKey(foreign_name, use_alter = True, 
                         name = "%s_%s_fkey" % (self.tablename, prop.name ))
@@ -110,10 +105,8 @@ class Alchemy(AccessPoint):
                 column = Column(
                     prop.column_name, alchemy_type, foreign_key, **kwargs)
             else:
-                foreign_props = [foreign_ap.properties[name] 
-                        for name in foreign_ap.identity_properties]
                 #TODO: manage multiple foreign_keys
-                foreign_prop = foreign_props[0]
+                foreign_prop = foreign_ap.identity_properties[0]
                 alchemy_type = alchemy_type or \
                     SQLALCHEMYTYPES.get(foreign_prop.type, None)
                 column = Column(prop.column_name, alchemy_type, **kwargs)
@@ -142,15 +135,14 @@ class Alchemy(AccessPoint):
             table.create()
         return table
 
-    def __get_column(self, propertyname):
-        """For a given propertyname, return the (possibly foreign) column."""
-        splitted = propertyname.split(".")
+    def __get_column(self, property_name):
+        """For a given ``property``, return the (possibly foreign) column."""
+        splitted = property_name.split(".")
         prop = self.properties[splitted[0]]
         if len(splitted) > 1:
             # __get_column isn't really protected but shared between Alchemy APs
             # pylint: disable=W0212
-            return self.site.access_points[prop.remote_ap].__get_column(
-                ".".join(splitted[1:]))
+            return prop.remote_ap.__get_column(".".join(splitted[1:]))
             # pylint: enable=W0212
         else:
             return prop.column
@@ -163,7 +155,7 @@ class Alchemy(AccessPoint):
                 for sub_condition in condition.sub_requests)
             return condition.alchemy_function(alchemy_conditions)
         else:
-            column = self.__get_column(condition.property.__repr__())
+            column = self.__get_column(condition.property.name)
             if condition.operator == "=":
                 return column == condition.value
             else:
@@ -190,11 +182,12 @@ class Alchemy(AccessPoint):
         point directly.
 
         """
-        remote_ap = self.site.access_points[prop.remote_ap]
         def loader():
             """Wrapper function opening remote item when called."""
-            condition = Condition(remote_ap.identity_properties[0], "=", value)
-            return (remote_ap.open(condition), )
+            # TODO: manage multiple identity properties
+            condition = Condition(
+                prop.remote_ap.identity_properties[0].name, "=", value)
+            return (prop.remote_ap.open(condition), )
         return loader
                 
     def search(self, request):
@@ -209,9 +202,9 @@ class Alchemy(AccessPoint):
 
     def __to_pk_where_clause(self, item):
         """Build an alchemy condition matching this item on its pks."""
-        return self.to_alchemy_condition(And(* [Condition(id_prop, "=",
-            item[id_prop]) 
-            for id_prop in self.identity_properties]))
+        return self.to_alchemy_condition(And(* [Condition(prop.name, "=",
+            item[prop.name]) 
+            for prop in self.identity_properties]))
         
     def __transform_to_table(self, item):
         """Transform an item to a dict so that it can be saved."""

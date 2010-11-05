@@ -172,9 +172,9 @@ class AbstractItem(MutableMultiMapping):
     @property
     def identity(self):
         """Return an :class:`Identity` instance indentifying only this item."""
-        ids = self.access_point.identity_properties
+        names = (prop.name for prop in self.access_point.identity_properties)
         return Identity(
-            self.access_point.name, dict((name, self[name]) for name in ids))
+            self.access_point.name, dict((name, self[name]) for name in names))
     
     def __eq__(self, other):
         return isinstance(other, AbstractItem) \

@@ -238,7 +238,7 @@ class QuerySelect(Query):
         for name, sub_select in self.sub_selects.items():
             try:
                 root = properties[name]
-                child_properties = site.access_points[root.remote_ap].properties
+                child_properties = root.remote_ap.properties
             except KeyError:
                 raise BadQueryException(self, "%r is not a valid property" %
                         name)

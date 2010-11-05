@@ -83,18 +83,15 @@ class Site(object):
     def register(self, name, access_point):
         """Add an access point to this site.
 
-        :param name: Identifier string the added access point.
-        :param access_point: A concrete subclass of :class:`AccessPoint`.
+        :param name: Identifier string of the added access point.
+        :param access_point: Concrete subclass of :class:`AccessPoint`.
 
         """
-        if access_point.site:
-            raise RuntimeError("Access point already registered.")
         if name in self.access_points:
             raise RuntimeError(
                 "Site already has an access point named %r." % name)
-        access_point.site = self
-        access_point.name = name
         self.access_points[name] = access_point
+        access_point.bind(self, name)
 
     def view(self, access_point_name, aliases=None, request=None, order_by=None,
             select_range=None, query=None):

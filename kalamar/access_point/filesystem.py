@@ -69,7 +69,6 @@ class FileSystem(AccessPoint):
             for prop in properties)
 
         properties = dict(self._ordered_properties)
-        assert content_property not in properties
         properties[content_property] = Property(io.IOBase)
         # All properties here are in the identity
         identity_properties = tuple(
@@ -90,7 +89,7 @@ class FileSystem(AccessPoint):
     def _item_filename(self, item):
         """Item filename."""
         return os.path.join(self.root_dir, *(
-                template % tuple(unicode(item[prop]) for prop in props)
+                template % tuple(unicode(item[prop.name]) for prop in props)
                 for props, regexp, template in self.properties_per_path_part))
 
     def search(self, request):
@@ -114,7 +113,9 @@ class FileSystem(AccessPoint):
                         yield item
                 if not remaining_path_parts and not os.path.isdir(path):
                     lazy_loaders = {self.content_property: defered_open(path)}
-                    item = Item(self, properties, lazy_loaders)
+                    item_properties = dict(
+                        (prop.name, value) for prop, value in properties.items())
+                    item = Item(self, item_properties, lazy_loaders)
                     if request.test(item):
                         yield item
 

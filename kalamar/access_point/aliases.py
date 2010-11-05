@@ -61,13 +61,14 @@ class Aliases(AccessPointWrapper):
         """
         super(Aliases, self).__init__(wrapped_ap)
         self.aliases = aliases
-        self.reversed_aliases = dict((v, k) for k, v in self.aliases.items())
+        self.reversed_aliases = dict(
+            (value, key) for key, value in self.aliases.items())
         self.properties = dict(
-            (self.reversed_aliases.get(name, name), property)
-            for name, property in wrapped_ap.properties.items())
-        self.identity_properties = tuple(
-            self.reversed_aliases.get(name, name)
-            for name in wrapped_ap.identity_properties)
+            (self.reversed_aliases.get(name, name), prop)
+            for name, prop in wrapped_ap.properties.items())
+        self._identity_properties_names = tuple(
+            self.reversed_aliases.get(prop.name, prop.name)
+            for prop in wrapped_ap.identity_properties)
     
     def _alias_request(self, request):
         """Translate ``request`` to use aliases."""
