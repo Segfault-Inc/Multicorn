@@ -26,7 +26,8 @@ from nose.tools import eq_, raises
 
 from .access_point import test_memory
 from .common import make_site
-from kalamar.property import Property, MissingRemoteAP, MissingRemoteProperty
+from kalamar.property import Property, MissingRemoteAP, MissingRemoteProperty, \
+    AlreadyRegistered
 
 
 # Some properties are just used to test equality
@@ -61,6 +62,18 @@ def test_property_creation_missing_remote_property():
 def test_property_creation_missing_remote_property_and_ap():
     """Check that a one-to-many prop missing prop and ap raises an exception."""
     prop = Property(float, relation="one-to-many")
+
+@raises(AlreadyRegistered)
+def test_already_registered():
+    """Try to register a property twice."""
+    prop = Property(unicode)
+
+    remote_ap = make_site(
+        test_memory.make_ap(), fill=True).access_points["things"]
+    remote_ap.register("test", prop)
+    remote_ap = make_site(
+        test_memory.make_ap(), fill=True).access_points["things"]
+    remote_ap.register("eggs", prop)
 
 # pylint: enable=C0103
 # pylint: enable=W0612
