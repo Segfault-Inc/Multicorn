@@ -147,6 +147,9 @@ class QueryOrder(Query):
     >>> order(items)
     [{'a': 4, 'b': 8}, {'a': 5, 'b': 8}, {'a': 5, 'b': 7}]
 
+    >>> items = [{"a": 4, "b": {}}, {"a": 5 , "b": {}}, {"a": 5, "b": {}}]
+    >>> order = QueryOrder([("b", True)])
+
     """
     def __init__(self, orderbys):
         super(QueryOrder, self).__init__()
@@ -206,19 +209,19 @@ class QuerySelect(Query):
         for item in items:
             newitem = {}
             for alias, prop in self.mapping.items():
-                if prop.name is not "*":
-                    newitem[alias] = prop.get_value(item)
+                if prop.name is "*":
+                    newitem.update(dict((("%s%s" % (alias, key)), value) 
+                        for key, value in item.items()))
                 else:
-                    newitem.update(dict([(("%s%s" % (alias, key)), value) 
-                        for key, value in item.items()]))
+                    newitem[alias] = prop.get_value(item)
             if self.sub_selects:
                 sub_generators = tuple(
-                    sub_select(item[prop])  for prop, sub_select
+                    sub_select(item[prop]) for prop, sub_select
                     in self.sub_selects.items())
                 for cartesian_item in itertools.product(*sub_generators):
                     for cartesian_atom in cartesian_item:
                         cartesian_atom.update(newitem)
-                        yield cartesian_atom 
+                        yield cartesian_atom
             else:
                 yield newitem
 

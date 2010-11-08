@@ -112,3 +112,30 @@ def test_already_registered():
     site.register("things", access_point)
     site = Site()
     site.register("spams", access_point)
+
+def test_non_mandatory():
+    """A non mandatory property set to None should return None."""
+    access_point = Memory(
+        {"id": Property(int), "name": Property(unicode)}, "id")
+    site = Site()
+    site.register("things", access_point)
+    item = site.create("things", {"id": 1, "name": None})
+    eq_(item.getlist("name"), (None,))
+
+@raises(ValueError)
+def test_bad_value():
+    """Property of bad value should raise ValueError."""
+    access_point = Memory(
+        {"id": Property(int), "name": Property(int)}, "id")
+    site = Site()
+    site.register("things", access_point)
+    site.create("things", {"id": 1, "name": "toto"})
+
+def test_unknown_type():
+    """Check that an unknown type is correctly cast."""
+    access_point = Memory(
+        {"id": Property(int), "name": Property(complex)}, "id")
+    site = Site()
+    site.register("things", access_point)
+    item = site.create("things", {"id": 1, "name": "1+j"})
+    eq_(item["name"], 1+1j)

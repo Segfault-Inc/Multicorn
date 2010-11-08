@@ -27,13 +27,14 @@ from nose.tools import eq_, nottest
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from kalamar.site import Site
+from kalamar.item import Item
 
 
 @nottest
 def make_test_ap():
     """Build a Memory AP having a one-to-many relationship to another one."""
     one_to_many = Property(
-        iter, relation="one-to-many", remote_ap="test_remote_ap",
+        tuple, relation="one-to-many", remote_ap="test_remote_ap",
         remote_property="remote")
     return Memory(
         {"id": Property(int), "name": Property(unicode), 
@@ -42,7 +43,7 @@ def make_test_ap():
 @nottest
 def make_test_second_ap():
     """Build a Memory AP having a many-to-one relationship to another one."""
-    remote_prop = Property(iter, relation="many-to-one", remote_ap="test_ap")
+    remote_prop = Property(Item, relation="many-to-one", remote_ap="test_ap")
     return Memory(
         {"id": Property(int), "label": Property(unicode), 
          "remote": remote_prop}, "id")
@@ -58,13 +59,13 @@ def make_test_site():
     my_item.save()
     my_second_item.save()
     remote = site.create("test_remote_ap", {
-            "id": 4 , 
-            "label": "remote_item", 
+            "id": 4,
+            "label": "remote_item",
             "remote": my_item})
     remote.save()
     remote2 = site.create("test_remote_ap", {
-            "id": 8 , 
-            "label": "remote_item2", 
+            "id": 8,
+            "label": "remote_item2",
             "remote": my_second_item})
     remote2.save()
     my_item["manies"] = [remote, remote2]
@@ -74,8 +75,8 @@ def make_test_site():
 def test_simplest_view():
     """Test simple view requests."""
     site = make_test_site()
-    aliases = {"id_select": "id", 
-               "name_select": "label", 
+    aliases = {"id_select": "id",
+               "name_select": "label",
                "remote_select": "remote.name"}
     req =  {"remote.id": 10}
     items = list(site.view("test_remote_ap", aliases, req))
@@ -89,7 +90,7 @@ def test_one_to_many():
     """Test a one to many request."""
     site = make_test_site()
     aliases = {"local_id": "id",
-               "local_name": "name",  
+               "local_name": "name",
                "remote_label": "manies.label"}
     items = list(site.view("test_ap", aliases, {}))
     eq_(len(items), 3)
