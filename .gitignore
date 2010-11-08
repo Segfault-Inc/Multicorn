@@ -3,6 +3,7 @@
 *.pyo
 *.egg
 /.coverage
+/.noseids
 /build
 /dist
 /Dyko.egg-info
