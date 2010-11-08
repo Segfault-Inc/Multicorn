@@ -39,6 +39,13 @@ def test_single_item(site):
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
 
+@nofill
+@common
+@raises(ValueError)
+def test_missing_properties(site):
+    """Missing properties when creating an item raises an error."""
+    site.create("things")
+
 @common
 def test_search(site):
     """Test a simple search."""

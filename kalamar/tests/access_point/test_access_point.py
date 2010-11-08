@@ -139,3 +139,13 @@ def test_unknown_type():
     site.register("things", access_point)
     item = site.create("things", {"id": 1, "name": "1+j"})
     eq_(item["name"], 1+1j)
+
+@raises(KeyError)
+def test_adding_property():
+    """Adding a property to an item fails."""
+    access_point = Memory(
+        {"id": Property(int), "name": Property(unicode)}, "id")
+    site = Site()
+    site.register("things", access_point)
+    item = site.create("things", {"id": 1, "name": "toto"})
+    item["eggs"] = "spam"

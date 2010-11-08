@@ -88,11 +88,11 @@ def normalize(properties, request):
             if root not in properties:
                 raise KeyError(
                     "This access point has no %r property." % root)
-            if not request.property.child_property:
+            if request.property.child_property:
+                return request
+            else:
                 value = properties[root].cast((request.value,))[0]
                 return Condition(request.property.name, request.operator, value)
-            else:
-                return request
     return _inner_normalize(make_request(request)).simplify()
 
 
@@ -139,21 +139,14 @@ class Condition(Request):
 
     def __init__(self, property_name=None, operator="=", value=True):
         super(Condition, self).__init__()
-        try:
-            self.operator_func = OPERATORS[operator]
-        except KeyError:
-            raise OperatorNotAvailable(
-                "Operator %r is not supported here." % operator)
+        self.operator_func = OPERATORS[operator]
         self.property = make_request_property(property_name)
         self.operator = operator
         self.value = value
 
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
-            self.__class__.__name__,
-            self.property,
-            self.operator,
-            self.value)
+            self.__class__.__name__, self.property, self.operator, self.value)
     
     def test(self, item):
         """Return if ``item`` matches the request."""

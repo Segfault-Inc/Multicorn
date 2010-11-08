@@ -33,7 +33,7 @@ class AliasedItem(ItemWrapper):
     def _translate_key(self, key):
         """Get value of possibly aliased property called ``key``."""
         if key not in self.access_point.properties:
-            raise KeyError
+            raise KeyError("%s property is not in wrapped item." % key)
         return self.access_point.aliases.get(key, key)
     
     def getlist(self, key):
@@ -80,13 +80,11 @@ class Aliases(AccessPointWrapper):
                         for req in request.sub_requests))
         elif isinstance(request, Not):
             return Not(self._alias_request(request.sub_request))
-        elif isinstance(request, Condition):
+        else:
             name = request.property.name
             return Condition(self.aliases.get(name, name),
                              request.operator,
                              request.value)
-        else:
-            raise ValueError("Unknown request type: %r" % request)
     
     def search(self, request):
         return super(Aliases, self).search(self._alias_request(request))
