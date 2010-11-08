@@ -186,8 +186,8 @@ class AbstractItem(MutableMultiMapping):
     
     def __hash__(self):
         return hash((self.access_point.name,
-            frozenset((name, self[name]) 
-                for name in self.access_point.identity_properties)))
+            frozenset((prop.name, self[prop.name]) 
+                for prop in self.access_point.identity_properties)))
 
     def save(self):
         """Save the item."""

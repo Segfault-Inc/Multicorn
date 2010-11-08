@@ -91,18 +91,17 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
         for name, values in tree.items():
             prop = properties[name]
             if prop.remote_ap:
-                remote_ap = access_points[prop.remote_ap]
                 join_col1 = alchemy_query.corresponding_column(prop.column)
                 if prop.relation == "many-to-one":
                     join_col2 = alchemy_query.corresponding_column(
-                        remote_ap.properties[remote_ap.identity_properties[0]])
+                        prop.remote_ap.identity_properties[0])
                     # _table isn't really private, just not in the public API
                     # pylint: disable=W0212
-                    alchemy_query = alchemy_query.join(remote_ap._table,
+                    alchemy_query = alchemy_query.join(prop.remote_ap._table,
                             onclause = join_col1 == join_col2)
                     # pylint: enable=W0212
                     alchemy_query = build_join(values, 
-                            remote_ap.properties, alchemy_query)
+                            prop.remote_ap.properties, alchemy_query)
         return alchemy_query
     alchemy_query = build_join(
         self.condition.properties_tree, properties, alchemy_query)
@@ -158,11 +157,13 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
         for name, sub_select in select.sub_selects.items():
             remote_ap = properties[name].remote_ap
             remote_property = properties[name].remote_property
+            #Accessing the table now ensure it is properly created
+            remote_table = remote_property.access_point._table
             col1 = properties[name].column
             col2 = remote_property.column
             # _table isn't really private, just not in the public API
             # pylint: disable=W0212
-            join = join.outerjoin(remote_ap._table, onclause = col1 == col2)
+            join = join.outerjoin(remote_table, onclause = col1 == col2)
             # pylint: enable=W0212
             join = build_join(sub_select, remote_ap.properties, join)
         return join
