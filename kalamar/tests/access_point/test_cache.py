@@ -27,9 +27,11 @@ Test the Memory access point.
 from nose.tools import eq_, assert_raises
 # pylint: enable=E0611
 
+from kalamar.access_point.cache import Cache
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
-from kalamar.access_point.cache import Cache
+from kalamar.request import Condition, Not
+
 from ..common import run_common, make_site
 
 def make_ap():
@@ -44,7 +46,7 @@ def test_cache():
 def test_without_underlying_ap():
     """Assert that the cached data does not need the underlying access point."""
     site = make_site(make_ap(), fill=True)
-    access_point = site.access_points['things']
+    access_point = site.access_points["things"]
 
     # Search one item
     all_items = list(site.search("things"))
@@ -112,3 +114,24 @@ def test_delegate():
     repr(item)
     item.identity
     # pylint: enable=W0104
+
+def test_delete():
+    """Deleting an item must flush the cache."""
+    site = make_site(make_ap(), fill=True)
+    access_point = site.access_points["things"]
+
+    all_items = list(site.search("things"))
+    eq_(len(all_items), 3)
+    item = all_items[0]
+    all_items.remove(item)
+    access_point.delete(item)
+    eq_(all_items, list(site.search("things")))
+
+def test_delete_many():
+    """Deleting many items must flush the cache."""
+    site = make_site(make_ap(), fill=True)
+    access_point = site.access_points["things"]
+
+    site.delete_many("things", Condition("id", ">=", "2"))
+    eq_(list(site.search("things", Not(Condition("id", ">=", "2")))),
+        list(site.search("things")))

@@ -83,21 +83,22 @@ class AccessPoint(object):
     @staticmethod
     def _auto_value(prop):
         """Return a random value corresponding to ``prop`` type."""
+        # TODO: find better random values
+        # ``uuid4`` object *has* properties asked here
+        # pylint: disable=E1101
         if prop.type == datetime.datetime:
-            # TODO: find a better random value
-            return datetime.datetime.now()
+            return (datetime.datetime.now(),)
         elif prop.type == datetime.date:
-            # TODO: find a better random value
-            return datetime.date.today()
+            return (datetime.date.today(),)
+        elif prop.type == int:
+            return (int(uuid.uuid4().time_low / 2),)
         elif prop.type == float:
-            # ``uuid4`` object *has* an ``int`` property
-            # pylint: disable=E1101
-            return uuid.uuid4().int / float(uuid.uuid4().int)
-            # pylint: enable=E1101
+            return (uuid.uuid4().int / float(uuid.uuid4().int),)
         elif prop.type == iter:
-            return uuid.uuid4().bytes
+            return (uuid.uuid4().bytes,)
         else:
-            return prop.type(uuid.uuid4())
+            return (prop.type(uuid.uuid4()),)
+        # pylint: enable=E1101
 
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
@@ -195,10 +196,21 @@ class AccessPoint(object):
 
         # Create loaders for auto properties
         for name, prop in self.properties.items():
-            if prop.auto and (name not in properties):
-                properties[name] = self._auto_value(prop)
+            if prop.auto and name not in properties:
+                if prop.auto is True:
+                    function = lambda prop: lambda: self._auto_value(prop)
+                elif callable(prop.auto):
+                    function = lambda prop: lambda: prop.auto()
+                elif isinstance(prop.auto, tuple):
+                    function = lambda prop: lambda: prop.auto
+                else:
+                    raise ValueError(
+                        "Default values must be a tuple, not %s. To use a "
+                        "single default value, wrap it in a tuple: (value,)."
+                        % type(prop.auto).__name__)
+                lazy_loaders[name] = function(prop)
 
-        for name, value in lazy_refs.items(): 
+        for name, value in lazy_refs.items():
             lazy_loaders[name] = self._default_loader(properties, value)
 
         item = Item(self, properties, lazy_loaders)

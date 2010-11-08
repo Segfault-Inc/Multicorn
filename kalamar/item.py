@@ -112,7 +112,30 @@ class MutableMultiMapping(MultiMapping, MutableMapping):
 
 
 class MultiDict(MutableMultiMapping):
-    """Concrete subclass of :class:`MutableMultiMapping` based on a dict."""
+    """Concrete subclass of :class:`MutableMultiMapping` based on a dict.
+
+    >>> multidict = MultiDict({"a": 1})
+    >>> multidict["a"]
+    1
+    >>> multidict.getlist("a")
+    (1,)
+    >>> multidict.setlist("a", (1, "eggs", "spam"))
+    >>> multidict["a"]
+    1
+    >>> multidict.getlist("a")
+    (1, 'eggs', 'spam')
+    >>> multidict["a"] = ("a", "b", "c")
+    >>> multidict["a"]
+    ('a', 'b', 'c')
+    >>> multidict.getlist("a")
+    (('a', 'b', 'c'),)
+    >>> "a" in multidict
+    True
+    >>> del multidict["a"]
+    >>> "a" in multidict
+    False
+
+    """
     def __init__(self, inital=()):
         self.__data = {}
         self.update(inital)
@@ -258,8 +281,8 @@ class Item(AbstractItem):
             values = loader()
             if not isinstance(values, tuple):
                 raise ValueError("Lazy loaders must return a tuple, not %s. "
-                    "To return a single value, wrap it in a tuple: (value,)"
-                    % type(values))
+                    "To return a single value, wrap it in a tuple: (value,)."
+                    % type(values).__name__)
             self._loaded_properties.setlist(key, values)
             del self._lazy_loaders[key]
             return values
@@ -269,7 +292,7 @@ class Item(AbstractItem):
             raise KeyError("%s object doesn't support adding new keys." %
                 self.__class__.__name__)
         if self.access_point.properties[key] in \
-            self.access_point.identity_properties  and self.saved:
+            self.access_point.identity_properties and self.saved:
             raise KeyError("Can not modify identity property %r." % key)
         self.modified = True
         values = self.access_point.properties[key].cast(values)

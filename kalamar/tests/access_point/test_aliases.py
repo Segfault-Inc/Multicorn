@@ -24,7 +24,7 @@ Test the aliases backend.
 
 # Nose redefines assert_raises
 # pylint: disable=E0611
-from nose.tools import eq_, assert_raises
+from nose.tools import eq_, assert_raises, raises
 # pylint: enable=E0611
 
 from kalamar import Item
@@ -122,3 +122,13 @@ def test_aliased_memory():
 
     # Old names are masked
     assert_raises(KeyError, site.search, "aliased", {"name": "bar"})
+
+@raises(KeyError)
+def test_bad_key():
+    """Wrapping an inexistant key raises an error when property is asked."""
+    site = make_site(memory_make_ap(), fill=True)
+    underlying_access_point = site.access_points["things"]
+    access_point = Aliases(underlying_access_point, {"test": "unavailable"})
+    site.register("aliased", access_point)
+    item = site.create("aliased", {"id": 1, "name": "spam"})
+    item["test"]

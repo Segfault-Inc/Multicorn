@@ -122,43 +122,90 @@ def to_datetime(value):
 def to_date(value):
     """Cast ``value`` into :class:`datetime.date` object.
 
+    >>> to_date(datetime.date(2010, 8, 4))
+    datetime.date(2010, 8, 4)
+    >>> to_date(datetime.datetime(2010, 8, 4, 0, 0))
+    datetime.date(2010, 8, 4)
     >>> to_date("20100804")
     datetime.date(2010, 8, 4)
     >>> to_date("2010-08-04")
     datetime.date(2010, 8, 4)
+    >>> to_date(10) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ....
+    ValueError: 10 cannot be cast to date.
 
     """
-    if isinstance(value, datetime.date):
-        return value
-    elif isinstance(value, datetime.datetime):
+    if isinstance(value, datetime.datetime):
         return value.date()
+    elif isinstance(value, datetime.date):
+        return value
     elif isinstance(value, basestring):
         value = value.replace("-", "").replace(":", "")
         return datetime.datetime.strptime(value, "%Y%m%d").date()
-    raise ValueError
+    raise ValueError("%s cannot be cast to date." % value)
 
 
 def to_stream(value):
-    """Cast ``value`` into stream-like object."""
+    """Cast ``value`` into stream-like object.
+
+    >>> to_stream(open(__file__)) # doctest: +ELLIPSIS
+    <open file ...>
+    >>> to_stream(10) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ....
+    ValueError: 10 cannot be cast to stream.
+
+    """
     for method in ("read", "write", "close"):
         if not hasattr(value, method):
             # value does not look like a stream
-            raise ValueError
+            raise ValueError("%s cannot be cast to stream." % value)
     return value
 
 
 def to_iter(value):
-    """Cast ``value`` into iterable object."""
-    if hasattr(value, "__iter__"):
-        return value
-    raise ValueError
+    """Cast ``value`` into iterable object.
+
+    >>> to_iter("spam").next()
+    's'
+    >>> to_iter(["a", "b", "c"]).next()
+    'a'
+    >>> to_iter(10) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ....
+    ValueError: 10 cannot be cast to iter.
+
+    """
+    try:
+        return iter(value)
+    except:
+        raise ValueError("%s cannot be cast to iter." % value)
 
 
 def to_type(value, data_type):
-    """Return ``value`` if instance of ``data_type`` else raise error."""
+    """Return ``value`` if instance of ``data_type`` else raise error.
+
+    >>> to_type(1, int)
+    1
+    >>> to_type("eggs", unicode)
+    u'eggs'
+    >>> to_type("1+j", complex)
+    (1+1j)
+    >>> to_type("eggs", float) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ....
+    ValueError: eggs cannot be cast to float.
+
+    """
     if isinstance(value, data_type):
         return value
-    raise ValueError
+    else:
+        try:
+            return data_type(value)
+        except:
+            raise ValueError("%s cannot be cast to %s." % (
+                    value, data_type.__name__))
 
 
 PROPERTY_TYPES = {

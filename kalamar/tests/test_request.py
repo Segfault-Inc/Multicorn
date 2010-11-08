@@ -95,10 +95,16 @@ def test_eq_condition():
     assert_not_equal(condition1, condition4)
     assert_not_equal(condition1, condition5)
 
+    assert_equal(condition1.properties_tree, {"name": condition1.property})
+    assert_equal(condition2.properties_tree, {"name": condition2.property})
+    assert_equal(condition3.properties_tree, {"name": condition3.property})
+    assert_equal(condition4.properties_tree, {"name": condition4.property})
+    assert_equal(condition5.properties_tree, {"bob": condition5.property})
+
 def test_and():
-    """Assert that the eq operator works on And."""
+    """Assert that the operators works on And."""
     condition1 = Condition("name", "<", "tortue")
-    condition2 = Condition("name", "<", "hibou")
+    condition2 = Condition("name", ">=", "hibou")
     condition3 = Condition("name", "<", "tortue")
     
     condition4 = And(condition1, condition2)
@@ -108,10 +114,15 @@ def test_and():
     assert_equal(condition4, condition5)
     assert_not_equal(condition4, condition6)
 
+    # TODO: fix this
+    assert_equal(condition4.properties_tree, None)
+    assert_equal(condition5.properties_tree, None)
+    assert_equal(condition6.properties_tree, None)
+
 def test_or():
-    """Assert that the eq operator works on Or."""
+    """Assert that the operators works on Or."""
     condition1 = Condition("name", "<", "tortue")
-    condition2 = Condition("name", "<", "hibou")
+    condition2 = Condition("name", ">=", "hibou")
     condition3 = Condition("name", "<", "tortue")
     
     condition4 = Or(condition1, condition2)
@@ -121,10 +132,15 @@ def test_or():
     assert_equal(condition4, condition5)
     assert_not_equal(condition4, condition6)
 
+    # TODO: fix this
+    assert_equal(condition4.properties_tree, None)
+    assert_equal(condition5.properties_tree, None)
+    assert_equal(condition6.properties_tree, None)
+
 def test_not():
-    """Assert that the eq operator works on Not."""
+    """Assert that the operators works on Not."""
     condition1 = Condition("name", "<", "tortue")
-    condition2 = Condition("name", "<", "hibou")
+    condition2 = Condition("name", ">=", "hibou")
     condition3 = Condition("name", "<", "tortue")
     
     condition4 = Not(condition1)
@@ -133,3 +149,7 @@ def test_not():
 
     assert_equal(condition4, condition5)
     assert_not_equal(condition4, condition6)
+
+    assert_equal(condition4.properties_tree, {"name": condition1.property})
+    assert_equal(condition5.properties_tree, {"name": condition3.property})
+    assert_equal(condition6.properties_tree, {"name": condition2.property})
