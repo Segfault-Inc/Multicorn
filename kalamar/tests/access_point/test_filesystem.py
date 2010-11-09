@@ -87,7 +87,7 @@ def test_temporary_directory():
     assert not os.path.exists(filename)
     assert not os.path.exists(temp_dir)
 
-def test_filesytem_common():
+def test_filesystem_common():
     """Define a custom test runner for the common tests."""
     def _runner(test):
         """Test runner for ``test``."""

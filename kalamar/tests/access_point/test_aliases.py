@@ -132,3 +132,14 @@ def test_bad_key():
     site.register("aliased", access_point)
     item = site.create("aliased", {"id": 1, "name": "spam"})
     item["test"]
+
+def test_properties():
+    """List the properties of an aliased item."""
+    site = make_site(memory_make_ap(), fill=True)
+    underlying_access_point = site.access_points["things"]
+    access_point = Aliases(underlying_access_point, {"nom": "name"})
+    site.register("aliased", access_point)
+
+    item = site.open("aliased", {"id": 1})
+    item_properties = [prop for prop in item]
+    eq_(set(item_properties), set(("nom", "id")))

@@ -26,6 +26,8 @@ from nose.tools import eq_, raises, assert_raises
 
 from kalamar import MultipleMatchingItems, ItemDoesNotExist
 from kalamar.request import Condition, Or
+from kalamar.access_point.alchemy import Alchemy
+from kalamar.access_point.unicode_stream import UnicodeStream
 from .common import nofill, common
 
 
@@ -54,6 +56,13 @@ def test_search(site):
     eq_(set(item["id"] for item in results), set([2, 3]))
 
 @common
+def test_complex_search(site):
+    """Test a complex search."""
+    condition = Or(Condition("name", "=", "bar"), Condition("id", "<", 2))
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([1, 2, 3]))
+
+@common
 def test_open_one(site):
     """Standard ``open``."""
     result = site.open("things", {"name": u"foo"})
@@ -61,8 +70,9 @@ def test_open_one(site):
 
 @common
 def test_modify_identity(site):
+    """Test the identity modification of an item."""
     def change_item_id(item):
-        item['id'] = 500
+        item["id"] = 500
     item = site.open("things", {"name": u"foo"})
     assert_raises(KeyError, change_item_id, item)
     item = site.create("things", {"name": u"bar", "id": 400})
@@ -108,6 +118,23 @@ def test_modify(site):
     item.save()
     item = site.open("things", {"name": u"spam"})
     eq_(item["id"], identifier)
+
+@common
+def test_modify_list(site):
+    """Edition of an item with a list of values."""
+    test_modify_list.tests.append(site)
+    item = site.open("things", {"name": u"foo"})
+    identifier = item["id"]
+    item.setlist("name", ("spam", "egg"))
+    item.save()
+    item = site.open("things", {"name": u"spam"})
+    eq_(item["id"], identifier)
+    eq_(item["name"], u"spam")
+    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
+        # Try multiple values for access points supporting multiple values
+        eq_(item.getlist("name"), (u"spam", u"egg"))
+
+test_modify_list.tests = []
 
 @common
 def test_delete(site):

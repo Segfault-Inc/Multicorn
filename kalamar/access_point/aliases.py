@@ -103,8 +103,8 @@ class Aliases(AccessPointWrapper):
             # pylint: disable=E1103
             props = MultiDict()
             for key in properties:
-                props.setlist(self.aliases.get(key, key), 
-                    properties.getlist(key))
+                props.setlist(
+                    self.aliases.get(key, key), properties.getlist(key))
             # pylint: enable=E1103
         else:
             props = dict((self.aliases.get(key, key), value)

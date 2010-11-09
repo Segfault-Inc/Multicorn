@@ -42,6 +42,7 @@ def test_alchemy_common():
         finally:
             access_point._table.drop()
             Alchemy.__metadatas = {}
+
     for test in COMMON_TESTS:
         yield _runner, test
 
