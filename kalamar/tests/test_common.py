@@ -122,7 +122,6 @@ def test_modify(site):
 @common
 def test_modify_list(site):
     """Edition of an item with a list of values."""
-    test_modify_list.tests.append(site)
     item = site.open("things", {"name": u"foo"})
     identifier = item["id"]
     item.setlist("name", ("spam", "egg"))
@@ -133,8 +132,6 @@ def test_modify_list(site):
     if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
         # Try multiple values for access points supporting multiple values
         eq_(item.getlist("name"), (u"spam", u"egg"))
-
-test_modify_list.tests = []
 
 @common
 def test_delete(site):
