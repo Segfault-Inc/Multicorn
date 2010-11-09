@@ -26,7 +26,6 @@ Access point storing items in a filesystem.
 import os.path
 import re
 import io
-import shutil
 
 from . import AccessPoint
 from ..item import Item
@@ -129,6 +128,6 @@ class FileSystem(AccessPoint):
         content = item[self.content_property]
         if hasattr(content, "seek"):
             content.seek(0)
-        with open(self._item_filename(item), "wb") as file_descriptor:
-            shutil.copyfileobj(content, file_descriptor)
+        with Stream(self._item_filename(item)) as file_descriptor:
+            file_descriptor.write(content.read())
         item.saved = True

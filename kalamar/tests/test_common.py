@@ -25,6 +25,7 @@ Common tests run against all access points.
 from nose.tools import eq_, raises, assert_raises
 
 from kalamar import MultipleMatchingItems, ItemDoesNotExist
+from kalamar.request import Condition, Or
 from .common import nofill, common
 
 
@@ -99,6 +100,16 @@ def test_open_zero_default(site):
     eq_(site.open("things", {"name": u"nonexistent"}, "spam"), "spam")
 
 @common
+def test_modify(site):
+    """Standard edition of an item."""
+    item = site.open("things", {"name": u"foo"})
+    identifier = item["id"]
+    item["name"] = "spam"
+    item.save()
+    item = site.open("things", {"name": u"spam"})
+    eq_(item["id"], identifier)
+
+@common
 def test_delete(site):
     """Test a simple delete."""
     item = site.open("things", {"name": u"foo"})
@@ -110,6 +121,19 @@ def test_delete_many(site):
     """Test a multiple delete."""
     site.delete_many("things", {"name": u"bar"})
     eq_(list(site.search("things", {"name": u"bar"})), [])
+
+@common
+def test_delete_many_id(site):
+    """Test a multiple delete using a id-based request."""
+    site.delete_many("things", {"id": 1})
+    eq_(list(site.search("things", {"id": 1})), [])
+
+@common
+def test_delete_many_complex(site):
+    """Test a multiple delete using complex request."""
+    condition = Or(Condition("id", "=", 1), Condition("id", "=", 2))
+    site.delete_many("things", condition)
+    eq_(list(site.search("things", condition)), [])
 
 @common
 def test_eq(site):

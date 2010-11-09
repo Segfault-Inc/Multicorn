@@ -25,7 +25,7 @@ Test the filesystem backend.
 import os.path
 import tempfile
 import shutil
-from nose.tools import eq_
+from nose.tools import eq_, raises
 
 import kalamar
 from kalamar.property import Property
@@ -102,3 +102,11 @@ def test_filesytem_common():
 
     for test in COMMON_TESTS:
         yield _runner, test
+
+@raises(ValueError)
+def test_filesystem_bad_pattern():
+    """Creating an access point with a bad pattern raises an exception."""
+    root = os.path.dirname(os.path.dirname(kalamar.__file__))
+    FileSystem(
+        root, "*/tests/access_point/*/test_*.py*",
+        ["package", ("module", Property(unicode)), "extension"])
