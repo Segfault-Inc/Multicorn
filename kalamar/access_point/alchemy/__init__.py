@@ -124,7 +124,7 @@ class Alchemy(AccessPoint):
         """Initialize the Alchemy engine on first access."""
         metadata = Alchemy.__metadatas.get(self.url, None)
         if not metadata:
-            engine = create_engine(self.url, echo=True)
+            engine = create_engine(self.url, echo=False)
             metadata = MetaData()
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
