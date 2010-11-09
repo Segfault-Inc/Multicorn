@@ -24,11 +24,15 @@ Test the Property class.
 
 from nose.tools import eq_, raises
 
-from .access_point import test_memory
-from .common import make_site
+from kalamar.access_point.memory import Memory
 from kalamar.property import Property, MissingRemoteAP, MissingRemoteProperty, \
     AlreadyRegistered
+from .common import make_site
 
+
+def memory_make_ap():
+    """Create a simple access point."""
+    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
 
 # Some properties are just used to test equality
 # pylint: disable=C0103
@@ -39,7 +43,7 @@ from kalamar.property import Property, MissingRemoteAP, MissingRemoteProperty, \
 def test_property_creation():
     """Test the creation of access point properties."""
     remote_ap = make_site(
-        test_memory.make_ap(), fill=True).access_points["things"]
+        memory_make_ap(), fill=True).access_points["things"]
     prop = Property(unicode)
     eq_(prop.type, unicode)
     prop = Property(
@@ -55,7 +59,7 @@ def test_property_creation_missing_remote_ap():
 def test_property_creation_missing_remote_property():
     """Check that a property missing for an access point raises an exception."""
     remote_ap = make_site(
-        test_memory.make_ap(), fill=True).access_points["things"]
+        memory_make_ap(), fill=True).access_points["things"]
     prop = Property(float, relation="one-to-many", remote_ap=remote_ap)
 
 @raises(RuntimeError)
@@ -69,10 +73,10 @@ def test_already_registered():
     prop = Property(unicode)
 
     remote_ap = make_site(
-        test_memory.make_ap(), fill=True).access_points["things"]
+        memory_make_ap(), fill=True).access_points["things"]
     remote_ap.register("test", prop)
     remote_ap = make_site(
-        test_memory.make_ap(), fill=True).access_points["things"]
+        memory_make_ap(), fill=True).access_points["things"]
     remote_ap.register("eggs", prop)
 
 # pylint: enable=C0103

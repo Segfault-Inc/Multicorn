@@ -32,7 +32,6 @@ from kalamar.property import Property
 from kalamar.request import Condition, And, Or, Not
 from kalamar.access_point.memory import Memory
 from kalamar.access_point.aliases import AliasedItem, Aliases
-from .test_memory import make_ap as memory_make_ap
 from ..common import make_site, run_common
 
 
@@ -50,6 +49,10 @@ def make_ap():
 def test_alias():
     """Launch common tests for aliases."""
     return make_ap()
+
+def memory_make_ap():
+    """Create a simple access point."""
+    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
 
 def test_aliased_item():
     """Test aliases for various items."""

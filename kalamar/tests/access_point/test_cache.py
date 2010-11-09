@@ -40,7 +40,7 @@ def make_ap():
 
 @run_common
 def test_cache():
-    """Return a cache access point for the common set of tests"""
+    """Launch common tests for cache."""
     return make_ap()
 
 def test_without_underlying_ap():

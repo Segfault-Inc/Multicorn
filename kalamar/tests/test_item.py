@@ -22,15 +22,20 @@ Test the Item class.
 
 """
 
-from .access_point import test_memory
+from kalamar.access_point.memory import Memory
+from kalamar.property import Property
 from .common import make_site
 
+
+def memory_make_ap():
+    """Create a simple access point."""
+    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
 
 def test_modification_tracking():
     """Test the modification tracking system."""
     # Some statements seem useless here, but they are useful
     # pylint: disable=W0104
-    site = make_site(test_memory.make_ap(), fill=True)
+    site = make_site(memory_make_ap(), fill=True)
     item = tuple(site.search("things"))[0]
     assert not item.modified
     item["name"] = "spam"
