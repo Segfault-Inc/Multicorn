@@ -183,6 +183,12 @@ class RequestProperty(object):
     def __hash__(self):
         return hash(self.name)
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.__hash__() == other.__hash__()
+
+
+
 
 class ComposedRequestProperty(RequestProperty):
     """Nested property from an item.
@@ -232,7 +238,8 @@ class _AndOr(Request):
             """Merge two properties trees into one."""
             for name, tree_a_values in tree_a.items():
                 tree_b_values = tree_b.setdefault(name, {})
-                tree_b[name] = merge_properties(tree_b_values, tree_a_values)
+                if isinstance(tree_b_values, dict):
+                    tree_b[name] = merge_properties(tree_b_values, tree_a_values)
             return tree_b
         return reduce(merge_properties, [
                 sub.properties_tree for sub in self.sub_requests] or [{}])

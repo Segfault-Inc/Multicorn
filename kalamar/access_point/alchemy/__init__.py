@@ -33,6 +33,7 @@ import sqlalchemy.sql.expression
 
 from . import querypatch
 from .. import AccessPoint
+from ...item import Item
 from ...request import Condition, And, Or, Not
 from ...query import QueryChain
 from ...property import Property
@@ -90,7 +91,6 @@ class Alchemy(AccessPoint):
             kwargs["primary_key"] = True
         if prop.relation == "many-to-one":
             foreign_ap = prop.remote_ap
-            prop.foreign_ap_obj = foreign_ap
             #Transpose the kalamar relation in alchemy if possible
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
@@ -111,7 +111,8 @@ class Alchemy(AccessPoint):
                     SQLALCHEMYTYPES.get(foreign_prop.type, None)
                 column = Column(prop.column_name, alchemy_type, **kwargs)
         elif prop.relation == "one-to-many":
-            column = None
+            #TODO manage multiple foreign-key
+            column = self.identity_properties[0].column
         else:
             column = Column(prop.column_name, alchemy_type, **kwargs)
         prop.column = column
@@ -128,8 +129,8 @@ class Alchemy(AccessPoint):
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
-        columns = [self._column_from_prop(prop) for prop in
-                   self.properties.values()]
+        columns = set([self._column_from_prop(prop) for prop in
+                   self.properties.values()])
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable:
             table.create()
@@ -156,10 +157,14 @@ class Alchemy(AccessPoint):
             return condition.alchemy_function(alchemy_conditions)
         else:
             column = self.__get_column(condition.property.name)
+            value = condition.value
+            if value.__class__ == Item:
+                #TODO: manage multiple foreign key
+                value = value.identity.condition.value
             if condition.operator == "=":
-                return column == condition.value
+                return column == value
             else:
-                return column.op(condition.operator)(condition.value)
+                return column.op(condition.operator)(value)
         
     def __item_from_result(self, result):
         """Creates an item from a result line."""

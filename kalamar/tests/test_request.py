@@ -27,7 +27,7 @@ Test the request module.
 from nose.tools import assert_equal, assert_not_equal
 # pylint: enable=E0611
 
-from kalamar.request import Condition, Not, And, Or
+from kalamar.request import Condition, Not, And, Or, RequestProperty
 
 
 def test_hash_condition():
@@ -115,9 +115,9 @@ def test_and():
     assert_not_equal(condition4, condition6)
 
     # TODO: fix this
-    assert_equal(condition4.properties_tree, None)
-    assert_equal(condition5.properties_tree, None)
-    assert_equal(condition6.properties_tree, None)
+    assert_equal(condition4.properties_tree, {'name': condition1.property})
+    assert_equal(condition5.properties_tree, {'name': condition1.property})
+    assert_equal(condition6.properties_tree, {'name':condition1.property})
 
 def test_or():
     """Assert that the operators works on Or."""
@@ -132,10 +132,11 @@ def test_or():
     assert_equal(condition4, condition5)
     assert_not_equal(condition4, condition6)
 
+
     # TODO: fix this
-    assert_equal(condition4.properties_tree, None)
-    assert_equal(condition5.properties_tree, None)
-    assert_equal(condition6.properties_tree, None)
+    assert_equal(condition4.properties_tree, {'name' : condition1.property})
+    assert_equal(condition5.properties_tree, {'name' : condition1.property})
+    assert_equal(condition6.properties_tree, {'name' : condition1.property})
 
 def test_not():
     """Assert that the operators works on Not."""
