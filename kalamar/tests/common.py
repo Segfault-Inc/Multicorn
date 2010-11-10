@@ -66,19 +66,85 @@ def common(function):
     return function
 
 
-def run_common(make_ap):
-    """Decorator over a function that return an instance of access point.
+def run_common(function):
+    """``function`` decorator asking to call common tests for an access point.
 
-    If that function meet the noses requirements to be tested, this
-    access_point instance will be tested over all common tests.
+    When called, ``function`` can return one, two or three values:
+
+    - An access point
+    - A test runner (``_default_runner`` used if not given)
+    - A test title (access point type used if not given)
+
+    If that function meets the nose requirements to be tested (for example,
+    contains ``test`` in its name), this access point instance will be tested
+    over all common tests.
 
     """
+    # This function is magic, so highly commented.
+
+    # First of all, try to find if calling function returns 1, 2 or 3 values.
+    # 1st value (make_ap): function called to create the access point.
+    # 2nd value (runner): function called to create the site and run the test.
+    # 3rd value (title): string used as a prefix to the test title.
+    runner, title = None, None
+    values = function()
+    if isinstance(values, tuple):
+        # 2 or 3 values, the access point is the first value returned by
+        # function(). We create a lambda function, called make_ap, calling
+        # function() and returning the first value (the access point).
+        make_ap = lambda: function()[0]
+
+        # runner is the second value returned by function().
+        runner = values[1]
+        if len(values) == 3:
+            # 3 values, title is the third one.
+            title = values[2]
+    else:
+        # 1 value, function is make_ap.
+        make_ap = function
+
     def test_run():
         """Create site and yield testing function for all common tests."""
+        # This is a test generator, yielding a tuple containing a test runner
+        # and a test.  For each common test, we generate a unique runner with a
+        # unique description containing the access point type and the common
+        # test description.  In other words, generated tests are the cartesian
+        # product of common tests and tested access points.
         for test in COMMON_TESTS:
-            run_test = lambda test: make_site(
-                make_ap(), fill=not hasattr(test, "nofill"))
-            yield run_test, test
+            # Try to get an access point, may be useless if a runner and a
+            # title are given.
+            access_point = make_ap() if make_ap else None
 
-    update_wrapper(test_run, make_ap)
+            # The runner can be the given runner (if 2+ values returned by
+            # ``function``) of the default one (if 1 value is returned).  In
+            # both cases, we must be sure that the function is unique in order
+            # to give it a unique description.  To have a unique function, we
+            # use a lambda function, even when runner is given.
+            if runner:
+                # Lambda function calling given runner.
+                _runner = lambda test: runner(test)
+            else:
+                # Default function calling test with a site created from
+                # access_point.
+                _runner = lambda test: test(
+                    make_site(access_point, fill=not hasattr(test, "nofill")))
+
+            # The description is given if the test fails.  Having the access
+            # point and the test description is very useful for debugging.
+            _runner.description = "%s: %s" % (
+                title or type(access_point).__name__, test.__doc__)
+
+            # Finally yield the runner and the test, tranforming test_run into
+            # a possible test generator.
+            yield _runner, test
+
+    # test_run will be registered to nose as possibly tested test generator,
+    # thanks to the attributes of ``function`` (mainly its name and its place
+    # in the test module).  We need to be sure that test_run looks like
+    # function in order to be correctly detected.
+    update_wrapper(test_run, function)
+
+    # The run_common decorator returns test_run, that is a test generator.
+    # Thus, in the access point test file, calling function with a run_common
+    # decorator yields tests that are detected by nose.
     return test_run

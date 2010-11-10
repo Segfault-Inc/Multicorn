@@ -31,7 +31,7 @@ import kalamar
 from kalamar.property import Property
 from kalamar.access_point.filesystem import FileSystem
 from kalamar.access_point.unicode_stream import UnicodeStream
-from ..common import make_site, COMMON_TESTS
+from ..common import run_common, make_site
 
 
 class TemporaryDirectory(object):
@@ -87,22 +87,6 @@ def test_temporary_directory():
     assert not os.path.exists(filename)
     assert not os.path.exists(temp_dir)
 
-def test_filesystem_common():
-    """Define a custom test runner for the common tests."""
-    def _runner(test):
-        """Test runner for ``test``."""
-        with TemporaryDirectory() as temp_dir:
-            access_point = FileSystem(temp_dir, "*.txt", 
-                    [("id", Property(int))], 
-                    content_property="name")
-            access_point = UnicodeStream(access_point, "name", "utf-8")
-            site = make_site(access_point,
-                    fill=not hasattr(test, "nofill"))
-            test(site)
-
-    for test in COMMON_TESTS:
-        yield _runner, test
-
 @raises(ValueError)
 def test_filesystem_bad_pattern():
     """Creating an access point with a bad pattern raises an exception."""
@@ -110,3 +94,20 @@ def test_filesystem_bad_pattern():
     FileSystem(
         root, "*/tests/access_point/*/test_*.py*",
         ["package", ("module", Property(unicode)), "extension"])
+
+
+# Common tests
+
+def runner(test):
+    """Test runner for ``test``."""
+    with TemporaryDirectory() as temp_dir:
+        access_point = FileSystem(
+            temp_dir, "*.txt", [("id", Property(int))], content_property="name")
+        access_point = UnicodeStream(access_point, "name", "utf-8")
+        site = make_site(access_point, fill=not hasattr(test, "nofill"))
+        test(site)
+
+@run_common
+def test_filesystem_common():
+    """Define a custom test runner for the common tests."""
+    return None, runner, "Filesystem"

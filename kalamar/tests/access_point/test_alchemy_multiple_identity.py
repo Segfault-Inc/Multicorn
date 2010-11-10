@@ -26,14 +26,13 @@ Test the alchemy backend on an sqlite base with multiple primary keys.
 
 import unittest
 from datetime import date
-from nose.tools import eq_, nottest
+from nose.tools import eq_
 
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 
 
-@nottest
-def make_testtable():
+def make_table():
     """Return an access point with multiple identities."""
     Alchemy.__metadatas = {}
     firstname = AlchemyProperty(unicode, column_name="firstname")
@@ -92,7 +91,7 @@ class TestAlchemy(unittest.TestCase):
     # pylint: disable=C0103
     def setUp(self):
         self.site = Site()
-        self.access_point = make_testtable()
+        self.access_point = make_table()
         self.site.register("test", self.access_point) 
         self.items = []
         item = self.site.create(

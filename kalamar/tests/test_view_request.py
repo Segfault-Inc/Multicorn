@@ -22,7 +22,7 @@ Test the view request algorithm.
 
 """
 
-from nose.tools import eq_, nottest
+from nose.tools import eq_
 
 from kalamar.access_point.memory import Memory
 from kalamar.property import Property
@@ -30,8 +30,7 @@ from kalamar.site import Site
 from kalamar.item import Item
 
 
-@nottest
-def make_test_ap():
+def make_first_ap():
     """Build a Memory AP having a one-to-many relationship to another one."""
     one_to_many = Property(
         tuple, relation="one-to-many", remote_ap="test_remote_ap",
@@ -40,20 +39,18 @@ def make_test_ap():
         {"id": Property(int), "name": Property(unicode), 
          "manies": one_to_many}, "id")
 
-@nottest
-def make_test_second_ap():
+def make_second_ap():
     """Build a Memory AP having a many-to-one relationship to another one."""
     remote_prop = Property(Item, relation="many-to-one", remote_ap="test_ap")
     return Memory(
         {"id": Property(int), "label": Property(unicode), 
          "remote": remote_prop}, "id")
 
-@nottest
-def make_test_site():
+def make_view_site():
     """Initialize a site with 2 access points and populate it with test data."""
     site = Site()
-    site.register("test_ap", make_test_ap())
-    site.register("test_remote_ap", make_test_second_ap())
+    site.register("test_ap", make_first_ap())
+    site.register("test_remote_ap", make_second_ap())
     my_item = site.create("test_ap", {"id": 3, "name": "truc"})
     my_second_item = site.create("test_ap", {"id": 10, "name": "truc"})
     my_item.save()
@@ -74,7 +71,7 @@ def make_test_site():
 
 def test_simplest_view():
     """Test simple view requests."""
-    site = make_test_site()
+    site = make_view_site()
     aliases = {"id_select": "id",
                "name_select": "label",
                "remote_select": "remote.name"}
@@ -88,7 +85,7 @@ def test_simplest_view():
     
 def test_one_to_many():
     """Test a one to many request."""
-    site = make_test_site()
+    site = make_view_site()
     aliases = {"local_id": "id",
                "local_name": "name",
                "remote_label": "manies.label"}

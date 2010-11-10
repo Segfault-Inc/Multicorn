@@ -23,38 +23,22 @@ Test the alchemy backend on an sqlite base.
 """
 
 import unittest
-from nose.tools import eq_, nottest
+from nose.tools import eq_
 
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
-from ..common import make_site, COMMON_TESTS
+from ..common import make_site, run_common, COMMON_TESTS
 
 
-def test_alchemy_common():
-    """Define a custom test runner for the common tests."""
-    def _runner(test):
-        """Test runner for ``test``."""
-        access_point = make_testtable()
-        try:
-            site = make_site(access_point,
-                fill=not hasattr(test, "nofill"))
-            test(site)
-        finally:
-            access_point._table.drop()
-            Alchemy.__metadatas = {}
-
-    for test in COMMON_TESTS:
-        yield _runner, test
-
-@nottest
-def make_testtable():
-    """Create a simple access point."""
+def make_ap():
+    """Create a simple Alchemy access point."""
     id_property = AlchemyProperty(int, column_name="id")
     name = AlchemyProperty(unicode, column_name="name")
     access_point = Alchemy(
         "sqlite:///", "test", {"id": id_property, "name": name},
         ["id"], True)
     return access_point
+
 
 class TestAlchemy(unittest.TestCase):
     """Class defining some simple tests on an Alchemy access point."""
@@ -91,7 +75,7 @@ class TestAlchemy(unittest.TestCase):
     # pylint: disable=C0103
     def setUp(self):
         self.site = Site()
-        self.site.register("test", make_testtable())
+        self.site.register("test", make_ap())
         self.items = []
         item = self.site.create("test", {"id": 1, "name": u"Test"})
         self.items.append(item)
@@ -107,3 +91,22 @@ class TestAlchemy(unittest.TestCase):
             access_point._table.drop()
         Alchemy.__metadatas = {}
     # pylint: enable=C0103
+
+
+# Common tests
+
+def runner(test):
+    """Test runner for ``test``."""
+    access_point = make_ap()
+    try:
+        site = make_site(access_point,
+            fill=not hasattr(test, "nofill"))
+        test(site)
+    finally:
+        access_point._table.drop()
+        Alchemy.__metadatas = {}
+
+@run_common
+def test_alchemy_common():
+    """Define a custom test runner for the common tests."""
+    return make_ap(), runner

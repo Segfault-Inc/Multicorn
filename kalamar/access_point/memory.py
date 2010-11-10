@@ -51,7 +51,6 @@ class Memory(AccessPoint):
         # build a temporary list as we can not delete (change the dict size)
         # during iteration
         matching_items = list(self.search(request))
-        print(request)
         for item in matching_items:
             self.delete(item)
 

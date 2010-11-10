@@ -23,7 +23,7 @@ Test the view request algorithm.
 """
 
 import unittest
-from nose.tools import eq_, nottest
+from nose.tools import eq_
 
 from kalamar.request import Condition, And, Or, Not
 from kalamar.access_point.memory import Memory

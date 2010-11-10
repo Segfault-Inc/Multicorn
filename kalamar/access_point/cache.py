@@ -23,6 +23,8 @@ Access point caching properties.
 
 """
 
+from functools import update_wrapper
+
 from . import AccessPointWrapper
 from ..item import ItemWrapper
 
@@ -36,11 +38,7 @@ def _invalidate_cache(function):
         cache_access_point._cache.clear()
         return function(cache_access_point, *args, **kwargs)
         # pylint: enable=W0212
-    # Redefining documentation and name of the wrappers
-    # pylint: disable=W0622
-    wrapper.__name__ = function.__name__
-    wrapper.__doc__ = function.__doc__
-    # pylint: enable=W0622
+    update_wrapper(wrapper, function)
     return wrapper
 
 
