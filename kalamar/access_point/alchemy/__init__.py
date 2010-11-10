@@ -65,13 +65,14 @@ class Alchemy(AccessPoint):
     __metadatas = {}
 
     def __init__(self, url, tablename, properties, identity_properties, 
-                 createtable=False):
+                 createtable=False, engine_opts = None):
         super(Alchemy, self).__init__(properties, identity_properties)
         self.url = url
         self.tablename = tablename
         self.createtable = createtable
         self.remote_alchemy_props = []
         self.metadata = None
+        self.engine_opts = engine_opts or {}
         for name, prop in self.properties.items():
             prop.name = name 
             if prop.relation is None:
@@ -124,7 +125,7 @@ class Alchemy(AccessPoint):
         """Initialize the Alchemy engine on first access."""
         metadata = Alchemy.__metadatas.get(self.url, None)
         if not metadata:
-            engine = create_engine(self.url, echo=False)
+            engine = create_engine(self.url, **self.engine_opts)
             metadata = MetaData()
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
@@ -268,10 +269,13 @@ class Alchemy(AccessPoint):
             if not alchemy_query.c:
                 for name, prop in self.properties.items():
                     alchemy_query.append_column(prop.column.label(name))
+            start = datetime.now()
             result = alchemy_query.execute()
         else:
             result = self.search(And())
+        #In the generic case, reduce the conversational overhead.
+        #If someone uses only a subset of the result, then build the query
+        #accordingly!
         result = (dict(line) for line in result)
-        result = list(result)
         cants = cants or QueryChain([])
         return cants(result)
