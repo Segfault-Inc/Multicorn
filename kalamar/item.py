@@ -293,14 +293,13 @@ class Item(AbstractItem):
         if self.access_point.properties[key] in \
             self.access_point.identity_properties and self.saved:
             raise KeyError("Can not modify identity property %r." % key)
+
         self.modified = True
         values = self.access_point.properties[key].cast(values)
-
         self._loaded_properties.setlist(key, values)
-        try:
+
+        if key in self._lazy_loaders:
             del self._lazy_loaders[key]
-        except KeyError:
-            pass
 
     def save(self):
         """Save the item."""
