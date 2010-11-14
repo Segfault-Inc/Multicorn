@@ -234,7 +234,6 @@ class Item(AbstractItem):
         needed. When you have only one value, wrap it in a tuple like this:
         `(value,)`
     
-
     Every property defined in the access point must be given in one of
     ``properties`` or ``lazy_loaders``, but not both.
 
