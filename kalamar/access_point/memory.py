@@ -24,7 +24,7 @@ Access point storing items in memory. Mainly useful for testing.
 """
 
 from . import AccessPoint
-from ..item import Item
+from ..item import Item, MultiDict
 
 
 class Memory(AccessPoint):
@@ -55,4 +55,4 @@ class Memory(AccessPoint):
             self.delete(item)
 
     def save(self, item):
-        self._store[item[self._id_property]] = dict(item)
+        self._store[item[self._id_property]] = MultiDict(item)
