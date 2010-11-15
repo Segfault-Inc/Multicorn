@@ -78,8 +78,8 @@ def normalize(properties, request):
     def _inner_normalize(request):
         """Recursively normalize ``request``."""
         if isinstance(request, (And, Or)):
-            requests = (_inner_normalize(sub_request)
-                        for sub_request in request.sub_requests)
+            requests = [_inner_normalize(sub_request)
+                        for sub_request in request.sub_requests]
             return request.__class__(*requests)
         elif isinstance(request, Not):
             return Not(_inner_normalize(request.sub_request))
