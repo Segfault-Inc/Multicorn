@@ -328,4 +328,5 @@ class ItemWrapper(AbstractItem):
     
     def __getattr__(self, name):
         """Default to underlying item for all other methods and attributes."""
-        return getattr(self.wrapped_item, name)
+        return getattr(self.wrapped_item, name,\
+                super(ItemWrapper, self).__getattr__(name))
