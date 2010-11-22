@@ -104,7 +104,10 @@ class AccessPoint(object):
 
         """
         for i, cond in enumerate(conditions):
-            yield utils.Condition(cond.property_name or self.property_names[i],
+            if isinstance(cond, utils.ConditionList):
+                yield cond
+            else:
+                yield utils.Condition(cond.property_name or self.property_names[i],
                                   cond.operator or utils.operator.eq,
                                   cond.value)
 
