@@ -25,11 +25,18 @@ Kalamar request objects and operator helpers.
 
 from operator import eq, ne, gt, ge, lt, le
 from abc import ABCMeta, abstractmethod
+import re
 
+def re_match(string, pattern):
+    """Return if ``string`` matches ``pattern``."""
+    return bool(re.search(pattern, string))
 
-OPERATORS = {"=": eq, "!=": ne, ">": gt, ">=": ge, "<": lt, "<=": le}
+def re_not_match(string, pattern):
+    """Return if ``string" does not match ``pattern``."""
+    return not re.search(pattern, string)
+
+OPERATORS = {"=": eq, "!=": ne, ">": gt, ">=": ge, "<": lt, "<=": le, '~=': re_match, '~!=': re_not_match}
 REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
-
 
 class OperatorNotAvailable(KeyError):
     """Operator is unknown or not managed."""
@@ -37,12 +44,12 @@ class OperatorNotAvailable(KeyError):
 
 def make_request_property(property_name):
     """Return an instance of RequestProperty
-    
+
     >>> make_request_property("a")
     a
     >>> make_request_property("a.id")
     a.id
-    
+
     """
     properties = property_name.split(".")
     properties.reverse()
@@ -71,7 +78,7 @@ def make_request(request):
 
 def normalize(properties, request):
     """Convert the condition values.
-    
+
     Raises an exception if the property is not supplied or if it can't be cast.
 
     """
@@ -100,7 +107,7 @@ class Request(object):
     """Abstract class for kalamar requests."""
     __metaclass__ = ABCMeta
     _hash_attributes = ""
-    
+
     @abstractmethod
     def test(self, item):
         """Return if ``item`` matches the request."""
@@ -118,7 +125,7 @@ class Request(object):
     @abstractmethod
     def properties_tree(self):
         """Tree of properties concerned by this request.
-        
+
         >>> cond1 = Condition("test.foo", "=", "a")
         >>> cond2 = Condition("test.bar.baz", "=", "b")
         >>> cond3 = Condition("test.bar.bazbaz", "=", "b")
@@ -147,7 +154,7 @@ class Condition(Request):
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
             self.__class__.__name__, self.property, self.operator, self.value)
-    
+
     def test(self, item):
         """Return if ``item`` matches the request."""
         return self.operator_func(self.property.get_value(item), self.value)
@@ -194,7 +201,7 @@ class ComposedRequestProperty(RequestProperty):
     """Nested property from an item.
 
     A nested property is of the form ``foo.bar.baz``.
-    
+ 
     """
     def __init__(self, name, child_property, inner=True):
         super(ComposedRequestProperty, self).__init__(name)
@@ -222,12 +229,12 @@ class _AndOr(Request):
         # A frozenset in unordered: And(a, b) == And(b, a)
         # and its elements are unique: And(a, a) = And(a)
         self.sub_requests = frozenset(sub_requests)
-    
+
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
             ", ".join(repr(request) for request in self.sub_requests))
-    
+
     @abstractmethod
     def test(self, item):
         raise NotImplementedError
@@ -280,7 +287,7 @@ class Not(Request):
     def __init__(self, sub_request):
         super(Not, self).__init__()
         self.sub_request = sub_request
-    
+
     def __repr__(self):
         return "Not(%r)" % self.sub_request
 

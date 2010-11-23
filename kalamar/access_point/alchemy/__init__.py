@@ -162,6 +162,7 @@ class Alchemy(AccessPoint):
             if value.__class__ == Item:
                 #TODO: manage multiple foreign key
                 value = value.identity.condition.value
+            #TODO: enhance the condition handling to manage '~=' on other systems
             if condition.operator == "=":
                 return column == value
             else:
@@ -218,7 +219,7 @@ class Alchemy(AccessPoint):
         """Transform an item to a dict so that it can be saved."""
         item_dict = {}
         for name, prop in self.properties.items():
-            if prop.auto:
+            if prop.auto and item[name] is None:
                 pass
             elif prop.relation == 'one-to-many':
                 pass
@@ -264,7 +265,7 @@ class Alchemy(AccessPoint):
         alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
-            alchemy_query = can.to_alchemy(alchemy_query, self, 
+            alchemy_query = can.to_alchemy(alchemy_query, self,
                 self.properties)
             if not alchemy_query.c:
                 for name, prop in self.properties.items():
