@@ -24,6 +24,7 @@ Access point storing items in a filesystem.
 """
 
 import os.path
+import os
 import re
 import io
 
@@ -127,7 +128,14 @@ class FileSystem(AccessPoint):
     def save(self, item):
         content = item[self.content_property]
         if hasattr(content, "seek"):
-            content.seek(0)
+            try:
+                content.seek(0)
+            except:
+                pass
+        filename = self._item_filename(item)
+        directory = os.path.dirname(filename)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         with Stream(self._item_filename(item)) as file_descriptor:
             file_descriptor.write(content.read())
         item.saved = True

@@ -25,6 +25,7 @@ from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect
 
 from sqlalchemy.sql import expression
+from kalamar.item import Item
 
 
 # Monky-patchers are allowed to skip some arguments
@@ -74,6 +75,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
 
     def to_alchemy_condition(condition):
         """Converts a kalamar condition to an sqlalchemy condition."""
+        #TODO : merge this with alchemy.to_alchemy_condition
         if isinstance(condition, (And, Or, Not)):
             alchemy_conditions = tuple(
                 to_alchemy_condition(sub_condition)
@@ -81,10 +83,16 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
             return condition.alchemy_function(alchemy_conditions)
         else:
             column = properties[condition.property.name].column
+            value = condition.value
+            if value.__class__ == Item:
+                #TODO: manage multiple foreign key
+                value = value.identity.conditions.values()[0]
             if condition.operator == "=":
-                return column == condition.value
+                return column == value
+            elif condition.operator == '!=':
+                return column != value
             else:
-                return column.op(condition.operator)(condition.value)
+                return column.op(condition.operator)(value)
 
     def build_join(tree, properties, alchemy_query):
         """Builds the necessary joins for a condition."""

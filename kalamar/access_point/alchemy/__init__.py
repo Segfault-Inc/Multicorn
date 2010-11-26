@@ -161,10 +161,12 @@ class Alchemy(AccessPoint):
             value = condition.value
             if value.__class__ == Item:
                 #TODO: manage multiple foreign key
-                value = value.identity.condition.value
+                value = value.identity.conditions.values()[0]
             #TODO: enhance the condition handling to manage '~=' on other systems
             if condition.operator == "=":
                 return column == value
+            elif condition.operator == '!=':
+                return column != value
             else:
                 return column.op(condition.operator)(value)
         
@@ -174,7 +176,7 @@ class Alchemy(AccessPoint):
         props = {}
         for name, prop in self.properties.items():
             if prop.relation == "one-to-many":
-                lazy_props[name] = None
+                lazy_props[name] = self._default_loader(self.properties, prop)
             elif prop.relation == "many-to-one" and result[name] is not None:
                 lazy_props[name] = self._many_to_one_lazy_loader(prop, 
                         result[name])
