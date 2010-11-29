@@ -50,7 +50,7 @@ class TestHeterogeneous(unittest.TestCase):
     def make_memory_ap(self):
         """Build a memory access point referenced by another access_point."""
         access_point = Memory(
-            {"id": Property(int), "label": Property(unicode)}, "id")
+            {"id": Property(int), "label": Property(unicode)}, ("id",))
         return access_point
 
     def test_view(self):

@@ -36,7 +36,7 @@ from ..common import run_common, make_site
 
 def make_ap():
     """Build a simple cache access point."""
-    return Cache(Memory({"id": Property(int), "name": Property(unicode)}, "id"))
+    return Cache(Memory({"id": Property(int), "name": Property(unicode)}, ("id",)))
 
 @run_common
 def test_cache():

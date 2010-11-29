@@ -37,14 +37,14 @@ def make_first_ap():
         remote_property="remote")
     return Memory(
         {"id": Property(int), "name": Property(unicode), 
-         "manies": one_to_many}, "id")
+         "manies": one_to_many}, ("id",))
 
 def make_second_ap():
     """Build a Memory AP having a many-to-one relationship to another one."""
     remote_prop = Property(Item, relation="many-to-one", remote_ap="test_ap")
     return Memory(
         {"id": Property(int), "label": Property(unicode), 
-         "remote": remote_prop}, "id")
+         "remote": remote_prop}, ("id",))
 
 def make_view_site():
     """Initialize a site with 2 access points and populate it with test data."""

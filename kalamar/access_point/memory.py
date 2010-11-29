@@ -27,21 +27,17 @@ from . import AccessPoint
 from ..item import Item, MultiDict
 
 
-class Memory(AccessPoint):
+class Memory(AccessPoint, set):
     """Trivial access point that keeps everything in memory.
 
     Mainly useful for testing.
 
     """
-    def __init__(self, properties, id_property):
-        super(Memory, self).__init__(properties, (id_property,))
-        self._store = set()
-
     def search(self, request):
-        return (item for item in self._store if request.test(item))
+        return (item for item in self if request.test(item))
 
     def delete(self, item):
-        self._store.remove(item)
+        self.remove(item)
 
     def delete_many(self, request):
         # build a temporary set as we can not delete (change the set size)
@@ -50,4 +46,5 @@ class Memory(AccessPoint):
             self.delete(item)
 
     def save(self, item):
-        self._store.add(item)
+        item.saved = True
+        self.add(item)

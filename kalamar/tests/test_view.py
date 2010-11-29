@@ -216,7 +216,7 @@ class TestView(unittest.TestCase):
             remote_property="parent")
         root_ap = Memory(
             {"id": Property(int), "label": Property(unicode),
-             "children": child_property}, "id")
+             "children": child_property}, ("id",))
 
         parent_property = Property(
             Item, relation="many-to-one", remote_ap="root")
@@ -225,13 +225,13 @@ class TestView(unittest.TestCase):
             remote_property="parent")
         level1_ap = Memory(
             {"id": Property(int), "label": Property(unicode),
-             "parent": parent_property, "children": child_property}, "id")
+             "parent": parent_property, "children": child_property}, ("id",))
 
         parent_property = Property(
             Item, relation="many-to-one", remote_ap="level1")
         level2_ap = Memory(
             {"id": Property(int), "label": Property(unicode),
-             "parent": parent_property}, "id")
+             "parent": parent_property}, ("id",))
 
         self.site = Site()
         self.site.register("root", root_ap)

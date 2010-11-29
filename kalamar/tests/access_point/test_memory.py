@@ -29,7 +29,7 @@ from ..common import run_common
 
 def make_ap():
     """Create a simple access point."""
-    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
+    return Memory({"id": Property(int), "name": Property(unicode)}, ("id",))
 
 @run_common
 def test_common():

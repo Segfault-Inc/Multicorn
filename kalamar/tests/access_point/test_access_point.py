@@ -35,7 +35,7 @@ def test_auto():
     site = Site()
     access_point = Memory(
         {"id": Property(int, auto=True),
-         "name": Property(unicode, auto=True)}, "id")
+         "name": Property(unicode, auto=True)}, ("id",))
     site.register("things", access_point)
 
     item = site.create("things", {"id": 1})
@@ -67,7 +67,7 @@ def test_auto_not_true():
     site = Site()
     access_point = Memory(
         {"id": Property(int, auto=lambda: (1000,)),
-         "name": Property(unicode, auto=("test",))}, "id")
+         "name": Property(unicode, auto=("test",))}, ("id",))
     site.register("things", access_point)
 
     item = site.create("things", {"id": 1})
@@ -97,7 +97,7 @@ def test_bad_auto():
     site = Site()
     access_point = Memory(
         {"id": Property(int, auto=(1000,)),
-         "name": Property(unicode, auto="test")}, "id")
+         "name": Property(unicode, auto="test")}, ("id",))
     site.register("things", access_point)
 
     item = site.create("things", {"id": 1})
@@ -107,7 +107,7 @@ def test_already_registered():
     """Try to register an access_point twice."""
     access_point = Memory(
         {"id": Property(int, auto=(1000,)),
-         "name": Property(unicode, auto="test")}, "id")
+         "name": Property(unicode, auto="test")}, ("id",))
     site = Site()
     site.register("things", access_point)
     site = Site()
@@ -116,7 +116,7 @@ def test_already_registered():
 def test_non_mandatory():
     """A non mandatory property set to None should return None."""
     access_point = Memory(
-        {"id": Property(int), "name": Property(unicode)}, "id")
+        {"id": Property(int), "name": Property(unicode)}, ("id",))
     site = Site()
     site.register("things", access_point)
     item = site.create("things", {"id": 1, "name": None})
@@ -126,7 +126,7 @@ def test_non_mandatory():
 def test_bad_value():
     """Property of bad value should raise ValueError."""
     access_point = Memory(
-        {"id": Property(int), "name": Property(int)}, "id")
+        {"id": Property(int), "name": Property(int)}, ("id",))
     site = Site()
     site.register("things", access_point)
     site.create("things", {"id": 1, "name": "toto"})
@@ -134,7 +134,7 @@ def test_bad_value():
 def test_unknown_type():
     """Check that an unknown type is correctly cast."""
     access_point = Memory(
-        {"id": Property(int), "name": Property(complex)}, "id")
+        {"id": Property(int), "name": Property(complex)}, ("id",))
     site = Site()
     site.register("things", access_point)
     item = site.create("things", {"id": 1, "name": "1+j"})
@@ -144,7 +144,7 @@ def test_unknown_type():
 def test_adding_property():
     """Adding a property to an item fails."""
     access_point = Memory(
-        {"id": Property(int), "name": Property(unicode)}, "id")
+        {"id": Property(int), "name": Property(unicode)}, ("id",))
     site = Site()
     site.register("things", access_point)
     item = site.create("things", {"id": 1, "name": "toto"})

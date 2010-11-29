@@ -42,7 +42,7 @@ class DummyAP(object):
 def make_ap():
     """Create a simple access point."""
     underlying_access_point = Memory(
-        {"id": Property(int), "nom": Property(unicode)}, "id")
+        {"id": Property(int), "nom": Property(unicode)}, ("id",))
     return Aliases(underlying_access_point, {"name": "nom"})
 
 @run_common
@@ -52,7 +52,7 @@ def test_alias():
 
 def memory_make_ap():
     """Create a simple access point."""
-    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
+    return Memory({"id": Property(int), "name": Property(unicode)}, ("id",))
 
 def test_aliased_item():
     """Test aliases for various items."""
@@ -94,7 +94,7 @@ def test_aliased_item():
 def test_alias_request():
     """Test request translations."""
     access_point = Aliases(
-        Memory({"foo": Property(str), "bar": Property(str)}, "foo"),
+        Memory({"foo": Property(str), "bar": Property(str)}, ("foo",)),
         {"foo": "FOO", "bar": "BAR"})
     eq_(access_point._alias_request(Condition("foo", "=", 4)),
         Condition("FOO", "=", 4))

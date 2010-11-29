@@ -29,7 +29,7 @@ from .common import make_site
 
 def memory_make_ap():
     """Create a simple access point."""
-    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
+    return Memory({"id": Property(int), "name": Property(unicode)}, ("id",))
 
 def test_modification_tracking():
     """Test the modification tracking system."""

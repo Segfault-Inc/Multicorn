@@ -32,7 +32,7 @@ from .common import make_site
 
 def memory_make_ap():
     """Create a simple access point."""
-    return Memory({"id": Property(int), "name": Property(unicode)}, "id")
+    return Memory({"id": Property(int), "name": Property(unicode)}, ("id",))
 
 # Some properties are just used to test equality
 # pylint: disable=C0103
