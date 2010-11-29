@@ -91,7 +91,7 @@ class QueryChain(Query):
 class QueryDistinct(Query):
     """Query removing duplicate elements.
 
-    >>> items = [{'a': 1, 'b': 2}, {'a':2, 'b': 3}, {'a': 1, 'b': 2}]
+    >>> items = [{"a": 1, "b": 2}, {"a":2, "b": 3}, {"a": 1, "b": 2}]
     >>> list(QueryDistinct()(items))
     [{'a': 1, 'b': 2}, {'a': 2, 'b': 3}]
 
@@ -147,9 +147,6 @@ class QueryOrder(Query):
     >>> order(items)
     [{'a': 4, 'b': 8}, {'a': 5, 'b': 8}, {'a': 5, 'b': 7}]
 
-    >>> items = [{"a": 4, "b": {}}, {"a": 5 , "b": {}}, {"a": 5, "b": {}}]
-    >>> order = QueryOrder([("b", True)])
-
     """
     def __init__(self, orderbys):
         super(QueryOrder, self).__init__()
@@ -164,9 +161,6 @@ class QueryOrder(Query):
         return items
 
     def validate(self, site, properties):
-        for orderby in self.orderbys:
-            if not hasattr(orderby, "__hash__") or orderby[0] not in properties:
-                raise BadQueryException(self, "Can't sort on %s" % orderby)
         return properties
 
     def __str__(self):
@@ -177,9 +171,17 @@ class QuerySelect(Query):
     """Query selecting a partial view of the items.
 
     >>> items = [{"a": 2, "b": 3}, {"a":4, "b": 5}]
-    >>> select = QuerySelect({'label': 'a'})
+    >>> select = QuerySelect({"label": "a"})
     >>> list(select(items))
     [{'label': 2}, {'label': 4}]
+    >>> list(select([]))
+    []
+
+    If ``None`` is given when calling the query, an empty view is
+    returned. This behavior is useful for outer joins.
+
+    >>> list(select(None))
+    [{'label': None}]
 
     """
     def __init__(self, mapping=None, object_mapping=None):
@@ -204,7 +206,7 @@ class QuerySelect(Query):
     def __call__(self, items):
         if isinstance(items, (AbstractItem, dict)):
             items = [items]
-        if not items :
+        if items is None:
             items = [dict((prop.name, None) for prop in self.mapping.values())]
         for item in items:
             newitem = {}
@@ -216,7 +218,7 @@ class QuerySelect(Query):
                     newitem[alias] = prop.get_value(item)
             if self.sub_selects:
                 sub_generators = tuple(
-                    sub_select(item[prop]) for prop, sub_select
+                    sub_select(item[prop] or None) for prop, sub_select
                     in self.sub_selects.items())
                 for cartesian_item in itertools.product(*sub_generators):
                     for cartesian_atom in cartesian_item:
