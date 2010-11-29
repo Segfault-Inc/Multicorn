@@ -103,7 +103,7 @@ class AccessPoint(object):
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
         local_ref = self.identity_properties[0]
-        condition_prop = "%s.%s" % (lazy_prop.remote_property, local_ref.name)
+        condition_prop = "%s.%s" % (lazy_prop.remote_property.name, local_ref.name)
         conditions = Condition(condition_prop, "=", local_ref)
         return lambda: (list(lazy_prop.remote_ap.search(conditions)),)
 

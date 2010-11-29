@@ -35,23 +35,19 @@ class Memory(AccessPoint):
     """
     def __init__(self, properties, id_property):
         super(Memory, self).__init__(properties, (id_property,))
-        self._store = {}
+        self._store = set()
 
     def search(self, request):
-        for properties in self._store.itervalues():
-            item = Item(self, properties)
-            if request.test(item):
-                yield item
+        return (item for item in self._store if request.test(item))
 
     def delete(self, item):
-        del self._store[item]
+        self._store.remove(item)
 
     def delete_many(self, request):
-        # build a temporary list as we can not delete (change the dict size)
+        # build a temporary set as we can not delete (change the set size)
         # during iteration
-        matching_items = list(self.search(request))
-        for item in matching_items:
+        for item in set(self.search(request)):
             self.delete(item)
 
     def save(self, item):
-        self._store[item] = MultiDict(item)
+        self._store.add(item)
