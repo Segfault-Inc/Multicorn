@@ -35,7 +35,6 @@ class Memory(AccessPoint):
     """
     def __init__(self, properties, id_property):
         super(Memory, self).__init__(properties, (id_property,))
-        self._id_property = id_property
         self._store = {}
 
     def search(self, request):
@@ -45,7 +44,7 @@ class Memory(AccessPoint):
                 yield item
 
     def delete(self, item):
-        del self._store[item[self._id_property]]
+        del self._store[item]
 
     def delete_many(self, request):
         # build a temporary list as we can not delete (change the dict size)
@@ -55,4 +54,4 @@ class Memory(AccessPoint):
             self.delete(item)
 
     def save(self, item):
-        self._store[item[self._id_property]] = MultiDict(item)
+        self._store[item] = MultiDict(item)

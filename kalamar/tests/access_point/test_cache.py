@@ -51,8 +51,7 @@ def test_without_underlying_ap():
     # Search one item
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
-    item = all_items[0]
-    eq_(item["id"], 1)
+    (item,) = (item for item in all_items if item["id"] == 1)
     eq_(item["name"], "foo")
 
     # Monkey patch to disable ap
@@ -64,7 +63,7 @@ def test_without_underlying_ap():
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
     item = all_items[0]
-    eq_(item["id"], 1)
+    (item,) = (item for item in all_items if item["id"] == 1)
     eq_(item["name"], "foo")
 
     # Restore ap
@@ -86,7 +85,7 @@ def test_without_underlying_ap():
     # Search one item
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
-    item = all_items[0]
+    (item,) = (item for item in all_items if item["id"] == 1)
     eq_(item["id"], 1)
     eq_(item["name"], "bob")
 
@@ -96,7 +95,7 @@ def test_without_underlying_ap():
     # Search one item
     all_items = list(site.search("things"))
     eq_(len(all_items), 3)
-    item = all_items[0]
+    (item,) = (item for item in all_items if item["id"] == 1)
     eq_(item["id"], 1)
     eq_(item["name"], "bob")
     
