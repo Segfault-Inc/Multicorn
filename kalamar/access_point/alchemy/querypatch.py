@@ -134,7 +134,7 @@ def query_filter_validator(self, access_point, properties):
         if name not in properties:
             return False
         elif properties[name].remote_ap:
-            remote_ap = access_points[properties[name].remote_ap]
+            remote_ap = properties[name].remote_ap
             return isinstance(remote_ap, Alchemy) and \
                 all(inner_manage(name, values, remote_ap.properties)
                     for name, values in cond_tree.items())

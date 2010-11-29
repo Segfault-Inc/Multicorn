@@ -36,6 +36,7 @@ from ..property import Property
 # io.IOBase has no __init__ method
 # pylint: disable=W0231
 
+
 class Stream(io.IOBase):
     """Fake stream opening files on demand."""
     def __init__(self, name):
