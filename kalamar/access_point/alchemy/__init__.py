@@ -161,9 +161,12 @@ class Alchemy(AccessPoint):
             value = condition.value
             if value.__class__ == Item:
                 #TODO: manage multiple foreign key
-                value = value.identity.condition.value
+                value = value.identity.conditions.values()[0]
+            #TODO: enhance the condition handling to manage '~=' on other systems
             if condition.operator == "=":
                 return column == value
+            elif condition.operator == '!=':
+                return column != value
             else:
                 return column.op(condition.operator)(value)
         
@@ -171,14 +174,17 @@ class Alchemy(AccessPoint):
         """Creates an item from a result line."""
         lazy_props = {}
         props = {}
+        lazy_to_build = []
         for name, prop in self.properties.items():
             if prop.relation == "one-to-many":
-                lazy_props[name] = None
+                lazy_to_build.append(prop)
             elif prop.relation == "many-to-one" and result[name] is not None:
                 lazy_props[name] = self._many_to_one_lazy_loader(prop, 
                         result[name])
             else: 
                 props[name] = result[name]
+        for prop in lazy_to_build:
+            lazy_props[prop.name] = self._default_loader(props, prop)
         item = self.create(props, lazy_props)
         item.saved = True
         return item
@@ -218,7 +224,7 @@ class Alchemy(AccessPoint):
         """Transform an item to a dict so that it can be saved."""
         item_dict = {}
         for name, prop in self.properties.items():
-            if prop.auto:
+            if prop.auto and item[name] is None:
                 pass
             elif prop.relation == 'one-to-many':
                 pass
@@ -264,7 +270,7 @@ class Alchemy(AccessPoint):
         alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
-            alchemy_query = can.to_alchemy(alchemy_query, self, 
+            alchemy_query = can.to_alchemy(alchemy_query, self,
                 self.properties)
             if not alchemy_query.c:
                 for name, prop in self.properties.items():
