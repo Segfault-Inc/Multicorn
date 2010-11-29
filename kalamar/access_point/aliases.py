@@ -35,13 +35,13 @@ class AliasedItem(ItemWrapper):
         if key not in self.access_point.properties:
             raise KeyError("%s property is not in wrapped item." % key)
         return self.access_point.aliases.get(key, key)
-    
+
     def getlist(self, key):
         return self.wrapped_item.getlist(self._translate_key(key))
-    
+
     def setlist(self, key, values):
         return self.wrapped_item.setlist(self._translate_key(key), values)
-    
+
     def __iter__(self):
         for key in self.wrapped_item:
             yield self.access_point.reversed_aliases.get(key, key)
@@ -50,7 +50,7 @@ class AliasedItem(ItemWrapper):
 class Aliases(AccessPointWrapper):
     """Wrapper access point renaming properties."""
     ItemWrapper = AliasedItem
-    
+
     def __init__(self, wrapped_ap, aliases):
         """Create an access point aliasing ``wrapped_ap`` properties.
 
@@ -63,13 +63,14 @@ class Aliases(AccessPointWrapper):
         self.aliases = aliases
         self.reversed_aliases = dict(
             (value, key) for key, value in self.aliases.items())
-        self.properties = dict(
-            (self.reversed_aliases.get(name, name), prop)
-            for name, prop in wrapped_ap.properties.items())
-        self._identity_properties_names = tuple(
+        self.properties = {}
+        for name, prop in wrapped_ap.properties.items():
+            self.register(self.reversed_aliases.get(name, name), prop.copy())
+        self._identity_property_names = tuple(
             self.reversed_aliases.get(prop.name, prop.name)
             for prop in wrapped_ap.identity_properties)
-    
+        self.__identity_properties = None
+
     def _alias_request(self, request):
         """Translate ``request`` to use aliases."""
         if isinstance(request, And):
@@ -85,13 +86,13 @@ class Aliases(AccessPointWrapper):
             return Condition(self.aliases.get(name, name),
                              request.operator,
                              request.value)
-    
+
     def search(self, request):
         return super(Aliases, self).search(self._alias_request(request))
-    
+
     def delete_many(self, request):
         super(Aliases, self).delete_many(self._alias_request(request))
-    
+
     def create(self, properties=None, lazy_loaders=None):
         if not properties:
             properties = {}
