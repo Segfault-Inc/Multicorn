@@ -63,6 +63,20 @@ def test_complex_search(site):
     eq_(set(item["id"] for item in results), set([1, 2, 3]))
 
 @common
+def test_re_equal_search(site):
+    """Test a search with a re equality."""
+    condition = Condition("name", "~=", ".?a.*")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([2, 3]))
+
+@common
+def test_re_equal_search(site):
+    """Test a search with a re equality."""
+    condition = Condition("name", "~!=", ".?a.*")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([1]))
+
+@common
 def test_open_one(site):
     """Standard ``open``."""
     result = site.open("things", {"name": u"foo"})

@@ -27,16 +27,22 @@ from operator import eq, ne, gt, ge, lt, le
 from abc import ABCMeta, abstractmethod
 import re
 
+
 def re_match(string, pattern):
     """Return if ``string`` matches ``pattern``."""
     return bool(re.search(pattern, string))
 
+
 def re_not_match(string, pattern):
-    """Return if ``string" does not match ``pattern``."""
+    """Return if ``string`` does not match ``pattern``."""
     return not re.search(pattern, string)
 
-OPERATORS = {"=": eq, "!=": ne, ">": gt, ">=": ge, "<": lt, "<=": le, '~=': re_match, '~!=': re_not_match}
+
+OPERATORS = {
+    "=": eq, "!=": ne, ">": gt, ">=": ge, "<": lt, "<=": le,
+    "~=": re_match, "~!=": re_not_match}
 REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
+
 
 class OperatorNotAvailable(KeyError):
     """Operator is unknown or not managed."""
