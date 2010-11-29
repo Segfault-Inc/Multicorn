@@ -174,14 +174,17 @@ class Alchemy(AccessPoint):
         """Creates an item from a result line."""
         lazy_props = {}
         props = {}
+        lazy_to_build = []
         for name, prop in self.properties.items():
             if prop.relation == "one-to-many":
-                lazy_props[name] = self._default_loader(self.properties, prop)
+                lazy_to_build.append(prop)
             elif prop.relation == "many-to-one" and result[name] is not None:
                 lazy_props[name] = self._many_to_one_lazy_loader(prop, 
                         result[name])
             else: 
                 props[name] = result[name]
+        for prop in lazy_to_build:
+            lazy_props[prop.name] = self._default_loader(props, prop)
         item = self.create(props, lazy_props)
         item.saved = True
         return item
