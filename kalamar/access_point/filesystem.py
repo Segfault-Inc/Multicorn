@@ -96,7 +96,7 @@ class FileSystem(AccessPoint):
     def search(self, request):
         def defered_open(path):
             """Opener for ``path``."""
-            return lambda: (Stream(path),)
+            return lambda item: (Stream(path),)
 
         def walk(root, remaining_path_parts, previous_properties=()):
             """Walk through filesystem from ``root`` yielding matching items."""

@@ -196,7 +196,7 @@ class Alchemy(AccessPoint):
         point directly.
 
         """
-        def loader():
+        def loader(item):
             """Wrapper function opening remote item when called."""
             # TODO: manage multiple identity properties
             condition = Condition(

@@ -277,7 +277,7 @@ class Item(AbstractItem):
             # KeyError (again) is expected here for keys not in
             # self.access_point.properties
             loader = self._lazy_loaders[key]
-            values = loader()
+            values = loader(self)
             if not isinstance(values, tuple):
                 raise ValueError("Lazy loaders must return a tuple, not %s. "
                     "To return a single value, wrap it in a tuple: (value,)."

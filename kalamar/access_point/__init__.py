@@ -105,7 +105,7 @@ class AccessPoint(object):
         local_ref = self.identity_properties[0]
         condition_prop = "%s.%s" % (lazy_prop.remote_property.name, local_ref.name)
         conditions = Condition(condition_prop, "=", properties[local_ref.name])
-        return lambda: (list(lazy_prop.remote_ap.search(conditions)),)
+        return lambda item: (list(lazy_prop.remote_ap.search(conditions)),)
 
     @property
     def identity_properties(self):
@@ -198,11 +198,11 @@ class AccessPoint(object):
         for name, prop in self.properties.items():
             if prop.auto and name not in properties:
                 if prop.auto is True:
-                    function = lambda prop: lambda: self._auto_value(prop)
+                    function = lambda prop: lambda item: self._auto_value(prop)
                 elif callable(prop.auto):
-                    function = lambda prop: lambda: prop.auto()
+                    function = lambda prop: lambda item: prop.auto()
                 elif isinstance(prop.auto, tuple):
-                    function = lambda prop: lambda: prop.auto
+                    function = lambda prop: lambda item: prop.auto
                 else:
                     raise ValueError(
                         "Default values must be a tuple, not %s. To use a "
