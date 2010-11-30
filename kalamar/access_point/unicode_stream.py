@@ -113,21 +113,12 @@ class UnicodeStream(AccessPointWrapper):
                 yield item
 
     def delete_many(self, request):
-        def walk(sub_tree):
-            """Return something if ``stream_property`` is in ``sub_tree``."""
-            for key, value in sub_tree.items():
-                if key == self.stream_property_name:
-                    # ``request`` is about ``self.stream_property``, use the
-                    # "stupid" but safe default implementation based on
-                    # ``search`` + ``delete``
-                    return AccessPoint.delete_many(self, request)
-                elif isinstance(value, dict):
-                    answer = walk(sub_tree)
-                    if answer:
-                        return answer
-
-        answer = walk(request.properties_tree)
-        if not answer:
+        if self.stream_property_name in request.properties_tree:
+            # ``request`` is about ``self.stream_property``, use the
+            # "stupid" but safe default implementation based on
+            # ``search`` + ``delete``
+            return AccessPoint.delete_many(self, request)
+        else:
             # ``request`` is not about ``self.stream_property``, we can
             # safely pass it to the underlying access point’s
             # ``delete_many``
