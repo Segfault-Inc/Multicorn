@@ -25,6 +25,7 @@ Access point base class.
 
 import abc
 import datetime
+import decimal
 import uuid
 
 from ..item import Item, ItemWrapper
@@ -92,6 +93,8 @@ class AccessPoint(object):
             return (datetime.date.today(),)
         elif prop.type == int:
             return (int(uuid.uuid4().time_low / 2),)
+        elif prop.type == decimal.Decimal:
+            return (decimal.Decimal(uuid.uuid4().time_low / 2),)
         elif prop.type == float:
             return (uuid.uuid4().int / float(uuid.uuid4().int),)
         elif prop.type == iter:

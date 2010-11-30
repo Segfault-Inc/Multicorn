@@ -22,10 +22,14 @@ Test various properties of the AccessPoint class.
 
 """
 
+import io
+
 from kalamar import Site
-from kalamar.access_point import AlreadyRegistered
+from kalamar.access_point import AccessPoint, AlreadyRegistered
 from kalamar.access_point.memory import Memory
+from kalamar.item import Item
 from kalamar.property import Property
+from kalamar.value import PROPERTY_TYPES
 
 from nose.tools import eq_, raises, assert_is_instance
 
@@ -149,3 +153,13 @@ def test_adding_property():
     site.register("things", access_point)
     item = site.create("things", {"id": 1, "name": "toto"})
     item["eggs"] = "spam"
+
+def test_auto_values():
+    """Test that automatic values have correct type."""
+    for property_type in PROPERTY_TYPES:
+        if property_type not in (io.IOBase, Item):
+            auto_value = AccessPoint._auto_value(Property(property_type))
+            if property_type is iter:
+                assert hasattr(auto_value, "__iter__")
+            else:
+                assert_is_instance(auto_value[0], property_type)
