@@ -54,7 +54,7 @@ Not.alchemy_function = lambda self, conditions: not_(*conditions)
 
 class AlchemyProperty(Property):
     """Property for an Alchemy access point."""
-    def __init__(self, property_type, column_name, **kwargs):
+    def __init__(self, property_type, column_name=None, **kwargs):
         super(AlchemyProperty, self).__init__(property_type, **kwargs)
         self.column_name = column_name
         self.column = None
@@ -74,6 +74,8 @@ class Alchemy(AccessPoint):
         self.metadata = None
         self.engine_opts = engine_opts or {}
         for name, prop in self.properties.items():
+            if prop.column_name is None:
+                prop.column_name = name
             prop.name = name 
             if prop.relation is None:
                 self._column_from_prop(prop)
