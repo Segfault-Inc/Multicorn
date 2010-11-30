@@ -260,7 +260,7 @@ class Item(AbstractItem):
         if extra:
             raise ValueError("Unexpected lazy properties: %r"
                              % (tuple(extra),))
-        
+
         given_properties = MultiDict(properties)
         self._loaded_properties = MultiDict()
         for key in given_properties:
@@ -269,7 +269,7 @@ class Item(AbstractItem):
             self._loaded_properties.setlist(key, cast_value)
         self._lazy_loaders = dict(lazy_loaders)
         self.modified = False
-    
+
     def getlist(self, key):
         try:
             return self._loaded_properties.getlist(key)
@@ -285,7 +285,7 @@ class Item(AbstractItem):
             self._loaded_properties.setlist(key, values)
             del self._lazy_loaders[key]
             return values
-    
+
     def setlist(self, key, values):
         if key not in self:
             raise KeyError("%s object doesn't support adding new keys." %
@@ -322,10 +322,10 @@ class ItemWrapper(AbstractItem):
 
     def getlist(self, key):
         return self.wrapped_item.getlist(key)
-    
+
     def setlist(self, key, values):
         return self.wrapped_item.setlist(key, values)
-    
+
     def __getattr__(self, name):
         """Default to underlying item for all other methods and attributes."""
         return getattr(self.wrapped_item, name)
