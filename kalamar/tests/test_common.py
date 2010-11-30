@@ -25,6 +25,7 @@ Common tests run against all access points.
 from nose.tools import eq_, raises, assert_raises
 
 from kalamar import MultipleMatchingItems, ItemDoesNotExist
+from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.access_point.alchemy import Alchemy
 from kalamar.access_point.unicode_stream import UnicodeStream
@@ -44,10 +45,47 @@ def test_single_item(site):
 
 @nofill
 @common
+def test_single_item_multidict(site):
+    """Save a single item with multiple values and retrieve it."""
+    properties = MultiDict()
+    properties["id"] = 1
+    properties.setlist("name", (u"foo", u"bar"))
+    site.create("things", properties).save()
+    all_items = list(site.search("things"))
+    eq_(len(all_items), 1)
+    item = all_items[0]
+    eq_(item["id"], 1)
+    eq_(item["name"], "foo")
+    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
+        eq_(item.getlist("name"), ("foo", "bar"))
+
+@nofill
+@common
 @raises(ValueError)
 def test_missing_properties(site):
     """Missing properties when creating an item raises an error."""
     site.create("things")
+
+@nofill
+@common
+@raises(ValueError)
+def test_double_properties(site):
+    """Item with given and lazy properties raises an error."""
+    site.create("things", {"id": 1, "name": u"bar"}, {"name": lambda: None})
+
+@nofill
+@common
+@raises(ValueError)
+def test_unexpected_given_property(site):
+    """Item with unexpected given property raises an error."""
+    site.create("things", {"id": 1, "spam": u"bar"}, {"name": lambda: None})
+
+@nofill
+@common
+@raises(ValueError)
+def test_unexpected_lazy_property(site):
+    """Item with unexpected lazy property raises an error."""
+    site.create("things", {"id": 1, "name": u"bar"}, {"spam": lambda: None})
 
 @common
 def test_search(site):
@@ -61,6 +99,20 @@ def test_complex_search(site):
     condition = Or(Condition("name", "=", "bar"), Condition("id", "<", 2))
     results = site.search("things", condition)
     eq_(set(item["id"] for item in results), set([1, 2, 3]))
+
+@common
+def test_re_equal_search(site):
+    """Test a search with a re equality."""
+    condition = Condition("name", "~=", ".?a.*")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([2, 3]))
+
+@common
+def test_re_equal_search(site):
+    """Test a search with a re equality."""
+    condition = Condition("name", "~!=", ".?a.*")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([1]))
 
 @common
 def test_open_one(site):
@@ -118,6 +170,13 @@ def test_modify(site):
     item.save()
     item = site.open("things", {"name": u"spam"})
     eq_(item["id"], identifier)
+
+@common
+@raises(TypeError)
+def test_delete_key(site):
+    """Assert that deleting an item key raises an ``TypeError``."""
+    item = site.open("things", {"name": u"foo"})
+    del item["name"]
 
 @common
 def test_modify_list(site):
