@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
 from sqlalchemy.sql import expression, and_, or_, not_
 from datetime import datetime, date
 from decimal import Decimal
-import sqlalchemy.sql.expression 
+import sqlalchemy.sql.expression
 
 from . import querypatch
 from .. import AccessPoint
@@ -64,7 +64,7 @@ class Alchemy(AccessPoint):
     """Access point used to store data in a RDBMS."""
     __metadatas = {}
 
-    def __init__(self, url, tablename, properties, identity_properties, 
+    def __init__(self, url, tablename, properties, identity_properties,
                  createtable=False, engine_opts = None):
         super(Alchemy, self).__init__(properties, identity_properties)
         self.url = url
@@ -76,7 +76,7 @@ class Alchemy(AccessPoint):
         for name, prop in self.properties.items():
             if prop.column_name is None:
                 prop.column_name = name
-            prop.name = name 
+            prop.name = name
             if prop.relation is None:
                 self._column_from_prop(prop)
 
@@ -101,17 +101,19 @@ class Alchemy(AccessPoint):
                 foreign_column = self.__get_column("%s.%s" % (prop.name,
                     prop.remote_property.name))
                 foreign_name = "%s.%s" % (foreign_table, foreign_column)
-                foreign_key = ForeignKey(foreign_name, use_alter = True, 
+                foreign_key = ForeignKey(foreign_name, use_alter = True,
                         name = "%s_%s_fkey" % (self.tablename, prop.name ))
                 self.remote_alchemy_props.append(prop.name)
                 alchemy_type = foreign_column.type
                 column = Column(
                     prop.column_name, alchemy_type, foreign_key, **kwargs)
             else:
-                #TODO: manage multiple foreign_keys
-                foreign_prop = foreign_ap.identity_properties[0]
-                alchemy_type = alchemy_type or \
-                    SQLALCHEMYTYPES.get(foreign_prop.type, None)
+                if len(foreign_ap.identity_properties) == 1:
+                    foreign_prop = foreign_ap.identity_properties[0]
+                    alchemy_type = alchemy_type or \
+                        SQLALCHEMYTYPES.get(foreign_prop.type, None)
+                else:
+                    alchemy_type = SQLALCHEMYTYPES.get(unicode)
                 column = Column(prop.column_name, alchemy_type, **kwargs)
         elif prop.relation == "one-to-many":
             #TODO manage multiple foreign-key
@@ -162,8 +164,7 @@ class Alchemy(AccessPoint):
             column = self.__get_column(condition.property.name)
             value = condition.value
             if value.__class__ == Item:
-                #TODO: manage multiple foreign key
-                value = value.identity.conditions.values()[0]
+                value = value.reference_repr()
             #TODO: enhance the condition handling to manage '~=' on other systems
             if condition.operator == "=":
                 return column == value
@@ -198,13 +199,7 @@ class Alchemy(AccessPoint):
         point directly.
 
         """
-        def loader(item):
-            """Wrapper function opening remote item when called."""
-            # TODO: manage multiple identity properties
-            condition = Condition(
-                prop.remote_ap.identity_properties[0].name, "=", value)
-            return (prop.remote_ap.open(condition), )
-        return loader
+        return prop.remote_ap.loader_from_reference_repr(unicode(value))
                 
     def search(self, request):
         query = expression.Select(
@@ -245,9 +240,9 @@ class Alchemy(AccessPoint):
         value = self.__transform_to_table(item)
         try:
             statement = self._table.insert().values(value).execute()
-            for (gen_id, id_prop) in zip(statement.inserted_primary_key, 
+            for (gen_id, id_prop) in zip(statement.inserted_primary_key,
                     self.identity_properties):
-                item[id_prop.name] = gen_id 
+                item[id_prop.name] = gen_id
             transaction.commit()
         except:
             try:

@@ -29,7 +29,7 @@ import re
 import io
 
 from . import AccessPoint
-from ..item import Item
+from ..item import Item, AbstractItem
 from ..property import Property
 
 
@@ -53,8 +53,24 @@ class Stream(io.IOBase):
 # pylint: enable=W0231
 
 
+class FileSystemItem(Item):
+
+
+    @property
+    def filename(self):
+        return self.access_point._item_filename(self)
+
+    @property
+    def relative_filename(self):
+        return self.filename.replace(self.access_point.root_dir, '')
+
+
+
 class FileSystem(AccessPoint):
     """Store each item in a file."""
+
+    ItemClass = FileSystemItem
+
     def __init__(self, root_dir, pattern, properties,
                  content_property="content"):
         if pattern.count("*") != len(properties):
@@ -89,8 +105,10 @@ class FileSystem(AccessPoint):
 
     def _item_filename(self, item):
         """Item filename."""
+        transformer = lambda props : (item[prop.name] if prop.type != Item else
+                item[prop.name].reference_repr() for prop in props)
         return os.path.join(self.root_dir, *(
-                template % tuple(unicode(item[prop.name]) for prop in props)
+                template % tuple(transformer(props))
                 for props, regexp, template in self.properties_per_path_part))
 
     def search(self, request):
@@ -114,9 +132,18 @@ class FileSystem(AccessPoint):
                         yield item
                 if not remaining_path_parts and not os.path.isdir(path):
                     lazy_loaders = {self.content_property: defered_open(path)}
+                    item_properties = {}
+                    for prop, value in properties.items():
+                        if prop.relation is None:
+                            item_properties[prop.name] = value
+                        elif prop.relation == 'many-to-one':
+                            lazy_loaders[prop.name] = prop.remote_ap.\
+                                    loader_from_reference_repr(value)
+                        else:
+                            lazy_loaders[prop.name] = self._default_loader({}, prop)
                     item_properties = dict(
-                        (prop.name, value) for prop, value in properties.items())
-                    item = Item(self, item_properties, lazy_loaders)
+                        (prop.name, value) for prop, value in properties.items() if prop.relation is None)
+                    item = FileSystemItem(self, item_properties, lazy_loaders)
                     item.saved = True
                     if request.test(item):
                         yield item
@@ -128,11 +155,10 @@ class FileSystem(AccessPoint):
 
     def save(self, item):
         content = item[self.content_property]
-        if hasattr(content, "seek"):
-            try:
-                content.seek(0)
-            except:
-                pass
+        try:
+            content.seek(0)
+        except:
+            pass
         filename = self._item_filename(item)
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):

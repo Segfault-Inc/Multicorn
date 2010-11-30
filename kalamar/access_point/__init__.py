@@ -71,6 +71,8 @@ class AccessPoint(object):
     """
     __metaclass__ = abc.ABCMeta
 
+    ItemClass = Item
+
     def __init__(self, properties, identity_properties):
         self.properties = {}
         for name, prop in properties.items():
@@ -102,10 +104,11 @@ class AccessPoint(object):
 
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
-        local_ref = self.identity_properties[0]
-        condition_prop = "%s.%s" % (lazy_prop.remote_property.name, local_ref.name)
-        conditions = Condition(condition_prop, "=", properties[local_ref.name])
-        return lambda item: (list(lazy_prop.remote_ap.search(conditions)),)
+        def loader(item):
+            condition = Condition(lazy_prop.remote_property.name, '=',
+                    item)
+            return (list(lazy_prop.remote_ap.search(condition)),)
+        return loader
 
     @property
     def identity_properties(self):
@@ -175,6 +178,16 @@ class AccessPoint(object):
         """Delete all item matching ``request``."""
         for item in self.search(request):
             self.delete(item)
+
+    def loader_from_reference_repr(self, representation):
+        values = representation.split('/')
+        keys = [prop.name for prop in self.identity_properties]
+        if len(values) != len(keys):
+            raise ValueError("The representation doesnt match identity_properties")
+        a = lambda item : (self.site.open(self.name, dict((prop.name, value)
+            for (prop_name, value) in zip(keys, values))),)
+        a.representation = representation
+        return a
     
     @abc.abstractmethod
     def delete(self, item):
@@ -213,7 +226,7 @@ class AccessPoint(object):
         for name, value in lazy_refs.items():
             lazy_loaders[name] = self._default_loader(properties, value)
 
-        item = Item(self, properties, lazy_loaders)
+        item = self.ItemClass(self, properties, lazy_loaders)
         item.modified = True
         item.saved = False
         return item

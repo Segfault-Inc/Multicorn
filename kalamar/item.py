@@ -270,6 +270,16 @@ class Item(AbstractItem):
         self._lazy_loaders = dict(lazy_loaders)
         self.modified = False
 
+    def reference_repr(self):
+        """Returns a representation suitable for textual storage"""
+        representations = []
+        for prop in self.access_point.identity_properties:
+            value = self[prop.name]
+            if prop.type == Item:
+                value = value.reference_repr()
+            representations.append(unicode(value))
+        return u'/'.join(representations)
+
     def getlist(self, key):
         try:
             return self._loaded_properties.getlist(key)
