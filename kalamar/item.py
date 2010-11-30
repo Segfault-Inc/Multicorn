@@ -164,9 +164,9 @@ class AbstractItem(MutableMultiMapping):
     """
     def __init__(self, access_point):
         self.access_point = access_point
-        #An item is usually saved, if it isnt, its because it has just been
-        #created, and the access point is responsible for setting the flag to
-        #false
+        # An item is usually saved. If it isn't, it's because it has just been
+        # created, and the access point is responsible for setting the flag to
+        # ``false``.
         self.saved = False
 
     @abc.abstractmethod    
@@ -278,10 +278,9 @@ class Item(AbstractItem):
             # self.access_point.properties
             loader = self._lazy_loaders[key]
             values = loader()
-            if not isinstance(values, tuple):
-                raise ValueError("Lazy loaders must return a tuple, not %s. "
-                    "To return a single value, wrap it in a tuple: (value,)."
-                    % type(values).__name__)
+            # Lazy loaders must return a tuple. To return a single value, wrap
+            # it in a tuple: (value,).
+            assert isinstance(values, tuple)
             self._loaded_properties.setlist(key, values)
             del self._lazy_loaders[key]
             return values

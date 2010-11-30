@@ -49,6 +49,27 @@ def test_missing_properties(site):
     """Missing properties when creating an item raises an error."""
     site.create("things")
 
+@nofill
+@common
+@raises(ValueError)
+def test_double_properties(site):
+    """Item with given and lazy properties raises an error."""
+    site.create("things", {"id": 1, "name": u"bar"}, {"name": lambda: None})
+
+@nofill
+@common
+@raises(ValueError)
+def test_unexpected_given_property(site):
+    """Item with unexpected given property raises an error."""
+    site.create("things", {"id": 1, "spam": u"bar"}, {"name": lambda: None})
+
+@nofill
+@common
+@raises(ValueError)
+def test_unexpected_lazy_property(site):
+    """Item with unexpected lazy property raises an error."""
+    site.create("things", {"id": 1, "name": u"bar"}, {"spam": lambda: None})
+
 @common
 def test_search(site):
     """Test a simple search."""
@@ -132,6 +153,13 @@ def test_modify(site):
     item.save()
     item = site.open("things", {"name": u"spam"})
     eq_(item["id"], identifier)
+
+@common
+@raises(TypeError)
+def test_delete_key(site):
+    """Assert that deleting an item key raises an ``TypeError``."""
+    item = site.open("things", {"name": u"foo"})
+    del item["name"]
 
 @common
 def test_modify_list(site):
