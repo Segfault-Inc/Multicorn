@@ -25,6 +25,7 @@ Common tests run against all access points.
 from nose.tools import eq_, raises, assert_raises
 
 from kalamar import MultipleMatchingItems, ItemDoesNotExist
+from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.access_point.alchemy import Alchemy
 from kalamar.access_point.unicode_stream import UnicodeStream
@@ -41,6 +42,22 @@ def test_single_item(site):
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
+
+@nofill
+@common
+def test_single_item_multidict(site):
+    """Save a single item with multiple values and retrieve it."""
+    properties = MultiDict()
+    properties["id"] = 1
+    properties.setlist("name", (u"foo", u"bar"))
+    site.create("things", properties).save()
+    all_items = list(site.search("things"))
+    eq_(len(all_items), 1)
+    item = all_items[0]
+    eq_(item["id"], 1)
+    eq_(item["name"], "foo")
+    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
+        eq_(item.getlist("name"), ("foo", "bar"))
 
 @nofill
 @common
