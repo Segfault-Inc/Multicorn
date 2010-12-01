@@ -33,6 +33,11 @@ from ..item import Item, AbstractItem
 from ..property import Property
 
 
+def regexp_to_template(regexp):
+    parts = [part.split(")")[-1] for part in regexp.pattern.split("(")]
+    return u"%s".join(parts).replace("\\", "").strip("^$")
+
+
 # io.IOBase has no __init__ method
 # pylint: disable=W0231
 
@@ -91,20 +96,15 @@ class FileSystem(AccessPoint):
         for part in pattern_parts:
             regexp = re.compile(u"^%s$" % part)
             props = tuple(next(props_iter) for i in xrange(regexp.groups))
-            template_parts = part.split("(")
-            all_parts = []
-            for template_part in template_parts:
-                all_parts.append(template_part.split(")")[-1])
-            template = u"%s".join(all_parts).replace("\\", "")
-            self.properties_per_path_part.append((props, regexp, template))
+            self.properties_per_path_part.append((props, regexp))
 
     def _item_filename(self, item):
         """Item filename."""
         transformer = lambda props: (item[prop.name] if prop.type != Item else
                 item[prop.name].reference_repr() for prop in props)
         return os.path.join(self.root_dir, *(
-                template % tuple(transformer(props))
-                for props, regexp, template in self.properties_per_path_part))
+                regexp_to_template(regexp) % tuple(transformer(props))
+                for props, regexp in self.properties_per_path_part))
 
     def search(self, request):
         def defered_open(path):
@@ -113,11 +113,9 @@ class FileSystem(AccessPoint):
 
         def walk(root, remaining_path_parts, previous_properties=()):
             """Walk through filesystem from ``root`` yielding matching items."""
-            props, regexp = remaining_path_parts[0][:2]
+            props, regexp = remaining_path_parts[0]
             remaining_path_parts = remaining_path_parts[1:]
             for basename in os.listdir(root):
-                print(regexp.pattern)
-                print(root)
                 match = regexp.match(basename)
                 if not match:
                     continue
