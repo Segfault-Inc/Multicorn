@@ -151,7 +151,11 @@ class FileSystem(AccessPoint):
         return walk(self.root_dir, self.properties_per_path_part)
 
     def delete(self, item):
-        os.remove(self._item_filename(item))
+        filename = self._item_filename(item)
+        os.remove(filename)
+        basedir = os.path.dirname(filename)
+        if not os.listdir(basedir):
+            os.removedirs(basedir)
 
     def save(self, item):
         content = item[self.content_property]
