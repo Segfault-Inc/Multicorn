@@ -25,6 +25,7 @@ Test the filesystem backend.
 import os.path
 import tempfile
 import shutil
+import re
 from nose.tools import eq_, raises
 
 import kalamar
@@ -87,12 +88,12 @@ def test_temporary_directory():
     assert not os.path.exists(filename)
     assert not os.path.exists(temp_dir)
 
-@raises(ValueError)
+@raises(re.error)
 def test_filesystem_bad_pattern():
     """Creating an access point with a bad pattern raises an exception."""
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
     FileSystem(
-        root, "(.*)/tests/access_point/(.*)/test_(.*)\.py(*.)",
+        root, "(.*)/tests/access_point/.*/test_(.*)\.py(",
         ["package", ("module", Property(unicode)), "extension"])
 
 
