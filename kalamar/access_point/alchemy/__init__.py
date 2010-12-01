@@ -27,6 +27,7 @@ from werkzeug.utils import cached_property
 from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
     Integer, Date, Numeric, DateTime, Boolean, Unicode
 from sqlalchemy.sql import expression, and_, or_, not_
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from datetime import datetime, date
 from decimal import Decimal
 import sqlalchemy.sql.expression
@@ -165,11 +166,13 @@ class Alchemy(AccessPoint):
             value = condition.value
             if value.__class__ == Item:
                 value = value.reference_repr()
-            #TODO: enhance the condition handling to manage '~=' on other systems
             if condition.operator == "=":
                 return column == value
             elif condition.operator == '!=':
                 return column != value
+            #TODO: enhance the condition handling to manage '~=' on other systems
+            elif condition.operator == 'like':
+                return column.like(value)
             else:
                 return column.op(condition.operator)(value)
         
