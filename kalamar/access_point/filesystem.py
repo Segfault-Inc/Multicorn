@@ -54,29 +54,22 @@ class Stream(io.IOBase):
 
 
 class FileSystemItem(Item):
-
-
+    """Item stored as a file."""
     @property
     def filename(self):
         return self.access_point._item_filename(self)
 
     @property
     def relative_filename(self):
-        return self.filename.replace(self.access_point.root_dir, '')
-
+        return self.filename.replace(self.access_point.root_dir, "")
 
 
 class FileSystem(AccessPoint):
     """Store each item in a file."""
-
     ItemClass = FileSystemItem
 
     def __init__(self, root_dir, pattern, properties,
                  content_property="content"):
-        if pattern.count("*") != len(properties):
-            raise ValueError(
-                "FileSystem must have as many properties as"
-                "* wildcards in pattern.")
         self.root_dir = unicode(root_dir)
         self.content_property = content_property
 
@@ -92,20 +85,22 @@ class FileSystem(AccessPoint):
             name for name, prop in self._ordered_properties)
         super(FileSystem, self).__init__(properties, identity_properties)
 
-        pattern_parts = unicode(pattern).split("/")
+        pattern_parts = pattern.split("/")
         props_iter = iter(self.identity_properties)
         self.properties_per_path_part = []
         for part in pattern_parts:
-            props = tuple(next(props_iter) for i in xrange(part.count("*")))
-            regexp = re.compile(
-                "^%s$" % "(.*)".join(
-                    re.escape(sub_part) for sub_part in part.split("*")))
-            template = part.replace("*", "%s")
+            regexp = re.compile(u"^%s$" % part)
+            props = tuple(next(props_iter) for i in xrange(regexp.groups))
+            template_parts = part.split("(")
+            all_parts = []
+            for template_part in template_parts:
+                all_parts.append(template_part.split(")")[-1])
+            template = u"%s".join(all_parts).replace("\\", "")
             self.properties_per_path_part.append((props, regexp, template))
 
     def _item_filename(self, item):
         """Item filename."""
-        transformer = lambda props : (item[prop.name] if prop.type != Item else
+        transformer = lambda props: (item[prop.name] if prop.type != Item else
                 item[prop.name].reference_repr() for prop in props)
         return os.path.join(self.root_dir, *(
                 template % tuple(transformer(props))
@@ -121,6 +116,8 @@ class FileSystem(AccessPoint):
             props, regexp = remaining_path_parts[0][:2]
             remaining_path_parts = remaining_path_parts[1:]
             for basename in os.listdir(root):
+                print(regexp.pattern)
+                print(root)
                 match = regexp.match(basename)
                 if not match:
                     continue
@@ -137,12 +134,14 @@ class FileSystem(AccessPoint):
                         if prop.relation is None:
                             item_properties[prop.name] = value
                         elif prop.relation == 'many-to-one':
-                            lazy_loaders[prop.name] = prop.remote_ap.\
-                                    loader_from_reference_repr(value)
+                            lazy_loaders[prop.name] = \
+                                prop.remote_ap.loader_from_reference_repr(value)
                         else:
-                            lazy_loaders[prop.name] = self._default_loader({}, prop)
+                            lazy_loaders[prop.name] = \
+                                self._default_loader({}, prop)
                     item_properties = dict(
-                        (prop.name, value) for prop, value in properties.items() if prop.relation is None)
+                        (prop.name, value) for prop, value
+                        in properties.items() if prop.relation is None)
                     item = FileSystemItem(self, item_properties, lazy_loaders)
                     item.saved = True
                     if request.test(item):

@@ -52,7 +52,7 @@ def test_filesytem_init():
     # Project root, contains kalamar dir
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
     access_point = FileSystem(
-        root, "*/tests/access_point/test_*.py*",
+        root, "(.*)/tests/access_point/test_(.*)\.py(.*)",
         ["package", ("module", Property(unicode)), "extension"])
     site = kalamar.Site()
     site.register("tests", access_point)
@@ -92,7 +92,7 @@ def test_filesystem_bad_pattern():
     """Creating an access point with a bad pattern raises an exception."""
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
     FileSystem(
-        root, "*/tests/access_point/*/test_*.py*",
+        root, "(.*)/tests/access_point/(.*)/test_(.*)\.py(*.)",
         ["package", ("module", Property(unicode)), "extension"])
 
 
@@ -102,7 +102,7 @@ def runner(test):
     """Test runner for ``test``."""
     with TemporaryDirectory() as temp_dir:
         access_point = FileSystem(
-            temp_dir, "*.txt", [("id", Property(int))], content_property="name")
+            temp_dir, "(.*)\.txt", [("id", Property(int))], content_property="name")
         access_point = UnicodeStream(access_point, "name", "utf-8")
         site = make_site(access_point, fill=not hasattr(test, "nofill"))
         test(site)
