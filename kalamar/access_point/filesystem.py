@@ -29,27 +29,8 @@ import re
 import io
 
 from . import AccessPoint
-from ..item import Item, AbstractItem
+from ..item import Item
 from ..property import Property
-
-
-def regexp_to_template(regexp):
-    """Transform a regexp to a python-formatted unicode.
-
-    >>> regexp_to_template(re.compile("spam"))
-    u'spam'
-    >>> regexp_to_template(re.compile("egg(.*)"))
-    u'egg%s'
-    >>> regexp_to_template(re.compile(u"☺(.*)"))
-    u'\\xe2\\x98\\xba%s'
-    >>> regexp_to_template(re.compile("egg(.*)\\.test"))
-    u'egg%s.test'
-    >>> regexp_to_template(re.compile("\\(egg(.*)\\)\\.test\\\\\\\\"))
-    u'(egg%s).test\\'
-
-    """
-    parts = [part.split(")")[-1] for part in regexp.pattern.split("(")]
-    return u"%s".join(parts).replace("\\", "").strip("^$")
 
 
 # io.IOBase has no __init__ method
@@ -72,15 +53,52 @@ class Stream(io.IOBase):
 # pylint: enable=W0231
 
 
+class PropertyPart(object):
+    """Regexp/properties couple for path parts."""
+    def __init__(self, regexp, properties):
+        self.regexp = regexp
+        self.properties = properties
+
+    def item_template(self, item):
+        """Transform the regexp to an unicode string.
+
+        The template string uses the python formatting syntax according to
+        properties formatters. Then, the values are taken from the given
+        ``item``.
+
+        """
+        parts = [part.split(")")[-1] for part
+                 in self.regexp.pattern.strip("^$").split("(")]
+        template = parts.pop(0)
+        for part, prop in zip(parts, self.properties):
+            template += prop.formatter
+            template += part.replace("\\", "")
+
+        values = tuple(
+            item[prop.name] if prop.type != Item else
+            item[prop.name].reference_repr() for prop in self.properties)
+
+        return template % values
+
+
+class FileSystemProperty(Property):
+    """Property for a FileSystem access point."""
+    def __init__(self, property_type, formatter="%s", **kwargs):
+        super(FileSystemProperty, self).__init__(property_type, **kwargs)
+        self.formatter = formatter
+
+
 class FileSystemItem(Item):
     """Item stored as a file."""
     @property
     def filename(self):
+        """Absolute path of the item."""
         return self.access_point._item_filename(self)
 
     @property
     def relative_filename(self):
-        return self.filename.replace(self.access_point.root_dir, "")
+        """Relative path of the item, from the access point root."""
+        return self.access_point._item_filename(self, "")
 
 
 class FileSystem(AccessPoint):
@@ -93,12 +111,12 @@ class FileSystem(AccessPoint):
         self.content_property = content_property
 
         self._ordered_properties = tuple(
-            (prop, Property(unicode)) if isinstance(prop, basestring)
+            (prop, FileSystemProperty(unicode)) if isinstance(prop, basestring)
             else prop # Assume a (name, Property_instance) tuple.
             for prop in properties)
 
         properties = dict(self._ordered_properties)
-        properties[content_property] = Property(io.IOBase)
+        properties[content_property] = FileSystemProperty(io.IOBase)
         # All properties here are in the identity
         identity_properties = tuple(
             name for name, prop in self._ordered_properties)
@@ -110,15 +128,14 @@ class FileSystem(AccessPoint):
         for part in pattern_parts:
             regexp = re.compile(u"^%s$" % part)
             props = tuple(next(props_iter) for i in xrange(regexp.groups))
-            self.properties_per_path_part.append((props, regexp))
+            self.properties_per_path_part.append(PropertyPart(regexp, props))
 
-    def _item_filename(self, item):
+    def _item_filename(self, item, root=None):
         """Item filename."""
-        transformer = lambda props: (item[prop.name] if prop.type != Item else
-                item[prop.name].reference_repr() for prop in props)
-        return os.path.join(self.root_dir, *(
-                regexp_to_template(regexp) % tuple(transformer(props))
-                for props, regexp in self.properties_per_path_part))
+        root = self.root_dir if root is None else root
+        return os.path.join(root, *(
+                property_part.item_template(item)
+                for property_part in self.properties_per_path_part))
 
     def search(self, request):
         def defered_open(path):
@@ -127,13 +144,13 @@ class FileSystem(AccessPoint):
 
         def walk(root, remaining_path_parts, previous_properties=()):
             """Walk through filesystem from ``root`` yielding matching items."""
-            props, regexp = remaining_path_parts[0]
+            property_part = remaining_path_parts[0]
             remaining_path_parts = remaining_path_parts[1:]
             for basename in os.listdir(root):
-                match = regexp.match(basename)
+                match = property_part.regexp.match(basename)
                 if not match:
                     continue
-                properties = dict(zip(props, match.groups()))
+                properties = dict(zip(property_part.properties, match.groups()))
                 properties.update(previous_properties)
                 path = os.path.join(root, basename)
                 if remaining_path_parts and os.path.isdir(path):
@@ -145,7 +162,7 @@ class FileSystem(AccessPoint):
                     for prop, value in properties.items():
                         if prop.relation is None:
                             item_properties[prop.name] = value
-                        elif prop.relation == 'many-to-one':
+                        elif prop.relation == "many-to-one":
                             lazy_loaders[prop.name] = \
                                 prop.remote_ap.loader_from_reference_repr(value)
                         else:

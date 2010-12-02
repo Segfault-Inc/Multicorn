@@ -26,11 +26,11 @@ import os.path
 import tempfile
 import shutil
 import re
-from nose.tools import eq_, raises
+from nose.tools import eq_, assert_equal, raises
 
 import kalamar
-from kalamar.property import Property
-from kalamar.access_point.filesystem import FileSystem
+from kalamar.access_point.filesystem import \
+    FileSystem, FileSystemProperty, PropertyPart
 from kalamar.access_point.unicode_stream import UnicodeStream
 from ..common import run_common, make_site
 
@@ -54,7 +54,7 @@ def test_filesytem_init():
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
     access_point = FileSystem(
         root, "(.*)/tests/access_point/test_(.*)\.py(.*)",
-        ["package", ("module", Property(unicode)), "extension"])
+        ["package", ("module", FileSystemProperty(unicode)), "extension"])
     site = kalamar.Site()
     site.register("tests", access_point)
     eq_(set(access_point.properties.keys()),
@@ -94,7 +94,36 @@ def test_filesystem_bad_pattern():
     root = os.path.dirname(os.path.dirname(kalamar.__file__))
     FileSystem(
         root, "(.*)/tests/access_point/.*/test_(.*)\.py(",
-        ["package", ("module", Property(unicode)), "extension"])
+        ["package", ("module", FileSystemProperty(unicode)), "extension"])
+
+def test_filenames():
+    """Assert that the filenames are what we expect."""
+    with TemporaryDirectory() as temp_dir:
+        access_point = FileSystem(
+            temp_dir, "(.*) - (.*)\.(.*)", (
+                ("id", FileSystemProperty(int, "%03d")),
+                ("title", FileSystemProperty(unicode, "% 6s")),
+                ("extension", FileSystemProperty(unicode))),
+            content_property="name")
+        access_point = UnicodeStream(access_point, "name", "utf-8")
+        site = make_site(access_point, fill=False)
+
+        for prop in (
+            {"id": 1, "title": "spam", "extension": "txt", "name": ""},
+            {"id": 2, "title": "egg", "extension": "text", "name": ""},
+            {"id": 3, "title": "turtle", "extension": "rst", "name": ""}):
+            site.create("things", prop).save()
+
+        filenames = set([
+                u"001 -   spam.txt", u"002 -    egg.text", u"003 - turtle.rst"])
+
+        assert_equal(set(os.listdir(temp_dir)), filenames)
+        assert_equal(
+            set([item.filename for item in site.search("things")]),
+            set([os.path.join(temp_dir, filename) for filename in filenames]))
+        assert_equal(
+            set([item.relative_filename for item in site.search("things")]),
+            filenames)
 
 
 # Common tests
@@ -103,7 +132,8 @@ def runner(test):
     """Test runner for ``test``."""
     with TemporaryDirectory() as temp_dir:
         access_point = FileSystem(
-            temp_dir, "(.*)\.txt", [("id", Property(int))], content_property="name")
+            temp_dir, "(.*)\.txt", [("id", FileSystemProperty(int))],
+            content_property="name")
         access_point = UnicodeStream(access_point, "name", "utf-8")
         site = make_site(access_point, fill=not hasattr(test, "nofill"))
         test(site)
