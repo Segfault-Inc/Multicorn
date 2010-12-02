@@ -34,6 +34,20 @@ from ..property import Property
 
 
 def regexp_to_template(regexp):
+    """Transform a regexp to a python-formatted unicode.
+
+    >>> regexp_to_template(re.compile("spam"))
+    u'spam'
+    >>> regexp_to_template(re.compile("egg(.*)"))
+    u'egg%s'
+    >>> regexp_to_template(re.compile(u"☺(.*)"))
+    u'\\xe2\\x98\\xba%s'
+    >>> regexp_to_template(re.compile("egg(.*)\\.test"))
+    u'egg%s.test'
+    >>> regexp_to_template(re.compile("\\(egg(.*)\\)\\.test\\\\\\\\"))
+    u'(egg%s).test\\'
+
+    """
     parts = [part.split(")")[-1] for part in regexp.pattern.split("(")]
     return u"%s".join(parts).replace("\\", "").strip("^$")
 
