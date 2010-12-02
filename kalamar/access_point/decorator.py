@@ -58,7 +58,7 @@ class DecoratorItem(ItemWrapper):
             super(DecoratorItem, self).setlist(key, values)
 
 class DecoratorProperty(Property):
-    """Property suitable for a decorator access point"""
+    """Property suitable for a decorator access point."""
     def __init__(self, property_type, getter):
         super(DecoratorProperty, self).__init__(property_type)
         self.getter = getter
