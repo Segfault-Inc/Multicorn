@@ -23,15 +23,14 @@ Test various properties of the AccessPoint class.
 """
 
 import io
+from nose.tools import eq_, raises, assert_is_instance
 
-from kalamar import Site
 from kalamar.access_point import AccessPoint, AlreadyRegistered
 from kalamar.access_point.memory import Memory
 from kalamar.item import Item
 from kalamar.property import Property
+from kalamar.site import Site
 from kalamar.value import PROPERTY_TYPES
-
-from nose.tools import eq_, raises, assert_is_instance
 
 
 def test_auto():

@@ -32,6 +32,7 @@ import kalamar
 from kalamar.access_point.filesystem import \
     FileSystem, FileSystemProperty, PropertyPart
 from kalamar.access_point.unicode_stream import UnicodeStream
+from kalamar.site import Site
 from ..common import run_common, make_site
 
 
@@ -55,7 +56,7 @@ def test_filesytem_init():
     access_point = FileSystem(
         root, "(.*)/tests/access_point/test_(.*)\.py(.*)",
         ["package", ("module", FileSystemProperty(unicode)), "extension"])
-    site = kalamar.Site()
+    site = Site()
     site.register("tests", access_point)
     eq_(set(access_point.properties.keys()),
         set(["package", "module", "extension", "content"]))

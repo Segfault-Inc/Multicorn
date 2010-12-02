@@ -24,8 +24,9 @@ access point.
 """
 
 from nose.tools import nottest
-from kalamar import Site
 from functools import update_wrapper
+
+from kalamar.site import Site
 
 
 COMMON_TESTS = []

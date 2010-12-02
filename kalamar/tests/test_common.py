@@ -24,7 +24,7 @@ Common tests run against all access points.
 
 from nose.tools import eq_, raises, assert_raises
 
-from kalamar import MultipleMatchingItems, ItemDoesNotExist
+from kalamar.access_point import MultipleMatchingItems, ItemDoesNotExist
 from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.access_point.alchemy import Alchemy

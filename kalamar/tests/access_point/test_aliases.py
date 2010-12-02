@@ -27,7 +27,7 @@ Test the aliases backend.
 from nose.tools import eq_, assert_raises, raises
 # pylint: enable=E0611
 
-from kalamar import Item
+from kalamar.item import Item
 from kalamar.property import Property
 from kalamar.request import Condition, And, Or, Not
 from kalamar.access_point.memory import Memory
