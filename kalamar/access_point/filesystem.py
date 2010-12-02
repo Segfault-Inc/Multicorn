@@ -23,7 +23,6 @@ Access point storing items in a filesystem.
 
 """
 
-import os.path
 import os
 import re
 import io
@@ -35,7 +34,6 @@ from ..property import Property
 
 # io.IOBase has no __init__ method
 # pylint: disable=W0231
-
 
 class Stream(io.IOBase):
     """Fake stream opening files on demand."""
