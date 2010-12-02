@@ -104,7 +104,7 @@ class Decorator(AccessPointWrapper):
 
     @abc.abstractmethod
     def preprocess_save(self, item):
-        """Preprocess a wrapped item, updating its content"""
+        """Preprocess a wrapped item, updating its content."""
         raise NotImplementedError
 
     def create(self, properties=None, lazy_loaders=None):
