@@ -19,10 +19,17 @@
 Kalamar - Content Management Library
 ====================================
 
-# TODO: write module documentation
+Kalamar offers tools to access, create and edit data stored in heterogeneous
+storage engines, with a simple key/value interface.
+
+The storage engines are called "access points". Some access points map common
+low-level storages such as databases or filesystems. Other access points can
+manage, atop low-level access points, high-level features such as cache, keys
+aliases or data formats.
+
+Different access points can be listed in a Kalamar "site", and relations can be
+defined between these access points, just as in a relational database. This
+mechanism automatically links the items stored in the linked access points,
+enabling the user to easily use joins if needed.
 
 """
-
-from .site import Site
-from .item import Item
-from .access_point import MultipleMatchingItems, ItemDoesNotExist
