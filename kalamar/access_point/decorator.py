@@ -17,12 +17,13 @@
 
 """
 Decorator
-=======
+=========
 
-Abstract access point simplifying the development of access points
-offering new properties derived from old ones
+Abstract access point simplifying the development of access points offering new
+properties derived from old ones.
 
 """
+
 import abc
 
 from . import AccessPointWrapper
@@ -33,7 +34,6 @@ from ..property import Property
 
 class DecoratorItem(ItemWrapper):
     """Item with additional properties."""
-
     def __init__(self, access_point, wrapped_item, decorated_values=None):
         super(DecoratorItem, self).__init__(access_point, wrapped_item)
         self.unsaved_properties = decorated_values or MultiDict()
@@ -46,6 +46,7 @@ class DecoratorItem(ItemWrapper):
                 return self.decorated_properties[key].getter(self)
         else:
             return super(DecoratorItem, self).getlist(key)
+
     @property
     def decorated_properties(self):
         return self.access_point.decorated_properties
@@ -58,17 +59,14 @@ class DecoratorItem(ItemWrapper):
 
 class DecoratorProperty(Property):
     """Property suitable for a decorator access point"""
-
     def __init__(self, property_type, getter):
         super(DecoratorProperty, self).__init__(property_type)
         self.getter = getter
 
 
 class Decorator(AccessPointWrapper):
-    """Access point adding new properties to another access point"""
-
+    """Access point adding new properties to another access point."""
     __metaclass__ = abc.ABCMeta
-
     ItemDecorator = DecoratorItem
 
     def __init__(self, wrapped_ap, decorated_properties):
@@ -78,7 +76,7 @@ class Decorator(AccessPointWrapper):
     def search(self, request):
         # The search request is quite special, since we can't rely on
         # the underlying access point if any of our decorated properties
-        # is present in the request
+        # is present in the request.
         tree = request.properties_tree
         if any((key in tree for key in self.decorated_properties)):
             for item in self.wrapped_ap.search(And()):
@@ -89,9 +87,9 @@ class Decorator(AccessPointWrapper):
                 yield self.ItemDecorator(self, item)
 
     def delete_many(self, request):
-        # One again, we can't rely on the underlying access point
-        # However, it is quite nice to benefit from it's optimizations
-        # when possible
+        # Once again, we can't rely on the underlying access point.
+        # However, it is quite nice to benefit from its optimizations
+        # when possible.
         tree = request.properties_tree
         if any((key in tree for key in self.decorated_properties)):
             for item in self.search(request):
