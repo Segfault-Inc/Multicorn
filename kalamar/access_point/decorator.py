@@ -49,13 +49,15 @@ class DecoratorItem(ItemWrapper):
 
     @property
     def decorated_properties(self):
+        """List of additional properties."""
         return self.access_point.decorated_properties
 
     def setlist(self, key, values):
         if key in self.decorated_properties:
-            return  self.unsaved_properties.setlist(key, values)
+            return self.unsaved_properties.setlist(key, values)
         else:
             super(DecoratorItem, self).setlist(key, values)
+
 
 class DecoratorProperty(Property):
     """Property suitable for a decorator access point."""

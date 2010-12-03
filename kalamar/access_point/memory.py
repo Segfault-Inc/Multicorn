@@ -24,7 +24,6 @@ Access point storing items in memory. Mainly useful for testing.
 """
 
 from . import AccessPoint
-from ..item import Item, MultiDict
 
 
 class Memory(AccessPoint, set):
