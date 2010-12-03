@@ -19,30 +19,30 @@
 Kraken - HTTP Request and Template Manager
 ==========================================
 
-# TODO: write module documentation
+Kraken is a very simple HTTP server for creating websites. The templates put in
+a default folder are qserved, using different template engines and controllers
+if available. URL matching, request mimetypes and HTTP cache are automatically
+managed and can be redefined if needed.
+
+Kraken handles the Mako, Genshi and Jinja2 template engines. Other engines can
+be easily added directly in the applications, without modifying Kraken.
+
+Kraken is based on Werkzeug and allows the developer to use many of its good
+features, such as debugger, URL dispatching, cookies, and numerous data
+structures.
 
 """
 
-import datetime
-import hashlib
-import mimetypes
-import os
 import posixpath
-import re
 import sys
 import urlparse
 import werkzeug
-import werkzeug.contrib.securecookie
-import werkzeug.wrappers
-
-from .site import Site
 
 
 def make_absolute_url(request, url):
     """Return a clean absolute URL from ``request`` and ``url``.
 
     >>> # Fake request for http://localhost/foo/
-    >>> import werkzeug
     >>> request = werkzeug.Request(werkzeug.create_environ(path="/foo/"))
 
     >>> # Various tests

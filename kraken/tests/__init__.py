@@ -30,7 +30,7 @@ def make_site(secret_key=None):
     # Import kraken here so that coverage sees module-level statements
     import kraken
     root = os.path.join(os.path.dirname(__file__), "site")
-    return kraken.Site(root, root, None, secret_key)
+    return kraken.site.Site(root, root, None, secret_key)
 
 
 class KrakenSiteMixin(object):
