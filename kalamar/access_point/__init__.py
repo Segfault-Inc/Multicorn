@@ -71,7 +71,6 @@ class AccessPoint(object):
 
     """
     __metaclass__ = abc.ABCMeta
-
     ItemClass = Item
 
     def __init__(self, properties, identity_properties):
@@ -105,16 +104,22 @@ class AccessPoint(object):
             return (prop.type(uuid.uuid4()),)
         # pylint: enable=E1101
 
+    # This method can be overriden and should use ``self`` and ``properties``
+    # pylint: disable=R0201
+    # pylint: disable=W0613
     def _default_loader(self, properties, lazy_prop):
         """Return a default loader to manage references in an access point."""
         def loader(item):
-            condition = Condition(lazy_prop.remote_property.name, '=',
-                    item)
+            """Default loader for an access point."""
+            condition = Condition(lazy_prop.remote_property.name, "=", item)
             return (list(lazy_prop.remote_ap.search(condition)),)
         return loader
+    # pylint: enable=R0201
+    # pylint: enable=W0613
 
     @property
     def identity_properties(self):
+        """List of properties identifying the access point items."""
         if not self.__identity_properties:
             self.__identity_properties = []
             for name in self._identity_property_names:
@@ -183,14 +188,24 @@ class AccessPoint(object):
             self.delete(item)
 
     def loader_from_reference_repr(self, representation):
-        values = representation.split('/')
+        """Get a loader from the ``representation`` of the identity values.
+
+        The ``representation`` is a string of slash-separated values
+        representing the identity properties values, used as keys for
+        heterogeneous linked access points.
+
+        """
         keys = [prop.name for prop in self.identity_properties]
-        if len(values) != len(keys):
-            raise ValueError("The representation doesnt match identity_properties")
-        a = lambda item : (self.site.open(self.name, dict((prop.name, value)
-            for (prop_name, value) in zip(keys, values))),)
-        a.representation = representation
-        return a
+        values = representation.split("/")
+
+        if len(keys) != len(values):
+            raise ValueError(
+                "The representation doesn't match the identity properties.")
+
+        properties = dict(zip(keys, values))
+        loader = lambda item: (self.site.open(self.name, properties),)
+        loader.representation = representation
+        return loader
     
     @abc.abstractmethod
     def delete(self, item):
