@@ -34,6 +34,7 @@ class DummyAccessPoint(object):
     properties = identity_properties = site = name = None
 
     def bind(self, site, name):
+        """Link the access point to ``site`` and call it ``name``."""
         if not self.site and not self.name:
             self.site = site
             self.name = name

@@ -27,7 +27,7 @@ from nose.tools import eq_
 
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
-from ..common import make_site, run_common, COMMON_TESTS
+from ..common import make_site, run_common
 
 
 def make_ap():

@@ -52,7 +52,8 @@ def test_modification_tracking():
     assert not item.modified
     # pylint: enable=W0104
 
-def test_storage_rep():
+def test_item_representation():
+    """Test the representation of item references."""
     site = make_site(memory_make_ap(), fill=True)
     item = tuple(site.search("things"))[0]
-    assert item.reference_repr() == u'2'
+    assert item.reference_repr() == u"2"

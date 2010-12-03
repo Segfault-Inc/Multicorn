@@ -105,8 +105,7 @@ def test_bad_auto():
         {"id": Property(int, auto=(1000,)),
          "name": Property(unicode, auto="test")}, ("id",))
     site.register("things", access_point)
-
-    item = site.create("things", {"id": 1})
+    site.create("things", {"id": 1})
 
 @raises(AlreadyRegistered)
 def test_already_registered():

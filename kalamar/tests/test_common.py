@@ -126,14 +126,22 @@ def test_open_one(site):
 @common
 def test_modify_identity(site):
     """Test the identity modification of an item."""
-    def change_item_id(item):
-        item["id"] = 500
     item = site.open("things", {"name": u"foo"})
-    assert_raises(KeyError, change_item_id, item)
+    assert_raises(KeyError, item.__setitem__, "id", 500)
     item = site.create("things", {"name": u"bar", "id": 400})
-    change_item_id(item)
+    item["id"] = 500
     item.save()
-    assert_raises(KeyError, change_item_id, item)
+    assert_raises(KeyError, item.__setitem__, "id", 500)
+
+@common
+def test_update_identity(site):
+    """Test the identity modification of an item."""
+    item = site.open("things", {"name": u"foo"})
+    assert_raises(KeyError, item.update, (("id", 500),))
+    item = site.create("things", {"name": u"bar", "id": 400})
+    item.update(id=500)
+    item.save()
+    assert_raises(KeyError, item.update, ("id", 500))
 
 @common
 @raises(MultipleMatchingItems)
@@ -173,6 +181,26 @@ def test_modify(site):
     item.save()
     item = site.open("things", {"name": u"spam"})
     eq_(item["id"], identifier)
+
+@common
+def test_update(site):
+    """Standard update of an item."""
+    item = site.open("things", {"name": u"foo"})
+    identifier = item["id"]
+    item.update({"name": "spam"})
+    item.save()
+    item = site.open("things", {"name": u"spam"})
+    eq_(item["id"], identifier)
+    item.update(name="egg")
+    item.save()
+    item = site.open("things", {"name": u"egg"})
+    eq_(item["id"], identifier)
+    item.update((("name", "spam"),))
+    item.save()
+    item = site.open("things", {"name": u"spam"})
+    eq_(item["id"], identifier)
+    assert_raises(ValueError, item.update, ("name", 500))
+    assert_raises(TypeError, item.update, {"name": 500}, {"name": 600})
 
 @common
 @raises(TypeError)
