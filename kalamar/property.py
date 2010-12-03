@@ -106,6 +106,7 @@ class Property(object):
 
     @property
     def remote_ap(self):
+        """Remote access point for linked properties."""
         if not self.__remote_ap:
             access_points = self.access_point.site.access_points
             self.__remote_ap = access_points.get(self._remote_ap_name)
@@ -113,6 +114,7 @@ class Property(object):
 
     @property
     def remote_property(self):
+        """Remote property for linked porperties."""
         if not self.__remote_property:
             properties = self.remote_ap.properties
             self.__remote_property = properties[self._remote_property_name]
