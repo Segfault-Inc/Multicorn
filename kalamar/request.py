@@ -38,8 +38,8 @@ def re_not_match(string, pattern):
     return not re.search(pattern, string)
 
 def like(string, like_pattern):
-    """Return if ``string`` does match the 'like' pattern (SQL Style)"""
-    pattern = re.escape(like_pattern).replace('\%','.*')
+    """Return if ``string`` does match the 'like' pattern (SQL style)."""
+    pattern = re.escape(like_pattern).replace("\%", ".*")
     return re.search(pattern, string)
 
 
@@ -71,20 +71,23 @@ def make_request_property(property_name):
 
 
 def make_request(request):
-    """Convert a ``request`` to a Request object.
+    """Convert a ``request`` to a :class:`Request` object.
 
-    TODO: describe syntaxic sugar.
+    The given argument ``request`` can be:
+
+    - a :class:`Request` object: it is returned unchanged,
+    - a ``dict``-like object: an ``And(*(key, =, value))`` request is returned.
+    - a ``None``-like object: an all-matching (always true) request is returned,
 
     """
     if not request:
-        # Empty request: always true.
         return And()
     elif isinstance(request, Request):
         return request
     elif hasattr(request, "items") and callable(request.items):
         # If it looks like a dict and smells like a dict, it is a dict.
-        return And(*(Condition(key, "=", value) 
-                     for key, value in request.items()))
+        return And(
+            *(Condition(key, "=", value) for key, value in request.items()))
 
 
 def normalize(properties, request):
@@ -252,15 +255,16 @@ class _AndOr(Request):
 
     @property
     def properties_tree(self):
-        def merge_properties(tree_a, tree_b):
+        def merge_properties(tree1, tree2):
             """Merge two properties trees into one."""
-            for name, tree_a_values in tree_a.items():
-                tree_b_values = tree_b.setdefault(name, {})
-                if isinstance(tree_b_values, dict):
-                    tree_b[name] = merge_properties(tree_b_values, tree_a_values)
-            return tree_b
-        return reduce(merge_properties, [
-                sub.properties_tree for sub in self.sub_requests] or [{}])
+            for name, tree1_values in tree1.items():
+                tree2_values = tree2.setdefault(name, {})
+                if isinstance(tree2_values, dict):
+                    tree2[name] = merge_properties(tree2_values, tree1_values)
+            return tree2
+
+        trees = [sub.properties_tree for sub in self.sub_requests] or [{}]
+        return reduce(merge_properties, trees)
 
     def flatten(self):
         """Return a generator of flat sub requests."""
