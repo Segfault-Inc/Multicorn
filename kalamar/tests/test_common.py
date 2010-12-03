@@ -22,7 +22,10 @@ Common tests run against all access points.
 
 """
 
+# Nose redefines assert_raises
+# pylint: disable=E0611
 from nose.tools import eq_, raises, assert_raises
+# pylint: enable=E0611
 
 from kalamar.access_point import MultipleMatchingItems, ItemDoesNotExist
 from kalamar.item import MultiDict
@@ -108,8 +111,8 @@ def test_re_equal_search(site):
     eq_(set(item["id"] for item in results), set([2, 3]))
 
 @common
-def test_re_equal_search(site):
-    """Test a search with a re equality."""
+def test_re_inequal_search(site):
+    """Test a search with a re inequality."""
     condition = Condition("name", "~!=", ".?a.*")
     results = site.search("things", condition)
     eq_(set(item["id"] for item in results), set([1]))

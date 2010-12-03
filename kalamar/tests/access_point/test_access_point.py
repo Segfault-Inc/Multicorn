@@ -23,7 +23,10 @@ Test various properties of the AccessPoint class.
 """
 
 import io
+# Nose redefines assert_is_instance
+# pylint: disable=E0611
 from nose.tools import eq_, raises, assert_is_instance
+# pylint: enable=E0611
 
 from kalamar.access_point import AccessPoint, AlreadyRegistered
 from kalamar.access_point.memory import Memory
