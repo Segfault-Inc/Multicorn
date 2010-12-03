@@ -34,7 +34,17 @@ def find_template(path, engines, template_root):
 
     Return a named tuple ``(template_name, extension, engine)``.
 
-    TODO: explain how the template is found
+    A simple algorithm is used to find the matching template:
+
+    1. Find a file named ``<root>/<path>.<mimetype>.<engine>``. If such a file
+       exists, choose this file, else;
+    2. Find a file named ``<root>/<path>/index.<mimetype>.<engine>``. If such a
+       file exists, choose this file, else;
+    3. Return ``None``.
+
+    At each step, ``engine`` must be in the list of ``engines``. If more than
+    one file matching the filename is present (for example, same name with a
+    different engine or a different mimetype), one file is randomly chosen.
 
     """
     template_suffix_re = ur"\.(.+)\.(%s)$" % u"|".join(
