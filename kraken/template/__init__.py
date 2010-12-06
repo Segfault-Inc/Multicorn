@@ -32,14 +32,12 @@ from collections import namedtuple
 # A named tuple has no real __init__ method
 # pylint: disable=W0232
 class Template(namedtuple("Template", ("name", "extension", "engine"))):
-    """Template representation with name, extension and engine."""
+    """Template named tuple with ``name``, ``extension`` and ``engine``."""
 # pylint: enable=W0232
 
 
 def find_template(path, engines, template_root):
-    """Get a template corresponding to ``path``.
-
-    Return a named tuple ``(template_name, extension, engine)``.
+    """Get a :class:`Template` corresponding to ``path``.
 
     A simple algorithm is used to find the matching template:
 
