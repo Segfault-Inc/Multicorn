@@ -245,10 +245,11 @@ class Site(object):
     def register_endpoint(self, function):
         """Register ``function`` as an endpoint.
 
-        ``function`` must have an attribute ``kraken_rule``, defining the rule
-        for werkzeug, and a ``kwargs`` attribute, defining the keywords
-        arguments for the werkzeug rule, as well as a ``template`` attribute
-        defining the relative path to the template
+        ``function`` must have three attributes:
+
+        - ``kraken_rule`` defining the rule for werkzeug;
+        - ``kwargs`` defining the keywords arguments for the werkzeug rule;
+        - ``template`` defining the relative path to the template.
 
         """
         if hasattr(function, "template_path"):
@@ -256,7 +257,7 @@ class Site(object):
                 function.template_path, self.engines, self.template_root)
             if function.template is None:
                 raise RuntimeError(
-                    "The template %s used by function %s doesn't exist" % (
+                    "The template '%s' used by function '%s' doesn't exist" % (
                         function.template_path, function.__name__))
             function.kwargs["endpoint"] = partial(
                 ControllerResponse, self, function)
