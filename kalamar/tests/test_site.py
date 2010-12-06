@@ -29,17 +29,13 @@ from kalamar.request import Condition, And, Or, Not
 from kalamar.access_point import AlreadyRegistered, AccessPoint
 
 
-class DummyAccessPoint(object):
+class DummyAccessPoint(AccessPoint):
     """Dummy access point for testing purpose."""
     properties = identity_properties = site = name = None
+    delete = save = search = None
 
-    def bind(self, site, name):
-        """Link the access point to ``site`` and call it ``name``."""
-        if not self.site and not self.name:
-            self.site = site
-            self.name = name
-        else:
-            raise AlreadyRegistered
+    def __init__(self):
+        super(DummyAccessPoint, self).__init__({}, {})
 
 
 def test_simple_setup():
