@@ -121,6 +121,7 @@ def run_common(function):
             # both cases, we must be sure that the function is unique in order
             # to give it a unique description.  To have a unique function, we
             # use a lambda function, even when runner is given.
+            # pylint: disable=W0108
             if runner:
                 # Lambda function calling given runner.
                 _runner = lambda test: runner(test)
@@ -129,6 +130,7 @@ def run_common(function):
                 # access_point.
                 _runner = lambda test: test(
                     make_site(access_point, fill=not hasattr(test, "nofill")))
+            # pylint: enable=W0108
 
             # The description is given if the test fails.  Having the access
             # point and the test description is very useful for debugging.
