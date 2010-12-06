@@ -23,7 +23,10 @@ Test various properties of the AccessPoint class.
 """
 
 import io
+# Nose redefines assert_is_instance
+# pylint: disable=E0611
 from nose.tools import eq_, raises, assert_is_instance
+# pylint: enable=E0611
 
 from kalamar.access_point import AccessPoint, AlreadyRegistered
 from kalamar.access_point.memory import Memory
@@ -102,8 +105,7 @@ def test_bad_auto():
         {"id": Property(int, auto=(1000,)),
          "name": Property(unicode, auto="test")}, ("id",))
     site.register("things", access_point)
-
-    item = site.create("things", {"id": 1})
+    site.create("things", {"id": 1})
 
 @raises(AlreadyRegistered)
 def test_already_registered():

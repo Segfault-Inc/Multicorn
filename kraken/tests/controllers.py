@@ -52,10 +52,13 @@ def anothertemplate(request, message, **kwargs):
     """Endpoint available from another name."""
     return {"message": message}
 
+# Redefining ``hello`` is mandatory here
+# pylint: disable=W0621
 @expose_template("/<string:hello>/message")
 def weirdpath(request, hello, **kwargs):
     """Endpoint with a weird path."""
     return {"message": hello}
+# pylint: enable=W0621
 
 @expose_template("/")
 def index(request, **kwargs):

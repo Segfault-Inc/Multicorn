@@ -25,12 +25,12 @@ import werkzeug
 import werkzeug.test
 
 
-def make_site(secret_key=None):
+def make_site(secret_key=None, fallback_on_template=True):
     """Create a kraken site with ``"./site"`` as root path."""
     # Import kraken here so that coverage sees module-level statements
     import kraken
     root = os.path.join(os.path.dirname(__file__), "site")
-    return kraken.Site(root, root, None, secret_key)
+    return kraken.site.Site(root, root, None, secret_key, fallback_on_template)
 
 
 class KrakenSiteMixin(object):
@@ -47,7 +47,8 @@ class KrakenSiteMixin(object):
         """
         if self.__class__.test_app is None:
             self.__class__.test_app = make_site(
-                secret_key=getattr(self, "site_secret_key", None))
+                secret_key=getattr(self, "site_secret_key", None),
+                fallback_on_template=getattr(self, "site_fallback", True))
         self.client = werkzeug.test.Client(
             self.test_app, werkzeug.wrappers.BaseResponse)
 

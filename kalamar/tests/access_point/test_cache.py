@@ -36,7 +36,8 @@ from ..common import run_common, make_site
 
 def make_ap():
     """Build a simple cache access point."""
-    return Cache(Memory({"id": Property(int), "name": Property(unicode)}, ("id",)))
+    return Cache(Memory(
+            {"id": Property(int), "name": Property(unicode)}, ("id",)))
 
 @run_common
 def test_cache():
@@ -129,8 +130,6 @@ def test_delete():
 def test_delete_many():
     """Deleting many items must flush the cache."""
     site = make_site(make_ap(), fill=True)
-    access_point = site.access_points["things"]
-
     site.delete_many("things", Condition("id", ">=", "2"))
     eq_(list(site.search("things", Not(Condition("id", ">=", "2")))),
         list(site.search("things")))

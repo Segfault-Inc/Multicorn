@@ -24,17 +24,32 @@ Template engine manager base class.
 """
 
 import abc
-import collections
 import os
 import re
+from collections import namedtuple
+
+
+# A named tuple has no real __init__ method
+# pylint: disable=W0232
+class Template(namedtuple("Template", ("name", "extension", "engine"))):
+    """Template named tuple with ``name``, ``extension`` and ``engine``."""
+# pylint: enable=W0232
 
 
 def find_template(path, engines, template_root):
-    """Get a template corresponding to ``path``.
+    """Get a :class:`Template` corresponding to ``path``.
 
-    Return a named tuple ``(template_name, extension, engine)``.
+    A simple algorithm is used to find the matching template:
 
-    TODO: explain how the template is found
+    1. Find a file named ``<root>/<path>.<mimetype>.<engine>``. If such a file
+       exists, choose this file, else;
+    2. Find a file named ``<root>/<path>/index.<mimetype>.<engine>``. If such a
+       file exists, choose this file, else;
+    3. Return ``None``.
+
+    At each step, ``engine`` must be in the list of ``engines``. If more than
+    one file matching the filename is present (for example, same name with a
+    different engine or a different mimetype), one file is randomly chosen.
 
     """
     template_suffix_re = ur"\.(.+)\.(%s)$" % u"|".join(
@@ -46,8 +61,6 @@ def find_template(path, engines, template_root):
     if path:
         searches.append((os.path.dirname(path), os.path.basename(path)))
 
-    Template = collections.namedtuple(
-        "Template", ("template_name", "extension", "engine"))
     for dirname, basename in searches:
         abs_dirname = os.path.join(template_root, dirname)
         if os.path.isdir(abs_dirname):
@@ -55,11 +68,10 @@ def find_template(path, engines, template_root):
                 match = re.match(
                     re.escape(basename) + template_suffix_re, name)
                 if match:
-                    template_name = u"/".join(
-                        dirname.split(os.path.sep) + [name])
+                    name = u"/".join(dirname.split(os.path.sep) + [name])
                     extension = match.group(1)
                     engine = match.group(2)
-                    return Template(template_name, extension, engine)
+                    return Template(name, extension, engine)
 
 
 class BaseEngine(object):

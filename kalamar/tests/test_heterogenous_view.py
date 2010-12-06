@@ -32,27 +32,28 @@ from kalamar.property import Property
 from kalamar.item import Item
 
 
+def make_alchemy_ap():
+    """Build an alchemy access point referencing another access point."""
+    id_property = AlchemyProperty(int, column_name="id")
+    label = AlchemyProperty(unicode, column_name="label")
+    memory = AlchemyProperty(
+        Item, column_name="memory", relation="many-to-one",
+        remote_ap="memory")
+    access_point = Alchemy(
+        "sqlite:///", "test_heterogeneous",
+        {"id": id_property, "label": label, "memory": memory},
+        ["id"], True)
+    return access_point
+
+def make_memory_ap():
+    """Build a memory access point referenced by another access_point."""
+    access_point = Memory(
+        {"id": Property(int), "label": Property(unicode)}, ("id",))
+    return access_point
+
+
 class TestHeterogeneous(unittest.TestCase):
     """Test class testing ``view`` over different access points."""
-    def make_alchemy_ap(self):
-        """Build an alchemy access point referencing another access point."""
-        id_property = AlchemyProperty(int, column_name="id")
-        label = AlchemyProperty(unicode, column_name="label")
-        memory = AlchemyProperty(
-            Item, column_name="memory", relation="many-to-one",
-            remote_ap="memory")
-        access_point = Alchemy(
-            "sqlite:///", "test_heterogeneous",
-            {"id": id_property, "label": label, "memory": memory},
-            ["id"], True)
-        return access_point
-
-    def make_memory_ap(self):
-        """Build a memory access point referenced by another access_point."""
-        access_point = Memory(
-            {"id": Property(int), "label": Property(unicode)}, ("id",))
-        return access_point
-
     def test_view(self):
         """Test the ``view`` method across access points."""
         aliases = {
@@ -70,9 +71,9 @@ class TestHeterogeneous(unittest.TestCase):
     # pylint: disable=C0103
     def setUp(self):
         self.site = Site()
-        self.alchemy_ap = self.make_alchemy_ap()
+        self.alchemy_ap = make_alchemy_ap()
         self.site.register("alchemy", self.alchemy_ap )
-        self.site.register("memory", self.make_memory_ap())
+        self.site.register("memory", make_memory_ap())
         self.memitem = self.site.create(
             "memory", {"id": 1, "label": u"memorytest"})
         self.memitem.save()

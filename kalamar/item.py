@@ -92,13 +92,26 @@ class MutableMultiMapping(MultiMapping, MutableMapping):
         """Set ``(value,)`` as the tuple of values associated to ``key``."""
         self.setlist(key, (value,))
     
-    def update(self, other=()):
-        """Set values of the ``other`` mapping to the current mapping.
+    # MultiMapping has got a very strange signature for update, without self
+    # argument, enabling to use the method as a function. This is definitely
+    # not what we want.
+    # pylint: disable=W0221
+    def update(self, *args, **kwargs):
+        """Set values of the given mapping to the current mapping.
 
-        ``other`` can be a regular mapping, a :class:`MultiMapping`, or an
-        iterable of ``(key, value)`` couples.
+        The given arguments can be ``key=value`` named arguments, a regular
+        mapping, a :class:`MultiMapping`, or an iterable of ``(key, value)``
+        couples.
 
         """
+        if not args:
+            other = kwargs
+        elif len(args) == 1:
+            other = args[0]
+        else:
+            raise TypeError(
+                "update expected at most 1 arguments, got %i" % len(args))
+
         if isinstance(other, MultiMapping):
             # We have a MultiMapping object with a getlist method
             # pylint: disable=E1103
@@ -107,6 +120,7 @@ class MutableMultiMapping(MultiMapping, MutableMapping):
             # pylint: enable=E1103
         else:
             super(MutableMultiMapping, self).update(other)
+    # pylint: enable=W0221
 
 # pylint: enable=W0232
 

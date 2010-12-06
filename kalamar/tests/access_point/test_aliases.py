@@ -134,7 +134,11 @@ def test_bad_key():
     access_point = Aliases(underlying_access_point, {"test": "unavailable"})
     site.register("aliased", access_point)
     item = site.create("aliased", {"id": 1, "name": "spam"})
+
+    # This access should raise a KeyError
+    # pylint: disable=W0104
     item["test"]
+    # pylint: enable=W0104
 
 def test_properties():
     """List the properties of an aliased item."""

@@ -22,6 +22,7 @@ Tests of kraken requests for simple templates (with no controllers).
 
 import os
 from unittest import TestCase
+from kraken.site import expose_template
 
 from . import KrakenSiteMixin
 
@@ -80,6 +81,41 @@ class TestSimpleRequests(KrakenSiteMixin, TestCase):
             response.headers["Location"], "http://localhost/hello/?name")
         self.assert_("redirect" in response.data.lower())
         self.assert_("hello/?name" in response.data)
+
+
+class TestNoFallback(KrakenSiteMixin, TestCase):
+    """Suite testing simple requests with no fallback on templates."""
+    # camelCase function names come from unittest
+    # pylint: disable=C0103
+    def setUp(self):
+        self.site_fallback = False
+        super(TestNoFallback, self).setUp()
+    # pylint: enable=C0103
+
+    def test_hello(self):
+        """Test a default template."""
+        response = self.client.get("/hello/?name=World")
+        self.assertEqual(response.status_code, 404)
+
+    def test_index(self):
+        """Test an index path."""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 404)
+
+
+class TestBadTemplate(KrakenSiteMixin, TestCase):
+    """Suit testing bad template exposition."""
+    def test_bad_template(self):
+        """Unavailable template."""
+        self.assertRaisesRegexp(
+            RuntimeError, "'hello/undefined'", self.test_app.register_endpoint,
+            expose_template("/hello/undefined")(lambda: None))
+
+    def test_bad_named_template(self):
+        """Unavailable named template."""
+        self.assertRaisesRegexp(
+            RuntimeError, "'undefined'", self.test_app.register_endpoint,
+            expose_template("/hello", "undefined")(lambda: None))
 
 
 class TestSession(KrakenSiteMixin, TestCase):

@@ -26,11 +26,13 @@ import os.path
 import tempfile
 import shutil
 import re
+# Nose redefines assert_equal
+# pylint: disable=E0611
 from nose.tools import eq_, assert_equal, raises
+# pylint: enable=E0611
 
 import kalamar
-from kalamar.access_point.filesystem import \
-    FileSystem, FileSystemProperty, PropertyPart
+from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.unicode_stream import UnicodeStream
 from kalamar.site import Site
 from ..common import run_common, make_site
