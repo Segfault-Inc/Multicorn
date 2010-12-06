@@ -139,7 +139,7 @@ class Alchemy(AccessPoint):
                    self.properties.values()])
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable:
-            table.create()
+            table.create(checkfirst=True)
         return table
 
     def __get_column(self, property_name):
@@ -230,7 +230,7 @@ class Alchemy(AccessPoint):
                 pass
             elif prop.relation == 'many-to-one':
                 if item[name] is not None:
-                    item_dict[name] = item[name].identity.conditions.values()[0]
+                    item_dict[name] = item[name].reference_repr()
                 else:
                     item_dict[name] = None
             else:

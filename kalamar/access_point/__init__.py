@@ -187,10 +187,9 @@ class AccessPoint(object):
         keys = [prop.name for prop in self.identity_properties]
         if len(values) != len(keys):
             raise ValueError("The representation doesnt match identity_properties")
-        a = lambda item : (self.site.open(self.name, dict((prop.name, value)
+        return lambda item : (self.site.open(self.name, dict((prop_name, value)
             for (prop_name, value) in zip(keys, values))),)
-        a.representation = representation
-        return a
+
     
     @abc.abstractmethod
     def delete(self, item):
