@@ -24,9 +24,16 @@ Template engine manager base class.
 """
 
 import abc
-import collections
 import os
 import re
+from collections import namedtuple
+
+
+# A named tuple has no real __init__ method
+# pylint: disable=W0232
+class Template(namedtuple("Template", ("name", "extension", "engine"))):
+    """Template representation with name, extension and engine."""
+# pylint: enable=W0232
 
 
 def find_template(path, engines, template_root):
@@ -56,8 +63,6 @@ def find_template(path, engines, template_root):
     if path:
         searches.append((os.path.dirname(path), os.path.basename(path)))
 
-    Template = collections.namedtuple(
-        "Template", ("template_name", "extension", "engine"))
     for dirname, basename in searches:
         abs_dirname = os.path.join(template_root, dirname)
         if os.path.isdir(abs_dirname):
@@ -65,11 +70,10 @@ def find_template(path, engines, template_root):
                 match = re.match(
                     re.escape(basename) + template_suffix_re, name)
                 if match:
-                    template_name = u"/".join(
-                        dirname.split(os.path.sep) + [name])
+                    name = u"/".join(dirname.split(os.path.sep) + [name])
                     extension = match.group(1)
                     engine = match.group(2)
-                    return Template(template_name, extension, engine)
+                    return Template(name, extension, engine)
 
 
 class BaseEngine(object):
