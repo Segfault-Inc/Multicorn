@@ -175,7 +175,7 @@ class Alchemy(AccessPoint):
                 return column.like(value)
             else:
                 return column.op(condition.operator)(value)
-        
+
     def __item_from_result(self, result):
         """Creates an item from a result line."""
         lazy_props = {}
@@ -187,7 +187,7 @@ class Alchemy(AccessPoint):
             elif prop.relation == "many-to-one" and result[name] is not None:
                 lazy_props[name] = self._many_to_one_lazy_loader(prop, 
                         result[name])
-            else: 
+            else:
                 props[name] = result[name]
         for prop in lazy_to_build:
             lazy_props[prop.name] = self._default_loader(props, prop)

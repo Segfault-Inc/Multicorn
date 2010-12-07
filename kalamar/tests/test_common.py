@@ -118,6 +118,20 @@ def test_re_inequal_search(site):
     eq_(set(item["id"] for item in results), set([1]))
 
 @common
+def test_inequal_search(site):
+    """Trst a search with an inequality condition."""
+    condition = Condition("name", "!=", "bar")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([1]))
+
+@common
+def test_like_search(site):
+    """Trst a search with an inequality condition."""
+    condition = Condition("name", "like", "b%r")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([2,3]))
+
+@common
 def test_open_one(site):
     """Standard ``open``."""
     result = site.open("things", {"name": u"foo"})
@@ -294,10 +308,30 @@ def test_view_range(site):
     """Test range argument."""
     items = list(site.view("things", select_range=2))
     eq_(len(items), 2)
-    items = list(site.view("things", order_by=[("id", True)], 
+    items = list(site.view("things", order_by=[("id", True)],
         select_range=(1, 2)))
     eq_(len(items), 1)
     eq_(items[0]["id"], 2)
+
+@common
+def test_view_operators(site):
+    """Test various operators with a view"""
+    condition = Condition("foo", "!=", u"bar")
+    results = list(site.view("things", {"bar" : "id" , "foo": "name"},
+        condition))
+    eq_(set(item["bar"] for item in results), set([1]))
+    condition = Condition("foo", "like", u"b%r")
+    results = list(site.view("things", {"bar" : "id" , "foo": "name"},
+        condition))
+    eq_(set(item["bar"] for item in results), set([2,3]))
+
+@common
+def test_view_distinct(site):
+    """Test the distinct view query"""
+    results = list(site.view("things", {"foo": "name"}, distinct=True))
+    eq_(len(results), 2)
+    eq_(set(item["foo"] for item in results), set(["foo", "bar"]))
+
 
 @common
 def test_view_star_request(site):

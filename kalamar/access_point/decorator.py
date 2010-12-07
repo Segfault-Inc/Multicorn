@@ -74,6 +74,8 @@ class Decorator(AccessPointWrapper):
     def __init__(self, wrapped_ap, decorated_properties):
         super(Decorator, self).__init__(wrapped_ap)
         self.decorated_properties = decorated_properties
+        for key, prop in self.decorated_properties.items():
+            self.register(key, prop)
 
     def search(self, request):
         # The search request is quite special, since we can't rely on
@@ -82,8 +84,9 @@ class Decorator(AccessPointWrapper):
         tree = request.properties_tree
         if any((key in tree for key in self.decorated_properties)):
             for item in self.wrapped_ap.search(And()):
-                if request.test(item):
-                    yield self.ItemDecorator(self, item)
+                decorated_item = self.ItemDecorator(self, item)
+                if request.test(decorated_item):
+                    yield decorated_item
         else:
             for item in self.wrapped_ap.search(request):
                 yield self.ItemDecorator(self, item)
@@ -94,8 +97,8 @@ class Decorator(AccessPointWrapper):
         # when possible.
         tree = request.properties_tree
         if any((key in tree for key in self.decorated_properties)):
-            for item in self.search(request):
-                self.wrapped_ap.delete(item)
+            for item in set(self.search(request)):
+                self.wrapped_ap.delete(item.wrapped_item)
         else:
             self.wrapped_ap.delete_many(request)
 
@@ -111,8 +114,11 @@ class Decorator(AccessPointWrapper):
 
     def create(self, properties=None, lazy_loaders=None):
         decorated_values = MultiDict()
-        for key in properties:
+        properties = MultiDict(properties or {})
+        for key in dict(properties):
             if key in self.decorated_properties:
-                decorated_values = properties.pop(key)
+                values = properties.getlist(key)
+                del properties[key]
+                decorated_values.setlist(key, values)
         underlying_item = self.wrapped_ap.create(properties, lazy_loaders)
         return self.ItemDecorator(self, underlying_item, decorated_values)

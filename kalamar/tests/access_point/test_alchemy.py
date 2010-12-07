@@ -33,7 +33,7 @@ from ..common import make_site, run_common
 def make_ap():
     """Create a simple Alchemy access point."""
     id_property = AlchemyProperty(int, column_name="id")
-    name = AlchemyProperty(unicode, column_name="name")
+    name = AlchemyProperty(unicode)
     access_point = Alchemy(
         "sqlite:///", "test", {"id": id_property, "name": name},
         ["id"], True)

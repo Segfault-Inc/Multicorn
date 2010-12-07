@@ -71,12 +71,14 @@ class PropertyPart(object):
         for part, prop in zip(parts, self.properties):
             template += prop.formatter
             template += part.replace("\\", "")
-
-        values = tuple(
-            item[prop.name] if prop.type != Item else
-            item[prop.name].reference_repr() for prop in self.properties)
-
-        return template % values
+        values = []
+        for prop in self.properties:
+            value = item[prop.name]
+            if prop.type != Item or value is None:
+                values.append(value)
+            else:
+                values.append(value.reference_repr())
+        return template % tuple(values)
 
 
 class FileSystemProperty(Property):
@@ -158,6 +160,8 @@ class FileSystem(AccessPoint):
                     lazy_loaders = {self.content_property: defered_open(path)}
                     item_properties = {}
                     for prop, value in properties.items():
+                        if value == u'None':
+                            value = None
                         if prop.relation is None:
                             item_properties[prop.name] = value
                         elif prop.relation == "many-to-one":
