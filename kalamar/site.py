@@ -116,16 +116,16 @@ class Site(object):
             aliases = dict(((value, key) for key, value in aliases.items()))
             chain.append(QuerySelect(aliases))
             chain.append(QueryFilter(request))
+            if distinct:
+                chain.append(QueryDistinct())
             if order_by is not None:
                 chain.append(QueryOrder(order_by))
             if select_range is not None:
                 if hasattr(select_range, "__iter__"):
                     select_range = slice(*select_range)
-                else: 
+                else:
                     select_range = slice(select_range)
                 chain.append(QueryRange(select_range))
-            if distinct:
-                chain.append(QueryDistinct())
             query = QueryChain(chain)
         query.validate(self, access_point.properties)
         return access_point.view(query)

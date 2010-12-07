@@ -119,7 +119,8 @@ class FileSystem(AccessPoint):
         properties[content_property] = FileSystemProperty(io.IOBase)
         # All properties here are in the identity
         identity_properties = tuple(
-            name for name, prop in self._ordered_properties)
+            name for name, prop in self._ordered_properties
+            if prop.relation != 'one-to-many')
         super(FileSystem, self).__init__(properties, identity_properties)
 
         pattern_parts = pattern.split("/")

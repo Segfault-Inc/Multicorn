@@ -146,10 +146,13 @@ from .common_tests import *
 
 
 def test_combinations():
+    def make_closure(func, ap):
+        return lambda : func(ap)
     for first_ap, second_ap in product(FIRST_APS, SECOND_APS):
         for test in COMMON_TESTS:
             first_ap_instance = first_ap()
             second_ap_instance = second_ap()
+            ordered_ap_dict = zip((first_ap, second_ap), (first_ap_instance, second_ap_instance))
             _runner = lambda test: test(make_site(first_ap_instance,
                 second_ap_instance,
                 fill=not hasattr(test, "nofill")))
@@ -157,7 +160,13 @@ def test_combinations():
                 type(first_ap_instance).__name__,
                 type(second_ap_instance).__name__,
                 test.__doc__)
+            setups = []
+            teardowns = []
+            for func, ap in ordered_ap_dict:
+                if func.setup is not None:
+                    setups.append(make_closure(func.setup, ap))
+                if func.teardown is not None:
+                    teardowns.append(make_closure(func.teardown, ap))
+            _runner.setup = lambda: [setup() for setup in setups]
+            _runner.tearDown = lambda: [teardown() for teardown in teardowns]
             yield _runner, test
-
-
-
