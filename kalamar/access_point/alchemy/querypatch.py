@@ -25,7 +25,7 @@ from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect
 
 from sqlalchemy.sql import expression
-from kalamar.item import Item
+from kalamar.item import AbstractItem
 
 
 # Monky-patchers are allowed to skip some arguments
@@ -84,9 +84,9 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
         else:
             column = properties[condition.property.name].column
             value = condition.value
-            if value.__class__ == Item:
+            if isinstance(value, AbstractItem):
                 #TODO: manage multiple foreign key
-                value = value.identity.conditions.values()[0]
+                value = value.reference_repr()
             if condition.operator == "=":
                 return column == value
             elif condition.operator == '!=':

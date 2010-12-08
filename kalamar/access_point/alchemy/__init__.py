@@ -27,14 +27,13 @@ from werkzeug.utils import cached_property
 from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
     Integer, Date, Numeric, DateTime, Boolean, Unicode
 from sqlalchemy.sql import expression, and_, or_, not_
-from sqlalchemy.dialects.postgresql.base import PGDialect
 from datetime import datetime, date
 from decimal import Decimal
 import sqlalchemy.sql.expression
 
 from . import querypatch
 from .. import AccessPoint
-from ...item import Item
+from ...item import AbstractItem
 from ...request import Condition, And, Or, Not
 from ...query import QueryChain
 from ...property import Property
@@ -164,7 +163,7 @@ class Alchemy(AccessPoint):
         else:
             column = self.__get_column(condition.property.name)
             value = condition.value
-            if value.__class__ == Item:
+            if isinstance(value, AbstractItem):
                 value = value.reference_repr()
             if condition.operator == "=":
                 return column == value
