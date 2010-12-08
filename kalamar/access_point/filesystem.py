@@ -174,7 +174,7 @@ class FileSystem(AccessPoint):
                     item_properties = dict(
                         (prop.name, value) for prop, value
                         in properties.items() if prop.relation is None)
-                    item = FileSystemItem(self, item_properties, lazy_loaders)
+                    item = self.create(item_properties, lazy_loaders)
                     item.saved = True
                     if request.test(item):
                         yield item
