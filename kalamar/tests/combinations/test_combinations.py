@@ -35,6 +35,9 @@ COMMON_TESTS = []
 FIRST_APS = []
 SECOND_APS = []
 
+FIRST_WRAPPERS = []
+SECOND_WRAPPERS = []
+
 
 def fill_site(site):
     """Fill a ``site`` with testing data."""
@@ -137,7 +140,17 @@ class second_ap(ap_decorator):
     aps = SECOND_APS
 
 
+class first_wrapper(ap_decorator):
+    """Decorator to mark a function as a ``double cheese generator``.
 
+    It must accept a function returning an access point conforming to the first
+    access point definition, and returns a function returning a wrapped access
+    point.
+    """
+    aps = FIRST_WRAPPERS
+
+class second_wrapper(ap_decorator):
+    aps = SECOND_WRAPPERS
 
 
 
@@ -146,13 +159,31 @@ from .common_tests import *
 
 
 def test_combinations():
+
+    def make_wrapped_setup(func):
+        return lambda ap : func(ap.wrapped_ap)
+    for wrapper, first_ap_func in list(product(FIRST_WRAPPERS, FIRST_APS)):
+        kwargs = {}
+        if first_ap_func.setup:
+            kwargs['setup'] = make_wrapped_setup(first_ap_func.setup)
+        if first_ap_func.teardown:
+            kwargs['teardown'] = make_wrapped_setup(first_ap_func.teardown)
+        first_ap(**kwargs)(wrapper(first_ap_func))
+    for wrapper, second_ap_func in list(product(SECOND_WRAPPERS, SECOND_APS)):
+        kwargs = {}
+        if second_ap_func.setup:
+            kwargs['setup'] = make_wrapped_setup(second_ap_func.setup)
+        if second_ap_func.teardown:
+            kwargs['teardown'] = make_wrapped_setup(second_ap_func.teardown)
+        second_ap(**kwargs)(wrapper(second_ap_func))
+
     def make_closure(func, ap):
         return lambda : func(ap)
-    for first_ap, second_ap in product(FIRST_APS, SECOND_APS):
+    for first_ap_func, second_ap_func in product(FIRST_APS, SECOND_APS):
         for test in COMMON_TESTS:
-            first_ap_instance = first_ap()
-            second_ap_instance = second_ap()
-            ordered_ap_dict = zip((first_ap, second_ap), (first_ap_instance, second_ap_instance))
+            first_ap_instance = first_ap_func()
+            second_ap_instance = second_ap_func()
+            ordered_ap_dict = zip((first_ap_func, second_ap_func), (first_ap_instance, second_ap_instance))
             _runner = lambda test: test(make_site(first_ap_instance,
                 second_ap_instance,
                 fill=not hasattr(test, "nofill")))

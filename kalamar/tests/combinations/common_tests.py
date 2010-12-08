@@ -102,3 +102,11 @@ def test_item_condition(site):
     items = list(site.view('first_ap', request=condition))
     eq_(len(items), 2)
 
+@common
+def test_item_loading(site):
+    item = site.open('second_ap', {'code': u'AAA'})
+    first_items = item['first_aps']
+    eq_(len(first_items), 2)
+    assert all([first['second_ap'] == item
+        for first in first_items])
+    
