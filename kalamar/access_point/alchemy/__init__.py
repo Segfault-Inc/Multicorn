@@ -30,6 +30,7 @@ from sqlalchemy.sql import expression, and_, or_, not_
 from datetime import datetime, date
 from decimal import Decimal
 import sqlalchemy.sql.expression
+import sqlalchemy.exc 
 
 from . import querypatch
 from .. import AccessPoint
@@ -169,7 +170,8 @@ class Alchemy(AccessPoint):
                 return column == value
             elif condition.operator == '!=':
                 return column != value
-            #TODO: enhance the condition handling to manage '~=' on other systems
+            # TODO: enhance the condition handling to manage '~='
+            # on other systems
             elif condition.operator == 'like':
                 return column.like(value)
             else:
@@ -246,7 +248,7 @@ class Alchemy(AccessPoint):
                     self.identity_properties):
                 item[id_prop.name] = gen_id
             transaction.commit()
-        except:
+        except sqlalchemy.exc.IntegrityError:
             try:
                 whereclause = self.__to_pk_where_clause(item)
                 update = self._table.update()
@@ -274,7 +276,6 @@ class Alchemy(AccessPoint):
             if not alchemy_query.c:
                 for name, prop in self.properties.items():
                     alchemy_query.append_column(prop.column.label(name))
-            start = datetime.now()
             result = alchemy_query.execute()
         else:
             result = self.search(And())

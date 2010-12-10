@@ -61,8 +61,8 @@ class DecoratorItem(ItemWrapper):
 
 class DecoratorProperty(Property):
     """Property suitable for a decorator access point."""
-    def __init__(self, property_type, getter):
-        super(DecoratorProperty, self).__init__(property_type)
+    def __init__(self, property_type, getter, *args, **kwargs):
+        super(DecoratorProperty, self).__init__(property_type, *args, **kwargs)
         self.getter = getter
 
 
@@ -116,7 +116,7 @@ class Decorator(AccessPointWrapper):
         decorated_values = MultiDict()
         properties = MultiDict(properties or {})
         for key in dict(properties):
-            if key in self.decorated_properties:
+            if key in dict(self.decorated_properties):
                 values = properties.getlist(key)
                 del properties[key]
                 decorated_values.setlist(key, values)

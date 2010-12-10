@@ -31,6 +31,7 @@ from kalamar.access_point import MultipleMatchingItems, ItemDoesNotExist
 from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.access_point.alchemy import Alchemy
+from kalamar.access_point.xml import XML
 from kalamar.access_point.unicode_stream import UnicodeStream
 from .common import nofill, common
 
@@ -59,7 +60,7 @@ def test_single_item_multidict(site):
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
-    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
+    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream, XML)):
         eq_(item.getlist("name"), ("foo", "bar"))
 
 @nofill
@@ -233,7 +234,7 @@ def test_modify_list(site):
     item = site.open("things", {"name": u"spam"})
     eq_(item["id"], identifier)
     eq_(item["name"], u"spam")
-    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
+    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream, XML)):
         # Try multiple values for access points supporting multiple values
         eq_(item.getlist("name"), (u"spam", u"egg"))
 

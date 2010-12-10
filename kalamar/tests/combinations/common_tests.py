@@ -104,9 +104,9 @@ def test_item_condition(site):
 
 @common
 def test_item_loading(site):
+    """Test that many to one and one to many loaders work"""
     item = site.open('second_ap', {'code': u'AAA'})
     first_items = item['first_aps']
     eq_(len(first_items), 2)
     assert all([first['second_ap'] == item
         for first in first_items])
-    
