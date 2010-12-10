@@ -1,3 +1,29 @@
+# -*- coding: utf-8 -*-
+# This file is part of Dyko
+# Copyright © 2008-2010 Kozea
+#
+# This library is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+reStructured text access point
+==============================
+
+Access point designed to store values in a reStructured text document.
+
+"""
+
+
 from . import XML, XMLItem, XMLProperty
 
 from kalamar.item import AbstractItem, Item
@@ -30,17 +56,28 @@ class RestItem(XMLItem):
                 root = etree.Element(self.access_point.root_element)
                 self._xml_tree = etree.ElementTree(element = root)
             else:
-                self._xml_tree = etree.ElementTree(element = etree.fromstring(xmlstring, parser))
+                elem = etree.fromstring(xmlstring, parser)
+                self._xml_tree = etree.ElementTree(element = elem)
         return self._xml_tree
 
 class RestProperty(XMLProperty):
+    """
+    Property to be used with a reStructuredText access point
+    """
 
     def __init__(self, property_type, xpath, *args, **kwargs):
         if property_type == Item:
             xpath = "%s/%s" % (xpath, "raw")
-        super(RestProperty, self).__init__(property_type, xpath, *args, **kwargs)
+        super(RestProperty, self).__init__(property_type, xpath, *args,
+                **kwargs)
 
     def to_xml(self, value):
+        """
+            Overrides XMLProperty to xml to create custom role element for
+            docutils, which value is the reference representaion of the item
+            It will results in restructured text as:
+            :raw-kalamar:`reference_repr`
+        """
         if isinstance(value, AbstractItem):
             elem = etree.Element(self.tag_name, classes="raw-kalamar",
                     format="kalamar")
@@ -50,11 +87,21 @@ class RestProperty(XMLProperty):
             return super(RestProperty, self).to_xml(value)
 
     def item_from_xml(self, elem):
+        """
+            Provides a custom xml serializaion for item, based on the
+            standard reference_repr.
+        """
         return self.remote_ap.loader_from_reference_repr(elem.text)(None)
 
 
 
 class Rest(XML):
+    """
+    Access point designed to store and access data in restructured text documents.
+    It is based on the XML access point, and read the document as a doctree,
+    and transforms it back to restructured text using an XSLT transformation
+
+    """
 
     ItemDecorator = RestItem
 
@@ -65,20 +112,29 @@ class Rest(XML):
 
 
     def register(self, name, prop):
+        """
+            Overrides register to detect when we should create the custom role
+            definition
+        """
         if prop.relation is not None:
             self.need_role_def = True
         super(Rest, self).register(name, prop)
 
     def update_xml_tree(self, item):
+        """
+            Generates (if needed) the custom role definition
+        """
         if self.need_role_def:
             role_defs_nodes = item.xml_tree.xpath('//role-def')
             if not len(role_defs_nodes):
                 parent = item.xml_tree.getroot()
-                elem = etree.Element('role-def', classes='raw-kalamar', format='kalamar')
+                elem = etree.Element('role-def', classes='raw-kalamar',
+                        format='kalamar')
                 parent.append(elem)
         super(Rest, self).update_xml_tree(item)
 
     def preprocess_save(self, item):
         if len(item.unsaved_properties):
             self.update_xml_tree(item)
-            item[self.stream_property] = StringIO(rst_xslt.convert(item.xml_tree))
+            item[self.stream_property] = StringIO(
+                    rst_xslt.convert(item.xml_tree))
