@@ -26,6 +26,7 @@ import os.path
 import tempfile
 import shutil
 import re
+import contextlib
 # Nose redefines assert_equal
 # pylint: disable=E0611
 from nose.tools import eq_, assert_equal, raises
@@ -38,17 +39,14 @@ from kalamar.site import Site
 from ..common import run_common, make_site
 
 
-class TemporaryDirectory(object):
-    """Utility class for the tests."""
-    def __init__(self):
-        self.directory = None
-
-    def __enter__(self):
-        self.directory = tempfile.mkdtemp()
-        return self.directory
-    
-    def __exit__(self, exit_type, value, traceback):
-        shutil.rmtree(self.directory)
+@contextlib.contextmanager
+def TemporaryDirectory():
+    """This context manager gives the path to a new temporary directory that
+    is deleted (with all it's content) at the end of the with block.
+    """
+    directory = tempfile.mkdtemp()
+    yield directory
+    shutil.rmtree(directory)
 
 
 def test_filesytem_init():
