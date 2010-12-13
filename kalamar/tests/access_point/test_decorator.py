@@ -32,16 +32,17 @@ from ..common import run_common, make_site
 class SimpleDecorator(Decorator):
     """Simple Decorator access point evaluating its values."""
     def preprocess_save(self, item):
-       if len(item.unsaved_properties):
-           for key in item.unsaved_properties:
-               try:
-                   values = eval(item.unsaved_properties[key])
-               except:
-                   values = item.unsaved_properties.getlist(key)
-               item.setlist("base_%s" % key, values)
+        if len(item.unsaved_properties):
+            for key in item.unsaved_properties:
+                try:
+                    values = eval(item.unsaved_properties[key])
+                except:
+                    values = item.unsaved_properties.getlist(key)
+                item.setlist("base_%s" % key, values)
 
 
 class SimpleDecoratorProperty(DecoratorProperty):
+    """Item for the simple decorator access point."""
     def getter(self, item):
         return item.getlist("base_name")
 

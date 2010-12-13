@@ -30,7 +30,6 @@ import mimetypes
 import re
 import os
 import sys
-import types
 import werkzeug
 import werkzeug.contrib.securecookie
 import werkzeug.wrappers

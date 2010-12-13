@@ -23,18 +23,15 @@ access point.
 
 """
 
+import shutil
 from nose.tools import nottest
 from itertools import product
-
 from kalamar.site import Site
 
 
-
 COMMON_TESTS = []
-
 FIRST_APS = []
 SECOND_APS = []
-
 FIRST_WRAPPERS = []
 SECOND_WRAPPERS = []
 
@@ -47,24 +44,21 @@ def fill_site(site):
     second_ap_item2 = site.create("second_ap", {"code" : "BBB", "name":
     "second_ap BBB"})
     second_ap_item2.save()
-    item = site.create("first_ap", {'id': 1, 'name': 'Test one', 'color':
-        'red', 'second_ap' : second_ap_item1})
+    item = site.create("first_ap", {"id": 1, "name": "Test one", "color":
+        "red", "second_ap" : second_ap_item1})
     item.save()
-    item = site.create("first_ap", {'id': 2, 'name': 'Test two', 'color':
-        'red', 'second_ap': second_ap_item2})
+    item = site.create("first_ap", {"id": 2, "name": "Test two", "color":
+        "red", "second_ap": second_ap_item2})
     item.save()
-    item = site.create("first_ap", {'id': 3, 'name': 'Test three',
-        'color': 'blue', 'second_ap': second_ap_item1})
+    item = site.create("first_ap", {"id": 3, "name": "Test three",
+        "color": "blue", "second_ap": second_ap_item1})
     item.save()
-    item = site.create("first_ap", {'id': 4, 'name': 'Test four',
-        'color': 'green', 'second_ap': None})
+    item = site.create("first_ap", {"id": 4, "name": "Test four",
+        "color": "green", "second_ap": None})
     item.save()
-    item = site.create("first_ap", {'id': 5, 'name': 'Test five',
-        'color': 'blue', 'second_ap': second_ap_item2})
+    item = site.create("first_ap", {"id": 5, "name": "Test five",
+        "color": "blue", "second_ap": second_ap_item2})
     item.save()
-
-
-
 
 def make_site(first_ap, second_ap, fill=True):
     """Create a site from an ``access_point`` filled by ``fill`` values."""
@@ -76,14 +70,6 @@ def make_site(first_ap, second_ap, fill=True):
         fill_site(site)
     return site
 
-
-
-def nofill(function):
-    """Decorator saying that ``function`` needs an empty (unfilled) site."""
-    function.nofill = False
-    return function
-
-
 def common(function):
     """Decorator to explicit a test which must run for all access points.
 
@@ -94,110 +80,117 @@ def common(function):
     COMMON_TESTS.append(function)
     return function
 
-def first_ap(function):
-    function = nottest(function)
-    FIRST_APS.append(function)
-    return function
+def teardown_fs(access_point):
+    """Remove the root filesystem directory of the wrapped ``access_point``."""
+    shutil.rmtree(access_point.wrapped_ap.root_dir)
 
-class ap_decorator(object):
-    """ Decorator class to collect different access points """
 
-    def __init__(self, setup=None, teardown=None):
-        self.setup = setup
+class APDecorator(object):
+    """Decorator class to collect different access points."""
+    aps = None
+
+    def __init__(self, teardown=None):
         self.teardown = teardown
 
     def __call__(self, function):
         function = nottest(function)
-        function.setup = self.setup
         function.teardown = self.teardown
         self.aps.append(function)
         return function
 
 
-class first_ap(ap_decorator):
+class FirstAP(APDecorator):
     """Decorator to mark a function as yielding an access point to be tested.
 
-    The first access point must have the following properties :
-        - id: int, identity_property
-        - name: unicode
-        - color: unicode
-        - second_ap : Item, remote_ap="second_ap",
+    The first access point must have the following properties:
+
+    - id: int, identity_property
+    - name: unicode
+    - color: unicode
+    - second_ap : Item, remote_ap="second_ap",
 
     """
-
     aps = FIRST_APS
 
-class second_ap(ap_decorator):
+
+class SecondAP(APDecorator):
     """Decorator to mark a function as yielding an access point to be tested.
 
-    The second access point must have the following properties :
-        - code: unicode, identity_property
-        - name: unicode
-        - first_aps: iter, relation=one_to_many, remote_ap=first_ap,
-          remote_property=second_ap
+    The second access point must have the following properties:
+
+    - code: unicode, identity_property
+    - name: unicode
+    - first_aps: iter, relation="one_to_many", remote_ap="first_ap",
+          remote_property="second_ap"
 
     """
     aps = SECOND_APS
 
 
-class first_wrapper(ap_decorator):
-    """Decorator to mark a function as a ``double cheese generator``.
+class FirstWrapper(APDecorator):
+    """Decorator to mark a function as a first ``double cheese generator``.
 
     It must accept a function returning an access point conforming to the first
     access point definition, and returns a function returning a wrapped access
     point.
+
     """
     aps = FIRST_WRAPPERS
 
-class second_wrapper(ap_decorator):
+
+class SecondWrapper(APDecorator):
+    """Decorator to mark a function as a second ``double cheese generator``."""
     aps = SECOND_WRAPPERS
 
 
-
+# Importing all access points and common tests are imported here with a
+# wildcard, this is very useful and very efficient
+# pylint: disable=W0401
+# pylint: disable=W0614
 from .access_point import *
 from .common_tests import *
+# pylint: enable=W0401
+# pylint: enable=W0614
 
 
 def test_combinations():
-
-    def make_wrapped_setup(func):
-        return lambda ap : func(ap.wrapped_ap)
+    """Test the access point combinations."""
+    def make_wrapped_setup(function):
+        """Create a wrapped setup for given ``func``."""
+        return lambda access_point: function(access_point.wrapped_ap)
     for wrapper, first_ap_func in list(product(FIRST_WRAPPERS, FIRST_APS)):
         kwargs = {}
-        if first_ap_func.setup:
-            kwargs['setup'] = make_wrapped_setup(first_ap_func.setup)
         if first_ap_func.teardown:
-            kwargs['teardown'] = make_wrapped_setup(first_ap_func.teardown)
-        first_ap(**kwargs)(wrapper(first_ap_func))
+            kwargs["teardown"] = make_wrapped_setup(first_ap_func.teardown)
+        FirstAP(**kwargs)(wrapper(first_ap_func))
     for wrapper, second_ap_func in list(product(SECOND_WRAPPERS, SECOND_APS)):
         kwargs = {}
-        if second_ap_func.setup:
-            kwargs['setup'] = make_wrapped_setup(second_ap_func.setup)
         if second_ap_func.teardown:
-            kwargs['teardown'] = make_wrapped_setup(second_ap_func.teardown)
-        second_ap(**kwargs)(wrapper(second_ap_func))
+            kwargs["teardown"] = make_wrapped_setup(second_ap_func.teardown)
+        SecondAP(**kwargs)(wrapper(second_ap_func))
 
-    def make_closure(func, ap):
-        return lambda : func(ap)
+    def make_closure(function, access_point):
+        """Create a closure of ``function(access_point)``."""
+        return lambda: function(access_point)
+
     for first_ap_func, second_ap_func in product(FIRST_APS, SECOND_APS):
         for test in COMMON_TESTS:
             first_ap_instance = first_ap_func()
             second_ap_instance = second_ap_func()
-            ordered_ap_dict = zip((first_ap_func, second_ap_func), (first_ap_instance, second_ap_instance))
-            _runner = lambda test: test(make_site(first_ap_instance,
-                second_ap_instance,
-                fill=not hasattr(test, "nofill")))
+            ordered_ap_dict = zip(
+                (first_ap_func, second_ap_func),
+                (first_ap_instance, second_ap_instance))
+            _runner = lambda test: test(
+                make_site(first_ap_instance, second_ap_instance,
+                          fill=not hasattr(test, "nofill")))
             _runner.description = "#1: %s, #2: %s. Test: %s" % (
                 type(first_ap_instance).__name__,
                 type(second_ap_instance).__name__,
                 test.__doc__)
-            setups = []
             teardowns = []
-            for func, ap in ordered_ap_dict:
-                if func.setup is not None:
-                    setups.append(make_closure(func.setup, ap))
-                if func.teardown is not None:
-                    teardowns.append(make_closure(func.teardown, ap))
-            _runner.setup = lambda: [setup() for setup in setups]
+            for function, access_point in ordered_ap_dict:
+                if function.teardown is not None:
+                    teardowns.append(
+                        make_closure(function.teardown, access_point))
             _runner.tearDown = lambda: [teardown() for teardown in teardowns]
             yield _runner, test

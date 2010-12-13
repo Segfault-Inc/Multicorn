@@ -24,8 +24,8 @@ Site class. Create one for each independent site with its own configuration.
 """
 
 from .request import normalize, make_request, And, Condition, Or, Not
-from .query import QueryFilter, QuerySelect, QueryChain, QueryOrder, QueryRange,\
-        QueryDistinct
+from .query import \
+    QueryFilter, QuerySelect, QueryChain, QueryOrder, QueryRange, QueryDistinct
 
 
 def _translate_request(request, aliases):

@@ -75,7 +75,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
 
     def to_alchemy_condition(condition):
         """Converts a kalamar condition to an sqlalchemy condition."""
-        #TODO : merge this with alchemy.to_alchemy_condition
+        # TODO: merge this with alchemy.to_alchemy_condition
         if isinstance(condition, (And, Or, Not)):
             alchemy_conditions = tuple(
                 to_alchemy_condition(sub_condition)
@@ -85,7 +85,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
             column = properties[condition.property.name].column
             value = condition.value
             if isinstance(value, AbstractItem):
-                #TODO: manage multiple foreign key
+                # TODO: manage multiple foreign key
                 value = value.reference_repr()
             if condition.operator == "=":
                 return column == value

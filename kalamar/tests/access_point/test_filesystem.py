@@ -40,9 +40,13 @@ from ..common import run_common, make_site
 
 
 @contextlib.contextmanager
-def TemporaryDirectory():
-    """This context manager gives the path to a new temporary directory that
-    is deleted (with all it's content) at the end of the with block.
+def temporary_directory():
+    """Create a temporary directory.
+
+    This context manager gives the path to a new temporary directory that is
+    deleted, with all its content, at the end of the ``with`` block, even if an
+    error is raised.
+
     """
     directory = tempfile.mkdtemp()
     try:
@@ -75,8 +79,8 @@ def test_filesytem_init():
     assert "RANDOM STRING A6buCMTbAdCV98j00vK455UIAPCJ" in items_file.read()
 
 def test_temporary_directory():
-    """Assert :class:`TemporaryDirectory` works as intented."""
-    with TemporaryDirectory() as temp_dir:
+    """Assert :func:`temporary_directory` works as intented."""
+    with temporary_directory() as temp_dir:
         assert os.path.isdir(temp_dir)
         
         # Test that we can write and read files.
@@ -101,7 +105,7 @@ def test_filesystem_bad_pattern():
 
 def test_filenames():
     """Assert that the filenames are what we expect."""
-    with TemporaryDirectory() as temp_dir:
+    with temporary_directory() as temp_dir:
         access_point = FileSystem(
             temp_dir, "(.*) - (.*)\.(.*)", (
                 ("id", FileSystemProperty(int, "%03d")),
@@ -133,7 +137,7 @@ def test_filenames():
 
 def runner(test):
     """Test runner for ``test``."""
-    with TemporaryDirectory() as temp_dir:
+    with temporary_directory() as temp_dir:
         access_point = FileSystem(
             temp_dir, "(.*)\.txt", [("id", FileSystemProperty(int))],
             content_property="name")

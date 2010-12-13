@@ -120,7 +120,7 @@ class FileSystem(AccessPoint):
         # All properties here are in the identity
         identity_properties = tuple(
             name for name, prop in self._ordered_properties
-            if prop.relation != 'one-to-many')
+            if prop.relation != "one-to-many")
         super(FileSystem, self).__init__(properties, identity_properties)
 
         pattern_parts = pattern.split("/")
@@ -139,7 +139,6 @@ class FileSystem(AccessPoint):
                 for property_part in self.properties_per_path_part))
 
     def search(self, request):
-
         def walk(root, remaining_path_parts, previous_properties=()):
             """Walk through filesystem from ``root`` yielding matching items."""
             property_part = remaining_path_parts[0]
@@ -161,7 +160,7 @@ class FileSystem(AccessPoint):
                     lazy_loaders = {self.content_property : defered_open()}
                     item_properties = {}
                     for prop, value in properties.items():
-                        if value == u'None':
+                        if value == u"None":
                             value = None
                         if prop.relation is None:
                             item_properties[prop.name] = value
@@ -188,13 +187,13 @@ class FileSystem(AccessPoint):
         if not os.listdir(basedir):
             os.removedirs(basedir)
 
-    def create(self, properties, lazy_properties):
-        lazy_properties = lazy_properties or {}
+    def create(self, properties=None, lazy_loaders=None):
         properties = properties or {}
-        if self.content_property not in properties\
-            and self.content_property not in lazy_properties:
-                properties[self.content_property] = StringIO()
-        return super(FileSystem, self).create(properties, lazy_properties)
+        lazy_loaders = lazy_loaders or {}
+        if self.content_property not in properties \
+                and self.content_property not in lazy_loaders:
+            properties[self.content_property] = StringIO()
+        return super(FileSystem, self).create(properties, lazy_loaders)
 
     def save(self, item):
         content = item[self.content_property]

@@ -43,15 +43,19 @@ class TemporaryDirectory(object):
     def __exit__(self, exit_type, value, traceback):
         shutil.rmtree(self.directory)
 
+
 def make_file_ap(temp_dir):
-    return FileSystem( temp_dir,
-            "(.*)\.txt", [("id", FileSystemProperty(int))],
-            content_property="stream")
+    """Make filesystem access point."""
+    return FileSystem(
+        temp_dir, "(.*)\.txt", [("id", FileSystemProperty(int))],
+        content_property="stream")
 
 def test_serialization():
+    """Test ReST serialization."""
     def xml_content_test(site):
-        item = site.open('things', {'id': 1})
-        eq_(item['stream'].read(), "===\nfoo\n===")
+        """Inner function to test ReST serialization."""
+        item = site.open("things", {"id": 1})
+        eq_(item["stream"].read(), "===\nfoo\n===")
     runner(xml_content_test)
 
 
@@ -61,8 +65,8 @@ def runner(test):
     """Test runner for ``test``."""
     with TemporaryDirectory() as temp_dir:
         file_access_point = make_file_ap(temp_dir)
-        access_point = Rest(file_access_point, [('name',
-            RestProperty(unicode, '//title'))], 'stream')
+        access_point = Rest(file_access_point, [
+                ("name", RestProperty(unicode, "//title"))], "stream")
         site = make_site(access_point, fill=not hasattr(test, "nofill"))
         test(site)
 

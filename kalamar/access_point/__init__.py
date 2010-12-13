@@ -302,5 +302,5 @@ class AccessPointWrapper(AccessPoint):
         """Link the access point to ``site`` and call it ``name``."""
         super(AccessPointWrapper, self).bind(site, name)
         if not self.wrapped_ap.site:
-            self.wrapped_ap.bind(site,name)
+            self.wrapped_ap.bind(site, name)
 

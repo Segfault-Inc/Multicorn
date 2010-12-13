@@ -24,19 +24,15 @@ XML to ReST converter.
 
 """
 
-
 import os.path
 from lxml import etree
 
-MAIN_XSLT = "xml2rst.xsl"
+
+_XSLT_FILENAME = os.path.join(os.path.dirname(__file__), "xml2rst.xsl")
+MAIN_XSLT = etree.XSLT(etree.parse(open(_XSLT_FILENAME), etree.XMLParser()))
 
 
 def convert(document):
     """Convert XML ``document`` into ReST."""
-    xslt_parser = etree.XMLParser()
-    with open(os.path.join(os.path.dirname(__file__), MAIN_XSLT)) as xslt:
-        xslt_document = etree.parse(xslt, xslt_parser)
-    main_xslt = etree.XSLT(xslt_document)
-    result = main_xslt(document)
     # Chop off trailing linefeed - added somehow
-    return str(result)[:-1]
+    return str(MAIN_XSLT(document))[:-1]

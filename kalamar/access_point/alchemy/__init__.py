@@ -95,10 +95,10 @@ class Alchemy(AccessPoint):
             kwargs["primary_key"] = True
         if prop.relation == "many-to-one":
             foreign_ap = prop.remote_ap
-            #Transpose the kalamar relation in alchemy if possible
+            # Transpose the kalamar relation in alchemy if possible
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
-                #TODO: Fix this for circular dependencies
+                # TODO: Fix this for circular dependencies
                 foreign_column = self.__get_column("%s.%s" % (prop.name,
                     prop.remote_property.name))
                 foreign_name = "%s.%s" % (foreign_table, foreign_column)
@@ -117,7 +117,7 @@ class Alchemy(AccessPoint):
                     alchemy_type = SQLALCHEMYTYPES.get(unicode)
                 column = Column(prop.column_name, alchemy_type, **kwargs)
         elif prop.relation == "one-to-many":
-            #TODO manage multiple foreign-key
+            # TODO: Manage multiple foreign-key
             column = self.identity_properties[0].column
         else:
             column = Column(prop.column_name, alchemy_type, **kwargs)
@@ -170,7 +170,7 @@ class Alchemy(AccessPoint):
                 return column == value
             elif condition.operator == '!=':
                 return column != value
-            # TODO: enhance the condition handling to manage '~='
+            # TODO: Enhance the condition handling to manage '~='
             # on other systems
             elif condition.operator == 'like':
                 return column.like(value)

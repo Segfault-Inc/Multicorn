@@ -36,6 +36,10 @@ from kalamar.access_point.unicode_stream import UnicodeStream
 from .common import nofill, common
 
 
+# TODO: support of multiple values for access points should be introspectable
+SINGLE_VALUE_ACCESS_POINTS = (Alchemy, UnicodeStream, XML)
+
+
 @nofill
 @common
 def test_single_item(site):
@@ -60,7 +64,7 @@ def test_single_item_multidict(site):
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
-    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream, XML)):
+    if not isinstance(site.access_points["things"], SINGLE_VALUE_ACCESS_POINTS):
         eq_(item.getlist("name"), ("foo", "bar"))
 
 @nofill
@@ -130,7 +134,7 @@ def test_like_search(site):
     """Trst a search with an inequality condition."""
     condition = Condition("name", "like", "b%r")
     results = site.search("things", condition)
-    eq_(set(item["id"] for item in results), set([2,3]))
+    eq_(set(item["id"] for item in results), set([2, 3]))
 
 @common
 def test_open_one(site):
@@ -234,8 +238,7 @@ def test_modify_list(site):
     item = site.open("things", {"name": u"spam"})
     eq_(item["id"], identifier)
     eq_(item["name"], u"spam")
-    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream, XML)):
-        # Try multiple values for access points supporting multiple values
+    if not isinstance(site.access_points["things"], SINGLE_VALUE_ACCESS_POINTS):
         eq_(item.getlist("name"), (u"spam", u"egg"))
 
 @common
@@ -324,7 +327,7 @@ def test_view_operators(site):
     condition = Condition("foo", "like", u"b%r")
     results = list(site.view("things", {"bar" : "id" , "foo": "name"},
         condition))
-    eq_(set(item["bar"] for item in results), set([2,3]))
+    eq_(set(item["bar"] for item in results), set([2, 3]))
 
 @common
 def test_view_distinct(site):
@@ -332,7 +335,6 @@ def test_view_distinct(site):
     results = list(site.view("things", {"foo": "name"}, distinct=True))
     eq_(len(results), 2)
     eq_(set(item["foo"] for item in results), set(["foo", "bar"]))
-
 
 @common
 def test_view_star_request(site):

@@ -24,11 +24,11 @@ Test the XML backend.
 
 import tempfile
 import shutil
-
 from nose.tools import eq_
 from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml import XML, XMLProperty
 from kalamar.site import Site
+
 from ..common import run_common, make_site
 
 
@@ -45,41 +45,45 @@ class TemporaryDirectory(object):
         shutil.rmtree(self.directory)
 
 def test_serialization():
+    """Test XML serialization."""
     def xml_content_test(site):
-        item = site.open('things', {'id': 1})
-        eq_(item['stream'].read(), "<foo><bar><baz>foo</baz></bar></foo>")
+        """Inner function testing XMD serialization."""
+        item = site.open("things", {"id": 1})
+        eq_(item["stream"].read(), "<foo><bar><baz>foo</baz></bar></foo>")
     runner(xml_content_test)
 
 def test_update_document():
+    """Test document update."""
     def xml_update_test(site):
-        item = site.open('things', {'id': 1})
-        item['name'] = 'updated name'
+        """Inner function testing document update."""
+        item = site.open("things", {"id": 1})
+        item["name"] = "updated"
         item.save()
-        item = site.open('things', {'id': 1})
-        eq_(item['stream'].read(), "<foo><bar><baz>update name</baz></bar></foo>")
+        item = site.open("things", {"id": 1})
+        eq_(item["stream"].read(), "<foo><bar><baz>updated</baz></bar></foo>")
+    runner(xml_update_test)
 
 def test_shared_structure():
+    """Test item with properties sharing the same structure."""
     with TemporaryDirectory() as temp_dir:
         file_ap = make_file_ap(temp_dir)
-        access_point = XML(file_ap, [
-            ('name' , XMLProperty(unicode, '//bar/name')),
-            ('color', XMLProperty(unicode, '//bar/color'))],
-            'stream',
-            'foo')
+        properties = [
+            ("name" , XMLProperty(unicode, "//bar/name")),
+            ("color", XMLProperty(unicode, "//bar/color"))]
+        access_point = XML(file_ap, properties, "stream", "foo")
         site = Site()
-        site.register('test', access_point)
-        item = site.create('test', {
-            'name': 'hulk',
-            'color': 'green',
-            'id': 1})
+        site.register("test", access_point)
+        item = site.create("test", {"name": "hulk", "color": "green", "id": 1})
         item.save()
-        item = site.open('test', {'id': 1})
-        eq_(item['stream'].read(), "<foo><bar><name>hulk</name><color>green</color></bar></foo>")
+        item = site.open("test", {"id": 1})
+        eq_(item["stream"].read(),
+            "<foo><bar><name>hulk</name><color>green</color></bar></foo>")
 
 def make_file_ap(temp_dir):
-    return FileSystem( temp_dir,
-            "(.*)\.txt", [("id", FileSystemProperty(int))],
-            content_property="stream")
+    """Create a filesystem access point."""
+    return FileSystem(
+        temp_dir, "(.*)\.txt", [("id", FileSystemProperty(int))],
+        content_property="stream")
 
 
 # Common tests
@@ -88,8 +92,8 @@ def runner(test):
     """Test runner for ``test``."""
     with TemporaryDirectory() as temp_dir:
         file_access_point = make_file_ap(temp_dir)
-        access_point = XML(file_access_point, [('name',
-            XMLProperty(unicode, '//bar/baz')),], 'stream', 'foo')
+        access_point = XML(file_access_point, [
+                ("name", XMLProperty(unicode, "//bar/baz")),], "stream", "foo")
         site = make_site(access_point, fill=not hasattr(test, "nofill"))
         test(site)
 
