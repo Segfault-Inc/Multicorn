@@ -125,6 +125,8 @@ for engine_name, engine_class in (
         engine_class("/nonexistent-path")
     except ImportError: # pragma: no cover
         # Not installed/available
-        pass
+        import sys
+        print >> sys.stderr, "WARNING: " \
+            "The %s template engine is not available." % engine_name
     else:
         BUILTIN_ENGINES[engine_name] = engine_class
