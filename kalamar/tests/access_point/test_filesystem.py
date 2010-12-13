@@ -45,8 +45,10 @@ def TemporaryDirectory():
     is deleted (with all it's content) at the end of the with block.
     """
     directory = tempfile.mkdtemp()
-    yield directory
-    shutil.rmtree(directory)
+    try:
+        yield directory
+    finally:
+        shutil.rmtree(directory)
 
 
 def test_filesytem_init():
