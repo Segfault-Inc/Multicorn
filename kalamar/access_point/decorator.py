@@ -61,9 +61,13 @@ class DecoratorItem(ItemWrapper):
 
 class DecoratorProperty(Property):
     """Property suitable for a decorator access point."""
-    def __init__(self, property_type, getter, *args, **kwargs):
+    def __init__(self, property_type, *args, **kwargs):
         super(DecoratorProperty, self).__init__(property_type, *args, **kwargs)
-        self.getter = getter
+
+    @abc.abstractmethod
+    def getter(self, item):
+        """Getter method providing an access to the property."""
+        raise NotImplementedError
 
 
 class Decorator(AccessPointWrapper):

@@ -22,19 +22,15 @@ Test the aliases backend.
 
 """
 
-# Nose redefines assert_raises
-# pylint: disable=E0611
-# pylint: enable=E0611
-
 from kalamar.access_point.memory import Memory
-from kalamar.access_point.decorator import Decorator,DecoratorProperty
+from kalamar.access_point.decorator import Decorator, DecoratorProperty
 from kalamar.property import Property
+
 from ..common import run_common, make_site
 
 
 class SimpleDecorator(Decorator):
-    """Simple Decorator access point, wich evaluates its values"""
-
+    """Simple Decorator access point evaluating its values."""
     def preprocess_save(self, item):
        if len(item.unsaved_properties):
            for key in item.unsaved_properties:
@@ -42,15 +38,19 @@ class SimpleDecorator(Decorator):
                    values = eval(item.unsaved_properties[key])
                except:
                    values = item.unsaved_properties.getlist(key)
-               item.setlist('base_%s' % key, values)
+               item.setlist("base_%s" % key, values)
+
+
+class SimpleDecoratorProperty(DecoratorProperty):
+    def getter(self, item):
+        return item.getlist("base_name")
 
 
 def make_ap():
     """Create a simple access point."""
     underlying_access_point = Memory(
         {"id": Property(int), "base_name": Property(unicode)}, ("id",))
-    decorated_prop = DecoratorProperty(unicode,
-            lambda item: item.getlist("base_name"))
+    decorated_prop = SimpleDecoratorProperty(unicode)
     return SimpleDecorator(underlying_access_point, {"name": decorated_prop})
 
 @run_common
@@ -63,15 +63,15 @@ def runner(test):
     access_point = make_ap()
     site = make_site(access_point, fill=False)
     if not hasattr(test, "nofill"):
-        site.create('things', {'id': 1,
-            'name': '("foobar".replace("bar",""),)',
-            'base_name' : None}).save()
-        site.create('things', {'id': 2,
-            'name': '("foobar".replace("foo",""),)',
-            'base_name': None}).save()
-        site.create('things', {'id': 3,
-            'name': '("foobar".replace("foo",""),)',
-            'base_name': None}).save()
+        site.create("things", {"id": 1,
+            "name": "('foobar'.replace('bar', ''),)",
+            "base_name" : None}).save()
+        site.create("things", {"id": 2,
+            "name": "('foobar'.replace('foo', ''),)",
+            "base_name": None}).save()
+        site.create("things", {"id": 3,
+            "name": "('foobar'.replace('foo', ''),)",
+            "base_name": None}).save()
     test(site)
 
 @run_common

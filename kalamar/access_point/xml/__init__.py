@@ -23,100 +23,79 @@ An access point designed to store properies in a XML file
 
 """
 
+from lxml import etree
+from StringIO import StringIO
+
 from kalamar.access_point.decorator import Decorator, DecoratorItem, \
         DecoratorProperty
 from kalamar.item import AbstractItem, Item
 from kalamar.request import make_request
 
-from lxml import etree
-from StringIO import StringIO
-
-
 
 class XMLItem(DecoratorItem):
-    """
-    Base XMLItem
-    """
-
+    """Base XML Item."""
     def __init__(self, access_point, wrapped_item, decorated_values=None):
-        super(XMLItem, self).__init__(access_point, wrapped_item,
-                decorated_values)
+        super(XMLItem, self).__init__(
+            access_point, wrapped_item, decorated_values)
         self._xml_tree = None
 
     @property
     def xml_tree(self):
-        """
-            Returns the xml tree parsed from the item ``stream property``
-            defined in the access point
-        """
+        """Return the XML tree parsed from the ``stream_property`` item."""
         if self._xml_tree is None:
             parser = etree.XMLParser()
             xmlstring = self[self.access_point.stream_property].read()
-            if xmlstring == None or xmlstring.strip() == u'':
-                #Create a new xml tree if there isn't one
+            if xmlstring == None or not xmlstring.strip():
+                # Create a new xml tree if there isn't one
                 root = etree.Element(self.access_point.root_element)
                 self._xml_tree = etree.ElementTree(element = root)
             else:
                 self._xml_tree = etree.fromstring(xmlstring, parser)
         return self._xml_tree
 
+
 class XMLProperty(DecoratorProperty):
-    """
-        A property to be used with the XML access point
-
-    """
-
+    """Property used with the XML access point."""
     def __init__(self, property_type, xpath, *args, **kwargs):
-        super(XMLProperty, self).__init__(property_type, self.getter,
-                *args, **kwargs)
-        parts = xpath.strip('/').split('/')
+        super(XMLProperty, self).__init__(
+            property_type, *args, **kwargs)
+        parts = xpath.strip("/").split("/")
         self.xpath = xpath
         self.tag_name = parts[-1]
-        self.parent_xpath = '//' + '/'.join(parts[:-1])
+        self.parent_xpath = "//" + "/".join(parts[:-1])
 
     def getter(self, item):
-        """
-            Getter method to provide access to the property
-        """
-        if self.relation == 'one-to-many':
+        if self.relation == "one-to-many":
             return self.access_point._default_loader({}, self)(item)
         nodes = self.get_nodes(item)
         if len(nodes) == 0:
             return (None,)
-        if self.type == Item:
+        elif self.type == Item:
             return self.item_from_xml(nodes[0])
         elif self.type == iter:
             return ((node.text for node in nodes),)
         return self.cast(tuple(node.text for node in nodes))
 
     def get_nodes(self, item):
-        """
-            Return the xml nodes associated with the properties
-        """
+        """Return the XML nodes associated to the properties."""
         nodes = item.xml_tree.xpath(self.xpath)
         return nodes
 
     def item_from_xml(self, elem):
-        """
-            Builds an item from an element representing an item.
+        """Build an item from an element representing an item.
 
-            Subclasses may override this method according to their xml serialization
-            mechanism.
+        Subclasses may override this method according to their XML
+        serialization mechanism.
+
         """
         request = dict(((child.tag, unicode(child.text)) for child in elem))
         return (self.remote_ap.open(make_request(request)),) \
-                if len(request) else (None,)
+            if len(request) else (None,)
 
     def to_xml(self, value):
-        """
-            Builds an xml element for a given value
-        """
-        element = etree.Element(self.tag_name)
+        """Build an XML element for a given value."""
         def fill_elem(elem, value):
-            """
-                Inner (recursive) function filling an element according to the
-                value
-            """
+            """Inner function filling an element according to the value."""
             if isinstance(value, AbstractItem):
                 identity = value.identity
                 for name, value in identity.conditions.items():
@@ -125,20 +104,21 @@ class XMLProperty(DecoratorProperty):
                     elem.append(subelement)
             else:
                 elem.text = value
+
+        element = etree.Element(self.tag_name)
         fill_elem(element, value)
         return element
 
-    def create_parent(self, doc):
-        """
-            Creates the parent element to wich the element representing this property's
-            value must be appended.
+    def create_parent(self, document):
+        """Create the parent element from ``parent_xpath`` in ``document``.
+
+        Create the parent element to which the element representing this
+        property's value must be appended.
+
         """
         def inner_create_element(parent, path):
-            """
-                (recursive) inner function creating the whole tree leading to
-                the element.
-            """
-            parts = path.strip('/').split('/')
+            """Inner function creating the whole tree leading to the element."""
+            parts = path.strip("/").split("/")
             next_tag = parts[0]
             if not len(next_tag.strip()):
                 return parent
@@ -146,22 +126,20 @@ class XMLProperty(DecoratorProperty):
             if not len(node):
                 node = etree.Element(next_tag)
                 parent.append(node)
-            else :
+            else:
                 node = node[0]
             rest = "/".join(parts[1:])
             return inner_create_element(node, rest)
-        return inner_create_element(doc.getroot(), self.parent_xpath)
+
+        return inner_create_element(document.getroot(), self.parent_xpath)
+
 
 class XML(Decorator):
-    """
-        An access point designed to store values in an XML document
-
-    """
-
+    """Access point designed to store values in an XML document."""
     ItemDecorator = XMLItem
 
     def __init__(self, wrapped_ap, decorated_properties, stream_property,
-            root_element):
+                 root_element):
         super(XML, self).__init__(wrapped_ap, {})
         self.stream_property = stream_property
         self.root_element = root_element
@@ -171,14 +149,12 @@ class XML(Decorator):
             self.register(key, prop)
 
     def update_xml_tree(self, item):
-        """
-            Updates the generated xml from the item unsaved values
-        """
+        """Update the generated XML from the item unsaved values."""
         for key, prop in self.ordered_decorated_properties:
             if key in item.unsaved_properties:
                 value = item.unsaved_properties.get(key)
                 prop = self.decorated_properties[key]
-                if prop.parent_xpath == '//':
+                if prop.parent_xpath == "//":
                     parent_nodes = (item.xml_tree.getroot(),)
                 else:
                     parent_nodes = item.xml_tree.xpath(prop.parent_xpath)
@@ -197,8 +173,8 @@ class XML(Decorator):
                 else:
                     parent_node.append(prop.to_xml(value))
 
-
     def preprocess_save(self, item):
+        """Function called before ``item`` is saved."""
         if len(item.unsaved_properties):
             self.update_xml_tree(item)
             stream = StringIO()
