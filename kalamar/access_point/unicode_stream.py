@@ -85,7 +85,15 @@ class UnicodeStream(AccessPointWrapper):
     
     def _decode(self, streams):
         """Get decoded values from ``streams``."""
-        return tuple(stream.read().decode(self.encoding) for stream in streams)
+        values = []
+        for stream in streams:
+            if hasattr(stream, 'seek'):
+                try:
+                    stream.seek(0)
+                except IOError:
+                    pass
+            values.append(stream.read().decode(self.encoding))
+        return tuple(values)
         
     def _encode(self, values):
         """Get encoded streams from ``values``."""

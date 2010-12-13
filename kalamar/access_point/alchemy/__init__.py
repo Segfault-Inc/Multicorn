@@ -27,14 +27,14 @@ from werkzeug.utils import cached_property
 from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
     Integer, Date, Numeric, DateTime, Boolean, Unicode
 from sqlalchemy.sql import expression, and_, or_, not_
-from sqlalchemy.dialects.postgresql.base import PGDialect
 from datetime import datetime, date
 from decimal import Decimal
 import sqlalchemy.sql.expression
+import sqlalchemy.exc 
 
 from . import querypatch
 from .. import AccessPoint
-from ...item import Item
+from ...item import AbstractItem
 from ...request import Condition, And, Or, Not
 from ...query import QueryChain
 from ...property import Property
@@ -139,7 +139,7 @@ class Alchemy(AccessPoint):
                    self.properties.values()])
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable:
-            table.create()
+            table.create(checkfirst=True)
         return table
 
     def __get_column(self, property_name):
@@ -164,18 +164,19 @@ class Alchemy(AccessPoint):
         else:
             column = self.__get_column(condition.property.name)
             value = condition.value
-            if value.__class__ == Item:
+            if isinstance(value, AbstractItem):
                 value = value.reference_repr()
             if condition.operator == "=":
                 return column == value
             elif condition.operator == '!=':
                 return column != value
-            #TODO: enhance the condition handling to manage '~=' on other systems
+            # TODO: enhance the condition handling to manage '~='
+            # on other systems
             elif condition.operator == 'like':
                 return column.like(value)
             else:
                 return column.op(condition.operator)(value)
-        
+
     def __item_from_result(self, result):
         """Creates an item from a result line."""
         lazy_props = {}
@@ -187,7 +188,7 @@ class Alchemy(AccessPoint):
             elif prop.relation == "many-to-one" and result[name] is not None:
                 lazy_props[name] = self._many_to_one_lazy_loader(prop, 
                         result[name])
-            else: 
+            else:
                 props[name] = result[name]
         for prop in lazy_to_build:
             lazy_props[prop.name] = self._default_loader(props, prop)
@@ -230,7 +231,7 @@ class Alchemy(AccessPoint):
                 pass
             elif prop.relation == 'many-to-one':
                 if item[name] is not None:
-                    item_dict[name] = item[name].identity.conditions.values()[0]
+                    item_dict[name] = item[name].reference_repr()
                 else:
                     item_dict[name] = None
             else:
@@ -247,7 +248,7 @@ class Alchemy(AccessPoint):
                     self.identity_properties):
                 item[id_prop.name] = gen_id
             transaction.commit()
-        except:
+        except sqlalchemy.exc.IntegrityError:
             try:
                 whereclause = self.__to_pk_where_clause(item)
                 update = self._table.update()
@@ -275,7 +276,6 @@ class Alchemy(AccessPoint):
             if not alchemy_query.c:
                 for name, prop in self.properties.items():
                     alchemy_query.append_column(prop.column.label(name))
-            start = datetime.now()
             result = alchemy_query.execute()
         else:
             result = self.search(And())

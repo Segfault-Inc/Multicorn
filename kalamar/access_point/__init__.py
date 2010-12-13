@@ -77,6 +77,9 @@ class AccessPoint(object):
         self.properties = {}
         for name, prop in properties.items():
             self.register(name, prop)
+            if name in identity_properties:
+                prop.mandatory = True
+                prop.identity = True
         self._identity_property_names = identity_properties
         self.site = None
         self.name = None
@@ -195,17 +198,16 @@ class AccessPoint(object):
         heterogeneous linked access points.
 
         """
+        if representation is None:
+            return lambda item: (None,)
         keys = [prop.name for prop in self.identity_properties]
         values = representation.split("/")
-
         if len(keys) != len(values):
             raise ValueError(
                 "The representation doesn't match the identity properties.")
-
         properties = dict(zip(keys, values))
-        loader = lambda item: (self.site.open(self.name, properties),)
-        loader.representation = representation
-        return loader
+        return lambda item: (self.site.open(self.name, properties),)
+
     
     @abc.abstractmethod
     def delete(self, item):
@@ -243,7 +245,7 @@ class AccessPoint(object):
 
         for name, value in lazy_refs.items():
             lazy_loaders[name] = self._default_loader(properties, value)
-
+        
         item = self.ItemClass(self, properties, lazy_loaders)
         item.modified = True
         item.saved = False
@@ -295,3 +297,10 @@ class AccessPointWrapper(AccessPoint):
     def create(self, properties=None, lazy_loaders=None):
         underlying_item = self.wrapped_ap.create(properties, lazy_loaders)
         return self.ItemWrapper(self, underlying_item)
+
+    def bind(self, site, name):
+        """Link the access point to ``site`` and call it ``name``."""
+        super(AccessPointWrapper, self).bind(site, name)
+        if not self.wrapped_ap.site:
+            self.wrapped_ap.bind(site,name)
+

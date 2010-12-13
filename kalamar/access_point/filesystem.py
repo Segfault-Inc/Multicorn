@@ -30,7 +30,7 @@ import io
 from . import AccessPoint
 from ..item import Item
 from ..property import Property
-
+from StringIO import StringIO
 
 # io.IOBase has no __init__ method
 # pylint: disable=W0231
@@ -71,12 +71,14 @@ class PropertyPart(object):
         for part, prop in zip(parts, self.properties):
             template += prop.formatter
             template += part.replace("\\", "")
-
-        values = tuple(
-            item[prop.name] if prop.type != Item else
-            item[prop.name].reference_repr() for prop in self.properties)
-
-        return template % values
+        values = []
+        for prop in self.properties:
+            value = item[prop.name]
+            if prop.type != Item or value is None:
+                values.append(value)
+            else:
+                values.append(value.reference_repr())
+        return template % tuple(values)
 
 
 class FileSystemProperty(Property):
@@ -117,7 +119,8 @@ class FileSystem(AccessPoint):
         properties[content_property] = FileSystemProperty(io.IOBase)
         # All properties here are in the identity
         identity_properties = tuple(
-            name for name, prop in self._ordered_properties)
+            name for name, prop in self._ordered_properties
+            if prop.relation != 'one-to-many')
         super(FileSystem, self).__init__(properties, identity_properties)
 
         pattern_parts = pattern.split("/")
@@ -136,9 +139,6 @@ class FileSystem(AccessPoint):
                 for property_part in self.properties_per_path_part))
 
     def search(self, request):
-        def defered_open(path):
-            """Opener for ``path``."""
-            return lambda item: (Stream(path),)
 
         def walk(root, remaining_path_parts, previous_properties=()):
             """Walk through filesystem from ``root`` yielding matching items."""
@@ -155,9 +155,14 @@ class FileSystem(AccessPoint):
                     for item in walk(path, remaining_path_parts, properties):
                         yield item
                 if not remaining_path_parts and not os.path.isdir(path):
-                    lazy_loaders = {self.content_property: defered_open(path)}
+                    def defered_open():
+                        """Opener for ``item``."""
+                        return lambda item: (Stream(item.filename),)
+                    lazy_loaders = {self.content_property : defered_open()}
                     item_properties = {}
                     for prop, value in properties.items():
+                        if value == u'None':
+                            value = None
                         if prop.relation is None:
                             item_properties[prop.name] = value
                         elif prop.relation == "many-to-one":
@@ -169,7 +174,7 @@ class FileSystem(AccessPoint):
                     item_properties = dict(
                         (prop.name, value) for prop, value
                         in properties.items() if prop.relation is None)
-                    item = FileSystemItem(self, item_properties, lazy_loaders)
+                    item = self.create(item_properties, lazy_loaders)
                     item.saved = True
                     if request.test(item):
                         yield item
@@ -183,6 +188,14 @@ class FileSystem(AccessPoint):
         if not os.listdir(basedir):
             os.removedirs(basedir)
 
+    def create(self, properties, lazy_properties):
+        lazy_properties = lazy_properties or {}
+        properties = properties or {}
+        if self.content_property not in properties\
+            and self.content_property not in lazy_properties:
+                properties[self.content_property] = StringIO()
+        return super(FileSystem, self).create(properties, lazy_properties)
+
     def save(self, item):
         content = item[self.content_property]
         try:
@@ -193,6 +206,6 @@ class FileSystem(AccessPoint):
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        with Stream(self._item_filename(item)) as file_descriptor:
+        with Stream(filename) as file_descriptor:
             file_descriptor.write(content.read())
         item.saved = True

@@ -39,15 +39,15 @@ def fill_site(site):
     site.create("things", {"id": 3, "name": u"bar"}).save()
 
 
-def make_site(access_point, fill=False):
+def make_site(access_point, fill=True):
     """Create a site from an ``access_point`` filled by ``fill`` values."""
     site = Site()
     site.register("things", access_point)
 
     if fill:
         fill_site(site)
-
     return site
+
 
 
 def nofill(function):

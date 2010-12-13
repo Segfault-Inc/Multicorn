@@ -215,7 +215,7 @@ class ComposedRequestProperty(RequestProperty):
     """Nested property from an item.
 
     A nested property is of the form ``foo.bar.baz``.
- 
+
     """
     def __init__(self, name, child_property, inner=True):
         super(ComposedRequestProperty, self).__init__(name)

@@ -247,7 +247,7 @@ class Item(AbstractItem):
         loading a property is expensive, this allows to only load it when it’s
         needed. When you have only one value, wrap it in a tuple like this:
         `(value,)`
-    
+
     Every property defined in the access point must be given in one of
     ``properties`` or ``lazy_loaders``, but not both.
 
@@ -256,9 +256,12 @@ class Item(AbstractItem):
         super(Item, self).__init__(access_point)
         given_keys = set(properties)
         lazy_keys = set(lazy_loaders)
+        mandatory_keys = set((key for (key, prop)
+            in access_point.properties.items()
+            if prop.mandatory and not prop.auto))
         ap_keys = set(access_point.properties)
-        
-        missing_keys = ap_keys - given_keys - lazy_keys
+
+        missing_keys = mandatory_keys - given_keys - lazy_keys
         if missing_keys:
             raise ValueError("Properties %r are neither given nor lazy."
                              % (tuple(missing_keys),))

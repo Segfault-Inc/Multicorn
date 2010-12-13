@@ -31,6 +31,7 @@ from kalamar.access_point import MultipleMatchingItems, ItemDoesNotExist
 from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.access_point.alchemy import Alchemy
+from kalamar.access_point.xml import XML
 from kalamar.access_point.unicode_stream import UnicodeStream
 from .common import nofill, common
 
@@ -59,7 +60,7 @@ def test_single_item_multidict(site):
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], "foo")
-    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
+    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream, XML)):
         eq_(item.getlist("name"), ("foo", "bar"))
 
 @nofill
@@ -116,6 +117,20 @@ def test_re_inequal_search(site):
     condition = Condition("name", "~!=", ".?a.*")
     results = site.search("things", condition)
     eq_(set(item["id"] for item in results), set([1]))
+
+@common
+def test_inequal_search(site):
+    """Trst a search with an inequality condition."""
+    condition = Condition("name", "!=", "bar")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([1]))
+
+@common
+def test_like_search(site):
+    """Trst a search with an inequality condition."""
+    condition = Condition("name", "like", "b%r")
+    results = site.search("things", condition)
+    eq_(set(item["id"] for item in results), set([2,3]))
 
 @common
 def test_open_one(site):
@@ -219,7 +234,7 @@ def test_modify_list(site):
     item = site.open("things", {"name": u"spam"})
     eq_(item["id"], identifier)
     eq_(item["name"], u"spam")
-    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream)):
+    if not isinstance(site.access_points["things"], (Alchemy, UnicodeStream, XML)):
         # Try multiple values for access points supporting multiple values
         eq_(item.getlist("name"), (u"spam", u"egg"))
 
@@ -294,10 +309,30 @@ def test_view_range(site):
     """Test range argument."""
     items = list(site.view("things", select_range=2))
     eq_(len(items), 2)
-    items = list(site.view("things", order_by=[("id", True)], 
+    items = list(site.view("things", order_by=[("id", True)],
         select_range=(1, 2)))
     eq_(len(items), 1)
     eq_(items[0]["id"], 2)
+
+@common
+def test_view_operators(site):
+    """Test various operators with a view"""
+    condition = Condition("foo", "!=", u"bar")
+    results = list(site.view("things", {"bar" : "id" , "foo": "name"},
+        condition))
+    eq_(set(item["bar"] for item in results), set([1]))
+    condition = Condition("foo", "like", u"b%r")
+    results = list(site.view("things", {"bar" : "id" , "foo": "name"},
+        condition))
+    eq_(set(item["bar"] for item in results), set([2,3]))
+
+@common
+def test_view_distinct(site):
+    """Test the distinct view query"""
+    results = list(site.view("things", {"foo": "name"}, distinct=True))
+    eq_(len(results), 2)
+    eq_(set(item["foo"] for item in results), set(["foo", "bar"]))
+
 
 @common
 def test_view_star_request(site):

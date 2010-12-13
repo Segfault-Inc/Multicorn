@@ -198,7 +198,7 @@ def to_type(value, data_type):
     ValueError: eggs cannot be cast to float.
 
     """
-    if isinstance(value, data_type):
+    if isinstance(value, data_type) or value is None:
         return value
     else:
         try:
