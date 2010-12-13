@@ -165,7 +165,6 @@ class Site(object):
             if not response:
                 adapter = self.url_map.bind_to_environ(environ)
                 handler, values = adapter.match()
-                values.update(sites)
                 response = handler(request, **values)
         except (NotFound, MethodNotAllowed) as exception:
             if self.fallback_on_template:
