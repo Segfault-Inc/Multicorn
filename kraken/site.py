@@ -34,7 +34,8 @@ import types
 import werkzeug
 import werkzeug.contrib.securecookie
 import werkzeug.wrappers
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import \
+    HTTPException, NotFound, MethodNotAllowed, Forbidden
 from werkzeug.routing import Map, Rule 
 from functools import partial
 from .template import BUILTIN_ENGINES, find_template
@@ -115,7 +116,7 @@ class TemplateResponse(werkzeug.wrappers.Response):
             content = site.render_template(engine, template_name, values)
             super(TemplateResponse, self).__init__(content, mimetype=mimetype)
         else:
-            raise werkzeug.exceptions.NotFound
+            raise NotFound
 
 
 class ControllerResponse(werkzeug.wrappers.Response):
@@ -166,15 +167,15 @@ class Site(object):
                 handler, values = adapter.match()
                 values.update(sites)
                 response = handler(request, **values)
-        except werkzeug.exceptions.NotFound, exception:
+        except (NotFound, MethodNotAllowed) as exception:
             if self.fallback_on_template:
                 try:
                     response = self.simple_template(request, **sites)
-                except HTTPException, exception:
+                except HTTPException as exception:
                     return exception(environ, start_response)
             else:
                 return exception(environ, start_response)
-        except HTTPException, exception:
+        except HTTPException as exception:
             return exception(environ, start_response)
 
         # Add session cookie if needed
@@ -194,7 +195,7 @@ class Site(object):
         """Serve a template corresponding to ``request``."""
         path = request.path
         if u"../" in path or "/." in path:
-            raise werkzeug.exceptions.Forbidden
+            raise Forbidden
         kwargs["request"] = request
         response = TemplateResponse(self, path.strip(os.path.sep), kwargs)
         if not request.path.endswith(u"/"):
