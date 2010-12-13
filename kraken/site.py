@@ -153,15 +153,6 @@ class Site(object):
         for name, engine_class in BUILTIN_ENGINES.items():
             self.register_engine(name, engine_class)
 
-        # Create a virtual package in sys.modules so that we can import
-        # python modules in the site
-        self.package_name = "kraken_site_%i" % id(self)
-        module = types.ModuleType(self.package_name)
-        module.__path__ = [self.site_root]
-        module.kraken = self
-        module.kalamar = self.kalamar_site
-        sys.modules[self.package_name] = module
-    
     def __call__(self, environ, start_response):
         """WSGI entry point for every HTTP request."""
         request = Request(environ, self.secret_key)
@@ -205,7 +196,6 @@ class Site(object):
         if u"../" in path or "/." in path:
             raise werkzeug.exceptions.Forbidden
         kwargs["request"] = request
-        kwargs["import_"] = self.import_
         response = TemplateResponse(self, path.strip(os.path.sep), kwargs)
         if not request.path.endswith(u"/"):
             response = werkzeug.utils.append_slash_redirect(request.environ)
@@ -216,32 +206,6 @@ class Site(object):
         """Shorthand to the engine render method."""
         return self.engines[site_engine].render(
             template_name, values or {}, lang, modifiers)
-
-    def import_(self, name):
-        """Helper for python controllers to "import" other controllers.
-
-        Return a module object.
-
-        >>> import kraken.tests
-        >>> site = kraken.tests.make_site()
-        >>> module = site.import_("inexistent")
-        Traceback (most recent call last):
-            ...
-        ImportError: No module named inexistent
-        >>> lipsum = site.import_("lorem.ipsum")
-        >>> lipsum.render(None).data # doctest: +ELLIPSIS
-        ...                          # doctest: +NORMALIZE_WHITESPACE
-        '\\n Lorem ipsum dolor...'
-
-        """
-        name = "%s.%s" % (self.package_name, name)
-        # example: with name = "kraken_site_42.views.main", __import__(name)
-        # returns the kraken_site_42 module with the views package
-        # as an attribute, etc.
-        module = __import__(name)
-        for attr in name.split(".")[1:]:
-            module = getattr(module, attr)
-        return module
 
     def register_endpoint(self, function):
         """Register ``function`` as an endpoint.
