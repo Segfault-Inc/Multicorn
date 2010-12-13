@@ -141,8 +141,9 @@ class Site(object):
     def __init__(self, site_root=".", template_root="views", kalamar_site=None,
                  secret_key=None, fallback_on_template=True):
         """Initialize the Site."""
-        self.site_root = os.path.expanduser(unicode(site_root))
-        self.template_root = os.path.expanduser(unicode(template_root))
+        root = os.path.dirname(__file__) if vars().has_key("__file__") else "."
+        self.site_root = os.path.join(root, site_root)
+        self.template_root = os.path.join(root, template_root)
         self.kalamar_site = kalamar_site
         self.secret_key = secret_key
         self.fallback_on_template = fallback_on_template
