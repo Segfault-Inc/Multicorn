@@ -101,7 +101,7 @@ class Alchemy(AccessPoint):
                 # TODO: Fix this for circular dependencies
                 foreign_column = self.__get_column(
                     "%s.%s" % (prop.name, prop.remote_property.name))
-                foreign_name = "%s.%s" % (foreign_table, foreign_column)
+                foreign_name = "%s.%s" % (foreign_table, foreign_column.name)
                 foreign_key = ForeignKey(
                     foreign_name, use_alter=True,
                     name="%s_%s_fkey" % (self.tablename, prop.name ))
@@ -276,7 +276,7 @@ class Alchemy(AccessPoint):
                 prop = properties[key]
                 if prop.type == Item and not isinstance(value, AbstractItem):
                     new_line[key] = prop.remote_ap\
-                            .loader_from_reference_repr(value)(None)
+                            .loader_from_reference_repr(unicode(value))(None)[0]
                 else:
                     new_line[key] = prop.cast((value,))[0]
             return new_line

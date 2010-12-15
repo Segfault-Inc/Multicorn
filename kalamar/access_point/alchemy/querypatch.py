@@ -45,7 +45,7 @@ def query_chain_validator(self, access_point, properties):
 
     This function split the queries between what can be managed within sql
     alchemy and what can't.
-    
+
     A QueryChain can be managed by sqlalchemy if every subquery can be managed.
     Otherwise, it is (for now) considered unmanageable
 
@@ -60,7 +60,7 @@ def query_chain_validator(self, access_point, properties):
             cans.append(managed)
         properties = sub_query.validate(access_point.site, properties)
     # TODO: proper cans & cants management
-    query_can = QueryChain(cans) 
+    query_can = QueryChain(cans)
     return query_can, None
 
 
@@ -101,8 +101,9 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
             if prop.remote_ap:
                 join_col1 = alchemy_query.corresponding_column(prop.column)
                 if prop.relation == "many-to-one" and isinstance(values, dict):
+                    prop.remote_ap.__table
                     join_col2 = alchemy_query.corresponding_column(
-                        prop.remote_ap.identity_properties[0])
+                        prop.remote_property)
                     # _table isn't really private, just not in the public API
                     # pylint: disable=W0212
                     alchemy_query = alchemy_query.join(
@@ -135,16 +136,16 @@ def query_filter_validator(self, access_point, properties):
         sqlalchemey"""
         if name not in properties:
             return False
+        elif not isinstance(cond_tree[name], dict):
+                return True
         elif properties[name].remote_ap:
             remote_ap = properties[name].remote_ap
             if isinstance(remote_ap, Alchemy) \
                     and access_point.url == remote_ap.url:
                 return all(inner_manage(name, values, remote_ap.properties)
-                           for name, values in cond_tree.items())
+                           for name, values in cond_tree[name])
             else:
-                return not isinstance(cond_tree[name], dict)
-        else:
-            return True
+                return False
     if all(inner_manage(name, values, properties)
            for name, values in cond_tree.items()):
         return self, None
@@ -209,20 +210,20 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
 
 def query_select_validator(self, access_point, properties):
     """Validate that the query select can be managed from sqlalchemy.
-    
+
     A query select can be managed if the properties it aliases all belong to an
     Alchemy access point instance.
-    
+
     """
     from . import Alchemy
-
     def isvalid(select, properties):
         """Check if ``select`` is valid according to ``properties``."""
         for name, sub_select in select.sub_selects.items():
             remote_ap = properties[name].remote_ap
-            if not (isinstance(remote_ap, Alchemy) and 
-                    remote_ap.url == access_point.url and 
+            if not (isinstance(remote_ap, Alchemy) and
+                    remote_ap.url == access_point.url and
                     isvalid(sub_select, remote_ap.properties)):
+                #We need further tests: if we can after all, let's do it
                 return False
         return True
 
@@ -235,7 +236,7 @@ def query_select_validator(self, access_point, properties):
 def query_distinct_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method converting QueryDistinct to sqlalchemy query."""
     return alchemy_query.distinct()
-    
+
 
 def query_range_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method converting QueryRange to sqlalchemy query."""
