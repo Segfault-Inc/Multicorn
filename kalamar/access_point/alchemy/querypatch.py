@@ -51,6 +51,7 @@ def query_chain_validator(self, access_point, properties):
 
     """
     cans = []
+    print self
     for sub_query in self.queries:
         managed, not_managed = sub_query.alchemy_validate(
             access_point, properties)
@@ -96,20 +97,22 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
 
     def build_join(tree, properties, alchemy_query):
         """Builds the necessary joins for a condition."""
+        print tree
         for name, values in tree.items():
             prop = properties[name]
             if prop.remote_ap:
                 join_col1 = alchemy_query.corresponding_column(prop.column)
                 if prop.relation == "many-to-one":
-                    join_col2 = alchemy_query.corresponding_column(
-                        prop.remote_ap.identity_properties[0])
-                    # _table isn't really private, just not in the public API
-                    # pylint: disable=W0212
-                    alchemy_query = alchemy_query.join(prop.remote_ap._table,
-                            onclause = join_col1 == join_col2)
-                    # pylint: enable=W0212
-                    alchemy_query = build_join(values, 
-                            prop.remote_ap.properties, alchemy_query)
+                    if isinstance(values, dict):
+                        join_col2 = alchemy_query.corresponding_column(
+                            prop.remote_ap.identity_properties[0])
+                        # _table isn't really private, just not in the public API
+                        # pylint: disable=W0212
+                        alchemy_query = alchemy_query.join(prop.remote_ap._table,
+                                onclause = join_col1 == join_col2)
+                        # pylint: enable=W0212
+                        alchemy_query = build_join(values,
+                                prop.remote_ap.properties, alchemy_query)
         return alchemy_query
     alchemy_query = build_join(
         self.condition.properties_tree, properties, alchemy_query)
@@ -131,16 +134,25 @@ def query_filter_validator(self, access_point, properties):
     def inner_manage(name, values, properties):
         """Recursive method to find wether a property can be managed from
         sqlalchemey"""
+        print "VALIDATING %s " % name
         if name not in properties:
+            print "Not in properties!"
             return False
         elif properties[name].remote_ap:
             remote_ap = properties[name].remote_ap
-            return isinstance(remote_ap, Alchemy) and \
-                all(inner_manage(name, values, remote_ap.properties)
+            print "???? %s" %  properties[name]
+            if isinstance(remote_ap, Alchemy)\
+                    and  access_point.url == remote_ap.url:
+                return all(inner_manage(name, values, remote_ap.properties)
                     for name, values in cond_tree.items())
-        else: 
+            elif not isinstance(cond_tree[name], dict):
+                # Handle identity properties
+                print "IDENTITY PROPERTIS!"
+                return True
+            else:
+                return False
+        else:
             return True
-
     if all(inner_manage(name, values, properties)
            for name, values in cond_tree.items()):
         return self, None
@@ -150,7 +162,7 @@ def query_filter_validator(self, access_point, properties):
 
 def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method on QuerySelect to convert to alchemy.
-    
+ 
     First, the mapping and sub selects are walked to build a join with other
     access points.
 
@@ -211,14 +223,16 @@ def query_select_validator(self, access_point, properties):
     
     """
     from . import Alchemy
-
     def isvalid(select, properties):
         """Check if ``select`` is valid according to ``properties``."""
         for name, sub_select in select.sub_selects.items():
             remote_ap = properties[name].remote_ap
-            if not isinstance(remote_ap, Alchemy) or \
-                    not isvalid(sub_select, remote_ap.properties):
+            print "VALIDATING : %s with subs: %s" % (name, sub_select)
+            if not (isinstance(remote_ap, Alchemy) and \
+                    remote_ap.url == access_point.url and \
+                     isvalid(sub_select, remote_ap.properties)):
                 return False
+            
         return True
 
     if isvalid(self, properties):
