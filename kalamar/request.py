@@ -209,8 +209,6 @@ class RequestProperty(object):
             self.__hash__() == other.__hash__()
 
 
-
-
 class ComposedRequestProperty(RequestProperty):
     """Nested property from an item.
 

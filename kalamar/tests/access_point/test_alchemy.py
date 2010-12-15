@@ -34,8 +34,9 @@ def make_ap():
     """Create a simple Alchemy access point."""
     id_property = AlchemyProperty(int, column_name="id")
     name = AlchemyProperty(unicode)
+    auto = AlchemyProperty(unicode, auto=True)
     access_point = Alchemy(
-        "sqlite:///", "test", {"id": id_property, "name": name},
+        "sqlite:///", "test", {"id": id_property, "name": name, "auto": auto},
         ["id"], True)
     return access_point
 

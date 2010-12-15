@@ -99,11 +99,12 @@ class Alchemy(AccessPoint):
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
                 # TODO: Fix this for circular dependencies
-                foreign_column = self.__get_column("%s.%s" % (prop.name,
-                    prop.remote_property.name))
+                foreign_column = self.__get_column(
+                    "%s.%s" % (prop.name, prop.remote_property.name))
                 foreign_name = "%s.%s" % (foreign_table, foreign_column)
-                foreign_key = ForeignKey(foreign_name, use_alter = True,
-                        name = "%s_%s_fkey" % (self.tablename, prop.name ))
+                foreign_key = ForeignKey(
+                    foreign_name, use_alter=True,
+                    name="%s_%s_fkey" % (self.tablename, prop.name ))
                 self.remote_alchemy_props.append(prop.name)
                 alchemy_type = foreign_column.type
                 column = Column(
@@ -135,8 +136,8 @@ class Alchemy(AccessPoint):
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
-        columns = set([self._column_from_prop(prop) for prop in
-                   self.properties.values()])
+        columns = set(
+            self._column_from_prop(prop) for prop in self.properties.values())
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable:
             table.create(checkfirst=True)
@@ -155,7 +156,7 @@ class Alchemy(AccessPoint):
             return prop.column
 
     def to_alchemy_condition(self, condition):
-        """Converts a kalamar condition to an sqlalchemy condition."""
+        """Convert a kalamar condition to an sqlalchemy condition."""
         if isinstance(condition, (And, Or, Not)):
             alchemy_conditions = tuple(
                 self.to_alchemy_condition(sub_condition)
@@ -168,17 +169,17 @@ class Alchemy(AccessPoint):
                 value = value.reference_repr()
             if condition.operator == "=":
                 return column == value
-            elif condition.operator == '!=':
+            elif condition.operator == "!=":
                 return column != value
             # TODO: Enhance the condition handling to manage '~='
             # on other systems
-            elif condition.operator == 'like':
+            elif condition.operator == "like":
                 return column.like(value)
             else:
                 return column.op(condition.operator)(value)
 
     def __item_from_result(self, result):
-        """Creates an item from a result line."""
+        """Create an item from a result line."""
         lazy_props = {}
         props = {}
         lazy_to_build = []
@@ -186,8 +187,8 @@ class Alchemy(AccessPoint):
             if prop.relation == "one-to-many":
                 lazy_to_build.append(prop)
             elif prop.relation == "many-to-one" and result[name] is not None:
-                lazy_props[name] = self._many_to_one_lazy_loader(prop, 
-                        result[name])
+                lazy_props[name] = self._many_to_one_lazy_loader(
+                    prop, result[name])
             else:
                 props[name] = result[name]
         for prop in lazy_to_build:
@@ -197,7 +198,7 @@ class Alchemy(AccessPoint):
         return item
 
     def _many_to_one_lazy_loader(self, prop, value):
-        """Creates a lazy loader for many_to_ones properties.
+        """Create a lazy loader for many_to_ones properties.
 
         For one to many properties, the loader is built by the base access
         point directly.
@@ -217,24 +218,20 @@ class Alchemy(AccessPoint):
 
     def __to_pk_where_clause(self, item):
         """Build an alchemy condition matching this item on its pks."""
-        return self.to_alchemy_condition(And(* [Condition(prop.name, "=",
-            item[prop.name]) 
-            for prop in self.identity_properties]))
+        return self.to_alchemy_condition(And(*[
+                    Condition(prop.name, "=", item[prop.name])
+                    for prop in self.identity_properties]))
         
     def __transform_to_table(self, item):
         """Transform an item to a dict so that it can be saved."""
         item_dict = {}
         for name, prop in self.properties.items():
-            if prop.auto and item[name] is None:
-                pass
-            elif prop.relation == 'one-to-many':
-                pass
-            elif prop.relation == 'many-to-one':
-                if item[name] is not None:
-                    item_dict[name] = item[name].reference_repr()
-                else:
+            if prop.relation == "many-to-one":
+                if item[name] is None:
                     item_dict[name] = None
-            else:
+                else:
+                    item_dict[name] = item[name].reference_repr()
+            elif prop.relation != "one-to-many":
                 item_dict[name] = item[name]
         return item_dict
 
@@ -243,22 +240,27 @@ class Alchemy(AccessPoint):
         transaction = connection.begin()
         value = self.__transform_to_table(item)
         try:
+            # Try to insert
             statement = self._table.insert().values(value).execute()
-            for (gen_id, id_prop) in zip(statement.inserted_primary_key,
-                    self.identity_properties):
+            for (gen_id, id_prop) in zip(
+                statement.inserted_primary_key, self.identity_properties):
                 item[id_prop.name] = gen_id
             transaction.commit()
         except sqlalchemy.exc.IntegrityError:
+            # A line already exists with these primary keys, try to update
             try:
                 whereclause = self.__to_pk_where_clause(item)
                 update = self._table.update()
                 rows = update.where(whereclause).values(value).execute()
-                if rows.rowcount == 0:
+                if rows.rowcount == 0: # pragma: no cover
+                    # Insert failed but no line to update
                     raise
                 transaction.commit()
-            except:
+            except: # pragma: no cover
+                # No way found to insert nor update
                 transaction.rollback()
-                raise
+                raise RuntimeError(
+                    "An error occured while saving an item in the database")
         finally:
             connection.close()
         item.saved = True
@@ -271,17 +273,12 @@ class Alchemy(AccessPoint):
         alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
-            alchemy_query = can.to_alchemy(alchemy_query, self,
-                self.properties)
-            if not alchemy_query.c:
-                for name, prop in self.properties.items():
-                    alchemy_query.append_column(prop.column.label(name))
+            alchemy_query = can.to_alchemy(alchemy_query, self, self.properties)
             result = alchemy_query.execute()
         else:
             result = self.search(And())
-        #In the generic case, reduce the conversational overhead.
-        #If someone uses only a subset of the result, then build the query
-        #accordingly!
-        result = (dict(line) for line in result)
+        # In the generic case, reduce the conversational overhead.
+        # If someone uses only a subset of the result, then build the query
+        # accordingly!
         cants = cants or QueryChain([])
-        return cants(result)
+        return cants(dict(line) for line in result)

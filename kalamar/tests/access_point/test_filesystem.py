@@ -29,7 +29,7 @@ import re
 import contextlib
 # Nose redefines assert_equal
 # pylint: disable=E0611
-from nose.tools import eq_, assert_equal, raises
+from nose.tools import eq_, raises
 # pylint: enable=E0611
 
 import kalamar
@@ -52,7 +52,8 @@ def temporary_directory():
     try:
         yield directory
     finally:
-        shutil.rmtree(directory)
+        if os.path.isdir(directory):
+            shutil.rmtree(directory)
 
 
 def test_filesytem_init():
@@ -124,13 +125,55 @@ def test_filenames():
         filenames = set([
                 u"001 -   spam.txt", u"002 -    egg.text", u"003 - turtle.rst"])
 
-        assert_equal(set(os.listdir(temp_dir)), filenames)
-        assert_equal(
-            set([item.filename for item in site.search("things")]),
+        eq_(set(os.listdir(temp_dir)), filenames)
+        eq_(set([item.filename for item in site.search("things")]),
             set([os.path.join(temp_dir, filename) for filename in filenames]))
-        assert_equal(
-            set([item.relative_filename for item in site.search("things")]),
+        eq_(set([item.relative_filename for item in site.search("things")]),
             filenames)
+
+def test_multiple_folders():
+    """Test item creation and deletion with multiple folders."""
+    with temporary_directory() as temp_dir:
+        access_point = FileSystem(
+            temp_dir, "(.*)/(.*)", (
+                ("artist", FileSystemProperty(unicode)),
+                ("album", FileSystemProperty(unicode))),
+            content_property="lyrics")
+        access_point = UnicodeStream(access_point, "lyrics", "utf-8")
+        site = make_site(access_point, fill=False)
+
+        props = (
+            {"artist": "brigitte", "album": "Bonnie", "lyrics": "lyrics"},
+            {"artist": "serge", "album": "Clyde", "lyrics": "lyrics"},
+            {"artist": "brigitte", "album": "I love you", "lyrics": "lyrics"},
+            {"artist": "serge", "album": "Neither do I", "lyrics": "lyrics"})
+
+        absolute_path = lambda *names: os.path.join(temp_dir, *names)
+
+        tests = (
+            lambda: os.path.isdir(absolute_path("brigitte")),
+            lambda: os.path.isdir(absolute_path("serge")),
+            lambda: os.path.isfile(absolute_path("serge", "Clyde")),
+            lambda: os.path.isfile(absolute_path("serge", "Neither do I")),
+            lambda: os.path.isfile(absolute_path("brigitte", "Bonnie")),
+            lambda: os.path.isfile(absolute_path("brigitte", "I love you")))
+
+        for prop in props:
+            site.create("things", prop).save()
+
+        for test in tests:
+            assert test()
+
+        site.delete_many("things")
+
+        for test in tests:
+            assert not test()
+
+        for prop in props:
+            site.create("things", prop).save()
+
+        for test in tests:
+            assert test()
 
 
 # Common tests

@@ -208,7 +208,6 @@ class AccessPoint(object):
         properties = dict(zip(keys, values))
         return lambda item: (self.site.open(self.name, properties),)
 
-    
     @abc.abstractmethod
     def delete(self, item):
         """Delete ``item`` from the backend storage.

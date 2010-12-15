@@ -44,12 +44,11 @@ class RestItem(XMLItem):
             docutils_tree = docutils.core.publish_doctree(
                 source = self[self.access_point.stream_property].read())
             xmlstring = docutils_tree.asdom().toxml()
-            if xmlstring == None or xmlstring.strip() == u"":
+            if xmlstring == None or not(xmlstring.strip()):
                 root = etree.Element(self.access_point.root_element)
-                self._xml_tree = etree.ElementTree(element = root)
             else:
-                elem = etree.fromstring(xmlstring, parser)
-                self._xml_tree = etree.ElementTree(element = elem)
+                root = etree.fromstring(xmlstring, parser)
+            self._xml_tree = etree.ElementTree(element=root)
         return self._xml_tree
 
 

@@ -49,7 +49,6 @@ def make_site(access_point, fill=True):
     return site
 
 
-
 def nofill(function):
     """Decorator saying that ``function`` needs an empty (unfilled) site."""
     function.nofill = False
@@ -144,7 +143,7 @@ def run_common(function):
     # test_run will be registered to nose as possibly tested test generator,
     # thanks to the attributes of ``function`` (mainly its name and its place
     # in the test module).  We need to be sure that test_run looks like
-    # function in order to be correctly detected.
+    # ``function`` in order to be correctly detected.
     update_wrapper(test_run, function)
 
     # The run_common decorator returns test_run, that is a test generator.

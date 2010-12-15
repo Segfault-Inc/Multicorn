@@ -123,11 +123,11 @@ class XMLProperty(DecoratorProperty):
             if not len(next_tag.strip()):
                 return parent
             node = parent.xpath(next_tag)
-            if not len(node):
+            if node:
+                node = node[0]
+            else:
                 node = etree.Element(next_tag)
                 parent.append(node)
-            else:
-                node = node[0]
             rest = "/".join(parts[1:])
             return inner_create_element(node, rest)
 

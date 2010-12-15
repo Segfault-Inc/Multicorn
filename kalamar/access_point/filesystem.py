@@ -160,7 +160,7 @@ class FileSystem(AccessPoint):
                     lazy_loaders = {self.content_property : defered_open()}
                     item_properties = {}
                     for prop, value in properties.items():
-                        if value == u"None":
+                        if value == "None":
                             value = None
                         if prop.relation is None:
                             item_properties[prop.name] = value
@@ -199,7 +199,8 @@ class FileSystem(AccessPoint):
         content = item[self.content_property]
         try:
             content.seek(0)
-        except:
+        except: # pragma: no cover
+            # No real way found to know if we can't seek, it sometimes happen
             pass
         filename = self._item_filename(item)
         directory = os.path.dirname(filename)

@@ -44,6 +44,7 @@ class TemporaryDirectory(object):
     def __exit__(self, exit_type, value, traceback):
         shutil.rmtree(self.directory)
 
+
 def test_serialization():
     """Test XML serialization."""
     def xml_content_test(site):
@@ -78,6 +79,17 @@ def test_shared_structure():
         item = site.open("test", {"id": 1})
         eq_(item["stream"].read(),
             "<foo><bar><name>hulk</name><color>green</color></bar></foo>")
+
+def test_iter():
+    with TemporaryDirectory() as temp_dir:
+        file_access_point = make_file_ap(temp_dir)
+        access_point = XML(file_access_point, [
+                ("name", XMLProperty(iter, "//bar/baz")),], "stream", "foo")
+        site = make_site(access_point, fill=False)
+
+        site.create("things", {"id": 1, "name": ("a", "b", "c")}).save()
+        item = site.open("things", {"id": 1})
+        eq_(tuple(item["name"]), ("a", "b", "c"))
 
 def make_file_ap(temp_dir):
     """Create a filesystem access point."""
