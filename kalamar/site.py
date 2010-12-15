@@ -128,7 +128,10 @@ class Site(object):
                 chain.append(QueryRange(select_range))
             query = QueryChain(chain)
         query.validate(self, access_point.properties)
-        return access_point.view(query)
+        for line in access_point.view(query):
+            for prop_name in [name for name in line if name.startswith('__')]:
+                line.pop(prop_name)
+            yield line
 
     create = _delegate_to_acces_point("create")
     delete = _delegate_to_acces_point("delete")
