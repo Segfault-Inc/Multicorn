@@ -19,7 +19,7 @@
 XML Access point
 ================
 
-An access point designed to store properies in a XML file
+An access point designed to store properies in a XML file.
 
 """
 

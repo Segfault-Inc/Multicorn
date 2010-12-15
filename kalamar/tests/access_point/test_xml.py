@@ -81,6 +81,7 @@ def test_shared_structure():
             "<foo><bar><name>hulk</name><color>green</color></bar></foo>")
 
 def test_iter():
+    """Test an XML access point with an ``iter`` property."""
     with TemporaryDirectory() as temp_dir:
         file_access_point = make_file_ap(temp_dir)
         access_point = XML(file_access_point, [
@@ -90,6 +91,8 @@ def test_iter():
         site.create("things", {"id": 1, "name": ("a", "b", "c")}).save()
         item = site.open("things", {"id": 1})
         eq_(tuple(item["name"]), ("a", "b", "c"))
+        item = site.open("things", {"name": ("a", "b", "c")})
+        eq_(item["id"], 1)
 
 def make_file_ap(temp_dir):
     """Create a filesystem access point."""

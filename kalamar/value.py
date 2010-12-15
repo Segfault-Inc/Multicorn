@@ -30,6 +30,29 @@ import io
 from .item import Item, AbstractItem
 
 
+class Iter(object):
+    """Iterable object supporting equality testing."""
+    def __init__(self, iterable):
+        """Initialize the iterable."""
+        self.__iterable = iter(iterable)
+
+    def __iter__(self):
+        """Return the iterable."""
+        return self.__iterable
+
+    def next(self):
+        """Return the next value of the iterable."""
+        return self.__iterable.next()
+
+    def __eq__(self, iterable):
+        """Test equality of all values in an iterable.
+
+        This function does not consume the iterator.
+
+        """
+        return tuple(iter(self)) == tuple(iter(iterable))
+
+
 class FixedOffsetTimeZone(datetime.tzinfo):
     """Fixed offset in hours and minutes from UTC.
 
@@ -178,7 +201,7 @@ def to_iter(value):
 
     """
     try:
-        return iter(value)
+        return Iter(value)
     except:
         raise ValueError("%s cannot be cast to iter." % value)
 
