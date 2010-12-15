@@ -212,7 +212,7 @@ class QuerySelect(Query):
             newitem = {}
             for alias, prop in self.mapping.items():
                 if prop.name is "*":
-                    newitem.update(dict((("%s%s" % (alias, key)), value) 
+                    newitem.update(dict((("%s%s" % (alias, key)), value)
                         for key, value in item.items()))
                 else:
                     newitem[alias] = prop.get_value(item)
@@ -221,9 +221,10 @@ class QuerySelect(Query):
                     sub_select(item[prop] or None) for prop, sub_select
                     in self.sub_selects.items())
                 for cartesian_item in itertools.product(*sub_generators):
+                    to_yield = dict(newitem)
                     for cartesian_atom in cartesian_item:
-                        cartesian_atom.update(newitem)
-                        yield cartesian_atom
+                        to_yield.update(cartesian_atom)
+                    yield to_yield
             else:
                 yield newitem
 

@@ -34,7 +34,7 @@ import sqlalchemy.exc
 
 from . import querypatch
 from .. import AccessPoint
-from ...item import AbstractItem
+from ...item import AbstractItem, Item
 from ...request import Condition, And, Or, Not
 from ...query import QueryChain
 from ...property import Property
@@ -268,6 +268,16 @@ class Alchemy(AccessPoint):
         self._table.delete().where(whereclause).execute()
 
     def view(self, kalamar_query):
+        def transform_line(line, properties):
+            new_line = {}
+            for key, value in line.items():
+                prop = properties[key]
+                if prop.type == Item and not isinstance(value, AbstractItem):
+                    new_line[key] = prop.remote_ap\
+                            .loader_from_reference_repr(value)(None)
+                else:
+                    new_line[key] = prop.cast((value,))[0]
+            return new_line
         alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
@@ -282,6 +292,7 @@ class Alchemy(AccessPoint):
         #In the generic case, reduce the conversational overhead.
         #If someone uses only a subset of the result, then build the query
         #accordingly!
-        result = (dict(line) for line in result)
+        properties = kalamar_query.validate(self.site, self.properties)
         cants = cants or QueryChain([])
-        return cants(result)
+        return (transform_line(line, properties) for line in cants(result))
+
