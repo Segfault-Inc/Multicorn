@@ -51,6 +51,7 @@ def query_chain_validator(self, access_point, properties):
 
     """
     cans = []
+    print self
     for sub_query in self.queries:
         managed, not_managed = sub_query.alchemy_validate(
             access_point, properties)
@@ -96,6 +97,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
 
     def build_join(tree, properties, alchemy_query):
         """Builds the necessary joins for a condition."""
+        print tree
         for name, values in tree.items():
             prop = properties[name]
             if prop.remote_ap:
@@ -132,7 +134,9 @@ def query_filter_validator(self, access_point, properties):
     def inner_manage(name, values, properties):
         """Recursive method to find wether a property can be managed from
         sqlalchemey"""
+        print "VALIDATING %s " % name
         if name not in properties:
+            print "Not in properties!"
             return False
         elif properties[name].remote_ap:
             remote_ap = properties[name].remote_ap
