@@ -30,9 +30,9 @@ from StringIO import StringIO
 from kalamar.item import AbstractItem, Item
 from . import XML, XMLItem, XMLProperty, xml2rst
 
-TITLE = "//title/"
-PARAGRAPH = "//paragraph/"
-SECTION = "//section/"
+TITLE = "//title"
+PARAGRAPH = "//paragraph"
+SECTION = "//section"
 
 
 class RestItem(XMLItem):
