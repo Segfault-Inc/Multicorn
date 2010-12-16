@@ -356,10 +356,9 @@ class ItemWrapper(AbstractItem):
         """Default to underlying item for all other methods and attributes."""
         return getattr(self.wrapped_item, name)
 
-class ItemStub(AbstractItem):
-    """Item stub, which contain only the identity properties initially
-    """
 
+class ItemStub(AbstractItem):
+    """Item stub containing only the identity properties initially."""
     def __init__(self, access_point, identity_props):
         super(ItemStub, self).__init__(access_point)
         self.__item = None
@@ -367,6 +366,7 @@ class ItemStub(AbstractItem):
 
     @property
     def item(self):
+        """Underlying item only loaded if needed."""
         if self.__item is None:
             site = self.access_point.site
             self.__item = site.open(self.access_point.name, self.identity_props)

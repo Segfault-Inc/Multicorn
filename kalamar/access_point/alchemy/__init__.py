@@ -275,8 +275,8 @@ class Alchemy(AccessPoint):
             for key, value in line.items():
                 prop = properties[key]
                 if prop.type == Item and not isinstance(value, AbstractItem):
-                    new_line[key] = prop.remote_ap\
-                            .loader_from_reference_repr(unicode(value))(None)[0]
+                    loader = prop.remote_ap.loader_from_reference_repr
+                    new_line[key] = loader(unicode(value))(None)[0]
                 else:
                     new_line[key] = prop.cast((value,))[0]
             return new_line
