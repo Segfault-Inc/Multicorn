@@ -225,7 +225,6 @@ class AccessPoint(object):
             dict([(name, prop) for name, prop in self.properties.items()
                   if prop.relation == "one-to-many"
                   and name not in properties and name not in lazy_loaders]))
-
         # Create loaders for auto properties
         for name, prop in self.properties.items():
             if prop.auto and name not in properties:
@@ -241,6 +240,9 @@ class AccessPoint(object):
                         "single default value, wrap it in a tuple: (value,)."
                         % type(prop.auto).__name__)
                 lazy_loaders[name] = function(prop)
+            elif not prop.mandatory and name not in properties\
+                    and name not in lazy_refs and name not in lazy_loaders:
+                properties[name] = None
 
         for name, value in lazy_refs.items():
             lazy_loaders[name] = self._default_loader(properties, value)

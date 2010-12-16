@@ -274,11 +274,7 @@ class Alchemy(AccessPoint):
             new_line = {}
             for key, value in line.items():
                 prop = properties[key]
-                if prop.type == Item and not isinstance(value, AbstractItem):
-                    new_line[key] = prop.remote_ap\
-                            .loader_from_reference_repr(unicode(value))(None)[0]
-                else:
-                    new_line[key] = prop.cast((value,))[0]
+                new_line[key] = prop.cast((value,))[0]
             return new_line
         alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
