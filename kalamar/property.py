@@ -24,7 +24,7 @@ Kalamar property object.
 """
 
 from .value import PROPERTY_TYPES, to_type
-
+from .item import AbstractItem, Item
 
 class MissingRemoteAP(RuntimeError):
     """Remote access point is missing in property definition."""
@@ -92,7 +92,16 @@ class Property(object):
         """Cast an iterable of values, return a tuple of cast values."""
         if not self.mandatory and values == (None,):
             return values
-        if self.type in PROPERTY_TYPES:
+        # Ugly code to manage 'soft' references
+        if self.type == Item and \
+                not all(isinstance(value, AbstractItem) for value in values):
+            props = [unicode(value) for value in values if value is not None]
+            if len(props):
+                rep_str = '/'.join(props)
+                return self.remote_ap.loader_from_reference_repr(rep_str)(None)
+            else:
+                return (None,)
+        elif self.type in PROPERTY_TYPES:
             return tuple(
                 PROPERTY_TYPES[self.type](value) for value in values)
         else:

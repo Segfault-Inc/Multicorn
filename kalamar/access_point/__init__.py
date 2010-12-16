@@ -28,7 +28,7 @@ import datetime
 import decimal
 import uuid
 
-from ..item import Item, ItemWrapper
+from ..item import Item, ItemWrapper, ItemStub
 from ..request import And, Condition
 
 
@@ -206,7 +206,7 @@ class AccessPoint(object):
             raise ValueError(
                 "The representation doesn't match the identity properties.")
         properties = dict(zip(keys, values))
-        return lambda item: (self.site.open(self.name, properties),)
+        return lambda item: (ItemStub(self, properties),)
 
     @abc.abstractmethod
     def delete(self, item):

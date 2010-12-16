@@ -355,3 +355,31 @@ class ItemWrapper(AbstractItem):
     def __getattr__(self, name):
         """Default to underlying item for all other methods and attributes."""
         return getattr(self.wrapped_item, name)
+
+class ItemStub(AbstractItem):
+    """Item stub, which contain only the identity properties initially
+    """
+
+    def __init__(self, access_point, identity_props):
+        super(ItemStub, self).__init__(access_point)
+        self.__item = None
+        self.identity_props = identity_props
+
+    @property
+    def item(self):
+        if self.__item is None:
+            site = self.access_point.site
+            self.__item = site.open(self.access_point.name, self.identity_props)
+        return self.__item
+
+    def getlist(self, key):
+        if key in self.identity_props:
+            return (self.identity_props[key],)
+        else:
+            return self.item.getlist(key)
+
+    def setlist(self, key, values):
+        return self.item.setlist(key, values)
+
+    def __getattr__(self, name):
+        return getattr(self.item, name)
