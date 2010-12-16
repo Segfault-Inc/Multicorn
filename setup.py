@@ -15,10 +15,12 @@ setup(
         "kraken": "kraken"},
     package_data = {
         "": ["AUTHORS"],
-        "doc": ["*.rst"]},
+        "kalamar": ["access_point/xml/xml2rst.xsl"]},
     install_requires = [
         "werkzeug>=0.5"],
     extras_require = {
+        "docutils": ["docutils>=0.6"],
+        "lxml": ["lxml>=2.0"],
         "Genshi": ["genshi>=0.5"],
         "Mako": ["mako>=0.3"],
         "SQLAlchemy": ["sqlalchemy>=0.6"],

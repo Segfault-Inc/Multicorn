@@ -83,7 +83,6 @@ class RestProperty(XMLProperty):
         return self.remote_ap.loader_from_reference_repr(elem.text)(None)
 
 
-
 class Rest(XML):
     """ReST access point. 
 
