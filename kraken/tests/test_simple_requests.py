@@ -107,14 +107,14 @@ class TestBadTemplate(KrakenSiteMixin, TestCase):
     """Suit testing bad template exposition."""
     def test_bad_template(self):
         """Unavailable template."""
-        self.assertRaisesRegexp(
-            RuntimeError, "'hello/undefined'", self.test_app.register_endpoint,
+        self.assertRaises(
+            RuntimeError, self.test_app.register_endpoint,
             expose_template("/hello/undefined")(lambda: None))
 
     def test_bad_named_template(self):
         """Unavailable named template."""
-        self.assertRaisesRegexp(
-            RuntimeError, "'undefined'", self.test_app.register_endpoint,
+        self.assertRaises(
+            RuntimeError, self.test_app.register_endpoint,
             expose_template("/hello", "undefined")(lambda: None))
 
 
