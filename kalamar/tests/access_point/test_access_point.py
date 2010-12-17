@@ -25,7 +25,7 @@ Test various properties of the AccessPoint class.
 import io
 # Nose redefines assert_is_instance
 # pylint: disable=E0611
-from nose.tools import eq_, raises, assert_is_instance
+from nose.tools import eq_, raises
 # pylint: enable=E0611
 
 from kalamar.access_point import AccessPoint, AlreadyRegistered
@@ -34,6 +34,9 @@ from kalamar.item import Item
 from kalamar.property import Property
 from kalamar.site import Site
 from kalamar.value import PROPERTY_TYPES
+
+if "unicode" not in locals():
+    unicode = str
 
 
 def test_auto():
@@ -47,7 +50,7 @@ def test_auto():
     item = site.create("things", {"id": 1})
     eq_(item["id"], 1)
     name = item["name"]
-    assert_is_instance(name, unicode)
+    assert isinstance(name, unicode)
     item.save()
     eq_(item["id"], 1)
     eq_(item["name"], name)
@@ -61,9 +64,9 @@ def test_auto():
     
     item = site.create("things")
     identifier = item["id"]
-    assert_is_instance(identifier, int)
+    assert isinstance(identifier, int)
     name = item["name"]
-    assert_is_instance(name, unicode)
+    assert isinstance(name, unicode)
     item.save()
     eq_(item["id"], identifier)
     eq_(item["name"], name)
@@ -163,4 +166,4 @@ def test_auto_values():
             if property_type is iter:
                 assert hasattr(auto_value, "__iter__")
             else:
-                assert_is_instance(auto_value[0], property_type)
+                assert isinstance(auto_value[0], property_type)

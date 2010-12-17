@@ -31,6 +31,9 @@ from kalamar.site import Site
 
 from ..common import run_common, make_site
 
+if "unicode" not in locals():
+    unicode = str
+
 
 class TemporaryDirectory(object):
     """Utility class for the tests."""
@@ -50,7 +53,8 @@ def test_serialization():
     def xml_content_test(site):
         """Inner function testing XMD serialization."""
         item = site.open("things", {"id": 1})
-        eq_(item["stream"].read(), "<foo><bar><baz>foo</baz></bar></foo>")
+        eq_(item["stream"].read().decode("utf-8"),
+            "<foo><bar><baz>foo</baz></bar></foo>")
     runner(xml_content_test)
 
 def test_update_document():
@@ -61,7 +65,8 @@ def test_update_document():
         item["name"] = "updated"
         item.save()
         item = site.open("things", {"id": 1})
-        eq_(item["stream"].read(), "<foo><bar><baz>updated</baz></bar></foo>")
+        eq_(item["stream"].read().decode("utf-8"),
+            "<foo><bar><baz>updated</baz></bar></foo>")
     runner(xml_update_test)
 
 def test_shared_structure():
@@ -77,7 +82,7 @@ def test_shared_structure():
         item = site.create("test", {"name": "hulk", "color": "green", "id": 1})
         item.save()
         item = site.open("test", {"id": 1})
-        eq_(item["stream"].read(),
+        eq_(item["stream"].read().decode("utf-8"),
             "<foo><bar><name>hulk</name><color>green</color></bar></foo>")
 
 def test_iter():

@@ -31,6 +31,9 @@ from kalamar.site import Site
 from kalamar.property import Property
 from kalamar.item import Item
 
+if "unicode" not in locals():
+    unicode = str
+
 
 def make_alchemy_ap():
     """Build an alchemy access point referencing another access point."""
@@ -57,8 +60,8 @@ class TestHeterogeneous(unittest.TestCase):
     def test_view(self):
         """Test the ``view`` method across access points."""
         aliases = {
-            "alch_id": u"id", "alch_label": u"label", "mem_id": u"memory.id",
-            "mem_label": u"memory.label"}
+            "alch_id": "id", "alch_label": "label", "mem_id": "memory.id",
+            "mem_label": "memory.label"}
         items = list(self.site.view("alchemy", aliases, {}))
         eq_(len(items), 1)
         item = items[0]
@@ -75,11 +78,11 @@ class TestHeterogeneous(unittest.TestCase):
         self.site.register("alchemy", self.alchemy_ap )
         self.site.register("memory", make_memory_ap())
         self.memitem = self.site.create(
-            "memory", {"id": 1, "label": u"memorytest"})
+            "memory", {"id": 1, "label": "memorytest"})
         self.memitem.save()
         self.dbitem = self.site.create(
             "alchemy",
-            {"id": 1, "label": u"alchemytest", "memory": self.memitem})
+            {"id": 1, "label": "alchemytest", "memory": self.memitem})
         self.dbitem.save()
 
     def tearDown(self):

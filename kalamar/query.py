@@ -195,7 +195,7 @@ class QuerySelect(Query):
         self.sub_selects = {}
         # Dict of dict
         sub_mappings = {}
-        for alias, prop in self.mapping.items():
+        for alias, prop in tuple(self.mapping.items()):
             if prop.child_property is not None:
                 sub_mapping = sub_mappings.setdefault(prop.name, {})
                 sub_mapping[alias] = prop.child_property
@@ -211,7 +211,7 @@ class QuerySelect(Query):
         for item in items:
             newitem = {}
             for alias, prop in self.mapping.items():
-                if prop.name is "*":
+                if prop.name == "*":
                     newitem.update(dict((("%s%s" % (alias, key)), value)
                         for key, value in item.items()))
                 else:
@@ -231,16 +231,17 @@ class QuerySelect(Query):
     def validate(self, site, properties):
         new_props = {}
         for name, prop in self.mapping.items():
-            if prop.name is not "*":
+            if prop.name == "*":
+                new_props.update(dict([
+                            (("%s%s" % (name, oldname)), oldprop)
+                            for oldname, oldprop in properties.items()]))
+            else:
                 try:
                     old_prop = properties[prop.name]
                 except KeyError:
                     raise BadQueryException(self, 
                             "This request has no %r property" % prop.name)
                 new_props[name] = old_prop 
-            else:
-                new_props.update(dict([(("%s%s" % (name, oldname)), oldprop) 
-                    for oldname, oldprop in properties.items()]))
         for name, sub_select in self.sub_selects.items():
             try:
                 root = properties[name]

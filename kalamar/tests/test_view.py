@@ -32,6 +32,9 @@ from kalamar.site import Site
 from kalamar.query import BadQueryException, QuerySelect, QueryFilter
 from kalamar.item import Item
 
+if "unicode" not in locals():
+    unicode = str
+
 
 class TestView(unittest.TestCase):
     """Test class testing simple ``view`` requests."""
@@ -52,7 +55,7 @@ class TestView(unittest.TestCase):
         try:
             list(self.site.view("root", {"leaf_label": "children.label"},
                                 {"children.grou": 4}))
-        except BadQueryException:
+        except BadQueryException as detail:
             assert(isinstance(detail.query, (QuerySelect, QueryFilter)))
         else:
             assert False, "Expected BadQueryException."

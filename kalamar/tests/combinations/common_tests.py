@@ -41,26 +41,26 @@ def test_view_filters(site):
     condition = Condition("id", ">", 3)
     results = list(site.view("first_ap", request=condition))
     eq_(len(results), 2)
-    condition = Condition("color", "!=", u"blue")
+    condition = Condition("color", "!=", "blue")
     results = list(site.view("first_ap", request=condition))
     eq_(len(results), 3)
-    condition = Condition("second_ap.code", "=", u"BBB")
+    condition = Condition("second_ap.code", "=", "BBB")
     results = list(site.view("first_ap", request=condition))
     eq_(len(results), 2)
     condition = And(
-            Condition("color", "!=", u"blue"),
-            Condition("second_ap.code", "=", u"BBB"))
+            Condition("color", "!=", "blue"),
+            Condition("second_ap.code", "=", "BBB"))
     results = list(site.view("first_ap", request=condition))
     eq_(len(results), 1)
     condition = Or(
-            Condition("color", "!=", u"blue"),
-            Condition("second_ap.code", "=", u"BBB"))
+            Condition("color", "!=", "blue"),
+            Condition("second_ap.code", "=", "BBB"))
     results = list(site.view("first_ap", request=condition))
     eq_(len(results), 4)
     condition = And(
             Condition("id", ">", 3),
-            Or(Condition("color", "!=", u"blue"),
-               Condition("second_ap.code", "=", u"BBB")))
+            Or(Condition("color", "!=", "blue"),
+               Condition("second_ap.code", "=", "BBB")))
     results = list(site.view("first_ap", request=condition))
     eq_(len(results), 2)
 
@@ -108,7 +108,7 @@ def test_one_to_many(site):
     mapping = {"fname": "first_aps.name"}
     results = list(site.view("second_ap", aliases=mapping))
     eq_(len(results), 4)
-    request = {"first_aps.color": u"blue"}
+    request = {"first_aps.color": "blue"}
     results = list(site.view("second_ap", aliases=mapping, request=request))
     eq_(len(results), 2)
 
@@ -116,7 +116,7 @@ def test_one_to_many(site):
 @common
 def test_item_condition(site):
     """Test a condition on an item directly."""
-    item = site.open("second_ap", {"code": u"AAA"})
+    item = site.open("second_ap", {"code": "AAA"})
     condition = Condition("second_ap", "=", item)
     items = list(site.search("first_ap", condition))
     eq_(len(items), 2)
@@ -126,7 +126,7 @@ def test_item_condition(site):
 @common
 def test_item_loading(site):
     """Test that many to one and one to many loaders work."""
-    item = site.open("second_ap", {"code": u"AAA"})
+    item = site.open("second_ap", {"code": "AAA"})
     first_items = item["first_aps"]
     eq_(len(first_items), 2)
     assert all([first["second_ap"] == item

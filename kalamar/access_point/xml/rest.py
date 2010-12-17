@@ -25,10 +25,14 @@ Access point designed to store values in a reStructuredText document.
 
 import docutils.core
 from lxml import etree
-from StringIO import StringIO
 
 from kalamar.item import AbstractItem, Item
 from . import XML, XMLItem, XMLProperty, xml2rst
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import BytesIO as StringIO
 
 TITLE = "//title"
 PARAGRAPH = "//paragraph"
@@ -124,4 +128,4 @@ class Rest(XML):
         if len(item.unsaved_properties):
             self.update_xml_tree(item)
             item[self.stream_property] = StringIO(
-                    xml2rst.convert(item.xml_tree))
+                xml2rst.convert(item.xml_tree).encode("utf-8"))

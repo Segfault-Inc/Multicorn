@@ -26,6 +26,9 @@ Base classes to create kalamar items.
 import abc
 from collections import namedtuple, Mapping, MutableMapping
 
+if "unicode" not in locals():
+    unicode = str
+
 
 # Identity and *MultiMapping do not need an __init__ method
 # pylint: disable=W0232
@@ -295,7 +298,7 @@ class Item(AbstractItem):
             if prop.type == Item:
                 value = value.reference_repr()
             representations.append(unicode(value))
-        return u'/'.join(representations)
+        return "/".join(representations)
 
     def getlist(self, key):
         try:

@@ -27,6 +27,9 @@ from nose.tools import eq_, raises
 from kalamar.property import Property
 from kalamar.request import normalize, Condition, And, Or, Not
 
+if "unicode" not in locals():
+    unicode = str
+
 
 def test_simplify():
     """Assert that the simplify method reduces the condition tree."""
@@ -63,12 +66,12 @@ def test_normalize():
     # TODO: more unit tests here.
     
     properties = {"a": Property(int), "b": Property(unicode)}
-    eq_(normalize(properties, {u"a": 1, u"b": u"foo"}),
-        And(Condition(u"a", "=", 1), Condition(u"b", "=", u"foo")))
+    eq_(normalize(properties, {"a": 1, "b": "foo"}),
+        And(Condition("a", "=", 1), Condition("b", "=", "foo")))
     properties = {"a": Property(float), "b": Property(unicode)}
-    eq_(normalize(properties, {u"a": 1, u"b": "foo"}),
-        And(Condition(u"a", "=", 1.0), Condition(u"b", "=", u"foo")))
+    eq_(normalize(properties, {"a": 1, "b": "foo"}),
+        And(Condition("a", "=", 1.0), Condition("b", "=", "foo")))
 
     properties = {"a": Property(float), "b": Property(int)}
-    normalize(properties, {u"a": 1, u"b": "foo"})
+    normalize(properties, {"a": 1, "b": "foo"})
 

@@ -44,7 +44,7 @@ SINGLE_VALUE_ACCESS_POINTS = (Alchemy, UnicodeStream, XML)
 @common
 def test_single_item(site):
     """Save a single item and retrieve it."""
-    site.create("things", {"id": 1, "name": u"foo"}).save()
+    site.create("things", {"id": 1, "name": "foo"}).save()
     all_items = list(site.search("things"))
     eq_(len(all_items), 1)
     item = all_items[0]
@@ -57,7 +57,7 @@ def test_single_item_multidict(site):
     """Save a single item with multiple values and retrieve it."""
     properties = MultiDict()
     properties["id"] = 1
-    properties.setlist("name", (u"foo", u"bar"))
+    properties.setlist("name", ("foo", "bar"))
     site.create("things", properties).save()
     all_items = list(site.search("things"))
     eq_(len(all_items), 1)
@@ -79,26 +79,26 @@ def test_missing_properties(site):
 @raises(ValueError)
 def test_double_properties(site):
     """Item with given and lazy properties raises an error."""
-    site.create("things", {"id": 1, "name": u"bar"}, {"name": lambda: None})
+    site.create("things", {"id": 1, "name": "bar"}, {"name": lambda: None})
 
 @nofill
 @common
 @raises(ValueError)
 def test_unexpected_given_property(site):
     """Item with unexpected given property raises an error."""
-    site.create("things", {"id": 1, "spam": u"bar"}, {"name": lambda: None})
+    site.create("things", {"id": 1, "spam": "bar"}, {"name": lambda: None})
 
 @nofill
 @common
 @raises(ValueError)
 def test_unexpected_lazy_property(site):
     """Item with unexpected lazy property raises an error."""
-    site.create("things", {"id": 1, "name": u"bar"}, {"spam": lambda: None})
+    site.create("things", {"id": 1, "name": "bar"}, {"spam": lambda: None})
 
 @common
 def test_search(site):
     """Test a simple search."""
-    results = site.search("things", {"name": u"bar"})
+    results = site.search("things", {"name": "bar"})
     eq_(set(item["id"] for item in results), set([2, 3]))
 
 @common
@@ -139,15 +139,15 @@ def test_like_search(site):
 @common
 def test_open_one(site):
     """Standard ``open``."""
-    result = site.open("things", {"name": u"foo"})
+    result = site.open("things", {"name": "foo"})
     eq_(result["id"], 1)
 
 @common
 def test_modify_identity(site):
     """Test the identity modification of an item."""
-    item = site.open("things", {"name": u"foo"})
+    item = site.open("things", {"name": "foo"})
     assert_raises(KeyError, item.__setitem__, "id", 500)
-    item = site.create("things", {"name": u"bar", "id": 400})
+    item = site.create("things", {"name": "bar", "id": 400})
     item["id"] = 500
     item.save()
     assert_raises(KeyError, item.__setitem__, "id", 500)
@@ -155,9 +155,9 @@ def test_modify_identity(site):
 @common
 def test_update_identity(site):
     """Test the identity modification of an item."""
-    item = site.open("things", {"name": u"foo"})
+    item = site.open("things", {"name": "foo"})
     assert_raises(KeyError, item.update, (("id", 500),))
-    item = site.create("things", {"name": u"bar", "id": 400})
+    item = site.create("things", {"name": "bar", "id": 400})
     item.update(id=500)
     item.save()
     assert_raises(KeyError, item.update, ("id", 500))
@@ -166,57 +166,57 @@ def test_update_identity(site):
 @raises(MultipleMatchingItems)
 def test_open_two(site):
     """Exception raised when muliple items match ``open``."""
-    site.open("things", {"name": u"bar"})
+    site.open("things", {"name": "bar"})
 
 @common
 @raises(ItemDoesNotExist)
 def test_open_zero(site):
     """Exception raised when no item match ``open``."""
-    site.open("things", {"name": u"nonexistent"})
+    site.open("things", {"name": "nonexistent"})
 
 @common
 def test_open_one_default(site):
     """Standard ``open`` with ``default``."""
-    result = site.open("things", {"name": u"foo"}, "spam")
+    result = site.open("things", {"name": "foo"}, "spam")
     eq_(result["id"], 1)
 
 @common
 @raises(MultipleMatchingItems)
 def test_open_two_default(site):
     """Exception raised when muliple items match ``open`` with ``default``."""
-    site.open("things", {"name": u"bar"}, "spam")
+    site.open("things", {"name": "bar"}, "spam")
 
 @common
 def test_open_zero_default(site):
     """Default returned when no item match ``open`` with ``default``."""
-    eq_(site.open("things", {"name": u"nonexistent"}, "spam"), "spam")
+    eq_(site.open("things", {"name": "nonexistent"}, "spam"), "spam")
 
 @common
 def test_modify(site):
     """Standard edition of an item."""
-    item = site.open("things", {"name": u"foo"})
+    item = site.open("things", {"name": "foo"})
     identifier = item["id"]
     item["name"] = "spam"
     item.save()
-    item = site.open("things", {"name": u"spam"})
+    item = site.open("things", {"name": "spam"})
     eq_(item["id"], identifier)
 
 @common
 def test_update(site):
     """Standard update of an item."""
-    item = site.open("things", {"name": u"foo"})
+    item = site.open("things", {"name": "foo"})
     identifier = item["id"]
     item.update({"name": "spam"})
     item.save()
-    item = site.open("things", {"name": u"spam"})
+    item = site.open("things", {"name": "spam"})
     eq_(item["id"], identifier)
     item.update(name="egg")
     item.save()
-    item = site.open("things", {"name": u"egg"})
+    item = site.open("things", {"name": "egg"})
     eq_(item["id"], identifier)
     item.update((("name", "spam"),))
     item.save()
-    item = site.open("things", {"name": u"spam"})
+    item = site.open("things", {"name": "spam"})
     eq_(item["id"], identifier)
     assert_raises(ValueError, item.update, ("name", 500))
     assert_raises(TypeError, item.update, {"name": 500}, {"name": 600})
@@ -225,34 +225,34 @@ def test_update(site):
 @raises(TypeError)
 def test_delete_key(site):
     """Assert that deleting an item key raises an ``TypeError``."""
-    item = site.open("things", {"name": u"foo"})
+    item = site.open("things", {"name": "foo"})
     del item["name"]
 
 @common
 def test_modify_list(site):
     """Edition of an item with a list of values."""
-    item = site.open("things", {"name": u"foo"})
+    item = site.open("things", {"name": "foo"})
     identifier = item["id"]
     item.setlist("name", ("spam", "egg"))
     item.save()
-    item = site.open("things", {"name": u"spam"})
+    item = site.open("things", {"name": "spam"})
     eq_(item["id"], identifier)
-    eq_(item["name"], u"spam")
+    eq_(item["name"], "spam")
     if not isinstance(site.access_points["things"], SINGLE_VALUE_ACCESS_POINTS):
-        eq_(item.getlist("name"), (u"spam", u"egg"))
+        eq_(item.getlist("name"), ("spam", "egg"))
 
 @common
 def test_delete(site):
     """Test a simple delete."""
-    item = site.open("things", {"name": u"foo"})
+    item = site.open("things", {"name": "foo"})
     item.delete()
-    eq_(list(site.search("things", {"name": u"foo"})), [])
+    eq_(list(site.search("things", {"name": "foo"})), [])
 
 @common
 def test_delete_many(site):
     """Test a multiple delete."""
-    site.delete_many("things", {"name": u"bar"})
-    eq_(list(site.search("things", {"name": u"bar"})), [])
+    site.delete_many("things", {"name": "bar"})
+    eq_(list(site.search("things", {"name": "bar"})), [])
 
 @common
 def test_delete_many_id(site):
@@ -270,8 +270,8 @@ def test_delete_many_complex(site):
 @common
 def test_eq(site):
     """Test equality between items."""
-    item1 = site.open("things", {"name": u"foo"})
-    item2 = site.open("things", {"name": u"foo"})
+    item1 = site.open("things", {"name": "foo"})
+    item2 = site.open("things", {"name": "foo"})
     eq_(item1, item2)
 
 @common
@@ -284,13 +284,13 @@ def test_view(site):
 @common
 def test_view_condition(site):
     """Test simple view condition."""
-    items = list(site.view("things", {"name":"name"}, {"name": u"bar"}))
+    items = list(site.view("things", {"name":"name"}, {"name": "bar"}))
     eq_(len(items), 2)
     assert(all(item["name"] == "bar" for item in items))
-    items = list(site.view("things", {"foo":"name"}, {"name": u"bar"}))
+    items = list(site.view("things", {"foo":"name"}, {"name": "bar"}))
     eq_(len(items), 2)
     assert(all(item["foo"] == "bar" for item in items))
-    items = list(site.view("things", {"foo":"name"}, {"foo": u"bar"}))
+    items = list(site.view("things", {"foo":"name"}, {"foo": "bar"}))
     eq_(len(items), 2)
     assert(all(item["foo"] == "bar" for item in items))
 
@@ -320,11 +320,11 @@ def test_view_range(site):
 @common
 def test_view_operators(site):
     """Test various operators with a view"""
-    condition = Condition("foo", "!=", u"bar")
+    condition = Condition("foo", "!=", "bar")
     results = list(site.view("things", {"bar" : "id" , "foo": "name"},
         condition))
     eq_(set(item["bar"] for item in results), set([1]))
-    condition = Condition("foo", "like", u"b%r")
+    condition = Condition("foo", "like", "b%r")
     results = list(site.view("things", {"bar" : "id" , "foo": "name"},
         condition))
     eq_(set(item["bar"] for item in results), set([2, 3]))

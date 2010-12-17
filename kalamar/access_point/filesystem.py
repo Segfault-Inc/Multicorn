@@ -30,7 +30,17 @@ import io
 from . import AccessPoint
 from ..item import Item
 from ..property import Property
-from StringIO import StringIO
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import BytesIO as StringIO
+
+if "unicode" not in locals():
+    basestring = unicode = str
+if "xrange" not in locals():
+    xrange = range
+
 
 # io.IOBase has no __init__ method
 # pylint: disable=W0231
@@ -107,7 +117,7 @@ class FileSystem(AccessPoint):
 
     def __init__(self, root_dir, pattern, properties,
                  content_property="content"):
-        self.root_dir = unicode(root_dir)
+        self.root_dir = root_dir
         self.content_property = content_property
 
         self._ordered_properties = tuple(
@@ -127,7 +137,7 @@ class FileSystem(AccessPoint):
         props_iter = iter(self.identity_properties)
         self.properties_per_path_part = []
         for part in pattern_parts:
-            regexp = re.compile(u"^%s$" % part)
+            regexp = re.compile("^%s$" % part)
             props = tuple(next(props_iter) for i in xrange(regexp.groups))
             self.properties_per_path_part.append(PropertyPart(regexp, props))
 

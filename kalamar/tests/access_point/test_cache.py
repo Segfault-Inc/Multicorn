@@ -34,6 +34,10 @@ from kalamar.request import Condition, Not
 
 from ..common import run_common, make_site
 
+if "unicode" not in locals():
+    unicode = str
+
+
 def make_ap():
     """Build a simple cache access point."""
     return Cache(Memory(

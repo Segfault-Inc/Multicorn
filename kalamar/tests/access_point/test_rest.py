@@ -30,6 +30,9 @@ from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml.rest import Rest, RestProperty
 from ..common import run_common, make_site
 
+if "unicode" not in locals():
+    unicode = str
+
 
 class TemporaryDirectory(object):
     """Utility class for the tests."""
@@ -55,7 +58,7 @@ def test_serialization():
     def xml_content_test(site):
         """Inner function to test ReST serialization."""
         item = site.open("things", {"id": 1})
-        eq_(item["stream"].read(), "===\nfoo\n===")
+        eq_(item["stream"].read().decode("utf-8"), "===\nfoo\n===")
     runner(xml_content_test)
 
 

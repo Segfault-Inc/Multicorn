@@ -26,6 +26,9 @@ from kalamar.access_point.memory import Memory
 
 from ..test_combinations import FirstAP, SecondAP
 
+if "unicode" not in locals():
+    unicode = str
+
 
 @FirstAP()
 def make_first_ap():

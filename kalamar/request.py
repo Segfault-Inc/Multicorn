@@ -27,6 +27,9 @@ from operator import eq, ne, gt, ge, lt, le
 from abc import ABCMeta, abstractmethod
 import re
 
+if "reduce" not in locals():
+    from functools import reduce
+
 
 def re_match(string, pattern):
     """Return if ``string`` matches ``pattern``."""
@@ -84,7 +87,7 @@ def make_request(request):
         return And()
     elif isinstance(request, Request):
         return request
-    elif hasattr(request, "items") and callable(request.items):
+    elif hasattr(request, "items") and hasattr(request.items, "__call__"):
         # If it looks like a dict and smells like a dict, it is a dict.
         return And(
             *(Condition(key, "=", value) for key, value in request.items()))

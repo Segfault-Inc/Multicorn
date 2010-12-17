@@ -29,6 +29,9 @@ from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 from ..common import make_site, run_common
 
+if "unicode" not in locals():
+    unicode = str
+
 
 def make_ap():
     """Create a simple Alchemy access point."""
@@ -56,21 +59,21 @@ class TestAlchemy(unittest.TestCase):
     def test_view(self):
         """Test a simple view on the access point."""
         items = list(
-            self.site.view("test", {"truc": "id", "name": u"name"}, {}))
+            self.site.view("test", {"truc": "id", "name": "name"}, {}))
         eq_(len(items), 2)
         for item in items:
             assert "truc" in item.keys() and "name" in item.keys()
         items = list(
-            self.site.view("test", {"truc": "id", "name": u"name"}, {"id": 1}))
+            self.site.view("test", {"truc": "id", "name": "name"}, {"id": 1}))
         eq_(len(items), 1)
 
     def test_update(self):
         """Assert that an item can be updated in the DB."""
         item = self.site.open("test", {"id": 1})
-        item["name"] = u"updated"
+        item["name"] = "updated"
         item.save()
         item = self.site.open("test", {"id": 1})
-        eq_(item["name"], u"updated")
+        eq_(item["name"], "updated")
 
     # camelCase function names come from unittest
     # pylint: disable=C0103
@@ -78,10 +81,10 @@ class TestAlchemy(unittest.TestCase):
         self.site = Site()
         self.site.register("test", make_ap())
         self.items = []
-        item = self.site.create("test", {"id": 1, "name": u"Test"})
+        item = self.site.create("test", {"id": 1, "name": "Test"})
         self.items.append(item)
         item.save()
-        item = self.site.create("test", {"id": 2, "name": u"Test2"})
+        item = self.site.create("test", {"id": 2, "name": "Test2"})
         self.items.append(item)
         item.save()
 

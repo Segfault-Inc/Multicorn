@@ -98,7 +98,7 @@ class AccessPoint(object):
         elif prop.type == int:
             return (int(uuid.uuid4().time_low / 2),)
         elif prop.type == decimal.Decimal:
-            return (decimal.Decimal(uuid.uuid4().time_low / 2),)
+            return (decimal.Decimal(str(uuid.uuid4().time_low / 2)),)
         elif prop.type == float:
             return (uuid.uuid4().int / float(uuid.uuid4().int),)
         elif prop.type == iter:
@@ -159,13 +159,13 @@ class AccessPoint(object):
         """
         results = iter(self.search(request))
         try:
-            item = results.next()
+            item = next(results)
         except StopIteration:
             if default is DEFAULT_PARAMETER:
                 raise ItemDoesNotExist
             return default
         try:
-            results.next()
+            next(results)
         except StopIteration:
             return item
         else:
@@ -231,7 +231,7 @@ class AccessPoint(object):
             if prop.auto and name not in properties:
                 if prop.auto is True:
                     function = lambda prop: lambda item: self._auto_value(prop)
-                elif callable(prop.auto):
+                elif hasattr(prop.auto, "__call__"):
                     function = lambda prop: lambda item: prop.auto()
                 elif isinstance(prop.auto, tuple):
                     function = lambda prop: lambda item: prop.auto

@@ -29,6 +29,9 @@ import io
 
 from .item import Item, AbstractItem
 
+if "unicode" not in locals():
+    basestring = unicode = str
+
 
 class Iter(object):
     """Iterable object supporting equality testing."""
@@ -40,9 +43,13 @@ class Iter(object):
         """Return the iterable."""
         return self.__iterable
 
+    def __hash__(self):
+        """Hash of the iterable."""
+        return hash(self.__iterable)
+
     def next(self):
         """Return the next value of the iterable."""
-        return self.__iterable.next()
+        return next(self.__iterable)
 
     def __eq__(self, iterable):
         """Test equality of all values in an iterable.
@@ -173,7 +180,7 @@ def to_stream(value):
     """Cast ``value`` into stream-like object.
 
     >>> to_stream(open(__file__)) # doctest: +ELLIPSIS
-    <open file ...>
+    <...value.py...>
     >>> to_stream(10) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
     Traceback (most recent call last):
         ....
@@ -212,7 +219,7 @@ def to_type(value, data_type):
     >>> to_type(1, int)
     1
     >>> to_type("eggs", unicode)
-    u'eggs'
+    'eggs'
     >>> to_type("1+j", complex)
     (1+1j)
     >>> to_type("eggs", float) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS

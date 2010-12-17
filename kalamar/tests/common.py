@@ -34,9 +34,9 @@ COMMON_TESTS = []
 
 def fill_site(site):
     """Fill a ``site`` with testing data."""
-    site.create("things", {"id": 1, "name": u"foo"}).save()
-    site.create("things", {"id": 2, "name": u"bar"}).save()
-    site.create("things", {"id": 3, "name": u"bar"}).save()
+    site.create("things", {"id": 1, "name": "foo"}).save()
+    site.create("things", {"id": 2, "name": "bar"}).save()
+    site.create("things", {"id": 3, "name": "bar"}).save()
 
 
 def make_site(access_point, fill=True):

@@ -137,7 +137,7 @@ def query_filter_validator(self, access_point, properties):
         if name not in properties:
             return False
         elif not isinstance(cond_tree[name], dict):
-                return True
+            return True
         elif properties[name].remote_ap:
             remote_ap = properties[name].remote_ap
             if isinstance(remote_ap, Alchemy) \
@@ -184,7 +184,7 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     def build_select(select, properties, alchemy_query):
         """Walks the mapping to append column"""
         for name, value in select.mapping.items():
-            if value.name == u"*":
+            if value.name == "*":
                 for prop_name, prop in properties.items():
                     column = prop.column
                     if prop.relation is None:

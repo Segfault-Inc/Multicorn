@@ -29,6 +29,9 @@ from kalamar.property import Property
 from kalamar.site import Site
 from kalamar.item import Item
 
+if "unicode" not in locals():
+    unicode = str
+
 
 def make_first_ap():
     """Build a Memory AP having a one-to-many relationship to another one."""

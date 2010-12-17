@@ -23,7 +23,6 @@ Access point storing items in a RDBMS.
 
 """
 
-from werkzeug.utils import cached_property
 from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
     Integer, Date, Numeric, DateTime, Boolean, Unicode
 from sqlalchemy.sql import expression, and_, or_, not_
@@ -38,6 +37,9 @@ from ...item import AbstractItem, Item
 from ...request import Condition, And, Or, Not
 from ...query import QueryChain
 from ...property import Property
+
+if "unicode" not in locals():
+    unicode = str
 
 
 SQLALCHEMYTYPES = {
@@ -68,6 +70,7 @@ class Alchemy(AccessPoint):
     def __init__(self, url, tablename, properties, identity_properties,
                  createtable=False, engine_opts = None):
         super(Alchemy, self).__init__(properties, identity_properties)
+        self.__table = None
         self.url = url
         self.tablename = tablename
         self.createtable = createtable
@@ -125,10 +128,12 @@ class Alchemy(AccessPoint):
         prop.column = column
         return column
 
-    # TODO: remove the werkzeug depedency
-    @cached_property
+    @property
     def _table(self):
         """Initialize the Alchemy engine on first access."""
+        if self.__table is not None:
+            return self.__table
+
         metadata = Alchemy.__metadatas.get(self.url, None)
         if not metadata:
             engine = create_engine(self.url, **self.engine_opts)
@@ -141,6 +146,7 @@ class Alchemy(AccessPoint):
         table = Table(self.tablename, metadata, *columns, useexisting=True)
         if self.createtable:
             table.create(checkfirst=True)
+        self.__table = table
         return table
 
     def __get_column(self, property_name):

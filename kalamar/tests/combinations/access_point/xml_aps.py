@@ -27,6 +27,9 @@ from kalamar.access_point.xml import XML, XMLProperty
 
 from ..test_combinations import FirstAP, SecondAP, teardown_fs
 
+if "unicode" not in locals():
+    unicode = str
+
 
 @FirstAP(teardown=teardown_fs)
 def first_ap_fs():

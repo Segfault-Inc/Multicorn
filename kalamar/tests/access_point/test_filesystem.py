@@ -38,6 +38,9 @@ from kalamar.access_point.unicode_stream import UnicodeStream
 from kalamar.site import Site
 from ..common import run_common, make_site
 
+if "unicode" not in locals():
+    unicode = str
+
 
 @contextlib.contextmanager
 def temporary_directory():
@@ -77,7 +80,7 @@ def test_filesytem_init():
     items_file = site.open("tests", properties)["content"]
     eq_(items_file.name, filename)
     # This test tests its own presence!
-    assert "RANDOM STRING A6buCMTbAdCV98j00vK455UIAPCJ" in items_file.read()
+    assert "RANDOM STRING A6buCMTbAdCV98j00vK455UIAPC" in str(items_file.read())
 
 def test_temporary_directory():
     """Assert :func:`temporary_directory` works as intented."""
@@ -123,7 +126,7 @@ def test_filenames():
             site.create("things", prop).save()
 
         filenames = set([
-                u"001 -   spam.txt", u"002 -    egg.text", u"003 - turtle.rst"])
+                "001 -   spam.txt", "002 -    egg.text", "003 - turtle.rst"])
 
         eq_(set(os.listdir(temp_dir)), filenames)
         eq_(set([item.filename for item in site.search("things")]),

@@ -109,8 +109,8 @@ class Aliases(AccessPointWrapper):
             # pylint: enable=E1103
         else:
             props = dict((self.aliases.get(key, key), value)
-                for key, value in dict(properties).iteritems())
+                for key, value in dict(properties).items())
         lazy_loaders = dict(
             (self.aliases.get(key, key), value)
-            for key, value in dict(lazy_loaders).iteritems())
+            for key, value in dict(lazy_loaders).items())
         return super(Aliases, self).create(props, lazy_loaders)

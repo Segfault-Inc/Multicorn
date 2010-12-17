@@ -24,12 +24,16 @@ An access point designed to store properies in a XML file.
 """
 
 from lxml import etree
-from StringIO import StringIO
 
 from kalamar.access_point.decorator import Decorator, DecoratorItem, \
         DecoratorProperty
 from kalamar.item import AbstractItem, Item
 from kalamar.request import make_request
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import BytesIO as StringIO
 
 
 class XMLItem(DecoratorItem):
@@ -48,7 +52,7 @@ class XMLItem(DecoratorItem):
             if xmlstring == None or not xmlstring.strip():
                 # Create a new xml tree if there isn't one
                 root = etree.Element(self.access_point.root_element)
-                self._xml_tree = etree.ElementTree(element = root)
+                self._xml_tree = etree.ElementTree(element=root)
             else:
                 self._xml_tree = etree.fromstring(xmlstring, parser)
         return self._xml_tree
@@ -88,7 +92,7 @@ class XMLProperty(DecoratorProperty):
         serialization mechanism.
 
         """
-        request = dict(((child.tag, unicode(child.text)) for child in elem))
+        request = dict(((child.tag, child.text) for child in elem))
         return (self.remote_ap.open(make_request(request)),) \
             if len(request) else (None,)
 

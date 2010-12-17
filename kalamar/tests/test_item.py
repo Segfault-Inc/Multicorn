@@ -26,6 +26,9 @@ from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from .common import make_site
 
+if "unicode" not in locals():
+    unicode = str
+
 
 def memory_make_ap():
     """Create a simple access point."""
@@ -56,4 +59,4 @@ def test_item_representation():
     """Test the representation of item references."""
     site = make_site(memory_make_ap(), fill=True)
     item = tuple(site.search("things"))[0]
-    assert item.reference_repr() == u"2"
+    assert item.reference_repr() == "2"

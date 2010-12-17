@@ -25,11 +25,18 @@ the underlying items.
 """
 
 from copy import copy
-from StringIO import StringIO
 
 from . import AccessPointWrapper, AccessPoint
 from ..item import ItemWrapper, MultiDict
 from ..request import And
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import BytesIO as StringIO
+
+if "unicode" not in locals():
+    unicode = str
 
 
 def _split_request(request):

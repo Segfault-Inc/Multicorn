@@ -29,6 +29,9 @@ from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 from kalamar.item import Item
 
+if "unicode" not in locals():
+    unicode = str
+
 
 URL = "sqlite:///"
 
@@ -47,7 +50,7 @@ class TestAlchemy(unittest.TestCase):
 
     def test_view(self):
         """Test a simple view on the access point."""
-        mapping = {"truc": "id", "name": u"name", "rootname": "root.name"}
+        mapping = {"truc": "id", "name": "name", "rootname": "root.name"}
         items = list(self.site.view("child", mapping, {}))
         eq_(len(items), 2)
         for item in items:
@@ -90,17 +93,17 @@ class TestAlchemy(unittest.TestCase):
         self.site.register("child", apchild)
         
         self.items = []
-        item = self.site.create("root", {"id": 1, "name": u"Test"})
+        item = self.site.create("root", {"id": 1, "name": "Test"})
         self.items.append(item)
         item.save()
         itemchild = self.site.create(
-            "child", {"id": 1, "name": u"TestChild", "root": item})
+            "child", {"id": 1, "name": "TestChild", "root": item})
         itemchild.save()
-        item = self.site.create("root", {"id": 2, "name": u"Test2"})
+        item = self.site.create("root", {"id": 2, "name": "Test2"})
         self.items.append(item)
         item.save()
         itemchild = self.site.create(
-            "child", {"id": 2, "name": u"TestChild2", "root": item})
+            "child", {"id": 2, "name": "TestChild2", "root": item})
         itemchild.save()
  
         self.items.append(itemchild)

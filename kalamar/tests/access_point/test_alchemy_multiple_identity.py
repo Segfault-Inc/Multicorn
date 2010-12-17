@@ -31,6 +31,9 @@ from nose.tools import eq_
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 
+if "unicode" not in locals():
+    unicode = str
+
 
 def make_table():
     """Return an access point with multiple identities."""
@@ -57,7 +60,7 @@ class TestAlchemy(unittest.TestCase):
         """Test a simple search on the access point."""
         items = list(self.site.search("test"))
         eq_(len(items), 2)
-        items = list(self.site.search("test", {"firstname": u"John"}))
+        items = list(self.site.search("test", {"firstname": "John"}))
         eq_(len(items), 1)
         item = items[0]
         eq_(item["firstname"], "John")
@@ -68,23 +71,23 @@ class TestAlchemy(unittest.TestCase):
         """Test a simple view on the access point."""
         items = list(
             self.site.view(
-                "test", {"truc": "firstname", "name": u"lastname"}, {}))
+                "test", {"truc": "firstname", "name": "lastname"}, {}))
         eq_(len(items), 2)
         for item in items:
             assert "truc" in item.keys() and "name" in item.keys()
         items = list(
-            self.site.view("test", {"truc": u"firstname", "name": u"lastname"},
-                {"firstname": u"John"}))
+            self.site.view("test", {"truc": "firstname", "name": "lastname"},
+                {"firstname": "John"}))
         eq_(len(items), 1)
 
     def test_update(self):
         """Assert that an item can be updated in the DB."""
         item = self.site.open(
-            "test", {"firstname": u"John", "lastname" : u"Doe"})
+            "test", {"firstname": "John", "lastname" : "Doe"})
         item["birthdate"] = date(1951, 12, 12)
         item.save()
         item = self.site.open(
-            "test", {"firstname": u"John", "lastname" : u"Doe"})
+            "test", {"firstname": "John", "lastname" : "Doe"})
         eq_(item["birthdate"],  date(1951, 12, 12))
 
     # camelCase function names come from unittest
@@ -95,12 +98,12 @@ class TestAlchemy(unittest.TestCase):
         self.site.register("test", self.access_point) 
         self.items = []
         item = self.site.create(
-            "test", {"firstname": u"John", "lastname": u"Doe",
+            "test", {"firstname": "John", "lastname": "Doe",
                      "birthdate": date(1950, 1, 1)})
         self.items.append(item)
         item.save()
         item = self.site.create(
-            "test", {"firstname": u"Jane", "lastname": u"Doe",
+            "test", {"firstname": "Jane", "lastname": "Doe",
                      "birthdate": date(1960, 2, 2)})
         self.items.append(item)
         item.save()

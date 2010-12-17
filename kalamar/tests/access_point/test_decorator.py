@@ -28,6 +28,9 @@ from kalamar.property import Property
 
 from ..common import run_common, make_site
 
+if "unicode" not in locals():
+    unicode = str
+
 
 class SimpleDecorator(Decorator):
     """Simple Decorator access point evaluating its values."""
