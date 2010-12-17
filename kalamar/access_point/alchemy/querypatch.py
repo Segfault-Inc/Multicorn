@@ -72,7 +72,8 @@ def standard_validator(self, access_point, properties):
 def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method on QueryFilter to convert to alchemy."""
     access_points = access_point.site.access_points
-
+    print self
+    print "ADDING JOINS TO %s " % alchemy_query
     def to_alchemy_condition(condition):
         """Converts a kalamar condition to an sqlalchemy condition."""
         # TODO: merge this with alchemy.to_alchemy_condition
@@ -96,26 +97,28 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
 
     def build_join(tree, properties, alchemy_query):
         """Build the necessary joins for a condition."""
+        print "INNER ADDING JOINS TO %s " % alchemy_query
         for name, values in tree.items():
             prop = properties[name]
             if prop.remote_ap:
-                join_col1 = alchemy_query.corresponding_column(prop.column)
                 if prop.relation == "many-to-one" and isinstance(values, dict):
-                    prop.remote_ap.__table
-                    join_col2 = alchemy_query.corresponding_column(
-                        prop.remote_property)
+                    prop.remote_ap._table
+                    join_col1 = prop.column
+                    join_col2 = prop.remote_property.column
                     # _table isn't really private, just not in the public API
                     # pylint: disable=W0212
-                    alchemy_query = alchemy_query.join(
+                    alchemy_query = alchemy_query.outerjoin(
                         prop.remote_ap._table,
                         onclause=(join_col1 == join_col2))
                     # pylint: enable=W0212
+                    print "ALCHEMY QUERY AFTER JOIN: %s" % alchemy_query
                     alchemy_query = build_join(
                         values, prop.remote_ap.properties, alchemy_query)
         return alchemy_query
-    alchemy_query = build_join(
-        self.condition.properties_tree, properties, alchemy_query)
-    alchemy_query = alchemy_query.where(to_alchemy_condition(self.condition))
+    join = build_join(
+        self.condition.properties_tree, properties, access_point._table)
+    alchemy_query = alchemy_query.select_from(join).where(to_alchemy_condition(self.condition))
+    print "ALL GOOD: %s " % alchemy_query
     return alchemy_query
 
 
@@ -136,14 +139,14 @@ def query_filter_validator(self, access_point, properties):
         sqlalchemey"""
         if name not in properties:
             return False
-        elif not isinstance(cond_tree[name], dict):
+        elif not isinstance(values, dict):
                 return True
         elif properties[name].remote_ap:
             remote_ap = properties[name].remote_ap
             if isinstance(remote_ap, Alchemy) \
                     and access_point.url == remote_ap.url:
-                return all(inner_manage(name, values, remote_ap.properties)
-                           for name, values in cond_tree[name])
+                return all(inner_manage(new_name, values, remote_ap.properties)
+                           for new_name, values in cond_tree[name].items())
             else:
                 return False
     if all(inner_manage(name, values, properties)

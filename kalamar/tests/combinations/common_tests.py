@@ -24,7 +24,8 @@ Common tests for access point combinations.
 # pylint: disable=E0611
 from nose.tools import eq_
 # pylint: enable=E0611
-from kalamar.request import Condition, And, Or
+from kalamar.request import Condition, And, Or, make_request
+from kalamar.query import QueryFilter
 
 from .test_combinations import common
 
@@ -111,6 +112,21 @@ def test_one_to_many(site):
     request = {"first_aps.color": u"blue"}
     results = list(site.view("second_ap", aliases=mapping, request=request))
     eq_(len(results), 2)
+
+
+@common
+def test_many_to_one(site):
+    """Test many to one relationship traversals."""
+    request = {"second_ap.code" : u"BBB"}
+    results = list(site.view("first_ap",{'scode': 'second_ap.code'},
+        request=request))
+    eq_(len(results), 2)
+    assert all((result['scode'] == 'BBB' for result in  results))
+    query = QueryFilter(make_request(request))
+    results = list(site.view("first_ap",
+        query=query))
+    eq_(len(results), 2)
+
 
 
 @common

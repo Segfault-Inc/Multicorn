@@ -280,6 +280,11 @@ class Alchemy(AccessPoint):
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
             alchemy_query = can.to_alchemy(alchemy_query, self, self.properties)
+            # If no column were added to the select clause, select
+            # everything
+            if not alchemy_query.c:
+                for name, prop in self.properties.items():
+                    alchemy_query.append_column(prop.column.label(name))
             result = alchemy_query.execute()
         else:
             result = self.search(And())
