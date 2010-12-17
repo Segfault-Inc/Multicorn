@@ -198,7 +198,7 @@ class AccessPoint(object):
         heterogeneous linked access points.
 
         """
-        if representation is None:
+        if not representation:
             return lambda item: (None,)
         keys = [prop.name for prop in self.identity_properties]
         values = representation.split("/")
