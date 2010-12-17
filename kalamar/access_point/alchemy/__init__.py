@@ -107,7 +107,7 @@ class Alchemy(AccessPoint):
                 foreign_name = "%s.%s" % (foreign_table, foreign_column.name)
                 foreign_key = ForeignKey(
                     foreign_name, use_alter=True,
-                    name="%s_%s_fkey" % (self.tablename, prop.name ))
+                    name="%s_%s_fkey" % (self.tablename, prop.name))
                 self.remote_alchemy_props.append(prop.name)
                 alchemy_type = foreign_column.type
                 column = Column(
@@ -280,16 +280,17 @@ class Alchemy(AccessPoint):
             new_line = {}
             for key, value in line.items():
                 prop = properties[key]
-                if prop.type == Item and not isinstance(value, AbstractItem):
-                    loader = prop.remote_ap.loader_from_reference_repr
-                    new_line[key] = loader(unicode(value))(None)[0]
-                else:
-                    new_line[key] = prop.cast((value,))[0]
+                new_line[key] = prop.cast((value,))[0]
             return new_line
         alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
             alchemy_query = can.to_alchemy(alchemy_query, self, self.properties)
+            # If no column were added to the select clause, select
+            # everything
+            if not alchemy_query.c:
+                for name, prop in self.properties.items():
+                    alchemy_query.append_column(prop.column.label(name))
             result = alchemy_query.execute()
         else:
             result = self.search(And())

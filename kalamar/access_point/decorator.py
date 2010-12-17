@@ -111,10 +111,9 @@ class Decorator(AccessPointWrapper):
         self.wrapped_ap.save(item.wrapped_item)
         item.unsaved_properties = MultiDict()
 
-    @abc.abstractmethod
     def preprocess_save(self, item):
         """Preprocess a wrapped item, updating its content."""
-        raise NotImplementedError
+        pass
 
     def create(self, properties=None, lazy_loaders=None):
         decorated_values = MultiDict()

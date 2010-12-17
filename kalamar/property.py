@@ -26,6 +26,10 @@ Kalamar property object.
 from .value import PROPERTY_TYPES, to_type
 from .item import AbstractItem, Item
 
+if "unicode" not in locals():
+    unicode = str
+
+
 class MissingRemoteAP(RuntimeError):
     """Remote access point is missing in property definition."""
     value = __doc__
