@@ -1,9 +1,0 @@
-graph RequestHandling {
-  node [shape=box]
-  IncomingRequest -- Filter -- Request -- Template_Creation -- Output_Mimetype_Detection -- Export -- Send_Response;
-  Output_Mimetype_Detection -- Send_Response;
-  Filter -- Prerequest -- Send_Response;
-  
-  { rank=same; Prerequest Request };
-}
-

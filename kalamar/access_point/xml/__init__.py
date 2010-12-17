@@ -59,8 +59,8 @@ class XMLProperty(DecoratorProperty):
     def __init__(self, property_type, xpath, *args, **kwargs):
         super(XMLProperty, self).__init__(
             property_type, *args, **kwargs)
-        parts = xpath.strip("/").split("/")
-        self.xpath = xpath
+        self.xpath = xpath.strip("/")
+        parts = self.xpath.split("/")
         self.tag_name = parts[-1]
         self.parent_xpath = "//" + "/".join(parts[:-1])
 

@@ -219,6 +219,7 @@ def query_select_validator(self, access_point, properties):
 
     """
     from . import Alchemy
+
     def isvalid(select, properties):
         """Check if ``select`` is valid according to ``properties``."""
         for name, sub_select in select.sub_selects.items():
@@ -226,7 +227,7 @@ def query_select_validator(self, access_point, properties):
             if not (isinstance(remote_ap, Alchemy) and
                     remote_ap.url == access_point.url and
                     isvalid(sub_select, remote_ap.properties)):
-                #We need further tests: if we can after all, let's do it
+                # We need further tests: if we can after all, let's do it
                 return False
         return True
 
