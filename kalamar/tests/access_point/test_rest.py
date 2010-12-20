@@ -30,8 +30,6 @@ from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml.rest import Rest, RestProperty
 from ..common import run_common, make_site
 
-if "unicode" not in locals():
-    unicode = str
 
 
 class TemporaryDirectory(object):

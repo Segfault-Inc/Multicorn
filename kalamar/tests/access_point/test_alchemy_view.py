@@ -29,8 +29,6 @@ from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 from kalamar.item import Item
 
-if "unicode" not in locals():
-    unicode = str
 
 
 URL = "sqlite:///"

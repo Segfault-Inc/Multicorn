@@ -36,8 +36,6 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
-if "unicode" not in locals():
-    basestring = unicode = str
 if "xrange" not in locals():
     xrange = range
 

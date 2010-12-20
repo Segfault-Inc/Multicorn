@@ -33,3 +33,7 @@ mechanism automatically links the items stored in the linked access points,
 enabling the user to easily use joins if needed.
 
 """
+
+if not hasattr(__builtins__, "unicode"):
+    __builtins__['unicode'] = str
+    __builtins__['basestring'] = str

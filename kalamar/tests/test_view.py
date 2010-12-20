@@ -32,8 +32,6 @@ from kalamar.site import Site
 from kalamar.query import BadQueryException, QuerySelect, QueryFilter
 from kalamar.item import Item
 
-if "unicode" not in locals():
-    unicode = str
 
 
 class TestView(unittest.TestCase):

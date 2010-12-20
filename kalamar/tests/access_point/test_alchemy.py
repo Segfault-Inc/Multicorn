@@ -29,8 +29,6 @@ from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 from ..common import make_site, run_common
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def make_ap():

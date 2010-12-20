@@ -38,9 +38,6 @@ from ...request import Condition, And, Or, Not
 from ...query import QueryChain
 from ...property import Property
 
-if "unicode" not in locals():
-    unicode = str
-
 
 SQLALCHEMYTYPES = {
     unicode: Unicode,

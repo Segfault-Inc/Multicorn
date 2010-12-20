@@ -34,8 +34,6 @@ from kalamar.access_point.memory import Memory
 from kalamar.access_point.aliases import AliasedItem, Aliases
 from ..common import make_site, run_common
 
-if "unicode" not in locals():
-    unicode = str
 
 
 class DummyAP(object):

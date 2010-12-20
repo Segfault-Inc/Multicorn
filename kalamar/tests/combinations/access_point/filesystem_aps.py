@@ -27,8 +27,6 @@ from kalamar.access_point.unicode_stream import UnicodeStream
 
 from ..test_combinations import FirstAP, SecondAP, teardown_fs
 
-if "unicode" not in locals():
-    unicode = str
 
 
 @FirstAP(teardown=teardown_fs)

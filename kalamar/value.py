@@ -29,10 +29,6 @@ import io
 
 from .item import Item, AbstractItem
 
-if "unicode" not in locals():
-    basestring = unicode = str
-
-
 class Iter(object):
     """Iterable object supporting equality testing."""
     def __init__(self, iterable):

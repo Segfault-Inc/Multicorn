@@ -38,8 +38,6 @@ from kalamar.access_point.unicode_stream import UnicodeStream
 from kalamar.site import Site
 from ..common import run_common, make_site
 
-if "unicode" not in locals():
-    unicode = str
 
 
 @contextlib.contextmanager

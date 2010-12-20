@@ -31,8 +31,6 @@ from kalamar.site import Site
 from kalamar.property import Property
 from kalamar.item import Item
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def make_alchemy_ap():

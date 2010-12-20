@@ -35,8 +35,6 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def _split_request(request):

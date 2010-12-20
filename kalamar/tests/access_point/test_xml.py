@@ -31,8 +31,6 @@ from kalamar.site import Site
 
 from ..common import run_common, make_site
 
-if "unicode" not in locals():
-    unicode = str
 
 
 class TemporaryDirectory(object):

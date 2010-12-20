@@ -29,8 +29,6 @@ from kalamar.property import Property, MissingRemoteAP, MissingRemoteProperty, \
     AlreadyRegistered
 from .common import make_site
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def memory_make_ap():

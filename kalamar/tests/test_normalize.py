@@ -27,8 +27,6 @@ from nose.tools import eq_, raises
 from kalamar.property import Property
 from kalamar.request import normalize, Condition, And, Or, Not
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def test_simplify():

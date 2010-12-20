@@ -31,8 +31,6 @@ from nose.tools import eq_
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def make_table():
