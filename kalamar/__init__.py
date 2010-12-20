@@ -34,6 +34,6 @@ enabling the user to easily use joins if needed.
 
 """
 
-if not hasattr(__builtins__, "unicode"):
+if not 'unicode' in __builtins__:
     __builtins__['unicode'] = str
     __builtins__['basestring'] = str
