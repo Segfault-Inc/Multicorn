@@ -128,4 +128,4 @@ class Rest(XML):
         if len(item.unsaved_properties):
             self.update_xml_tree(item)
             item[self.stream_property] = StringIO(
-                xml2rst.convert(item.xml_tree).encode("utf-8"))
+                xml2rst.convert(item.xml_tree).decode("utf-8").encode("utf-8"))

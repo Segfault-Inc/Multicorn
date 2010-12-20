@@ -56,6 +56,20 @@ def temporary_directory():
         if os.path.isdir(directory):
             shutil.rmtree(directory)
 
+def test_filesystem_unicode():
+    """Assert that the filesystem access point can store unicode values"""
+    with temporary_directory() as temp_dir:
+        access_point = FileSystem(temp_dir, "(.*)",
+                ["name"],
+                "data")
+        site = Site()
+        site.register("tests", access_point)
+        site.create("tests", {"name": u"Touché"}).save()
+        items = list(site.search("tests"))
+        eq_(len(items), 1)
+        eq_(items[0]["name"], u"Touché")
+
+
 
 def test_filesytem_init():
     """Assert that the filesystem access point can be properly initialized."""

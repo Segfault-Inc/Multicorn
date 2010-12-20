@@ -155,7 +155,8 @@ class FileSystem(AccessPoint):
                 match = property_part.regexp.match(basename)
                 if not match:
                     continue
-                properties = dict(zip(property_part.properties, match.groups()))
+                values = (group.decode('utf-8') for group in match.groups())
+                properties = dict(zip(property_part.properties, values ))
                 properties.update(previous_properties)
                 path = os.path.join(root, basename)
                 if remaining_path_parts and os.path.isdir(path):
