@@ -104,8 +104,9 @@ class AlchemyAccessPoint(AccessPoint):
                 self.columns[name] = column
             else :
                 self.one_to_manies[name] = props.get('foreign-property',self.name)
-        except: 
+        except:
             print "A problem occured while creating config for ap %s with column %s " % (self.name, name)
+            raise
 
 
 
