@@ -29,7 +29,7 @@ from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml import XML, XMLProperty
 from kalamar.site import Site
 
-from ..common import run_common, make_site
+from ..common import run_common, make_site, require
 
 if "unicode" not in locals():
     unicode = str
@@ -48,6 +48,7 @@ class TemporaryDirectory(object):
         shutil.rmtree(self.directory)
 
 
+@require("lxml")
 def test_serialization():
     """Test XML serialization."""
     def xml_content_test(site):
@@ -57,6 +58,7 @@ def test_serialization():
             "<foo><bar><baz>foo</baz></bar></foo>")
     runner(xml_content_test)
 
+@require("lxml")
 def test_update_document():
     """Test document update."""
     def xml_update_test(site):
@@ -69,6 +71,7 @@ def test_update_document():
             "<foo><bar><baz>updated</baz></bar></foo>")
     runner(xml_update_test)
 
+@require("lxml")
 def test_shared_structure():
     """Test item with properties sharing the same structure."""
     with TemporaryDirectory() as temp_dir:
@@ -85,6 +88,7 @@ def test_shared_structure():
         eq_(item["stream"].read().decode("utf-8"),
             "<foo><bar><name>hulk</name><color>green</color></bar></foo>")
 
+@require("lxml")
 def test_iter():
     """Test an XML access point with an ``iter`` property."""
     with TemporaryDirectory() as temp_dir:
@@ -118,6 +122,7 @@ def runner(test):
         test(site)
 
 @run_common
+@require("lxml")
 def test_xml_common():
     """Define a custom test runner for the common tests."""
     return None, runner, "xml"

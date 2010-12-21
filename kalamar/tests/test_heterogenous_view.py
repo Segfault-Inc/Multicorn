@@ -30,6 +30,7 @@ from kalamar.access_point.memory import Memory
 from kalamar.site import Site
 from kalamar.property import Property
 from kalamar.item import Item
+from .common import require
 
 if "unicode" not in locals():
     unicode = str
@@ -55,6 +56,7 @@ def make_memory_ap():
     return access_point
 
 
+@require("sqlalchemy")
 class TestHeterogeneous(unittest.TestCase):
     """Test class testing ``view`` over different access points."""
     def test_view(self):

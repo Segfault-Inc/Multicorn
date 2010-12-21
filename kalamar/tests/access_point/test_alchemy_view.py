@@ -28,6 +28,7 @@ from nose.tools import eq_
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 from kalamar.item import Item
+from ..common import require
 
 if "unicode" not in locals():
     unicode = str
@@ -36,6 +37,7 @@ if "unicode" not in locals():
 URL = "sqlite:///"
 
 
+@require("sqlalchemy")
 class TestAlchemy(unittest.TestCase):
     """Class defining some simple ``view`` tests on an Alchemy access point."""
     def test_search(self):

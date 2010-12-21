@@ -23,15 +23,10 @@ Access point storing items in a RDBMS.
 
 """
 
-from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
-    Integer, Date, Numeric, DateTime, Boolean, Unicode
-from sqlalchemy.sql import expression, and_, or_, not_
+from __future__ import print_function
 from datetime import datetime, date
 from decimal import Decimal
-import sqlalchemy.sql.expression
-import sqlalchemy.exc 
 
-from . import querypatch
 from .. import AccessPoint
 from ...item import AbstractItem, Item
 from ...request import Condition, And, Or, Not
@@ -41,18 +36,31 @@ from ...property import Property
 if "unicode" not in locals():
     unicode = str
 
+try:
+    import sqlalchemy
+except ImportError:
+    import sys
+    print("WARNING: The SQLAlchemy AP is not available.", file=sys.stderr)
+else:
+    from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
+        Integer, Date, Numeric, DateTime, Boolean, Unicode
+    from sqlalchemy.sql import expression, and_, or_, not_
+    import sqlalchemy.sql.expression
+    import sqlalchemy.exc 
 
-SQLALCHEMYTYPES = {
-    unicode: Unicode,
-    int: Integer,
-    datetime: DateTime,
-    date: Date,
-    bool: Boolean,
-    Decimal: Numeric}
+    from . import querypatch
 
-And.alchemy_function = lambda self, conditions: and_(*conditions)
-Or.alchemy_function = lambda self, conditions: or_(*conditions)
-Not.alchemy_function = lambda self, conditions: not_(*conditions)
+    SQLALCHEMYTYPES = {
+        unicode: Unicode,
+        int: Integer,
+        datetime: DateTime,
+        date: Date,
+        bool: Boolean,
+        Decimal: Numeric}
+
+    And.alchemy_function = lambda self, conditions: and_(*conditions)
+    Or.alchemy_function = lambda self, conditions: or_(*conditions)
+    Not.alchemy_function = lambda self, conditions: not_(*conditions)
 
 
 class AlchemyProperty(Property):

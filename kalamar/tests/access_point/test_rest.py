@@ -28,7 +28,7 @@ import shutil
 from nose.tools import eq_
 from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml.rest import Rest, RestProperty
-from ..common import run_common, make_site
+from ..common import run_common, make_site, require
 
 if "unicode" not in locals():
     unicode = str
@@ -47,12 +47,16 @@ class TemporaryDirectory(object):
         shutil.rmtree(self.directory)
 
 
+@require("docutils")
+@require("lxml")
 def make_file_ap(temp_dir):
     """Make filesystem access point."""
     return FileSystem(
         temp_dir, "(.*)\.txt", [("id", FileSystemProperty(int))],
         content_property="stream")
 
+@require("docutils")
+@require("lxml")
 def test_serialization():
     """Test ReST serialization."""
     def xml_content_test(site):
@@ -74,6 +78,8 @@ def runner(test):
         test(site)
 
 @run_common
+@require("docutils")
+@require("lxml")
 def test_rest_common():
     """Define a custom test runner for the common tests."""
     return None, runner, "rest"

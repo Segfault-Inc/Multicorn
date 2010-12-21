@@ -23,11 +23,21 @@ Access point designed to store values in a reStructuredText document.
 
 """
 
-import docutils.core
-from lxml import etree
+from __future__ import print_function
+import os
+
+try:
+    import docutils.core
+    from lxml import etree
+except ImportError:
+    import sys
+    print("WARNING: The ReST AP is not available.", file=sys.stderr)
+else:
+    _XSLT_FILENAME = os.path.join(os.path.dirname(__file__), "xml2rst.xsl")
+    MAIN_XSLT = etree.XSLT(etree.parse(open(_XSLT_FILENAME), etree.XMLParser()))
 
 from kalamar.item import AbstractItem, Item
-from . import XML, XMLItem, XMLProperty, xml2rst
+from . import XML, XMLItem, XMLProperty
 
 try:
     from StringIO import StringIO
@@ -127,5 +137,5 @@ class Rest(XML):
     def preprocess_save(self, item):
         if len(item.unsaved_properties):
             self.update_xml_tree(item)
-            item[self.stream_property] = StringIO(
-                xml2rst.convert(item.xml_tree).encode("utf-8"))
+            string = str(MAIN_XSLT(item.xml_tree))[:-1].encode("utf-8")
+            item[self.stream_property] = StringIO(string)

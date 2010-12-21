@@ -26,12 +26,15 @@ from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml.rest import Rest, RestProperty
 
 from ..test_combinations import FirstAP, SecondAP, teardown_fs
+from ...common import run_common, make_site, require
 
 if "unicode" not in locals():
     unicode = str
 
 
 @FirstAP(teardown=teardown_fs)
+@require("docutils")
+@require("lxml")
 def first_ap_fs():
     """First access point for Memory."""
     temp_dir = tempfile.mkdtemp()
@@ -48,6 +51,8 @@ def first_ap_fs():
     return rest_ap
 
 @SecondAP(teardown=teardown_fs)
+@require("docutils")
+@require("lxml")
 def second_ap_fs():
     """Second access point for Memory."""
     temp_dir = tempfile.mkdtemp()
