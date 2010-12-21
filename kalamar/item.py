@@ -26,8 +26,6 @@ Base classes to create kalamar items.
 import abc
 from collections import namedtuple, Mapping, MutableMapping
 
-if "unicode" not in locals():
-    unicode = str
 
 
 # Identity and *MultiMapping do not need an __init__ method

@@ -26,8 +26,6 @@ from kalamar.access_point.memory import Memory
 from kalamar.property import Property
 from .common import make_site
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def memory_make_ap():

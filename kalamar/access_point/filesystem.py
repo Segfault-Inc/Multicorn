@@ -29,6 +29,7 @@ import io
 
 from . import AccessPoint
 from ..item import Item
+from ..value import to_unicode
 from ..property import Property
 
 try:
@@ -36,8 +37,6 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
-if "unicode" not in locals():
-    basestring = unicode = str
 if "xrange" not in locals():
     xrange = range
 
@@ -157,7 +156,8 @@ class FileSystem(AccessPoint):
                 match = property_part.regexp.match(basename)
                 if not match:
                     continue
-                properties = dict(zip(property_part.properties, match.groups()))
+                values = match.groups()
+                properties = dict(zip(property_part.properties, values ))
                 properties.update(previous_properties)
                 path = os.path.join(root, basename)
                 if remaining_path_parts and os.path.isdir(path):
@@ -181,7 +181,7 @@ class FileSystem(AccessPoint):
                             lazy_loaders[prop.name] = \
                                 self._default_loader({}, prop)
                     item_properties = dict(
-                        (prop.name, value) for prop, value
+                        (prop.name, to_unicode(value)) for prop, value
                         in properties.items() if prop.relation is None)
                     item = self.create(item_properties, lazy_loaders)
                     item.saved = True

@@ -33,9 +33,6 @@ from ...request import Condition, And, Or, Not
 from ...query import QueryChain
 from ...property import Property
 
-if "unicode" not in locals():
-    unicode = str
-
 try:
     import sqlalchemy
 except ImportError:
@@ -43,7 +40,7 @@ except ImportError:
     print("WARNING: The SQLAlchemy AP is not available.", file=sys.stderr)
 else:
     from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
-        Integer, Date, Numeric, DateTime, Boolean, Unicode
+        Integer, Date, Numeric, DateTime, Boolean, Unicode, Binary
     from sqlalchemy.sql import expression, and_, or_, not_
     import sqlalchemy.sql.expression
     import sqlalchemy.exc 
@@ -52,6 +49,7 @@ else:
 
     SQLALCHEMYTYPES = {
         unicode: Unicode,
+        bytes: Unicode,
         int: Integer,
         datetime: DateTime,
         date: Date,

@@ -32,8 +32,6 @@ from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
 from ..common import require
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def make_table():

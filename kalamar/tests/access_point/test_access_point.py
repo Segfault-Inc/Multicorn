@@ -35,8 +35,6 @@ from kalamar.property import Property
 from kalamar.site import Site
 from kalamar.value import PROPERTY_TYPES
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def test_auto():

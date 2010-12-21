@@ -29,8 +29,6 @@ from kalamar.property import Property
 from kalamar.site import Site
 from kalamar.item import Item
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def make_first_ap():

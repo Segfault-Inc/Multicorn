@@ -30,8 +30,6 @@ from kalamar.site import Site
 from kalamar.item import Item
 from ..common import require
 
-if "unicode" not in locals():
-    unicode = str
 
 
 URL = "sqlite:///"

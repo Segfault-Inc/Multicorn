@@ -37,12 +37,14 @@ else:
     MAIN_XSLT = etree.XSLT(etree.parse(open(_XSLT_FILENAME), etree.XMLParser()))
 
 from kalamar.item import AbstractItem, Item
+from kalamar.value import to_bytes
 from . import XML, XMLItem, XMLProperty
 
 try:
     from StringIO import StringIO
 except ImportError:
     from io import BytesIO as StringIO
+
 
 TITLE = "//title"
 PARAGRAPH = "//paragraph"
@@ -137,5 +139,5 @@ class Rest(XML):
     def preprocess_save(self, item):
         if len(item.unsaved_properties):
             self.update_xml_tree(item)
-            string = str(MAIN_XSLT(item.xml_tree))[:-1].encode("utf-8")
+            string = to_bytes(MAIN_XSLT(item.xml_tree))[:-1]
             item[self.stream_property] = StringIO(string)

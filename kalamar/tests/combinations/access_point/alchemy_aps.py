@@ -26,8 +26,6 @@ from kalamar.access_point.alchemy import Alchemy, AlchemyProperty
 from ..test_combinations import FirstAP, SecondAP
 from ...common import require
 
-if "unicode" not in locals():
-    unicode = str
 
 
 URL = "sqlite:///"

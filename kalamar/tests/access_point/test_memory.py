@@ -27,8 +27,6 @@ from kalamar.property import Property
 
 from ..common import run_common
 
-if "unicode" not in locals():
-    unicode = str
 
 
 def make_ap():

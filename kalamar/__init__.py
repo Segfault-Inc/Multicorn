@@ -33,3 +33,8 @@ mechanism automatically links the items stored in the linked access points,
 enabling the user to easily use joins if needed.
 
 """
+
+if "unicode" in __builtins__:
+    __builtins__["bytes"] = str
+else:
+    __builtins__["unicode"] = __builtins__["basestring"] = str

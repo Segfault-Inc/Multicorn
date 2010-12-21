@@ -29,9 +29,6 @@ import io
 
 from .item import Item, AbstractItem
 
-if "unicode" not in locals():
-    basestring = unicode = str
-
 
 class Iter(object):
     """Iterable object supporting equality testing."""
@@ -213,13 +210,74 @@ def to_iter(value):
         raise ValueError("%s cannot be cast to iter." % value)
 
 
+def to_bytes(value):
+    """Cast ``value`` into bytes.
+
+    >>> spam = to_bytes("spam")
+    >>> spam.decode("utf-8") == to_unicode("spam")
+    True
+    >>> type(spam) == bytes
+    True
+    >>> touche = to_bytes("Touché")
+    >>> touche.decode("utf-8") == to_unicode("Touché")
+    True
+    >>> type(touche) == bytes
+    True
+    >>> ten = to_bytes("10")
+    >>> type(ten) == bytes
+    True
+    >>> int(ten)
+    10
+
+    """
+    if type(value) == bytes:
+        return value
+    else:
+        try:
+            return bytes(value, encoding="utf-8")
+        except:
+            return bytes(value)
+
+
+def to_unicode(value):
+    """Cast ``value`` into unicode string.
+
+    >>> spam = to_unicode("spam")
+    >>> spam.encode("utf-8") == to_bytes("spam")
+    True
+    >>> type(spam) == unicode
+    True
+    >>> touche = to_unicode("Touché")
+    >>> touche.encode("utf-8") == to_bytes("Touché")
+    True
+    >>> type(touche) == unicode
+    True
+    >>> ten = to_unicode("10")
+    >>> type(ten) == unicode
+    True
+    >>> int(ten)
+    10
+
+    """
+    if type(value) == unicode:
+        return value
+    else:
+        try:
+            return unicode(value, encoding="utf-8")
+        except:
+            return unicode(value)
+
+
 def to_type(value, data_type):
     """Return ``value`` if instance of ``data_type`` else raise error.
 
     >>> to_type(1, int)
     1
-    >>> to_type("eggs", unicode)
-    'eggs'
+    >>> eggs = to_type("eggs", unicode)
+    >>> eggs == "eggs"
+    True
+    >>> type(eggs) == unicode
+    True
     >>> to_type("1+j", complex)
     (1+1j)
     >>> to_type("eggs", float) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
@@ -239,7 +297,8 @@ def to_type(value, data_type):
 
 
 PROPERTY_TYPES = {
-    unicode: unicode,
+    unicode: to_unicode,
+    bytes: to_bytes,
     int: int,
     float: float,
     decimal.Decimal: lambda value: decimal.Decimal(str(value)),
