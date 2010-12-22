@@ -88,7 +88,7 @@ class RestProperty(XMLProperty):
 
 
 class Rest(XML):
-    """ReST access point. 
+    """ReST access point.
 
     Access point designed to store and access data in ReST documents. It is
     based on the XML access point, and read the document as a doctree, and
