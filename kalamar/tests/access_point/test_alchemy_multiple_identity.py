@@ -30,6 +30,7 @@ from nose.tools import eq_
 
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
+from ..common import require
 
 
 
@@ -52,6 +53,7 @@ def make_table():
     return access_point
 
 
+@require("sqlalchemy")
 class TestAlchemy(unittest.TestCase):
     """Class defining some simple tests on an Alchemy access point."""
     def test_search(self):

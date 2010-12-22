@@ -24,6 +24,7 @@ from kalamar.item import Item
 from kalamar.access_point.alchemy import Alchemy, AlchemyProperty
 
 from ..test_combinations import FirstAP, SecondAP
+from ...common import require
 
 
 
@@ -31,6 +32,7 @@ URL = "sqlite:///"
 
 
 @FirstAP()
+@require("sqlalchemy")
 def make_first_ap():
     """First access point for Memory."""
     properties = {
@@ -43,6 +45,7 @@ def make_first_ap():
     return Alchemy(URL, "first_ap", properties, ["id"], True)
 
 @SecondAP()
+@require("sqlalchemy")
 def make_second_ap():
     """Second access point for Memory."""
     properties = {

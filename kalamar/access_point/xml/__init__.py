@@ -23,7 +23,13 @@ An access point designed to store properies in a XML file.
 
 """
 
-from lxml import etree
+from __future__ import print_function
+
+try:
+    from lxml import etree
+except ImportError:
+    import sys
+    print("WARNING: The XML AP is not available.", file=sys.stderr)
 
 from kalamar.access_point.decorator import Decorator, DecoratorItem, \
         DecoratorProperty

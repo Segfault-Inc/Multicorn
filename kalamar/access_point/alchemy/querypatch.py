@@ -24,7 +24,10 @@ from ...request import And, Or, Not
 from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect
 
-from sqlalchemy.sql import expression
+try:
+    from sqlalchemy.sql import expression
+except ImportError:
+    pass
 from kalamar.item import AbstractItem
 
 

@@ -24,12 +24,24 @@ access point.
 """
 
 from nose.tools import nottest
-from functools import update_wrapper
+from functools import update_wrapper, partial
 
 from kalamar.site import Site
 
 
 COMMON_TESTS = []
+
+
+def require(module):
+    def test_if_required(module, function):
+        try:
+            __import__(module)
+        except ImportError:
+            function.__test__ = False
+            function.__available__ = False
+        finally:
+            return function
+    return partial(test_if_required, module)
 
 
 def fill_site(site):
@@ -87,7 +99,10 @@ def run_common(function):
     # 2nd value (runner): function called to create the site and run the test.
     # 3rd value (title): string used as a prefix to the test title.
     runner, title = None, None
-    values = function()
+    try:
+        values = function()
+    except:
+        values = None
     if isinstance(values, tuple):
         # 2 or 3 values, the access point is the first value returned by
         # function(). We create a lambda function, called make_ap, calling

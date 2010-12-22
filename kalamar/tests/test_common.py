@@ -30,6 +30,7 @@ from nose.tools import eq_, raises, assert_raises
 from kalamar.access_point import MultipleMatchingItems, ItemDoesNotExist
 from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
+from kalamar.value import to_unicode
 from kalamar.access_point.alchemy import Alchemy
 from kalamar.access_point.xml import XML
 from kalamar.access_point.unicode_stream import UnicodeStream
@@ -70,15 +71,15 @@ def test_single_item_multidict(site):
 @nofill
 @common
 def test_create_unicode(site):
-    name = u'Touché'
-    properties = {'id' : 1, 'name': name}
-    site.create('things', properties).save()
+    """Save a single item with unicode values and retrieve it."""
+    name = to_unicode("Touché")
+    properties = {"id" : 1, "name": name}
+    site.create("things", properties).save()
     all_items = list(site.search("things"))
     eq_(len(all_items), 1)
     item = all_items[0]
     eq_(item["id"], 1)
     eq_(item["name"], name)
-
 
 @nofill
 @common

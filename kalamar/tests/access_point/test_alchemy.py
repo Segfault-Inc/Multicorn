@@ -27,7 +27,7 @@ from nose.tools import eq_
 
 from kalamar.access_point.alchemy import AlchemyProperty, Alchemy
 from kalamar.site import Site
-from ..common import make_site, run_common
+from ..common import make_site, run_common, require
 
 
 
@@ -42,6 +42,7 @@ def make_ap():
     return access_point
 
 
+@require("sqlalchemy")
 class TestAlchemy(unittest.TestCase):
     """Class defining some simple tests on an Alchemy access point."""
     def test_search(self):
@@ -108,6 +109,7 @@ def runner(test):
         access_point._table.drop()
         Alchemy.__metadatas = {}
 
+@require("sqlalchemy")
 @run_common
 def test_alchemy_common():
     """Define a custom test runner for the common tests."""

@@ -95,7 +95,8 @@ class APDecorator(object):
     def __call__(self, function):
         function = nottest(function)
         function.teardown = self.teardown
-        self.aps.append(function)
+        if getattr(function, "__available__", True):
+            self.aps.append(function)
         return function
 
 

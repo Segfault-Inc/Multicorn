@@ -101,7 +101,7 @@ class AccessPoint(object):
             return (decimal.Decimal(str(uuid.uuid4().time_low / 2)),)
         elif prop.type == float:
             return (uuid.uuid4().int / float(uuid.uuid4().int),)
-        elif prop.type == iter:
+        elif prop.type in (iter, bytes):
             return (uuid.uuid4().bytes,)
         else:
             return (prop.type(uuid.uuid4()),)

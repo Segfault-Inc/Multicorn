@@ -26,10 +26,12 @@ from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml import XML, XMLProperty
 
 from ..test_combinations import FirstAP, SecondAP, teardown_fs
+from ...common import run_common, make_site, require
 
 
 
 @FirstAP(teardown=teardown_fs)
+@require("lxml")
 def first_ap_fs():
     """First access point for Memory."""
     temp_dir = tempfile.mkdtemp()
@@ -46,6 +48,7 @@ def first_ap_fs():
     return xml_ap
 
 @SecondAP(teardown=teardown_fs)
+@require("lxml")
 def second_ap_fs():
     """Second access point for Memory."""
     temp_dir = tempfile.mkdtemp()

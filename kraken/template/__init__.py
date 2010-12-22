@@ -126,7 +126,8 @@ for engine_name, engine_class in (
     except ImportError: # pragma: no cover
         # Not installed/available
         import sys
-        print >> sys.stderr, "WARNING: " \
-            "The %s template engine is not available." % engine_name
+        print(
+            "WARNING: The %s template engine is not available." % engine_name,
+            file=sys.stderr)
     else:
         BUILTIN_ENGINES[engine_name] = engine_class

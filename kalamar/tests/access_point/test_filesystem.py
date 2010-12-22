@@ -36,8 +36,8 @@ import kalamar
 from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.unicode_stream import UnicodeStream
 from kalamar.site import Site
+from kalamar.value import to_unicode
 from ..common import run_common, make_site
-
 
 
 @contextlib.contextmanager
@@ -59,17 +59,13 @@ def temporary_directory():
 def test_filesystem_unicode():
     """Assert that the filesystem access point can store unicode values"""
     with temporary_directory() as temp_dir:
-        access_point = FileSystem(temp_dir, "(.*)",
-                ["name"],
-                "data")
+        access_point = FileSystem(temp_dir, "(.*)", ["name"], "data")
         site = Site()
         site.register("tests", access_point)
-        site.create("tests", {"name": u"Touché"}).save()
+        site.create("tests", {"name": to_unicode("Touché")}).save()
         items = list(site.search("tests"))
         eq_(len(items), 1)
-        eq_(items[0]["name"], u"Touché")
-
-
+        eq_(items[0]["name"], to_unicode("Touché"))
 
 def test_filesytem_init():
     """Assert that the filesystem access point can be properly initialized."""

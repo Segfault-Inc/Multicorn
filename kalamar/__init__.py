@@ -34,6 +34,7 @@ enabling the user to easily use joins if needed.
 
 """
 
-if not 'unicode' in __builtins__:
-    __builtins__['unicode'] = str
-    __builtins__['basestring'] = str
+if "unicode" in __builtins__:
+    __builtins__["bytes"] = str
+else:
+    __builtins__["unicode"] = __builtins__["basestring"] = str
