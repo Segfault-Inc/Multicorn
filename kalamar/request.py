@@ -57,7 +57,7 @@ class OperatorNotAvailable(KeyError):
 
 
 def make_request_property(property_name):
-    """Return an instance of RequestProperty
+    """Return an instance of RequestProperty.
 
     >>> make_request_property("a")
     a
@@ -65,7 +65,8 @@ def make_request_property(property_name):
     a.id
 
     """
-    properties = property_name.split(".")
+    # property_name is cast to unicode to allow RequestProperty instances
+    properties = unicode(property_name).split(".")
     properties.reverse()
     req_prop = RequestProperty(properties[0])
     for prop in properties[1:]:
@@ -99,6 +100,15 @@ def normalize(properties, request):
     Raises an exception if the property is not supplied or if it can't be cast.
 
     """
+    def _remote_cast(request_property, root_property, value):
+        """Recursively cast ``value``."""
+        if request_property.child_property:
+            return _remote_cast(
+                request_property.child_property, root_property.remote_property,
+                value)
+        else:
+            return root_property.cast((value,))[0]
+
     def _inner_normalize(request):
         """Recursively normalize ``request``."""
         if isinstance(request, (And, Or)):
@@ -112,11 +122,9 @@ def normalize(properties, request):
             if root not in properties:
                 raise KeyError(
                     "This access point has no %r property." % root)
-            if request.property.child_property:
-                return request
-            else:
-                value = properties[root].cast((request.value,))[0]
-                return Condition(request.property.name, request.operator, value)
+            value = _remote_cast(
+                request.property, properties[root], request.value)
+            return Condition(request.property, request.operator, value)
     return _inner_normalize(make_request(request)).simplify()
 
 
@@ -145,9 +153,9 @@ class Request(object):
 
         >>> cond1 = Condition("test.foo", "=", "a")
         >>> cond2 = Condition("test.bar.baz", "=", "b")
-        >>> cond3 = Condition("test.bar.bazbaz", "=", "b")
-        >>> And(cond1, cond2, cond3).properties_tree
-        {'test': {'foo': foo, 'bar': {'bazbaz': bazbaz, 'baz': baz}}}
+        >>> cond3 = Condition("test.bar.spam", "=", "b")
+        >>> And(cond1, cond2, cond3).properties_tree # doctest: +ELLIPSIS
+        {...'test': {...'foo': foo, ...'bar': {...'baz': baz, ...'spam': spam}}}
 
         """
         raise NotImplementedError

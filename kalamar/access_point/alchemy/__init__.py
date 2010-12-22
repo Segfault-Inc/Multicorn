@@ -30,8 +30,9 @@ from decimal import Decimal
 from .. import AccessPoint
 from ...item import AbstractItem, Item
 from ...request import Condition, And, Or, Not
-from ...query import QueryChain
 from ...property import Property
+from ...query import QueryChain
+from ...value import to_unicode
 
 try:
     import sqlalchemy
@@ -42,7 +43,6 @@ else:
     from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
         Integer, Date, Numeric, DateTime, Boolean, Unicode, Binary
     from sqlalchemy.sql import expression, and_, or_, not_
-    import sqlalchemy.sql.expression
     import sqlalchemy.exc 
 
     from . import querypatch
@@ -216,7 +216,7 @@ class Alchemy(AccessPoint):
         point directly.
 
         """
-        return prop.remote_ap.loader_from_reference_repr(unicode(value))
+        return prop.remote_ap.loader_from_reference_repr(to_unicode(value))
                 
     def search(self, request):
         query = expression.Select(
@@ -288,7 +288,7 @@ class Alchemy(AccessPoint):
                 prop = properties[key]
                 new_line[key] = prop.cast((value,))[0]
             return new_line
-        alchemy_query = sqlalchemy.sql.expression.select(from_obj = self._table)
+        alchemy_query = expression.select(from_obj=self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
             alchemy_query = can.to_alchemy(alchemy_query, self, self.properties)

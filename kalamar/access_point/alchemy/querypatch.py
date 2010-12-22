@@ -49,7 +49,7 @@ def query_chain_validator(self, access_point, properties):
     This function split the queries between what can be managed within sql
     alchemy and what can't.
 
-    A QueryChain can be managed by sqlalchemy if every subquery can be managed.
+    A QueryChain can be managed by SQLAlchemy if every subquery can be managed.
     Otherwise, it is (for now) considered unmanageable
 
     """
@@ -68,15 +68,16 @@ def query_chain_validator(self, access_point, properties):
 
 
 def standard_validator(self, access_point, properties):
-    """Validator for query types which can always be managed by sqlalchemy."""
+    """Validator for query types which can always be managed by SQLAlchemy."""
     return self, None
 
 
 def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method on QueryFilter to convert to alchemy."""
     access_points = access_point.site.access_points
+
     def to_alchemy_condition(condition):
-        """Converts a kalamar condition to an sqlalchemy condition."""
+        """Convert a Kalamar condition to an SQLAlchemy condition."""
         # TODO: merge this with alchemy.to_alchemy_condition
         if isinstance(condition, (And, Or, Not)):
             alchemy_conditions = tuple(
@@ -91,7 +92,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                 value = value.reference_repr()
             if condition.operator == "=":
                 return column == value
-            elif condition.operator == '!=':
+            elif condition.operator == "!=":
                 return column != value
             else:
                 return column.op(condition.operator)(value)
@@ -114,6 +115,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                     alchemy_query = build_join(
                         values, prop.remote_ap.properties, alchemy_query)
         return alchemy_query
+
     join = build_join(
         self.condition.properties_tree, properties, access_point._table)
     alchemy_query = alchemy_query.select_from(join).where(
@@ -148,6 +150,7 @@ def query_filter_validator(self, access_point, properties):
                            for new_name, values in cond_tree[name].items())
             else:
                 return False
+
     if all(inner_manage(name, values, properties)
            for name, values in cond_tree.items()):
         return self, None
@@ -211,7 +214,7 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
 
 
 def query_select_validator(self, access_point, properties):
-    """Validate that the query select can be managed from sqlalchemy.
+    """Validate that the query select can be managed from SQLAlchemy.
 
     A query select can be managed if the properties it aliases all belong to an
     Alchemy access point instance.
@@ -237,12 +240,12 @@ def query_select_validator(self, access_point, properties):
 
 
 def query_distinct_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method converting QueryDistinct to sqlalchemy query."""
+    """Monkey-patched method converting QueryDistinct to SQLAlchemy query."""
     return alchemy_query.distinct()
 
 
 def query_range_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method converting QueryRange to sqlalchemy query."""
+    """Monkey-patched method converting QueryRange to SQLAlchemy query."""
     if self.range.start:
         alchemy_query = alchemy_query.offset(self.range.start)
     if self.range.stop:
@@ -252,7 +255,7 @@ def query_range_to_alchemy(self, alchemy_query, access_point, properties):
 
 
 def query_order_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method converting QueryOrder to sqlalchemy query."""
+    """Monkey-patched method converting QueryOrder to SQLAlchemy query."""
     for key, order in self.orderbys:
         alchemy_query = alchemy_query.order_by(
             expression.asc(key) if order else expression.desc(key))

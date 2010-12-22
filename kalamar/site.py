@@ -60,8 +60,7 @@ def _delegate_to_acces_point(method_name, first_arg_is_a_request=False):
             """Call ``access_point.method_name(request, *args, **kwargs)``."""
             access_point = self.access_points[access_point_name]
             request = normalize(access_point.properties, request)
-            return getattr(access_point, method_name)(
-                request, *args, **kwargs)
+            return getattr(access_point, method_name)(request, *args, **kwargs)
     else:
         def wrapper(self, access_point_name, *args, **kwargs):
             """Call ``access_point.method_name(*args, **kwargs)``."""
@@ -95,7 +94,7 @@ class Site(object):
         access_point.bind(self, name)
 
     def view(self, access_point_name, aliases=None, request=None, order_by=None,
-            select_range=None, distinct=False, query=None):
+             select_range=None, distinct=False, query=None):
         """Call :meth:`kalamar.access_point.AccessPoint.view`.
 
         If ``alias`` and ``request`` are given, a query is created from them.
@@ -129,7 +128,7 @@ class Site(object):
             query = QueryChain(chain)
         query.validate(self, access_point.properties)
         for line in access_point.view(query):
-            for prop_name in [name for name in line if name.startswith('__')]:
+            for prop_name in [name for name in line if name.startswith("__")]:
                 line.pop(prop_name)
             yield line
 

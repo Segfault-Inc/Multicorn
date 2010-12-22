@@ -27,7 +27,6 @@ from ..test_combinations import FirstAP, SecondAP
 from ...common import require
 
 
-
 URL = "sqlite:///"
 
 

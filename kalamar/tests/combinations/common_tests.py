@@ -117,8 +117,8 @@ def test_one_to_many(site):
 def test_many_to_one(site):
     """Test many to one relationship traversals."""
     request = {"second_ap.code" : "BBB"}
-    results = list(site.view(
-            "first_ap", {"scode": "second_ap.code"}, request=request))
+    results = list(
+        site.view("first_ap", {"scode": "second_ap.code"}, request=request))
     eq_(len(results), 2)
     assert all((result["scode"] == "BBB" for result in results))
     query = QueryFilter(make_request(request))
