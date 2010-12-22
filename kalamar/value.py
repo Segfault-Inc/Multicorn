@@ -213,6 +213,8 @@ def to_iter(value):
 def to_bytes(value):
     """Cast ``value`` into bytes.
 
+    This function works with Python 2.x and 3.x and can be used in Kalamar.
+
     >>> spam = to_bytes("spam")
     >>> spam.decode("utf-8") == to_unicode("spam")
     True
@@ -241,6 +243,8 @@ def to_bytes(value):
 
 def to_unicode(value):
     """Cast ``value`` into unicode string.
+
+    This function works with Python 2.x and 3.x and can be used in Kalamar.
 
     >>> spam = to_unicode("spam")
     >>> spam.encode("utf-8") == to_bytes("spam")
