@@ -34,7 +34,7 @@ except ImportError:
 from kalamar.access_point.decorator import Decorator, DecoratorItem, \
         DecoratorProperty
 from kalamar.item import AbstractItem, Item
-from kalamar.request import make_request
+from kalamar.request import make_request, normalize
 
 try:
     from StringIO import StringIO
@@ -98,9 +98,13 @@ class XMLProperty(DecoratorProperty):
         serialization mechanism.
 
         """
-        request = dict(((child.tag, child.text) for child in elem))
-        return (self.remote_ap.open(make_request(request)),) \
-            if len(request) else (None,)
+        request_dict = dict(((child.tag, child.text) for child in elem))
+        if request_dict:
+            request = normalize(
+                self.remote_ap.properties, make_request(request_dict))
+            return (self.remote_ap.open(request),)
+        else:
+            return (None,)
 
     def to_xml(self, value):
         """Build an XML element for a given value."""

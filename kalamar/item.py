@@ -27,7 +27,6 @@ import abc
 from collections import namedtuple, Mapping, MutableMapping
 
 
-
 # Identity and *MultiMapping do not need an __init__ method
 # pylint: disable=W0232
 
@@ -289,14 +288,14 @@ class Item(AbstractItem):
         self.modified = False
 
     def reference_repr(self):
-        """Returns a representation suitable for textual storage"""
+        """Return an unicode representation suitable for textual storage."""
         representations = []
         for prop in self.access_point.identity_properties:
             value = self[prop.name]
             if prop.type == Item:
                 value = value.reference_repr()
             representations.append(unicode(value))
-        return "/".join(representations)
+        return unicode("/".join(representations))
 
     def getlist(self, key):
         try:

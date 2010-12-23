@@ -127,13 +127,13 @@ class QueryFilter(Query):
 
     def validate(self, site, properties):
         try:
-            normalize(properties, self.condition)
+            self.condition = normalize(properties, self.condition)
         except (KeyError, ValueError) as detail:
             raise BadQueryException(self, detail)
         return properties
 
     def __str__(self):
-        return "Filter : %r" % self.condition
+        return "Filter: %r" % self.condition
 
     
 class QueryOrder(Query):
@@ -253,7 +253,7 @@ class QuerySelect(Query):
         return new_props 
 
     def __str__(self):
-        return "SELECT query : %r, %r "  % (self.mapping, self.sub_selects)
+        return "SELECT query: %r, %r "  % (self.mapping, self.sub_selects)
 
 
 class QueryRange(Query):

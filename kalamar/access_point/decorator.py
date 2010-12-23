@@ -53,6 +53,7 @@ class DecoratorItem(ItemWrapper):
         return self.access_point.decorated_properties
 
     def setlist(self, key, values):
+        values = self.access_point.properties[key].cast(values)
         if key in self.decorated_properties:
             return self.unsaved_properties.setlist(key, values)
         else:
