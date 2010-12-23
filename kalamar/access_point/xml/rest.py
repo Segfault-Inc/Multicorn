@@ -46,6 +46,13 @@ except ImportError:
     from io import BytesIO as StringIO
 
 
+# More paths can be found in the Docutils documentation:
+# http://docutils.sourceforge.net/docs/ref/doctree.html
+#
+# Here are some useful examples:
+# //docinfo/abstract
+# //section/title
+# //hint
 TITLE = "//title"
 PARAGRAPH = "//paragraph"
 SECTION = "//section"
