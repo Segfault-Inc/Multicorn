@@ -26,7 +26,7 @@ from kalamar.access_point.filesystem import FileSystem, FileSystemProperty
 from kalamar.access_point.xml import XML, XMLProperty
 
 from ..test_combinations import FirstAP, SecondAP, teardown_fs
-from ...common import run_common, make_site, require
+from ...common import require
 
 
 
