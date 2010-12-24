@@ -33,7 +33,11 @@ COMMON_TESTS = []
 
 
 def require(module):
-    def test_if_required(module, function):
+    """Decorator returning a function if the required ``module`` is present."""
+    def test_if_available(module, function):
+        """Test if ``module`` is available."""
+        # With or without the exception, the function is returned
+        # pylint: disable=W0150
         try:
             __import__(module)
         except ImportError:
@@ -41,7 +45,8 @@ def require(module):
             function.__available__ = False
         finally:
             return function
-    return partial(test_if_required, module)
+        # pylint: enable=W0150
+    return partial(test_if_available, module)
 
 
 def fill_site(site):
@@ -99,10 +104,15 @@ def run_common(function):
     # 2nd value (runner): function called to create the site and run the test.
     # 3rd value (title): string used as a prefix to the test title.
     runner, title = None, None
+
+    # We try here to launch the function. Errors may happen, particularly
+    # because of missing imports, and we should silently ignore them, as they
+    # are already managed the ``require`` function.
     try:
         values = function()
-    except:
+    except ImportError:
         values = None
+
     if isinstance(values, tuple):
         # 2 or 3 values, the access point is the first value returned by
         # function(). We create a lambda function, called make_ap, calling

@@ -37,9 +37,13 @@ try:
 except ImportError:
     from io import BytesIO as StringIO
 
-if "xrange" not in locals():
+# Redifining Python 3.x renamed functions
+# pylint: disable=C0103
+# pylint: disable=W0622
+if "xrange" not in __builtins__:
     xrange = range
-
+# pylint: enable=C0103
+# pylint: enable=W0622
 
 # io.IOBase has no __init__ method
 # pylint: disable=W0231
