@@ -50,7 +50,7 @@ except ImportError:
 # http://docutils.sourceforge.net/docs/ref/doctree.html
 #
 # Here are some useful examples:
-# //docinfo/abstract
+# //topic/paragraph
 # //section/title
 # //hint
 TITLE = "//title"
