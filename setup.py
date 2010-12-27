@@ -16,9 +16,8 @@ setup(
     package_data = {
         "": ["AUTHORS"],
         "kalamar": ["access_point/xml/xml2rst.xsl"]},
-    install_requires = [
-        "werkzeug>=0.5"],
     extras_require = {
+        "werkzeug": ["werkzeug>=0.5"],
         "docutils": ["docutils>=0.6"],
         "lxml": ["lxml>=2.0"],
         "Genshi": ["genshi>=0.5"],
