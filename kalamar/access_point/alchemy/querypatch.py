@@ -74,8 +74,6 @@ def standard_validator(self, access_point, properties):
 
 def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method on QueryFilter to convert to alchemy."""
-    access_points = access_point.site.access_points
-
     def to_alchemy_condition(condition):
         """Convert a Kalamar condition to an SQLAlchemy condition."""
         # TODO: merge this with alchemy.to_alchemy_condition
@@ -87,7 +85,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
         else:
             prop = condition.property
             if prop.child_property:
-                prop_name = '.'.join([properties[prop.name].name ,
+                prop_name = ".".join([properties[prop.name].name,
                     prop.child_property.__repr__()])
                 column = access_point._get_column(prop_name)
             else:
@@ -109,13 +107,14 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
             prop = properties[name]
             if prop.remote_ap:
                 remote_ids = prop.remote_ap.identity_properties
-                to_test = values
-                if hasattr(values, 'child_property'):
+                if hasattr(values, "child_property"):
                     # If there is no descendent, or descendent is an
                     # identity property, don't do a join
                     if values.child_property is None:
                         continue
-                    if values in [RequestProperty(id_prop.name) for id_prop in remote_ids]:
+                    if values in [
+                        RequestProperty(id_prop.name)
+                        for id_prop in remote_ids]:
                         continue
                 table = prop.remote_ap._table
                 if table in util.find_tables(alchemy_query):
@@ -128,7 +127,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                     prop.remote_ap._table,
                     onclause=(join_col1 == join_col2))
                 # pylint: enable=W0212
-                if hasattr(values, 'items'):
+                if hasattr(values, "items"):
                     alchemy_query = build_join(
                         values, prop.remote_ap.properties, alchemy_query)
         return alchemy_query
@@ -149,7 +148,6 @@ def query_filter_validator(self, access_point, properties):
     from . import Alchemy
 
     cond_tree = self.condition.properties_tree
-    access_points = access_point.site.access_points
 
     def inner_manage(name, values, properties):
         """Recursive method to find wether a property can be managed from
@@ -184,8 +182,6 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     SELECT clause.
 
     """
-    access_points = access_point.site.access_points
-
     def build_join(select, properties, join):
         """Walks the mapping to build the joins"""
         for name, sub_select in select.sub_selects.items():
