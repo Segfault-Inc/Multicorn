@@ -16,8 +16,8 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-XML Access point
-================
+XML
+===
 
 An access point designed to store properies in a XML file.
 

@@ -16,8 +16,8 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-ReStructuredText Access Point
-=============================
+ReStructuredText
+================
 
 Access point designed to store values in a reStructuredText document.
 
@@ -46,6 +46,13 @@ except ImportError:
     from io import BytesIO as StringIO
 
 
+# More paths can be found in the Docutils documentation:
+# http://docutils.sourceforge.net/docs/ref/doctree.html
+#
+# Here are some useful examples:
+# //topic/paragraph
+# //section/title
+# //hint
 TITLE = "//title"
 PARAGRAPH = "//paragraph"
 SECTION = "//section"

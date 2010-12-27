@@ -27,8 +27,11 @@ from operator import eq, ne, gt, ge, lt, le
 from abc import ABCMeta, abstractmethod
 import re
 
-if "reduce" not in locals():
+# Redifining Python 3.x renamed functions
+# pylint: disable=W0622
+if "reduce" not in __builtins__:
     from functools import reduce
+# pylint: enable=W0622
 
 
 def re_match(string, pattern):

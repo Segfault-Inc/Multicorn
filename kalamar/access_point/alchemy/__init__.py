@@ -282,12 +282,6 @@ class Alchemy(AccessPoint):
         self._table.delete().where(whereclause).execute()
 
     def view(self, kalamar_query):
-        def transform_line(line, properties):
-            new_line = {}
-            for key, value in line.items():
-                prop = properties[key]
-                new_line[key] = prop.cast((value,))[0]
-            return new_line
         alchemy_query = expression.select(from_obj=self._table)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
@@ -305,4 +299,10 @@ class Alchemy(AccessPoint):
         # accordingly!
         properties = kalamar_query.validate(self.site, self.properties)
         cants = cants or QueryChain([])
-        return (transform_line(line, properties) for line in cants(result))
+
+        for line in cants(result):
+            new_line = {}
+            for key, value in line.items():
+                prop = properties[key]
+                new_line[key] = prop.cast((value,))[0]
+            yield new_line
