@@ -20,12 +20,12 @@ Query helpers for the Alchemy access point.
 
 """
 
-from ...request import And, Or, Not
+from ...request import And, Or, Not, RequestProperty
 from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect
 
 try:
-    from sqlalchemy.sql import expression
+    from sqlalchemy.sql import expression, util
 except ImportError:
     pass
 from kalamar.item import AbstractItem
@@ -85,7 +85,13 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                 for sub_condition in condition.sub_requests)
             return condition.alchemy_function(alchemy_conditions)
         else:
-            column = properties[condition.property.name].column
+            prop = condition.property
+            if prop.child_property:
+                prop_name = '.'.join([properties[prop.name].name ,
+                    prop.child_property.__repr__()])
+                column = access_point._get_column(prop_name)
+            else:
+                column = properties[prop.name].column
             value = condition.value
             if isinstance(value, AbstractItem):
                 # TODO: manage multiple foreign key
@@ -102,20 +108,30 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
         for name, values in tree.items():
             prop = properties[name]
             if prop.remote_ap:
-                if prop.relation == "many-to-one" and isinstance(values, dict):
-                    prop.remote_ap._table
-                    join_col1 = prop.column
-                    join_col2 = prop.remote_property.column
-                    # _table isn't really private, just not in the public API
-                    # pylint: disable=W0212
-                    alchemy_query = alchemy_query.join(
-                        prop.remote_ap._table,
-                        onclause=(join_col1 == join_col2))
-                    # pylint: enable=W0212
+                remote_ids = prop.remote_ap.identity_properties
+                to_test = values
+                if hasattr(values, 'child_property'):
+                    # If there is no descendent, or descendent is an
+                    # identity property, don't do a join
+                    if values.child_property is None:
+                        continue
+                    if values in [RequestProperty(id_prop.name) for id_prop in remote_ids]:
+                        continue
+                table = prop.remote_ap._table
+                if table in util.find_tables(alchemy_query):
+                    continue
+                join_col1 = prop.column
+                join_col2 = prop.remote_property.column
+                # _table isn't really private, just not in the public API
+                # pylint: disable=W0212
+                alchemy_query = alchemy_query.join(
+                    prop.remote_ap._table,
+                    onclause=(join_col1 == join_col2))
+                # pylint: enable=W0212
+                if hasattr(values, 'items'):
                     alchemy_query = build_join(
                         values, prop.remote_ap.properties, alchemy_query)
         return alchemy_query
-
     join = build_join(
         self.condition.properties_tree, properties, access_point._table)
     alchemy_query = alchemy_query.select_from(join).where(
@@ -137,7 +153,7 @@ def query_filter_validator(self, access_point, properties):
 
     def inner_manage(name, values, properties):
         """Recursive method to find wether a property can be managed from
-        sqlalchemey"""
+        sqlalchemy"""
         if name not in properties:
             return False
         elif not isinstance(values, dict):
@@ -160,7 +176,7 @@ def query_filter_validator(self, access_point, properties):
 
 def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     """Monkey-patched method on QuerySelect to convert to alchemy.
- 
+
     First, the mapping and sub selects are walked to build a join with other
     access points.
 
@@ -177,6 +193,8 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
             remote_property = properties[name].remote_property
             # Accessing the table now ensure it is properly created
             remote_table = remote_property.access_point._table
+            if remote_table in util.find_tables(alchemy_query):
+                continue
             col1 = properties[name].column
             col2 = remote_property.column
             # _table isn't really private, just not in the public API
@@ -208,7 +226,7 @@ def query_select_to_alchemy(self, alchemy_query, access_point, properties):
     # pylint: disable=W0212
     join = build_join(self, properties, access_point._table)
     # pylint: enable=W0212
-    alchemy_query = alchemy_query.select_from(join)
+    alchemy_query = alchemy_query.select_from(join).apply_labels()
     build_select(self, properties, alchemy_query)
     return alchemy_query
 

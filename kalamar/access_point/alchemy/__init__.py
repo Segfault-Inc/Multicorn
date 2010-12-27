@@ -108,7 +108,7 @@ class Alchemy(AccessPoint):
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
                 # TODO: Fix this for circular dependencies
-                foreign_column = self.__get_column(
+                foreign_column = self._get_column(
                     "%s.%s" % (prop.name, prop.remote_property.name))
                 foreign_name = "%s.%s" % (foreign_table, foreign_column.name)
                 foreign_key = ForeignKey(
@@ -155,14 +155,14 @@ class Alchemy(AccessPoint):
         self.__table = table
         return table
 
-    def __get_column(self, property_name):
+    def _get_column(self, property_name):
         """For a given ``property``, return the (possibly foreign) column."""
         splitted = property_name.split(".")
         prop = self.properties[splitted[0]]
         if len(splitted) > 1:
-            # __get_column isn't really protected but shared between Alchemy APs
+            # _get_column isn't really protected but shared between Alchemy APs
             # pylint: disable=W0212
-            return prop.remote_ap.__get_column(".".join(splitted[1:]))
+            return prop.remote_ap._get_column(".".join(splitted[1:]))
             # pylint: enable=W0212
         else:
             return prop.column
@@ -175,7 +175,7 @@ class Alchemy(AccessPoint):
                 for sub_condition in condition.sub_requests)
             return condition.alchemy_function(alchemy_conditions)
         else:
-            column = self.__get_column(condition.property.name)
+            column = self._get_column(condition.property.name)
             value = condition.value
             if isinstance(value, AbstractItem):
                 value = value.reference_repr()

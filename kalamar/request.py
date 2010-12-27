@@ -104,7 +104,7 @@ def normalize(properties, request):
         """Recursively cast ``value``."""
         if request_property.child_property:
             return _remote_cast(
-                request_property.child_property, root_property.remote_property,
+                request_property.child_property, root_property.remote_ap.properties[request_property.child_property.name],
                 value)
         else:
             return root_property.cast((value,))[0]
