@@ -16,8 +16,8 @@
 # along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-ReStructuredText Access Point
-=============================
+ReStructuredText
+================
 
 Access point designed to store values in a reStructuredText document.
 
