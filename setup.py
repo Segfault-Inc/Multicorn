@@ -4,10 +4,10 @@
 # Public Domain
 
 """
-Dyko - A Light Web Framework
-============================
+Dyko - A Lightweight Web Framework
+==================================
 
-Dyko is a light web framework with original features:
+Dyko is a lightweight web framework with original features:
 
 - Support for **multiple storage mechanisms** (databases, filesystems, and
   more) with an **unified data access interface**, giving the possibility to
@@ -38,7 +38,7 @@ from setuptools import setup, find_packages
 setup(
     name="Dyko",
     version=VERSION,
-    description="A Light Web Framework",
+    description="A Lightweight Web Framework",
     long_description=__doc__,
     author="Kozea",
     author_email="guillaume.ayoub@kozea.fr",
