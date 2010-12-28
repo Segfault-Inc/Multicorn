@@ -21,7 +21,7 @@ Theses specificities make Dyko particularly suitable for creating:
 - Web applications with chronic data model evolutions;
 - Web applications accessing static data models defined by other applications.
 
-Dyko should run on most of the UNIX-like platforms (Linux, BSD, MacOS X) and
+Dyko should run on most of the UNIX-like platforms (Linux, BSD, MacOS X) and
 Windows. It is free and open-source software, written in Python, released under
 GPL version 3.
 
