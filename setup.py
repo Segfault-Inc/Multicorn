@@ -35,7 +35,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="Dyko",
-    version="0.2.dev1",
+    version="0.2",
     description="A Light Web Framework",
     long_description=__doc__,
     author="Kozea",
