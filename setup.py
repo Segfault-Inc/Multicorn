@@ -30,17 +30,20 @@ For further information, please visit the `Dyko Website
 
 """
 
+VERSION = "0.2"
+
 from setuptools import setup, find_packages
 
 
 setup(
     name="Dyko",
-    version="0.2",
+    version=VERSION,
     description="A Light Web Framework",
     long_description=__doc__,
     author="Kozea",
     author_email="guillaume.ayoub@kozea.fr",
     url="http://www.dyko.org/",
+    download_url="http://www.dyko.org/src/dyko/Dyko-%s.tar.gz" % VERSION,
     license="GNU GPL v3",
     platforms="Any",
     packages=find_packages(
