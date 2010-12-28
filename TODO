@@ -1,0 +1,25 @@
+==============================
+ Dyko - A Light Web Framework
+==============================
+
+------
+ TODO
+------
+
+Here are the main features that we hope to have in the future versions of
+Dyko. A full version of this file can be found at:
+
+http://redmine.kozea.fr/projects/dyko/roadmap
+
+0.5
+===
+
+* Move and copy items between access points
+* Test types
+
+
+1.0
+===
+
+* 100% test coverage
+* Python 3 support

@@ -1,0 +1,15 @@
+==============================
+ Dyko - A Light Web Framework
+==============================
+
+------
+ NEWS
+------
+
+0.2 - Twin Poulpe
+=================
+
+- MultiDict items
+- Database, filesystem, XML and ReST access points
+- Typed properties
+- Clean tests
