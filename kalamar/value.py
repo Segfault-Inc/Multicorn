@@ -303,8 +303,8 @@ def to_type(value, data_type):
 PROPERTY_TYPES = {
     unicode: to_unicode,
     bytes: to_bytes,
-    int: lambda value : to_type(value, int),
-    float: lambda value : to_type(value, float),
+    int: lambda value: to_type(value, int),
+    float: lambda value: to_type(value, float),
     decimal.Decimal: lambda value: decimal.Decimal(str(value)),
     io.IOBase: to_stream,
     datetime.datetime: to_datetime,
