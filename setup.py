@@ -30,7 +30,7 @@ For further information, please visit the `Dyko Website
 
 """
 
-VERSION = "0.2"
+VERSION = "0.3-git"
 
 from setuptools import setup, find_packages
 
