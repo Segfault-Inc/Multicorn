@@ -217,7 +217,7 @@ class Alchemy(AccessPoint):
 
         """
         return prop.remote_ap.loader_from_reference_repr(to_unicode(value))
-                
+
     def search(self, request):
         query = expression.Select(
             None, None, from_obj=self._table, use_labels=True)
@@ -233,7 +233,7 @@ class Alchemy(AccessPoint):
         return self.to_alchemy_condition(And(*[
                     Condition(prop.name, "=", item[prop.name])
                     for prop in self.identity_properties]))
-        
+
     def __transform_to_table(self, item):
         """Transform an item to a dict so that it can be saved."""
         item_dict = {}
