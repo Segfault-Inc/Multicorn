@@ -123,7 +123,7 @@ def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
                 join_col2 = prop.remote_property.column
                 # _table isn't really private, just not in the public API
                 # pylint: disable=W0212
-                alchemy_query = alchemy_query.join(
+                alchemy_query = alchemy_query.outerjoin(
                     prop.remote_ap._table,
                     onclause=(join_col1 == join_col2))
                 # pylint: enable=W0212
