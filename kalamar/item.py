@@ -218,8 +218,8 @@ class AbstractItem(MutableMultiMapping):
             self.access_point.name, dict((name, self[name]) for name in names))
     
     def __eq__(self, other):
-        # __eq__ is required even if __cmp__ is defined to avoid endless loops
-        # TODO: remove this method and just keep __cmp__
+        # __eq__ is required because MutableMultiMapping.__eq__ relies on
+        # getlist that relies on MutableMultiMapping.__eq__
         return isinstance(other, AbstractItem) \
             and other.identity == self.identity
     
