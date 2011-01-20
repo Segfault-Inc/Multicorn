@@ -50,13 +50,6 @@ class Identity(namedtuple("Identity", "access_point, conditions")):
 
     """
 
-    def __lt__(self, other):
-        return self.conditions.values() < other.conditions.values()
-
-    def __gt__(self, other):
-        return self.conditions.values() > other.conditions.values()
-
-
 
 class MultiMapping(Mapping):
     """A Mapping where each key as associated to multiple values.
@@ -213,12 +206,6 @@ class AbstractItem(MutableMultiMapping):
         # but based on __getitem__ which may needlessly call a lazy loader.
         return key in self.access_point.properties
 
-    def __lt__(self, other):
-        return self.identity < other.identity
-
-    def __gt__(self, other):
-        return self.identity > other.identity
-
     def __repr__(self):
         """Return a user-friendly representation of item."""
         return "<%s: %r>" % (self.__class__.__name__, self.identity)
@@ -231,9 +218,20 @@ class AbstractItem(MutableMultiMapping):
             self.access_point.name, dict((name, self[name]) for name in names))
     
     def __eq__(self, other):
+        # __eq__ is required even if __cmp__ is defined to avoid endless loops
+        # TODO: remove this method and just keep __cmp__
         return isinstance(other, AbstractItem) \
             and other.identity == self.identity
     
+    def __cmp__(self, other):
+        # TODO: test this method
+        if isinstance(other, AbstractItem):
+            if self.identity == other.identity:
+                return 0
+            elif self.identity > other.identity:
+                return 1
+        return -1
+
     def __hash__(self):
         return hash((self.access_point.name,
             frozenset((prop.name, self[prop.name]) 
