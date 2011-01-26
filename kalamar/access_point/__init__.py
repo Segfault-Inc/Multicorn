@@ -204,10 +204,12 @@ class AccessPoint(object):
         values = representation.split("/")
         if len(props) != len(values):
             raise ValueError(
-                    "The representation doesn't match the identity properties:\
-                            %s expected, got %s values" \
-                            % ([prop.name for prop in props], values))
-        properties = dict((prop.name, prop.cast((value,))[0]) for prop, value in zip(props,values))
+                "The representation doesn't match the identity properties:"
+                "%s expected, got %s values" % (
+                    [prop.name for prop in props], values))
+        properties = dict(
+            (prop.name, prop.cast((value,))[0])
+            for prop, value in zip(props, values))
         return lambda item: (ItemStub(self, properties),)
 
     @abc.abstractmethod
