@@ -83,8 +83,6 @@ class Alchemy(AccessPoint):
         self.remote_alchemy_props = []
         self.metadata = None
         self.engine_opts = engine_opts or {}
-        for prop in self.identity_properties:
-            self._column_from_prop(prop)
         for name, prop in self.properties.items():
             if prop.column_name is None:
                 prop.column_name = name
@@ -150,8 +148,10 @@ class Alchemy(AccessPoint):
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
         columns = set(
-            self._column_from_prop(prop) for prop in self.properties.values())
-        table = Table(self.tablename, metadata, *columns, useexisting=True)
+            self._column_from_prop(prop) for prop in self.properties.values()
+                    if prop not in self.identity_properties)
+        identity_columns = [self._column_from_prop(prop) for prop in self.identity_properties]
+        table = Table(self.tablename, metadata, *(identity_columns + list(columns)), useexisting=True)
         if self.createtable:
             table.create(checkfirst=True)
         self.__table = table
