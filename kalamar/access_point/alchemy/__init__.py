@@ -147,11 +147,25 @@ class Alchemy(AccessPoint):
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
-        columns = set(
-            self._column_from_prop(prop) for prop in self.properties.values()
-                    if prop not in self.identity_properties)
-        identity_columns = [self._column_from_prop(prop) for prop in self.identity_properties]
-        table = Table(self.tablename, metadata, *(identity_columns + list(columns)), useexisting=True)
+
+        # We must do 3 things here:
+        # - Call _column_from_prop on all props to ensure linkage with remote
+        #   columns;
+        # - Add all real columns (all columns but one-to-many ones) to Table;
+        # - Keep the order of self.identity_properties in Table.
+        real_non_identity_columns = []
+        for prop in self.properties.values():
+            if prop not in self.identity_properties:
+                column = self._column_from_prop(prop)
+                if prop.relation != "one-to-many":
+                    real_non_identity_columns.append(column)
+        identity_columns = [
+            self._column_from_prop(prop) for prop in self.identity_properties]
+        table = Table(
+            self.tablename, metadata,
+            *(identity_columns + real_non_identity_columns),
+            useexisting=True)
+
         if self.createtable:
             table.create(checkfirst=True)
         self.__table = table
