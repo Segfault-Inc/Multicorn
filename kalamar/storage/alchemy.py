@@ -25,11 +25,10 @@ as a kalamar storage back-end
 
 from kalamar import utils
 from kalamar.item import Item
-from kalamar import parser
 from kalamar.storage.base import AccessPoint
 from sqlalchemy import Table, Column, MetaData, ForeignKey, create_engine
-from sqlalchemy.sql.expression import alias,Select
-from sqlalchemy import String,Integer,Date,Numeric,DateTime,Boolean,Unicode
+from sqlalchemy.sql.expression import Select
+from sqlalchemy import String,Integer,Date,Numeric,DateTime,Boolean,Unicode, Interval
 from sqlalchemy import and_ as sql_and
 from sqlalchemy import or_ as sql_or
 
@@ -45,8 +44,8 @@ class SqlAlchemyTypes:
           "email"    : String,
           "text"     : String,
           "currency" : Numeric,
-          "int_currency" : Numeric 
-
+          "int_currency" : Numeric,
+          "interval" : Interval
          }
 
 
