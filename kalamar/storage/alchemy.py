@@ -346,7 +346,7 @@ class AlchemyAccessPoint(AccessPoint):
         kwargs.get('order_by',{}))
         for join in joins:
             query.append_from(join)
-        if len(sql_conditions) > 0:    
+        if len(sql_conditions) > 0:
             alchemconds = self._to_alchemy_conditions(conditions, sql_conditions)
             query.append_whereclause(alchemconds)
         query = apply(query.order_by, orders)
@@ -362,11 +362,11 @@ class AlchemyAccessPoint(AccessPoint):
     def _to_alchemy_conditions(self, conditions, sql_conditions):
         if isinstance(conditions,list):
             if len(conditions) == 1:
-                return self._to_alchemy_conditions(conditions[0],sql_conditions)
+                return self._to_alchemy_conditions(conditions[0], sql_conditions)
             elif conditions.operator == "and":
                 return apply(sql_and,[self._to_alchemy_conditions(cond, sql_conditions) for cond in conditions])
             elif conditions.operator == "or":
-                return apply(sql_or,[self._to_alchemy_conditions(cond, sql_conditions) for cond in sql_conditions])
+                return apply(sql_or,[self._to_alchemy_conditions(cond, sql_conditions) for cond in conditions])
         else:
             return sql_conditions[conditions]
 
