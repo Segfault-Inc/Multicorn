@@ -41,7 +41,7 @@ except ImportError:
     print("WARNING: The SQLAlchemy AP is not available.", file=sys.stderr)
 else:
     from sqlalchemy import create_engine, Table, Column, MetaData, ForeignKey, \
-        Integer, Date, Numeric, DateTime, Boolean, Unicode, Binary
+        Integer, Date, Numeric, DateTime, Boolean, Unicode
     from sqlalchemy.sql import expression, and_, or_, not_
     import sqlalchemy.exc 
 
@@ -60,9 +60,15 @@ else:
     Or.alchemy_function = lambda self, conditions: or_(*conditions)
     Not.alchemy_function = lambda self, conditions: not_(*conditions)
 
+DEFAULT_VALUE = object()
+
 
 class AlchemyProperty(Property):
     """Property for an Alchemy access point."""
+
+
+    DB_GEN = (DEFAULT_VALUE,)
+
     def __init__(self, property_type, column_name=None, **kwargs):
         super(AlchemyProperty, self).__init__(property_type, **kwargs)
         self.column_name = column_name
@@ -254,6 +260,9 @@ class Alchemy(AccessPoint):
         """Transform an item to a dict so that it can be saved."""
         item_dict = {}
         for name, prop in self.properties.items():
+            if prop.auto == AlchemyProperty.DB_GEN\
+                    and item[name] == DEFAULT_VALUE:
+                continue
             if prop.relation == "many-to-one":
                 if item[name] is None:
                     item_dict[name] = None
@@ -315,7 +324,6 @@ class Alchemy(AccessPoint):
         # accordingly!
         properties = kalamar_query.validate(self.site, self.properties)
         cants = cants or QueryChain([])
-
         for line in cants(result):
             new_line = {}
             for key, value in line.items():
