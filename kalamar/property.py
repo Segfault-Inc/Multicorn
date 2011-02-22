@@ -94,6 +94,8 @@ class Property(object):
         """Cast an iterable of values, return a tuple of cast values."""
         if not self.mandatory and values == (None,):
             return values
+        if all(type(value) == self.type for value in values):
+            return values
         # Ugly code to manage 'soft' references
         if self.type == Item and \
                 not all(isinstance(value, AbstractItem) for value in values):
