@@ -58,5 +58,5 @@ def runner(test):
 @require("ldap")
 @run_common
 def test_common():
-    """Launch common tests for memory."""
+    """Launch common tests for ldap."""
     return None, runner, "Ldap"
