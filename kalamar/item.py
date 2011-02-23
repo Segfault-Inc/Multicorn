@@ -312,10 +312,10 @@ class Item(AbstractItem):
         return self.reference_repr()
 
     def __unicode__(self):
-        return self.reference_repr()
+        return unicode(self.reference_repr())
 
     def __bytes__(self):
-        return self.reference_repr()
+        return bytes(self.reference_repr())
 
     def getlist(self, key):
         try:
