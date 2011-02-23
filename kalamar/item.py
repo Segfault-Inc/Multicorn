@@ -309,10 +309,10 @@ class Item(AbstractItem):
         return unicode("/".join(representations))
 
     def __str__(self):
-        return self.reference_repr()
+        return str(self.reference_repr())
 
     def __unicode__(self):
-        return unicode(self.reference_repr())
+        return self.reference_repr()
 
     def __bytes__(self):
         return bytes(self.reference_repr())
