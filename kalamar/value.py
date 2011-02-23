@@ -210,7 +210,7 @@ def to_iter(value):
         raise ValueError("%s cannot be cast to iter." % value)
 
 
-def to_bytes(value):
+def to_bytes(value, encoding="utf-8"):
     """Cast ``value`` into bytes.
 
     This function works with Python 2.x and 3.x and can be used in Kalamar.
@@ -236,12 +236,15 @@ def to_bytes(value):
         return value
     else:
         try:
-            return bytes(value, encoding="utf-8")
+            return bytes(value, encoding=encoding)
         except:
-            return bytes(value)
+            try:
+                return bytes(value)
+            except:
+                return value.encode(encoding)
 
 
-def to_unicode(value):
+def to_unicode(value, encoding="utf-8"):
     """Cast ``value`` into unicode string.
 
     This function works with Python 2.x and 3.x and can be used in Kalamar.
@@ -267,7 +270,7 @@ def to_unicode(value):
         return value
     else:
         try:
-            return unicode(value, encoding="utf-8")
+            return unicode(value, encoding=encoding)
         except:
             return unicode(value)
 
