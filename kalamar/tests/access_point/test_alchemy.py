@@ -113,4 +113,4 @@ def runner(test):
 @run_common
 def test_alchemy_common():
     """Define a custom test runner for the common tests."""
-    return make_ap(), runner
+    return None, runner, "Alchemy"

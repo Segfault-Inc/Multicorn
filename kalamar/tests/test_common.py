@@ -138,14 +138,14 @@ def test_re_inequal_search(site):
 
 @common
 def test_inequal_search(site):
-    """Trst a search with an inequality condition."""
+    """Test a search with an inequality condition."""
     condition = Condition("name", "!=", "bar")
     results = site.search("things", condition)
     eq_(set(item["id"] for item in results), set([1]))
 
 @common
 def test_like_search(site):
-    """Trst a search with an inequality condition."""
+    """Test a search with an inequality condition."""
     condition = Condition("name", "like", "b%r")
     results = site.search("things", condition)
     eq_(set(item["id"] for item in results), set([2, 3]))

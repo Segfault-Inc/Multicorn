@@ -92,7 +92,6 @@ class Alchemy(AccessPoint):
         for name, prop in self.properties.items():
             if prop.column_name is None:
                 prop.column_name = name
-            prop.name = name
             if prop.relation is None:
                 self._column_from_prop(prop)
 
