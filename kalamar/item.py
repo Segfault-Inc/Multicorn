@@ -180,7 +180,7 @@ class AbstractItem(MutableMultiMapping):
         self.access_point = access_point
         # An item is usually saved. If it isn't, it's because it has just been
         # created, and the access point is responsible for setting the flag to
-        # ``false``.
+        # ``False``.
         self.saved = False
 
     @abc.abstractmethod    

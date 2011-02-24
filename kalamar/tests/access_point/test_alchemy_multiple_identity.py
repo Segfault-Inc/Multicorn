@@ -83,11 +83,11 @@ class TestAlchemy(unittest.TestCase):
     def test_update(self):
         """Assert that an item can be updated in the DB."""
         item = self.site.open(
-            "test", {"firstname": "John", "lastname" : "Doe"})
+            "test", {"firstname": "John", "lastname": "Doe"})
         item["birthdate"] = date(1951, 12, 12)
         item.save()
         item = self.site.open(
-            "test", {"firstname": "John", "lastname" : "Doe"})
+            "test", {"firstname": "John", "lastname": "Doe"})
         eq_(item["birthdate"],  date(1951, 12, 12))
 
     # camelCase function names come from unittest

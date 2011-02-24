@@ -73,7 +73,7 @@ def test_single_item_multidict(site):
 def test_create_unicode(site):
     """Save a single item with unicode values and retrieve it."""
     name = to_unicode("Touché")
-    properties = {"id" : 1, "name": name}
+    properties = {"id": 1, "name": name}
     site.create("things", properties).save()
     all_items = list(site.search("things"))
     eq_(len(all_items), 1)
@@ -335,12 +335,12 @@ def test_view_range(site):
 def test_view_operators(site):
     """Test various operators with a view"""
     condition = Condition("foo", "!=", "bar")
-    results = list(site.view("things", {"bar" : "id" , "foo": "name"},
-        condition))
+    results = list(
+        site.view("things", {"bar": "id" , "foo": "name"}, condition))
     eq_(set(item["bar"] for item in results), set([1]))
     condition = Condition("foo", "like", "b%r")
-    results = list(site.view("things", {"bar" : "id" , "foo": "name"},
-        condition))
+    results = list(
+        site.view("things", {"bar": "id" , "foo": "name"}, condition))
     eq_(set(item["bar"] for item in results), set([2, 3]))
 
 @common
