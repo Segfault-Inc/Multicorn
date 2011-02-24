@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 # This file is part of Dyko
 # Copyright © 2011 Kozea
@@ -39,12 +38,14 @@ except ImportError:
 else:
     import ldap.modlist
 
+
 class LdapItem(Item):
     """Item stored as a file."""
     @property
     def dn(self):
         """Distinguished name of the LDAP item."""
-        return "cn=%s,%s" % (self[self.access_point.cn_name],  self.access_point.ldap_path)
+        return "cn=%s,%s" % (
+            self[self.access_point.cn_name],  self.access_point.ldap_path)
 
 
 class LdapProperty(Property):
@@ -60,7 +61,7 @@ class Ldap(AccessPoint):
     ItemClass = LdapItem
 
     def __init__(self, hostname, ldap_path, user, password, properties, 
-                 identity_properties=None, encoding='utf-8'):
+                 identity_properties=None, encoding="utf-8"):
         for name, prop in properties.items():
             if not prop.rdn_name:
                 prop.rdn_name = name
@@ -93,15 +94,19 @@ class Ldap(AccessPoint):
         else:
             if condition.operator == "=":
                 return "(%s%s%s)" % (
-                    self.properties[condition.property.name].rdn_name, condition.operator, condition.value)
+                    self.properties[condition.property.name].rdn_name,
+                    condition.operator, condition.value)
             else:
+                # No way to create a LDAP filter when we have no equalities
                 raise ValueError
 
     def search(self, request):
         try:
             ldap_request = self._to_ldap_filter(request)
         except ValueError:
+            # No LDAP filter can be created, use a software filter
             ldap_request = None
+
         for _, ldap_result in self.ldap.search_s(
             self.ldap_path, ldap.SCOPE_ONELEVEL, ldap_request or "objectClass=*",
             # Restrict results to declared properties:
@@ -128,15 +133,18 @@ class Ldap(AccessPoint):
             rdn_key = self.properties[key].rdn_name
             modifications[rdn_key] = tuple(
                 to_bytes(value, self.encoding) for value in item.getlist(key))
-        old_entry = self.open(Condition(self.cn_name, "=", item[self.cn_name]), None)
+        old_entry = self.open(
+            Condition(self.cn_name, "=", item[self.cn_name]), None)
         if old_entry:
             # Here we replace properties names in order to make the diff
             old_rdn_entry = {}
             for key in old_entry:
                 old_rdn_entry[self.properties[key].rdn_name] = tuple(
-                    to_bytes(value, self.encoding) for value in old_entry.getlist(key))
+                    to_bytes(value, self.encoding)
+                    for value in old_entry.getlist(key))
             self.ldap.modify_s(
-                item.dn, ldap.modlist.modifyModlist(old_rdn_entry, modifications))
+                item.dn, ldap.modlist.modifyModlist(
+                    old_rdn_entry, modifications))
         else:
             self.ldap.add_s(item.dn, modifications.items())
         item.saved = True

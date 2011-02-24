@@ -309,13 +309,13 @@ class Item(AbstractItem):
         return unicode("/".join(representations))
 
     def __str__(self):
-        return self.reference_repr()
+        return str(self.reference_repr())
 
     def __unicode__(self):
         return self.reference_repr()
 
     def __bytes__(self):
-        return self.reference_repr()
+        return bytes(self.reference_repr())
 
     def getlist(self, key):
         try:
