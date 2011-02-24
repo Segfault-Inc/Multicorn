@@ -113,10 +113,11 @@ class Ldap(AccessPoint):
             [prop.rdn_name for prop in self.properties.values()]):
             multidict = MultiDict()
             for prop in self.properties.values():
-                values = (
-                    value.decode(self.encoding)
-                    for value in ldap_result.get(prop.rdn_name, ()))
-                multidict.setlist(prop.name, tuple(values) or (None,))
+                if prop.relation != "one-to-many":
+                    values = (
+                        value.decode(self.encoding)
+                        for value in ldap_result.get(prop.rdn_name, ()))
+                    multidict.setlist(prop.name, tuple(values) or (None,))
             item = self.create(multidict)
             if ldap_request or request.test(item):
                 item.saved = True
@@ -131,8 +132,11 @@ class Ldap(AccessPoint):
         modifications = {}
         for key in item:
             rdn_key = self.properties[key].rdn_name
-            modifications[rdn_key] = tuple(
-                to_bytes(value, self.encoding) for value in item.getlist(key))
+            if self.properties[key].relation != "one-to-many":
+                if item.getlist(key) != (None,):
+                    modifications[rdn_key] = tuple(
+                        to_bytes(value, self.encoding) for value in item.getlist(key))
+                
         old_entry = self.open(
             Condition(self.cn_name, "=", item[self.cn_name]), None)
         if old_entry:
