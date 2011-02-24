@@ -180,7 +180,7 @@ class AbstractItem(MutableMultiMapping):
         self.access_point = access_point
         # An item is usually saved. If it isn't, it's because it has just been
         # created, and the access point is responsible for setting the flag to
-        # ``false``.
+        # ``False``.
         self.saved = False
 
     @abc.abstractmethod    
@@ -216,13 +216,13 @@ class AbstractItem(MutableMultiMapping):
         names = (prop.name for prop in self.access_point.identity_properties)
         return Identity(
             self.access_point.name, dict((name, self[name]) for name in names))
-    
+
     def __eq__(self, other):
         # __eq__ is required because MutableMultiMapping.__eq__ relies on
         # getlist that relies on MutableMultiMapping.__eq__
         return isinstance(other, AbstractItem) \
             and other.identity == self.identity
-    
+
     def __cmp__(self, other):
         # TODO: test this method
         if isinstance(other, AbstractItem):
@@ -238,13 +238,13 @@ class AbstractItem(MutableMultiMapping):
                 for prop in self.access_point.identity_properties)))
 
     def __str__(self):
-        return self.reference_repr()
+        return str(self.reference_repr())
 
     def __unicode__(self):
         return self.reference_repr()
 
     def __bytes__(self):
-        return self.reference_repr()
+        return bytes(self.reference_repr())
 
     def save(self):
         """Save the item."""

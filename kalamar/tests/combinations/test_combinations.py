@@ -38,17 +38,17 @@ SECOND_WRAPPERS = []
 
 def fill_site(site):
     """Fill a ``site`` with testing data."""
-    second_ap_item1 = site.create("second_ap", {"code" : "AAA", "name":
-    "second_ap AAA"})
+    second_ap_item1 = site.create(
+        "second_ap", {"code": "AAA", "name": "second_ap AAA"})
     second_ap_item1.save()
-    second_ap_item2 = site.create("second_ap", {"code" : "BBB", "name":
-    "second_ap BBB"})
+    second_ap_item2 = site.create(
+        "second_ap", {"code": "BBB", "name": "second_ap BBB"})
     second_ap_item2.save()
-    item = site.create("first_ap", {"id": 1, "name": "Test one", "color":
-        "red", "second_ap" : second_ap_item1})
+    item = site.create("first_ap", {"id": 1, "name": "Test one",
+        "color": "red", "second_ap": second_ap_item1})
     item.save()
-    item = site.create("first_ap", {"id": 2, "name": "Test two", "color":
-        "red", "second_ap": second_ap_item2})
+    item = site.create("first_ap", {"id": 2, "name": "Test two",
+        "color": "red", "second_ap": second_ap_item2})
     item.save()
     item = site.create("first_ap", {"id": 3, "name": "Test three",
         "color": "blue", "second_ap": second_ap_item1})
@@ -108,7 +108,7 @@ class FirstAP(APDecorator):
     - id: int, identity_property
     - name: unicode
     - color: unicode
-    - second_ap : Item, remote_ap="second_ap",
+    - second_ap: Item, remote_ap="second_ap",
 
     """
     aps = FIRST_APS

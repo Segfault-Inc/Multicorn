@@ -21,36 +21,39 @@ Ldap test.
 Test the Ldap access point.
 
 """
-import ldap
-from kalamar.access_point.ldap_ap import Ldap, LdapProperty
+
+from kalamar.access_point.ldap_ import Ldap, LdapProperty
 
 from ..common import make_site, run_common, require
 
-ldap_test_hostname = "zero.fr"
-ldap_test_path = "ou=test,dc=zero,dc=fr"
-ldap_test_user = "cn=Manager,dc=zero,dc=fr"
-ldap_test_password = "lol"
+HOSTNAME = "localhost"
+PATH = "ou=test,dc=test,dc=fr"
+USER = "cn=Manager,dc=test,dc=fr"
+PASSWORD = "password"
+
 
 def make_ap():
     """Create a simple access point."""
-    return Ldap(ldap_test_hostname, ldap_test_path, ldap_test_user, ldap_test_password, {
+    return Ldap(HOSTNAME, PATH, USER, PASSWORD, {
             "id": LdapProperty("cn", int),
             "name": LdapProperty("sn"),
-            "objectClass": LdapProperty(auto=('top', 'person', 'inetOrgPerson'))})
+            "objectClass": LdapProperty(
+                auto=('top', 'person', 'inetOrgPerson'))})
 
 def clean_ap():
-    """Suppress all ldap objects in the test path"""
-    ldapap = ldap.open(ldap_test_hostname)
-    ldapap.simple_bind(ldap_test_user, ldap_test_password)
-    for cn, _ in ldapap.search_s(ldap_test_path, ldap.SCOPE_ONELEVEL):
+    """Suppress all ldap objects in the test path."""
+    import ldap
+
+    ldapap = ldap.open(HOSTNAME)
+    ldapap.simple_bind(USER, PASSWORD)
+    for cn, _ in ldapap.search_s(PATH, ldap.SCOPE_ONELEVEL):
         ldapap.delete_s(cn)
 
 def runner(test):
     """Test runner for ``test``."""
     access_point = make_ap()
     try:
-        site = make_site(access_point,
-            fill=not hasattr(test, "nofill"))
+        site = make_site(access_point, fill=not hasattr(test, "nofill"))
         test(site)
     finally:
         clean_ap()
@@ -58,5 +61,5 @@ def runner(test):
 @require("ldap")
 @run_common
 def test_common():
-    """Launch common tests for ldap."""
+    """Launch common tests for LDAP."""
     return None, runner, "Ldap"
