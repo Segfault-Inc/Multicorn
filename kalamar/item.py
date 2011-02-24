@@ -234,8 +234,17 @@ class AbstractItem(MutableMultiMapping):
 
     def __hash__(self):
         return hash((self.access_point.name,
-            frozenset((prop.name, self[prop.name]) 
+            frozenset((prop.name, self[prop.name])
                 for prop in self.access_point.identity_properties)))
+
+    def __str__(self):
+        return self.reference_repr()
+
+    def __unicode__(self):
+        return self.reference_repr()
+
+    def __bytes__(self):
+        return self.reference_repr()
 
     def save(self):
         """Save the item."""
@@ -307,15 +316,6 @@ class Item(AbstractItem):
                 value = value.reference_repr()
             representations.append(unicode(value))
         return unicode("/".join(representations))
-
-    def __str__(self):
-        return self.reference_repr()
-
-    def __unicode__(self):
-        return self.reference_repr()
-
-    def __bytes__(self):
-        return self.reference_repr()
 
     def getlist(self, key):
         try:
