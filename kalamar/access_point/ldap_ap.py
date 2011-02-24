@@ -49,7 +49,7 @@ class LdapItem(Item):
 
 class LdapProperty(Property):
     """Property for an LDAP access point."""
-    def __init__(self, rdn_name=None, property_type=unicode, **kwargs):
+    def __init__(self, property_type=unicode, rdn_name=None, **kwargs):
         super(LdapProperty, self).__init__(property_type, **kwargs)
         self.rdn_name = rdn_name
         self.name = None
@@ -119,6 +119,8 @@ class Ldap(AccessPoint):
                     
     def delete(self, item):
         self.ldap.delete_s(item.dn)
+
+
 
     def save(self, item):
         modifications = {}

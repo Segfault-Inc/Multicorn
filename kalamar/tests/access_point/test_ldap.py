@@ -34,15 +34,15 @@ ldap_test_password = "lol"
 def make_ap():
     """Create a simple access point."""
     return Ldap(ldap_test_hostname, ldap_test_path, ldap_test_user, ldap_test_password, {
-            "id": LdapProperty("cn", int),
-            "name": LdapProperty("sn"),
+            "id": LdapProperty(int, "cn"),
+            "name": LdapProperty(rdn_name="sn"),
             "objectClass": LdapProperty(auto=('top', 'person', 'inetOrgPerson'))})
 
-def clean_ap():
+def clean_ap(access_point):
     """Suppress all ldap objects in the test path"""
-    ldapap = ldap.open(ldap_test_hostname)
+    ldapap = ldap.open(access_point.hostname)
     ldapap.simple_bind(ldap_test_user, ldap_test_password)
-    for cn, _ in ldapap.search_s(ldap_test_path, ldap.SCOPE_ONELEVEL):
+    for cn, _ in ldapap.search_s(access_point.ldap_path, ldap.SCOPE_ONELEVEL):
         ldapap.delete_s(cn)
 
 def runner(test):
@@ -53,7 +53,7 @@ def runner(test):
             fill=not hasattr(test, "nofill"))
         test(site)
     finally:
-        clean_ap()
+        clean_ap(access_point)
 
 @require("ldap")
 @run_common
