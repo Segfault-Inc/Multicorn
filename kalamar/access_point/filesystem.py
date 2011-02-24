@@ -171,7 +171,7 @@ class FileSystem(AccessPoint):
                     def defered_open():
                         """Opener for ``item``."""
                         return lambda item: (Stream(item.filename),)
-                    lazy_loaders = {self.content_property : defered_open()}
+                    lazy_loaders = {self.content_property: defered_open()}
                     item_properties = {}
                     for prop, value in properties.items():
                         if value == "None":

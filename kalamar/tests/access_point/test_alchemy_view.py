@@ -64,7 +64,7 @@ class TestAlchemy(unittest.TestCase):
 
     def test_star(self):
         """Test a star request on the access point."""
-        mapping = {"root_" : "root.*"}
+        mapping = {"root_": "root.*"}
         items = list(self.site.view("child", mapping, {}))
         eq_(len(items), 2)
         for item in items:

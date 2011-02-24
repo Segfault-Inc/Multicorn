@@ -67,7 +67,7 @@ def runner(test):
     if not hasattr(test, "nofill"):
         site.create("things", {"id": 1,
             "name": "('foobar'.replace('bar', ''),)",
-            "base_name" : None}).save()
+            "base_name": None}).save()
         site.create("things", {"id": 2,
             "name": "('foobar'.replace('foo', ''),)",
             "base_name": None}).save()
