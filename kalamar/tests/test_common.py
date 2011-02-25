@@ -32,13 +32,14 @@ from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.value import to_unicode
 from kalamar.access_point.alchemy import Alchemy
+from kalamar.access_point.mongo import Mongo
 from kalamar.access_point.xml import XML
 from kalamar.access_point.unicode_stream import UnicodeStream
 from .common import nofill, common
 
 
 # TODO: support of multiple values for access points should be introspectable
-SINGLE_VALUE_ACCESS_POINTS = (Alchemy, UnicodeStream, XML)
+SINGLE_VALUE_ACCESS_POINTS = (Alchemy, UnicodeStream, XML, Mongo)
 
 
 @nofill
