@@ -254,6 +254,17 @@ class AbstractItem(MutableMultiMapping):
         """Delete the item."""
         self.access_point.delete(self)
 
+    def reference_repr(self):
+        """Return an unicode representation suitable for textual storage."""
+        representations = []
+        for prop in self.access_point.identity_properties:
+            value = self[prop.name]
+            if prop.type == Item:
+                value = value.reference_repr()
+            representations.append(unicode(value))
+        return unicode("/".join(representations))
+
+
 
 class Item(AbstractItem):
     """Item base class.
@@ -306,16 +317,6 @@ class Item(AbstractItem):
             self._loaded_properties.setlist(key, cast_value)
         self._lazy_loaders = dict(lazy_loaders)
         self.modified = False
-
-    def reference_repr(self):
-        """Return an unicode representation suitable for textual storage."""
-        representations = []
-        for prop in self.access_point.identity_properties:
-            value = self[prop.name]
-            if prop.type == Item:
-                value = value.reference_repr()
-            representations.append(unicode(value))
-        return unicode("/".join(representations))
 
     def getlist(self, key):
         try:
