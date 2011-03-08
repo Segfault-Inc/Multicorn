@@ -46,12 +46,15 @@ def re_not_match(string, pattern):
 def like(string, like_pattern):
     """Return if ``string`` does match the 'like' pattern (SQL style)."""
     pattern = re.escape(like_pattern).replace("\%", ".*")
-    return re.search(pattern, string)
+    return re.search(pattern, string or "")
 
 
 OPERATORS = {
     "=": eq, "!=": ne, ">": gt, ">=": ge, "<": lt, "<=": le,
-    "~=": re_match, "~!=": re_not_match, 'like': like}
+    "~=": lambda x, y : re_match(x or "", y),
+    "~!=": lambda x, y: re_not_match(x or "", y),
+    'like': like
+}
 REVERSE_OPERATORS = dict((value, key) for key, value in OPERATORS.items())
 
 
