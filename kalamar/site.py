@@ -23,6 +23,7 @@ Site class. Create one for each independent site with its own configuration.
 
 """
 
+import logging
 from .request import normalize, make_request, And, Condition, Or, Not
 from .query import \
     QueryFilter, QuerySelect, QueryChain, QueryOrder, QueryRange, QueryDistinct
@@ -79,7 +80,9 @@ class Site(object):
     """Kalamar site."""
     def __init__(self):
         self.access_points = {}
-    
+        self.logger = logging.getLogger("dyko")
+        self.logger.addHandler(logging.NullHandler())
+
     def register(self, name, access_point):
         """Add an access point to this site.
 
