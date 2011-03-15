@@ -314,7 +314,8 @@ class Alchemy(AccessPoint):
             # everything
             if not alchemy_query.c:
                 for name, prop in self.properties.items():
-                    alchemy_query.append_column(prop.column.label(name))
+                    if prop.relation != 'one-to-many':
+                        alchemy_query.append_column(prop.column.label(name))
             result = alchemy_query.execute()
         else:
             result = self.search(And())
