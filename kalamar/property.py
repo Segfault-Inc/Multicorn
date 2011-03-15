@@ -97,7 +97,7 @@ class Property(object):
         if all(type(value) == self.type for value in values):
             return values
         # Ugly code to manage 'soft' references
-        if self.type == Item and \
+        if self.relation and \
                 not all(isinstance(value, AbstractItem) for value in values):
             props = [unicode(value) for value in values if value is not None]
             if len(props):
