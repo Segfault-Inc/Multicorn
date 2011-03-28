@@ -80,7 +80,7 @@ class Alchemy(AccessPoint):
     __metadatas = {}
 
     def __init__(self, url, tablename, properties, identity_properties,
-                 createtable=False, engine_opts = None):
+                 createtable=False, engine_opts = None, schema=None):
         super(Alchemy, self).__init__(properties, identity_properties)
         self.__table = None
         self.url = url
@@ -88,6 +88,7 @@ class Alchemy(AccessPoint):
         self.createtable = createtable
         self.remote_alchemy_props = []
         self.metadata = None
+        self.schema = schema
         self.engine_opts = engine_opts or {}
         for name, prop in self.properties.items():
             if prop.column_name is None:
@@ -112,6 +113,8 @@ class Alchemy(AccessPoint):
             # Transpose the kalamar relation in alchemy if possible
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
+                if foreign_ap.schema:
+                    foreign_table = "%s.%s" % (foreign_ap.schema, foreign_table)
                 # TODO: Fix this for circular dependencies
                 foreign_column = self._get_column(
                     "%s.%s" % (prop.name, prop.remote_property.name))
@@ -166,10 +169,13 @@ class Alchemy(AccessPoint):
                     real_non_identity_columns.append(column)
         identity_columns = [
             self._column_from_prop(prop) for prop in self.identity_properties]
+        kwargs = dict(useexisting=True)
+        if self.schema:
+            kwargs['schema'] = self.schema
         table = Table(
             self.tablename, metadata,
             *(identity_columns + real_non_identity_columns),
-            useexisting=True)
+            **kwargs)
 
         if self.createtable:
             table.create(checkfirst=True)
