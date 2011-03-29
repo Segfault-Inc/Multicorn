@@ -94,7 +94,7 @@ class Property(object):
     def cast(self, values):
         """Cast an iterable of values, return a tuple of cast values."""
         def cast_item(item_values):
-            if item_values:
+            if item_values and item_values != (None,):
                 for value in item_values:
                     if isinstance(value, AbstractItem):
                         yield value
