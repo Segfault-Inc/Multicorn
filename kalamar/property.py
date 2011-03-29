@@ -24,6 +24,7 @@ Kalamar property object.
 """
 
 from .value import PROPERTY_TYPES, to_type
+from .request import Condition
 from .item import AbstractItem, Item
 
 
@@ -92,19 +93,25 @@ class Property(object):
 
     def cast(self, values):
         """Cast an iterable of values, return a tuple of cast values."""
+        def cast_item(item_values):
+            if item_values:
+                for value in item_values:
+                    if isinstance(value, AbstractItem):
+                        yield value
+                    else:
+                        yield self.remote_ap.loader_from_reference_repr(unicode(value))(None)[0]
+            else:
+                yield None
         if not self.mandatory and values == (None,):
             return values
         if all(type(value) == self.type for value in values):
             return values
         # Ugly code to manage 'soft' references
-        if self.relation and \
-                not all(isinstance(value, AbstractItem) for value in values):
-            props = [unicode(value) for value in values if value is not None]
-            if len(props):
-                rep_str = '/'.join(props)
-                return self.remote_ap.loader_from_reference_repr(rep_str)(None)
-            else:
-                return (None,)
+        if self.relation == 'many-to-one':
+            return tuple(cast_item(values))
+        elif self.relation == 'one-to-many':
+            #Assert that every value is an iterable of items
+            return tuple(list(cast_item(value)) for value in values)
         elif self.type in PROPERTY_TYPES:
             return tuple(
                 PROPERTY_TYPES[self.type](value) for value in values)
@@ -132,3 +139,23 @@ class Property(object):
             properties = self.remote_ap.properties
             self.__remote_property = properties[self._remote_property_name]
         return self.__remote_property
+
+    def __eq__(self, other):
+        return Condition(self.name, "=", other)
+
+    def __ne__(self, other):
+        return Condition(self.name, "!=", other)
+
+    def __lt_(self, other):
+        return Condition(self.name, "<", other)
+
+    def __le_(self, other):
+        return Condition(self.name, "<)", other)
+
+    def __gt_(self, other):
+        return Condition(self.name, ">", other)
+
+    def __ge_(self, other):
+        return Condition(self.name, ">)", other)
+
+

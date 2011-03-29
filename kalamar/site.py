@@ -75,6 +75,24 @@ def _delegate_to_acces_point(method_name, first_arg_is_a_request=False):
     # pylint: enable=W0622
     return wrapper
 
+class ApSugar(object):
+
+    def __init__(self, access_point):
+        self.access_point = access_point
+    def __getattr__(self, key):
+        return PropertySugar(self.access_point.properties[key])
+
+
+class PropertySugar(object):
+
+    def __init__(self, property):
+        self.property = property
+
+    def __getattr__(self, key):
+        if self.property.remote_ap:
+            return ApSugar(self.property.remote_ap).getattr(key)
+        else:
+            raise AttributeError(self, key)
 
 class Site(object):
     """Kalamar site."""
@@ -82,6 +100,11 @@ class Site(object):
         self.access_points = {}
         self.logger = logging.getLogger("dyko")
         self.logger.addHandler(logging.NullHandler())
+
+    @property
+    def model(self):
+        return [ApSugar(ap) for ap in self.access_points]
+
 
     def register(self, name, access_point):
         """Add an access point to this site.

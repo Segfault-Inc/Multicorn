@@ -151,3 +151,15 @@ def test_not():
     assert_equal(condition4.properties_tree, {"name": condition1.property})
     assert_equal(condition5.properties_tree, {"name": condition3.property})
     assert_equal(condition6.properties_tree, {"name": condition2.property})
+
+
+def test_operators():
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", ">=", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+    condition4 = Or(condition1, condition2)
+    condition5 = And(condition3, condition2)
+
+    assert_equal(condition4, condition1 | condition2)
+    assert_equal(condition5, condition3 & condition2)
+

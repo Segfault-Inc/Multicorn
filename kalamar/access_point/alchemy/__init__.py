@@ -106,7 +106,7 @@ class Alchemy(AccessPoint):
             return prop.column
         alchemy_type = SQLALCHEMYTYPES.get(prop.type, None)
         kwargs = {"key": prop.name}
-        if prop in self.identity_properties:
+        if prop.name in (idprop.name for idprop in self.identity_properties):
             kwargs["primary_key"] = True
         if prop.relation == "many-to-one":
             foreign_ap = prop.remote_ap
@@ -163,7 +163,8 @@ class Alchemy(AccessPoint):
         # - Keep the order of self.identity_properties in Table.
         real_non_identity_columns = []
         for prop in self.properties.values():
-            if prop not in self.identity_properties:
+            if prop.name not in (idprop.name
+                    for idprop in self.identity_properties):
                 column = self._column_from_prop(prop)
                 if prop.relation != "one-to-many":
                     real_non_identity_columns.append(column)

@@ -208,7 +208,7 @@ class AbstractItem(MutableMultiMapping):
 
     def __repr__(self):
         """Return a user-friendly representation of item."""
-        return "<%s: %r>" % (self.__class__.__name__, self.identity)
+        return self.reference_repr()
 
     @property
     def identity(self):
@@ -337,8 +337,8 @@ class Item(AbstractItem):
         if key not in self:
             raise KeyError("%s object doesn't support adding new keys." %
                 self.__class__.__name__)
-        if self.access_point.properties[key] in \
-            self.access_point.identity_properties and self.saved:
+        if key in (idprop.name for idprop
+                in self.access_point.identity_properties) and self.saved:
             raise KeyError("Can not modify identity property %r." % key)
 
         self.modified = True

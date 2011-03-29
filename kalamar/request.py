@@ -171,6 +171,11 @@ class Request(object):
         """Return a simplified equivalent request."""
         return self
 
+    def __and__(self, other):
+        return And(self, other)
+
+    def __or__(self, other):
+        return Or(self, other)
 
 class Condition(Request):
     """Container for ``(property_name, operator, value)``."""

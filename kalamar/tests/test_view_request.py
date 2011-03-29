@@ -37,14 +37,14 @@ def make_first_ap():
         tuple, relation="one-to-many", remote_ap="test_remote_ap",
         remote_property="remote")
     return Memory(
-        {"id": Property(int), "name": Property(unicode), 
+        {"id": Property(int), "name": Property(unicode),
          "manies": one_to_many}, ("id",))
 
 def make_second_ap():
     """Build a Memory AP having a many-to-one relationship to another one."""
     remote_prop = Property(Item, relation="many-to-one", remote_ap="test_ap")
     return Memory(
-        {"id": Property(int), "label": Property(unicode), 
+        {"id": Property(int), "label": Property(unicode),
          "remote": remote_prop}, ("id",))
 
 def make_view_site():
@@ -66,7 +66,7 @@ def make_view_site():
             "label": "remote_item2",
             "remote": my_second_item})
     remote2.save()
-    my_item["manies"] = [remote, remote2]
+    my_item['manies'] = [remote, remote2]
     my_item.save()
     return site
 
@@ -83,7 +83,7 @@ def test_simplest_view():
     eq_(uniq_item["name_select"], "remote_item2")
     eq_(uniq_item["remote_select"], "truc")
     eq_(uniq_item["id_select"], 8)
-    
+
 def test_one_to_many():
     """Test a one to many request."""
     site = make_view_site()
