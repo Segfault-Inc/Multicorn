@@ -139,23 +139,3 @@ class Property(object):
             properties = self.remote_ap.properties
             self.__remote_property = properties[self._remote_property_name]
         return self.__remote_property
-
-    def __eq__(self, other):
-        return Condition(self.name, "=", other)
-
-    def __ne__(self, other):
-        return Condition(self.name, "!=", other)
-
-    def __lt_(self, other):
-        return Condition(self.name, "<", other)
-
-    def __le_(self, other):
-        return Condition(self.name, "<)", other)
-
-    def __gt_(self, other):
-        return Condition(self.name, ">", other)
-
-    def __ge_(self, other):
-        return Condition(self.name, ">)", other)
-
-
