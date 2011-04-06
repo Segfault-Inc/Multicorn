@@ -215,12 +215,12 @@ class AccessPoint(object):
     @abc.abstractmethod
     def delete(self, item):
         """Delete ``item`` from the backend storage.
-        
+
         This method has to be overridden.
 
         """
         raise NotImplementedError
-    
+
     def create(self, properties=None, lazy_loaders=None):
         """Create and return a new item."""
         properties = properties or {}

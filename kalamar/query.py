@@ -218,7 +218,7 @@ class QuerySelect(Query):
                     newitem[alias] = prop.get_value(item)
             if self.sub_selects:
                 sub_generators = tuple(
-                    sub_select(item[prop] or None) for prop, sub_select
+                    sub_select(item.get(prop, None)) for prop, sub_select
                     in self.sub_selects.items())
                 for cartesian_item in itertools.product(*sub_generators):
                     to_yield = dict(newitem)

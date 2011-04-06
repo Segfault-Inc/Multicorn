@@ -264,8 +264,6 @@ class AbstractItem(MutableMultiMapping):
             representations.append(unicode(value))
         return unicode("/".join(representations))
 
-
-
 class Item(AbstractItem):
     """Item base class.
 
