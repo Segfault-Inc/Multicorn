@@ -302,13 +302,19 @@ def to_type(value, data_type):
             raise ValueError("%s cannot be cast to %s." % (
                     value, data_type.__name__))
 
+def to_number(value, data_type):
+    if not value:
+        return data_type(0)
+    return to_type(value, data_type)
+
+
 
 PROPERTY_TYPES = {
     unicode: to_unicode,
     bytes: to_bytes,
-    int: lambda value: to_type(value, int),
-    float: lambda value: to_type(value, float),
-    decimal.Decimal: lambda value: decimal.Decimal(str(value)),
+    int: lambda value: to_number(value, int),
+    float: lambda value: to_number(value, float),
+    decimal.Decimal: lambda value: to_number(value, decimal.Decimal),
     io.IOBase: to_stream,
     datetime.datetime: to_datetime,
     datetime.date: to_date,
