@@ -140,6 +140,14 @@ class Request(object):
     __metaclass__ = ABCMeta
     _hash_attributes = ""
 
+    def __init__(self):
+        # Setting a __name__ since a request is callable
+        self.__name__ = self.__class__.__name__
+
+    def __call__(self, item):
+        # Calling a request tests it
+        return self.test(item)
+
     @abstractmethod
     def test(self, item):
         """Return if ``item`` matches the request."""
@@ -172,9 +180,17 @@ class Request(object):
         return self
 
     def __and__(self, other):
+        if not isinstance(other, Request):
+            # And() only support request
+            # Hoping other has __rand__
+            return other.__rand__(self)
         return And(self, other)
 
     def __or__(self, other):
+        if not isinstance(other, Request):
+            # Or() only support request
+            # Hoping other has __ror__
+            return other.__ror__(self)
         return Or(self, other)
 
 class Condition(Request):
@@ -191,9 +207,6 @@ class Condition(Request):
     def __repr__(self):
         return "%s(%r, %r, %r)" % (
             self.__class__.__name__, self.property, self.operator, self.value)
-
-    def __call__(self, item):
-        return self.test(item)
 
     def test(self, item):
         """Return if ``item`` matches the request."""
