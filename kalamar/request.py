@@ -192,6 +192,9 @@ class Condition(Request):
         return "%s(%r, %r, %r)" % (
             self.__class__.__name__, self.property, self.operator, self.value)
 
+    def __call__(self, item):
+        return self.test(item)
+
     def test(self, item):
         """Return if ``item`` matches the request."""
         return self.operator_func(self.property.get_value(item), self.value)

@@ -48,7 +48,7 @@ def test_hash_and():
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
-    
+
     condition4 = And(condition1, condition2)
     condition5 = And(condition3, condition2)
     condition6 = And(condition1, condition3)
@@ -61,7 +61,7 @@ def test_hash_or():
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
-    
+
     condition4 = Or(condition1, condition2)
     condition5 = Or(condition3, condition2)
     condition6 = Or(condition1, condition3)
@@ -74,7 +74,7 @@ def test_hash_not():
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", "<", "hibou")
     condition3 = Condition("name", "<", "tortue")
-    
+
     condition4 = Not(condition1)
     condition5 = Not(condition3)
     condition6 = Not(condition2)
@@ -106,7 +106,7 @@ def test_and():
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", ">=", "hibou")
     condition3 = Condition("name", "<", "tortue")
-    
+
     condition4 = And(condition1, condition2)
     condition5 = And(condition3, condition2)
     condition6 = And(condition1, condition3)
@@ -123,7 +123,7 @@ def test_or():
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", ">=", "hibou")
     condition3 = Condition("name", "<", "tortue")
-    
+
     condition4 = Or(condition1, condition2)
     condition5 = Or(condition3, condition2)
     condition6 = Or(condition1, condition3)
@@ -140,7 +140,7 @@ def test_not():
     condition1 = Condition("name", "<", "tortue")
     condition2 = Condition("name", ">=", "hibou")
     condition3 = Condition("name", "<", "tortue")
-    
+
     condition4 = Not(condition1)
     condition5 = Not(condition3)
     condition6 = Not(condition2)
