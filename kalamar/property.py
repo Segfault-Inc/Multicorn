@@ -136,6 +136,7 @@ class Property(object):
     def remote_property(self):
         """Remote property for linked porperties."""
         if not self.__remote_property:
-            properties = self.remote_ap.properties
-            self.__remote_property = properties[self._remote_property_name]
+            if self.remote_ap:
+                properties = self.remote_ap.properties
+                self.__remote_property = properties[self._remote_property_name]
         return self.__remote_property

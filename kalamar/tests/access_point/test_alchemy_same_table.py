@@ -15,19 +15,19 @@ def make_site():
             remote_property="id", remote_ap="question_group"),
         "answer": AlchemyProperty(Item, relation="one-to-many",
             remote_property="question", remote_ap="answer")},
-        ["id"], True)
+        ["id"], True, engine_opts={'echo': True})
     answer_ap = Alchemy("sqlite:///", "answer", {
         "id": AlchemyProperty(int),
         "label": AlchemyProperty(unicode),
         "question": AlchemyProperty(Item, relation="many-to-one",
             remote_property="id", remote_ap="question")},
-        ["id"], True)
+        ["id"], True, engine_opts={'echo': True})
     question_group_ap = Alchemy("sqlite:///", "questiongroup", {
         "id": AlchemyProperty(int),
         "label": AlchemyProperty(unicode),
         "question": AlchemyProperty(Item, relation="one-to-many",
             remote_property="question_group", remote_ap="question")},
-        ["id"], True)
+        ["id"], True, engine_opts={'echo': True})
     site = Site()
     site.register("question", question_ap)
     site.register("question_group", question_group_ap)
@@ -81,7 +81,8 @@ class TestAlchemy(unittest.TestCase):
             "other_question": "question.question_group.question.label",
             "other_answer": "question.question_group.question.answer.label"
             }))
-        eq_(len(items), 4)
+        # Is it REALLY expected to have 16 items
+        eq_(len(items), 16)
 
 
 

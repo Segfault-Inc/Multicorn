@@ -20,28 +20,12 @@ Query helpers for the Alchemy access point.
 
 """
 
-from ...request import And, Or, Not, RequestProperty
 from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect
-
-try:
-    from sqlalchemy.sql import expression, util
-except ImportError:
-    pass
-from kalamar.item import AbstractItem
 
 
 # Monky-patchers are allowed to skip some arguments
 # pylint: disable=W0613
-
-def query_chain_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method on QueryChain to convert to alchemy."""
-    for sub_query in self.queries:
-        alchemy_query = sub_query.to_alchemy(
-            alchemy_query, access_point, properties)
-        properties = sub_query.validate(access_point.site, properties)
-    return alchemy_query
-
 
 def query_chain_validator(self, access_point, properties):
     """Monkey-patched method on QueryChain to validate properties management.
@@ -53,89 +37,25 @@ def query_chain_validator(self, access_point, properties):
     Otherwise, it is (for now) considered unmanageable
 
     """
-    cans = []
-    for sub_query in self.queries:
+    last_seen = None
+    orders = [None, QuerySelect, QueryFilter, QueryDistinct, QueryOrder, QueryRange]
+    for index, sub_query in enumerate(self.queries):
+        splitted_queries = [QueryChain(sublist) if sublist else None for sublist in (self.queries[:index],
+            self.queries[index:])]
+        if orders.index(sub_query.__class__) < orders.index(last_seen):
+            return splitted_queries
+        last_seen = sub_query.__class__
         managed, not_managed = sub_query.alchemy_validate(
             access_point, properties)
         if not_managed is not None:
-            return None, self
-        if managed is not None:
-            cans.append(managed)
+            return splitted_queries
         properties = sub_query.validate(access_point.site, properties)
-    # TODO: proper cans & cants management
-    query_can = QueryChain(cans)
-    return query_can, None
+    return self, None
 
 
 def standard_validator(self, access_point, properties):
     """Validator for query types which can always be managed by SQLAlchemy."""
     return self, None
-
-
-def query_filter_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method on QueryFilter to convert to alchemy."""
-    def to_alchemy_condition(condition):
-        """Convert a Kalamar condition to an SQLAlchemy condition."""
-        # TODO: merge this with alchemy.to_alchemy_condition
-        if isinstance(condition, (And, Or, Not)):
-            alchemy_conditions = tuple(
-                to_alchemy_condition(sub_condition)
-                for sub_condition in condition.sub_requests)
-            return condition.alchemy_function(alchemy_conditions)
-        else:
-            prop = condition.property
-            if prop.child_property:
-                prop_name = ".".join([properties[prop.name].name,
-                    prop.child_property.__repr__()])
-                column = access_point._get_column(prop_name)
-            else:
-                column = properties[prop.name].column
-            value = condition.value
-            if isinstance(value, AbstractItem):
-                # TODO: manage multiple foreign key
-                value = value.reference_repr()
-            if condition.operator == "=":
-                return column == value
-            elif condition.operator == "!=":
-                return column != value
-            else:
-                return column.op(condition.operator)(value)
-
-    def build_join(tree, properties, alchemy_query):
-        """Build the necessary joins for a condition."""
-        for name, values in tree.items():
-            prop = properties[name]
-            if prop.remote_ap:
-                remote_ids = prop.remote_ap.identity_properties
-                if hasattr(values, "child_property"):
-                    # If there is no descendent, or descendent is an
-                    # identity property, don't do a join
-                    if values.child_property is None:
-                        continue
-                    if values in [
-                        RequestProperty(id_prop.name)
-                        for id_prop in remote_ids]:
-                        continue
-                table = prop.remote_ap._table
-                if table in util.find_tables(alchemy_query):
-                    continue
-                join_col1 = prop.column
-                join_col2 = prop.remote_property.column
-                # _table isn't really private, just not in the public API
-                # pylint: disable=W0212
-                alchemy_query = alchemy_query.outerjoin(
-                    prop.remote_ap._table,
-                    onclause=(join_col1 == join_col2))
-                # pylint: enable=W0212
-                if hasattr(values, "items"):
-                    alchemy_query = build_join(
-                        values, prop.remote_ap.properties, alchemy_query)
-        return alchemy_query
-    join = build_join(
-        self.condition.properties_tree, properties, access_point._table)
-    alchemy_query = alchemy_query.select_from(join).where(
-        to_alchemy_condition(self.condition))
-    return alchemy_query
 
 
 def query_filter_validator(self, access_point, properties):
@@ -164,67 +84,12 @@ def query_filter_validator(self, access_point, properties):
                            for new_name, values in cond_tree[name].items())
             else:
                 return False
-
     if all(inner_manage(name, values, properties)
            for name, values in cond_tree.items()):
         return self, None
     else:
         return None, self
 
-
-def query_select_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method on QuerySelect to convert to alchemy.
-
-    First, the mapping and sub selects are walked to build a join with other
-    access points.
-
-    Then, they are walked a second time to find what should be added to the
-    SELECT clause.
-
-    """
-    def build_join(select, properties, join):
-        """Walks the mapping to build the joins"""
-        for name, sub_select in select.sub_selects.items():
-            remote_ap = properties[name].remote_ap
-            remote_property = properties[name].remote_property
-            # Accessing the table now ensure it is properly created
-            remote_table = remote_property.access_point._table
-            if remote_table in util.find_tables(alchemy_query):
-                continue
-            col1 = properties[name].column
-            col2 = remote_property.column
-            # _table isn't really private, just not in the public API
-            # pylint: disable=W0212
-            join = join.outerjoin(remote_table, onclause = col1 == col2)
-            # pylint: enable=W0212
-            join = build_join(sub_select, remote_ap.properties, join)
-        return join
-
-    def build_select(select, properties, alchemy_query):
-        """Walks the mapping to append column"""
-        for name, value in select.mapping.items():
-            if value.name == "*":
-                for prop_name, prop in properties.items():
-                    column = prop.column
-                    if prop.relation is None:
-                        label = "%s%s" % (name, prop_name)
-                        alchemy_query.append_column(column.label(label))
-            else:
-                column = properties[value.name].column
-                alchemy_query.append_column(column.label(name))
-        for name, sub_select in select.sub_selects.items():
-            alchemy_query = build_select(
-                sub_select, properties[name].remote_ap.properties,
-                alchemy_query)
-        return alchemy_query
-
-    # _table isn't really private, just not in the public API
-    # pylint: disable=W0212
-    join = build_join(self, properties, access_point._table)
-    # pylint: enable=W0212
-    alchemy_query = alchemy_query.select_from(join).apply_labels()
-    build_select(self, properties, alchemy_query)
-    return alchemy_query
 
 
 def query_select_validator(self, access_point, properties):
@@ -253,27 +118,6 @@ def query_select_validator(self, access_point, properties):
         return None, self
 
 
-def query_distinct_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method converting QueryDistinct to SQLAlchemy query."""
-    return alchemy_query.distinct()
-
-
-def query_range_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method converting QueryRange to SQLAlchemy query."""
-    if self.range.start:
-        alchemy_query = alchemy_query.offset(self.range.start)
-    if self.range.stop:
-        alchemy_query = alchemy_query.limit(
-            self.range.stop - (self.range.start or 0))
-    return alchemy_query
-
-
-def query_order_to_alchemy(self, alchemy_query, access_point, properties):
-    """Monkey-patched method converting QueryOrder to SQLAlchemy query."""
-    for key, order in self.orderbys:
-        alchemy_query = alchemy_query.order_by(
-            expression.asc(key) if order else expression.desc(key))
-    return alchemy_query
 
 
 QueryChain.alchemy_validate = query_chain_validator
@@ -283,11 +127,5 @@ QueryOrder.alchemy_validate = standard_validator
 QueryRange.alchemy_validate = standard_validator
 QuerySelect.alchemy_validate = query_select_validator
 
-QueryChain.to_alchemy = query_chain_to_alchemy
-QueryDistinct.to_alchemy = query_distinct_to_alchemy
-QueryFilter.to_alchemy = query_filter_to_alchemy
-QueryOrder.to_alchemy = query_order_to_alchemy
-QueryRange.to_alchemy = query_range_to_alchemy
-QuerySelect.to_alchemy = query_select_to_alchemy
 
 # pylint: enable=W0613
