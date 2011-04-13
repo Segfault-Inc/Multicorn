@@ -303,6 +303,8 @@ def to_type(value, data_type):
                     value, data_type.__name__))
 
 def to_number(value, data_type):
+    if isinstance(value, data_type) or value is None:
+        return value
     if not value:
         return data_type(0)
     return to_type(value, data_type)
