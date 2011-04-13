@@ -103,7 +103,8 @@ def extract_properties_select(query, properties, tree):
     for name, value in query.mapping.items():
         if value.name == '*':
             for pname, prop in properties.items():
-                tree.selects.append(tree.table.c[pname].label(''.join([name, pname])))
+                if prop.relation != 'one-to-many':
+                    tree.selects.append(tree.table.c[pname].label(''.join([name, pname])))
         else:
             tree.selects.append(tree.table.c[value.name].label(name))
     for name, sub_select in query.sub_selects.items():
@@ -202,6 +203,7 @@ class Alchemy(AccessPoint):
             # Transpose the kalamar relation in alchemy if possible
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
+                foreign_ap._table
                 if foreign_ap.schema:
                     foreign_table = "%s.%s" % (foreign_ap.schema, foreign_table)
                 # TODO: Fix this for circular dependencies
@@ -409,7 +411,9 @@ class Alchemy(AccessPoint):
             for name, node in tree.children.items():
                 if node.property:
                     if node.table.element != join:
-                        join = join.outerjoin(node.table)
+                        col1 = node.parent.table.c[node.property.column.name]
+                        col2 = node.table.c[node.property.remote_property.column.name]
+                        join = join.outerjoin(node.table, onclause = col1 == col2)
                 join = inner_build_join(join, node)
             return join
         query = inner_build_join(self._table, tree)
@@ -432,8 +436,10 @@ class Alchemy(AccessPoint):
                 col = find_table(property, child)
                 if col is not None:
                     return col
-            if property.name in (prop.name
+            if tree.property and property.name in (prop.name
                     for prop in tree.property.remote_ap.identity_properties):
+                return tree.table.c[property.name]
+            if tree.property is None:
                 return tree.table.c[property.name]
 
         if isinstance(condition, (And, Or, Not)):
@@ -513,6 +519,7 @@ class Alchemy(AccessPoint):
                 for name, prop in self.properties.items():
                     if prop.relation != 'one-to-many':
                         alchemy_query.append_column(prop.column.label(name))
+            self.site.logger.debug(alchemy_query)
             result = alchemy_query.execute()
         else:
             result = self.search(And())
@@ -520,6 +527,7 @@ class Alchemy(AccessPoint):
         # If someone uses only a subset of the result, then build the query
         # accordingly!
         cants = cants or kquery.QueryChain([])
+        result = list(result)
         for line in cants(result):
             new_line = {}
             for key, value in line.items():

@@ -40,14 +40,19 @@ def query_chain_validator(self, access_point, properties):
     last_seen = None
     orders = [None, QuerySelect, QueryFilter, QueryDistinct, QueryOrder, QueryRange]
     for index, sub_query in enumerate(self.queries):
-        splitted_queries = [QueryChain(sublist) if sublist else None for sublist in (self.queries[:index],
-            self.queries[index:])]
-        if orders.index(sub_query.__class__) < orders.index(last_seen):
-            return splitted_queries
-        last_seen = sub_query.__class__
+        splitted_queries = [QueryChain(sublist) if sublist else None
+                for sublist in (self.queries[:index], self.queries[index:])]
+        if sub_query.__class__ != QueryChain:
+            if orders.index(sub_query.__class__) < orders.index(last_seen):
+                access_point.site.logger.debug("In SQL : %s, In python: %s" %
+                        (splitted_queries[0], splitted_queries[1]))
+                return splitted_queries
+            last_seen = sub_query.__class__
         managed, not_managed = sub_query.alchemy_validate(
             access_point, properties)
         if not_managed is not None:
+            access_point.site.logger.debug("In SQL : %s, In python: %s" %
+                    (splitted_queries[0], splitted_queries[1]))
             return splitted_queries
         properties = sub_query.validate(access_point.site, properties)
     return self, None
