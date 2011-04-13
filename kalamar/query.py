@@ -250,7 +250,7 @@ class QuerySelect(Query):
                 raise BadQueryException(self, "%r is not a valid property" %
                         name)
             new_props.update(sub_select.validate(site, child_properties))
-        return new_props 
+        return new_props
 
     def __str__(self):
         return "SELECT query: %r, %r "  % (self.mapping, self.sub_selects)
@@ -263,7 +263,7 @@ class QueryRange(Query):
     >>> range = QueryRange(slice(1, 3))
     >>> list(range(items))
     [{'a': 2, 'b': 2}, {'a': 1, 'b': 1}]
-    
+
     """
     def __init__(self, query_range):
         super(QueryRange, self).__init__()
@@ -277,3 +277,24 @@ class QueryRange(Query):
 
     def __str__(self):
         return "Range %r " % self.range
+
+
+class QueryGroupBy(Query):
+
+
+    def __init__(self, groupers={}, aggregates={}):
+        assert set(groupers.keys()).isdisjoin(set(aggregates.keys()))
+        self.groupers = groupers
+        self.aggregates = aggregates
+
+
+    def __call__(self, items):
+        pass
+
+    def validate(self, site, properties):
+        # TODO: find a way to compute properties types based on
+        # aggregates function. Maybe take a look at python3 type hints ?
+        new_props = dict(properties[name] for name in (self.groupers + self.aggregates))
+        for name, agg in self.aggregates.items():
+            new_props[agg.__name__ + name] = properties[name]
+        return new_props

@@ -94,7 +94,7 @@ class QueryNode(object):
     @property
     def alias(self):
         if self.parent and self.parent.alias:
-            return "_".join([self.parent.alias, self.property.remote_property.name])
+            return "_".join([self.parent.alias, self.property.remote_ap.name, self.property.remote_property.name])
         if self.property:
             return self.property.access_point.name
         return self.table.name
