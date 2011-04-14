@@ -159,7 +159,7 @@ def extract_properties(site, query, properties, tree):
     elif isinstance(query, kquery.QueryChain):
         for sub in query.queries:
             extract_properties(site, sub, properties, tree)
-            properties = sub.validate(site, properties)
+            properties = sub.validate(properties)
 
 
 
@@ -472,7 +472,7 @@ class Alchemy(AccessPoint):
             managed by this access_point.
             Else, we fall back on "software" joins.
         """
-        properties = kalamar_query.validate(self.site, self.properties)
+        properties = kalamar_query.validate(self.properties)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
             join, tree = self._build_join(can, self.properties)

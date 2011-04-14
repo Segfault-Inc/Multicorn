@@ -28,6 +28,7 @@ from abc import ABCMeta, abstractmethod
 from operator import itemgetter
 from kalamar.request import make_request_property
 from kalamar.item import AbstractItem
+from kalamar.property import Property
 
 from .request import normalize
 
@@ -42,7 +43,7 @@ class Query(object):
         raise NotImplementedError
 
     @abstractmethod
-    def validate(self, site, properties):
+    def validate(self, properties):
         """Validate the query."""
         raise NotImplementedError
 
@@ -79,9 +80,9 @@ class QueryChain(Query):
             items = query(items)
         return items
 
-    def validate(self, site, properties):
+    def validate(self, properties):
         for sub_query in self.queries:
-            properties = sub_query.validate(site,  properties)
+            properties = sub_query.validate(properties)
         return properties
 
     def __repr__(self):
@@ -100,7 +101,7 @@ class QueryDistinct(Query):
         return (dict(item_tuple) for item_tuple in
                 set(tuple(item.items()) for item in items))
 
-    def validate(self, site, properties):
+    def validate(self, properties):
         return properties
 
     def __str__(self):
@@ -125,7 +126,7 @@ class QueryFilter(Query):
     def __call__(self, items):
         return (item for item in items if self.condition.test(item))
 
-    def validate(self, site, properties):
+    def validate(self, properties):
         try:
             self.condition = normalize(properties, self.condition)
         except (KeyError, ValueError) as detail:
@@ -135,7 +136,7 @@ class QueryFilter(Query):
     def __str__(self):
         return "Filter: %r" % self.condition
 
-    
+
 class QueryOrder(Query):
     """Query ordering a set of items.
 
@@ -151,7 +152,7 @@ class QueryOrder(Query):
     def __init__(self, orderbys):
         super(QueryOrder, self).__init__()
         self.orderbys = orderbys
-    
+
     def __call__(self, items):
         items = list(items)
         orders = list(self.orderbys)
@@ -160,7 +161,7 @@ class QueryOrder(Query):
             items.sort(key=itemgetter(key), reverse=(not order))
         return items
 
-    def validate(self, site, properties):
+    def validate(self, properties):
         return properties
 
     def __str__(self):
@@ -182,6 +183,17 @@ class QuerySelect(Query):
 
     >>> list(select(None))
     [{'label': None}]
+
+    QuerySelect also accepts transform funcs
+
+    >>> from .func import slice
+    >>> items = [{"a": "johndoe", "b": 3}, {"a": "janedoe", "b": 5}]
+    >>> select = QuerySelect({"label": slice("a", -3)})
+    >>> list(select(items))
+    [{'label': 'john'}, {'label': 'jane'}]
+    >>> select = QuerySelect({"label": slice(slice("a", -3), [2,3])})
+    >>> list(select(items))
+    [{'label': 'h'}, {'label': 'n'}]
 
     """
     def __init__(self, mapping=None, object_mapping=None):
@@ -228,7 +240,7 @@ class QuerySelect(Query):
             else:
                 yield newitem
 
-    def validate(self, site, properties):
+    def validate(self, properties):
         new_props = {}
         for name, prop in self.mapping.items():
             if prop.name == "*":
@@ -239,7 +251,7 @@ class QuerySelect(Query):
                 try:
                     old_prop = properties[prop.name]
                 except KeyError:
-                    raise BadQueryException(self, 
+                    raise BadQueryException(self,
                             "This request has no %r property" % prop.name)
                 new_props[name] = old_prop 
         for name, sub_select in self.sub_selects.items():
@@ -249,7 +261,7 @@ class QuerySelect(Query):
             except KeyError:
                 raise BadQueryException(self, "%r is not a valid property" %
                         name)
-            new_props.update(sub_select.validate(site, child_properties))
+            new_props.update(sub_select.validate(child_properties))
         return new_props
 
     def __str__(self):
@@ -272,29 +284,71 @@ class QueryRange(Query):
     def __call__(self, items):
         return itertools.islice(items, self.range.start, self.range.stop)
 
-    def validate(self, site, properties):
+    def validate(self, properties):
         return properties
 
     def __str__(self):
         return "Range %r " % self.range
 
 
-class QueryGroupBy(Query):
+class QueryAgg(Query):
+    """Query grouping a set of items, and performing aggrefates
+    on them
+
+    >>> from .func import count, sum, max
+    >>> items = [{'a': 1, 'b': 'joe'}, {'a': 3, 'b': 'jane'}, {'a': 10,\
+            'b': 'joe'}, {'a': 5, 'b': 'jane'}]
+    >>> group = QueryAgg({'count': count()})
+    >>> list(group(items))
+    [{'count': 4}]
+    >>> group = QueryAgg({'sum_a': sum('a'), 'sum_b': sum('b')})
+    >>> props = group.validate({'a': Property(int), 'b': Property(unicode)})
+    >>> dict([(key, value.type) for key, value in props.items()])
+    {'sum_a': <type 'int'>, 'sum_b': <type 'unicode'>}
+    >>> list(group(items))
+    [{'sum_a': 19, 'sum_b': u'joejanejoejane'}]
+    >>> group = QueryAgg({'sum_a': sum('a'), 'count': count(), 'b': ''})
+    >>> props = group.validate({'a': Property(int), 'b': Property(unicode)})
+    >>> list(group(items))
+    [{'sum_a': 8, 'count': 2, 'b': 'jane'}, {'sum_a': 11, 'count': 2, 'b': 'joe'}]
+
+    """
 
 
-    def __init__(self, groupers={}, aggregates={}):
-        assert set(groupers.keys()).isdisjoin(set(aggregates.keys()))
-        self.groupers = groupers
-        self.aggregates = aggregates
-
+    def __init__(self, groupers={}):
+        self.groupers = []
+        self.aggregates = {}
+        for key, value in groupers.items():
+            if value:
+                self.aggregates[key] = value
+            else:
+                self.groupers.append(key)
+        self.key_fun = lambda x: [x[key] for key in self.groupers]
+        self.expected_properties = {}
 
     def __call__(self, items):
-        pass
+        # TODO: skip sort if possible
+        items = sorted(items, key=self.key_fun)
+        for key, group in itertools.groupby(items, self.key_fun):
+            new_item = dict(zip(self.groupers, key))
+            group = list(group)
+            new_item.update((key, value.initializer(self.expected_properties))
+                for key, value in self.aggregates.items())
+            for line in group:
+                for key, agg in self.aggregates.items():
+                    new_item[key] = agg(new_item[key], line)
+            yield new_item
 
-    def validate(self, site, properties):
+    def validate(self, properties):
         # TODO: find a way to compute properties types based on
         # aggregates function. Maybe take a look at python3 type hints ?
-        new_props = dict(properties[name] for name in (self.groupers + self.aggregates))
-        for name, agg in self.aggregates.items():
-            new_props[agg.__name__ + name] = properties[name]
+        new_props = {}
+        for key in self.groupers:
+            new_props[key] = properties[key]
+        for key, agg in self.aggregates.items():
+            new_props[key] = prop = agg.return_property(properties)
+            if not prop:
+                raise BadQueryException("Aggregate %s cannot work on %s"
+                        % (agg, properties.get(key, None)))
+        self.expected_properties = properties
         return new_props

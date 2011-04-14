@@ -322,4 +322,5 @@ PROPERTY_TYPES = {
     datetime.date: to_date,
     iter: to_iter,
     bool: bool,
+    object: lambda value: value,
     Item: lambda value: to_type(value, AbstractItem)}

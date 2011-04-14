@@ -129,7 +129,7 @@ class Site(object):
                     select_range = slice(select_range)
                 chain.append(QueryRange(select_range))
             query = QueryChain(chain)
-        query.validate(self, access_point.properties)
+        query.validate(access_point.properties)
         for line in access_point.view(query):
             for prop_name in [name for name in line if name.startswith("__")]:
                 line.pop(prop_name)

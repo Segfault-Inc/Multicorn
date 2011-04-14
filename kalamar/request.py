@@ -72,6 +72,8 @@ def make_request_property(property_name):
 
     """
     # property_name is cast to unicode to allow RequestProperty instances
+    if hasattr(property_name, "get_value"):
+        return property_name
     properties = unicode(property_name).split(".")
     properties.reverse()
     req_prop = RequestProperty(properties[0])

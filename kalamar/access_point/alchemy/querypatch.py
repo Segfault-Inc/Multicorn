@@ -56,7 +56,7 @@ def query_chain_validator(self, access_point, properties):
             access_point.site.logger.debug("In SQL : %s, In python: %s" %
                     (splitted_queries[0], splitted_queries[1]))
             return splitted_queries
-        properties = sub_query.validate(access_point.site, properties)
+        properties = sub_query.validate(properties)
     return self, None
 
 
