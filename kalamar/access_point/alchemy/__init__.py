@@ -34,6 +34,7 @@ from ...property import Property
 from ... import query as kquery
 from ...value import to_unicode
 
+
 try:
     import sqlalchemy
 except ImportError:
@@ -46,6 +47,8 @@ else:
     import sqlalchemy.exc
 
     from . import querypatch
+
+    from . import dialect
 
     SQLALCHEMYTYPES = {
         unicode: Unicode,
@@ -243,6 +246,8 @@ class Alchemy(AccessPoint):
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
+        self.dialect = dialect.get_dialect(metadata.bind)
+
 
         # We must do 3 things here:
         # - Call _column_from_prop on all props to ensure linkage with remote
@@ -294,16 +299,7 @@ class Alchemy(AccessPoint):
             value = condition.value
             if isinstance(value, AbstractItem):
                 value = value.reference_repr()
-            if condition.operator == "=":
-                return column == value
-            elif condition.operator == "!=":
-                return column != value
-            # TODO: Enhance the condition handling to manage '~='
-            # on other systems
-            elif condition.operator == "like":
-                return column.like(value)
-            else:
-                return column.op(condition.operator)(value)
+            return self.dialect.make_condition(column, condition.operator, value)
 
     def __item_from_result(self, result):
         """Create an item from a result line."""
@@ -334,14 +330,8 @@ class Alchemy(AccessPoint):
         return prop.remote_ap.loader_from_reference_repr(to_unicode(value))
 
     def search(self, request):
-        query = expression.Select(
-            None, None, from_obj=self._table, use_labels=True)
-        query.append_whereclause(self.to_alchemy_condition(request))
-        for name, prop in self.properties.items():
-            if prop.relation != "one-to-many":
-                query.append_column(prop.column.label(name))
-        execution = query.execute()
-        return (self.__item_from_result(line) for line in execution)
+        return (self.__item_from_result(line)
+                for line in self.view(kquery.QueryFilter(request)))
 
     def __to_pk_where_clause(self, item):
         """Build an alchemy condition matching this item on its pks."""
@@ -519,7 +509,12 @@ class Alchemy(AccessPoint):
             self.site.logger.debug(alchemy_query)
             result = alchemy_query.execute()
         else:
-            result = self.search(And())
+            query = expression.Select(
+                None, None, from_obj=self._table)
+            for name, prop in self.properties.items():
+                if prop.relation != "one-to-many":
+                    query.append_column(prop.column.label(name))
+            result = (self.__item_from_result(line) for line in query.execute())
         # In the generic case, reduce the conversational overhead.
         # If someone uses only a subset of the result, then build the query
         # accordingly!

@@ -23,7 +23,8 @@ Query helpers for the Alchemy access point.
 from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect
 
-from . import func
+from ...request import _AndOr
+
 
 
 # Monky-patchers are allowed to skip some arguments
@@ -77,6 +78,11 @@ def query_filter_validator(self, access_point, properties):
     from . import Alchemy
 
     cond_tree = self.condition.properties_tree
+    def check_operators(condition):
+        if isinstance(condition, _AndOr):
+            return all(check_operators(c) for c in condition.sub_requests)
+        else:
+            return condition.operator in access_point.dialect.SUPPORTED_OPERATORS
 
     def inner_manage(name, values, properties):
         """Recursive method to find wether a property can be managed from
@@ -93,7 +99,8 @@ def query_filter_validator(self, access_point, properties):
                            for new_name, values in cond_tree[name].items())
             else:
                 return False
-    if all(inner_manage(name, values, properties)
+    if check_operators(self.condition) and \
+        all(inner_manage(name, values, properties)
            for name, values in cond_tree.items()):
         return self, None
     else:
@@ -113,7 +120,7 @@ def query_select_validator(self, access_point, properties):
     def isvalid(select, properties):
         """Check if ``select`` is valid according to ``properties``."""
         for value in select.mapping.values():
-            if value.__class__ not in func.SUPPORTED_FUNCS:
+            if value.__class__ not in access_point.dialect.SUPPORTED_FUNCS:
                 return False
         for name, sub_select in select.sub_selects.items():
             remote_ap = properties[name].remote_ap

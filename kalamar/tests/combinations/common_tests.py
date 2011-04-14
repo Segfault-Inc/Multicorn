@@ -116,13 +116,22 @@ def test_one_to_many(site):
 
 @common
 def test_transform(site):
+    """Test that simple transform function work"""
     mapping = {"fname": func.slice("first_aps.name", [2,4])}
     results = list(site.view("second_ap", aliases=mapping))
     eq_(len(results), 4)
     assert all((len(res['fname']) == 2 for res in results))
+    results = list(site.view("first_ap",
+        request={"id": 4},
+        aliases={"second_ap_name": func.coalesce("second_ap.name", "(Empty)")}))
+    eq_(len(results), 1)
+    eq_(results[0]['second_ap_name'], '(Empty)')
+
+
 
 @common
 def test_aggregate(site):
+    """Test simple aggregation functions"""
     agg = {"count": func.count()}
     results = list(site.view("second_ap", aggregate=agg))
     eq_(len(results), 1)
