@@ -104,7 +104,7 @@ class AccessPoint(object):
         elif prop.type in (iter, bytes):
             return (uuid.uuid4().bytes,)
         elif prop.type == object:
-            return object()
+            return (object(),)
         else:
             return (prop.type(uuid.uuid4()),)
         # pylint: enable=E1101

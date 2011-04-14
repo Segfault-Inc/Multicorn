@@ -23,6 +23,8 @@ Query helpers for the Alchemy access point.
 from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect
 
+from . import func
+
 
 # Monky-patchers are allowed to skip some arguments
 # pylint: disable=W0613
@@ -110,6 +112,9 @@ def query_select_validator(self, access_point, properties):
 
     def isvalid(select, properties):
         """Check if ``select`` is valid according to ``properties``."""
+        for value in select.mapping.values():
+            if value.__class__ not in func.SUPPORTED_FUNCS:
+                return False
         for name, sub_select in select.sub_selects.items():
             remote_ap = properties[name].remote_ap
             if not (isinstance(remote_ap, Alchemy) and

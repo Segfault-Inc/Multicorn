@@ -291,23 +291,23 @@ class QueryRange(Query):
         return "Range %r " % self.range
 
 
-class QueryAgg(Query):
+class QueryAggregate(Query):
     """Query grouping a set of items, and performing aggrefates
     on them
 
     >>> from .func import count, sum, max
     >>> items = [{'a': 1, 'b': 'joe'}, {'a': 3, 'b': 'jane'}, {'a': 10,\
             'b': 'joe'}, {'a': 5, 'b': 'jane'}]
-    >>> group = QueryAgg({'count': count()})
+    >>> group = QueryAggregate({'count': count()})
     >>> list(group(items))
     [{'count': 4}]
-    >>> group = QueryAgg({'sum_a': sum('a'), 'sum_b': sum('b')})
+    >>> group = QueryAggregate({'sum_a': sum('a'), 'sum_b': sum('b')})
     >>> props = group.validate({'a': Property(int), 'b': Property(unicode)})
     >>> dict([(key, value.type) for key, value in props.items()])
     {'sum_a': <type 'int'>, 'sum_b': <type 'unicode'>}
     >>> list(group(items))
     [{'sum_a': 19, 'sum_b': u'joejanejoejane'}]
-    >>> group = QueryAgg({'sum_a': sum('a'), 'count': count(), 'b': ''})
+    >>> group = QueryAggregate({'sum_a': sum('a'), 'count': count(), 'b': ''})
     >>> props = group.validate({'a': Property(int), 'b': Property(unicode)})
     >>> list(group(items))
     [{'sum_a': 8, 'count': 2, 'b': 'jane'}, {'sum_a': 11, 'count': 2, 'b': 'joe'}]

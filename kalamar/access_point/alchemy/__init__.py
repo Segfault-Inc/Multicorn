@@ -162,9 +162,6 @@ def extract_properties(site, query, properties, tree):
             properties = sub.validate(properties)
 
 
-
-
-
 class Alchemy(AccessPoint):
     """Access point used to store data in a RDBMS."""
     __metadatas = {}

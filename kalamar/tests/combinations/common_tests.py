@@ -26,6 +26,7 @@ from nose.tools import eq_
 # pylint: enable=E0611
 from kalamar.request import Condition, And, Or, make_request
 from kalamar.query import QueryFilter
+from kalamar import func
 
 from .test_combinations import common
 
@@ -112,6 +113,32 @@ def test_one_to_many(site):
     request = {"first_aps.color": "blue"}
     results = list(site.view("second_ap", aliases=mapping, request=request))
     eq_(len(results), 2)
+
+@common
+def test_transform(site):
+    mapping = {"fname": func.slice("first_aps.name", [2,4])}
+    results = list(site.view("second_ap", aliases=mapping))
+    eq_(len(results), 4)
+    assert all((len(res['fname']) == 2 for res in results))
+
+@common
+def test_aggregate(site):
+    agg = {"count": func.count()}
+    results = list(site.view("second_ap", aggregate=agg))
+    eq_(len(results), 1)
+    eq_(results[0]['count'], 2)
+    agg = {"count": func.count(), "second_ap_name": ""}
+    results = list(site.view("first_ap",
+        aliases={"second_ap_name": "second_ap.name"},
+        aggregate=agg))
+    eq_(len(results), 3)
+    # "None" second_ap
+    eq_(results[0]['count'], 1)
+    # AAA
+    eq_(results[1]['count'], 2)
+    # BBB
+    eq_(results[2]['count'], 2)
+
 
 @common
 def test_many_to_one(site):

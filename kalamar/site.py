@@ -25,8 +25,8 @@ Site class. Create one for each independent site with its own configuration.
 
 import logging
 from .request import normalize, make_request, And, Condition, Or, Not
-from .query import \
-    QueryFilter, QuerySelect, QueryChain, QueryOrder, QueryRange, QueryDistinct
+from .query import QueryFilter, QuerySelect, QueryChain, QueryOrder, QueryRange,\
+    QueryDistinct, QueryAggregate
 
 
 def _translate_request(request, aliases):
@@ -97,7 +97,7 @@ class Site(object):
         access_point.bind(self, name)
 
     def view(self, access_point_name, aliases=None, request=None, order_by=None,
-             select_range=None, distinct=False, query=None):
+             select_range=None, distinct=False, aggregate=None, query=None):
         """Call :meth:`kalamar.access_point.AccessPoint.view`.
 
         If ``alias`` and ``request`` are given, a query is created from them.
@@ -122,6 +122,8 @@ class Site(object):
                 chain.append(QueryDistinct())
             if order_by is not None:
                 chain.append(QueryOrder(order_by))
+            if aggregate is not None:
+                chain.append(QueryAggregate(aggregate))
             if select_range is not None:
                 if hasattr(select_range, "__iter__"):
                     select_range = slice(*select_range)

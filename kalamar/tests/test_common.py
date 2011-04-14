@@ -31,6 +31,7 @@ from kalamar.access_point import MultipleMatchingItems, ItemDoesNotExist
 from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.value import to_unicode
+from kalamar import func
 from kalamar.access_point.alchemy import Alchemy
 from kalamar.access_point.mongo import Mongo
 from kalamar.access_point.xml import XML
@@ -350,6 +351,36 @@ def test_view_distinct(site):
     results = list(site.view("things", {"foo": "name"}, distinct=True))
     eq_(len(results), 2)
     eq_(set(item["foo"] for item in results), set(["foo", "bar"]))
+
+@common
+def test_view_transform(site):
+    """Test the select with a transfrom"""
+    results = list(site.view("things", {"foo": func.slice("name", [1,3])}))
+    eq_(len(results), 3)
+    eq_(set(item["foo"] for item in results), set(["oo", "ar"]))
+
+@common
+def test_view_aggregate(site):
+    results = list(site.view("things",
+        aggregate={'name': '', 'count': func.count()}))
+    eq_(len(results), 2)
+    eq_(results[0], {'name': 'bar', 'count': 2})
+    eq_(results[1], {'name': 'foo', 'count': 1})
+    results = list(site.view("things",
+        aggregate={'max': func.max('id')}))
+    eq_(len(results), 1)
+    eq_(results[0], {'max': 3})
+    results = list(site.view("things",
+        aggregate={'min': func.min('id')}))
+    eq_(len(results), 1)
+    eq_(results[0], {'min': 1})
+    results = list(site.view("things",
+        aggregate={'sum': func.sum('id')}))
+    eq_(len(results), 1)
+    eq_(results[0], {'sum': 6})
+    results = list(site.view("things",
+        aggregate={'sum': func.sum('name')}))
+    eq_(len(results), 1)
 
 @common
 def test_view_star_request(site):
