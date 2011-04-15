@@ -102,67 +102,6 @@ class QueryNode(object):
             return self.property.access_point.name
         return self.table.name
 
-def extract_properties_select(query, properties, tree):
-    for name, value in query.mapping.items():
-        if value.name == '*':
-            for pname, prop in properties.items():
-                if prop.relation != 'one-to-many':
-                    tree.selects.append(tree.table.c[pname].label(''.join([name, pname])))
-        else:
-            tree.selects.append(tree.table.c[value.name].label(name))
-    for name, sub_select in query.sub_selects.items():
-        prop = properties[name]
-        # If we are just fetching the identity properties, we do not
-        # need a join
-        remote_id_props_names = [fp.name
-                for fp in prop.remote_ap.identity_properties]
-        if all((submapping.name in remote_id_props_names
-            for submapping in sub_select.mapping.values()))\
-                and not sub_select.sub_selects\
-                and prop.relation != 'one-to-many':
-            for submapping in sub_select.mapping:
-                tree.selects.append(tree.table.c[name].label(submapping))
-        else:
-            # If we are taking this branch with an instance
-            assert isinstance(prop.remote_ap, Alchemy),\
-            "Not an Alchemy access point. Something went wrong during the validation"
-            node = tree.add_child(prop)
-            extract_properties_select(sub_select, prop.remote_ap.properties, node)
-
-
-def extract_properties_filter(query, properties, tree):
-    def extract_properties_from_tree(properties_tree, properties, tree):
-        for name, value in properties_tree.items():
-            # Unalias the property
-            prop = properties[name]
-            if prop.remote_ap:
-                remote_ids = prop.remote_ap.identity_properties
-                if hasattr(value, "child_property"):
-                    # If there is no descendent, or descendent is an
-                    # identity property, don't do a join
-                    if value.child_property is None:
-                        continue
-                    if value in [RequestProperty(id_prop.name)
-                            for id_prop in remote_ids]:
-                        continue
-                node = tree.add_child(prop)
-                if hasattr(value, "items"):
-                    extract_properties_from_tree(value, prop.remote_ap.properties, node)
-    extract_properties_from_tree(query.condition.properties_tree, properties,
-            tree)
-
-
-
-
-def extract_properties(site, query, properties, tree):
-    if isinstance(query, kquery.QuerySelect):
-        extract_properties_select(query, properties, tree)
-    elif isinstance(query, kquery.QueryFilter):
-        extract_properties_filter(query, properties, tree)
-    elif isinstance(query, kquery.QueryChain):
-        for sub in query.queries:
-            extract_properties(site, sub, properties, tree)
-            properties = sub.validate(properties)
 
 
 class Alchemy(AccessPoint):
@@ -389,11 +328,79 @@ class Alchemy(AccessPoint):
         whereclause = self.__to_pk_where_clause(item)
         self._table.delete().where(whereclause).execute()
 
+    def extract_properties_select(self, query, properties, tree):
+        def append_select(tree, property, column, name):
+            selectable = self.dialect.SUPPORTED_FUNCS[property.__class__](
+                    column, property)
+            tree.selects.append(selectable.label(name))
+
+        for name, value in query.mapping.items():
+            if value.name == '*':
+                for pname, prop in properties.items():
+                    if prop.relation != 'one-to-many':
+                        append_select(tree, value, tree.table.c[pname], ''.join([name, pname]))
+            else:
+                append_select(tree, value, tree.table.c[value.name], name)
+        for name, sub_select in query.sub_selects.items():
+            prop = properties[name]
+            # If we are just fetching the identity properties, we do not
+            # need a join
+            remote_id_props_names = [fp.name
+                    for fp in prop.remote_ap.identity_properties]
+            if all((submapping.name in remote_id_props_names
+                for submapping in sub_select.mapping.values()))\
+                    and not sub_select.sub_selects\
+                    and prop.relation != 'one-to-many':
+                for submapping, prop in sub_select.mapping.items():
+                    append_select(tree, prop, tree.table.c[name], submapping)
+            else:
+                # If we are taking this branch with an instance
+                assert isinstance(prop.remote_ap, Alchemy),\
+                "Not an Alchemy access point. Something went wrong during the validation"
+                node = tree.add_child(prop)
+                self.extract_properties_select(sub_select, prop.remote_ap.properties, node)
+
+
+    def extract_properties_filter(self, query, properties, tree):
+        def extract_properties_from_tree(properties_tree, properties, tree):
+            for name, value in properties_tree.items():
+                # Unalias the property
+                prop = properties[name]
+                if prop.remote_ap:
+                    remote_ids = prop.remote_ap.identity_properties
+                    if hasattr(value, "child_property"):
+                        # If there is no descendent, or descendent is an
+                        # identity property, don't do a join
+                        if value.child_property is None:
+                            continue
+                        if value in [RequestProperty(id_prop.name)
+                                for id_prop in remote_ids]:
+                            continue
+                    node = tree.add_child(prop)
+                    if hasattr(value, "items"):
+                        extract_properties_from_tree(value, prop.remote_ap.properties, node)
+        extract_properties_from_tree(query.condition.properties_tree, properties,
+                tree)
+
+
+
+
+    def extract_properties(self, query, properties, tree):
+        if isinstance(query, kquery.QuerySelect):
+            self.extract_properties_select(query, properties, tree)
+        elif isinstance(query, kquery.QueryFilter):
+            self.extract_properties_filter(query, properties, tree)
+        elif isinstance(query, kquery.QueryChain):
+            for sub in query.queries:
+                self.extract_properties(sub, properties, tree)
+                properties = sub.validate(properties)
+
+
     def _build_join(self, query, properties):
         tree = QueryNode()
         tree.table = self._table
         # Build the tree
-        extract_properties(self.site, query, properties, tree)
+        self.extract_properties(query, properties, tree)
         def inner_build_join(join, tree):
             for name, node in tree.children.items():
                 if node.property:
@@ -469,12 +476,14 @@ class Alchemy(AccessPoint):
             order_queries = []
             range_queries = []
             distinct_queries = []
+            aggregates_queries = []
             alchemy_conditions = []
             if isinstance(can, kquery.QueryChain):
                 filter_queries = [query for query in can.queries if isinstance(query, kquery.QueryFilter)]
                 order_queries = [query for query in can.queries if isinstance(query, kquery.QueryOrder)]
                 range_queries = [query for query in can.queries if isinstance(query, kquery.QueryRange)]
                 distinct_queries = [query for query in can.queries if isinstance(query, kquery.QueryDistinct)]
+                aggregates_queries = [query for query in can.queries if isinstance(query, kquery.QueryAggregate)]
             elif isinstance(can, kquery.QueryFilter):
                 filter_queries.append(can)
             elif isinstance(can, kquery.QueryOrder):
@@ -483,6 +492,8 @@ class Alchemy(AccessPoint):
                 range_queries.append(can)
             elif isinstance(can, kquery.QueryDistinct):
                 distinct_queries.append(can)
+            elif isinstance(can, kquery.QueryAggregates):
+                aggregates_queries.append(can)
             for query in filter_queries:
                alchemy_conditions.append(self._build_where(query.condition, tree))
             alchemy_query = expression.select(columns=self._build_select(tree), from_obj=join)
@@ -494,6 +505,18 @@ class Alchemy(AccessPoint):
                 for key, reverse in orderq.orderbys:
                     alchemy_query = alchemy_query.order_by(
                         expression.asc(key) if reverse else expression.desc(key))
+            for agg in aggregates_queries:
+                new_columns = []
+                alchemy_query = alchemy_query.group_by(*agg.groupers)
+                old_columns = dict((elem.name, elem)
+                        for elem in alchemy_query._raw_columns)
+                for grouper in agg.groupers:
+                    # Keep grouper columns
+                    new_columns.append(old_columns[grouper])
+                for key, value in agg.aggregates.items():
+                    gen_agg = self.dialect.SUPPORTED_AGGREGATES[value.__class__]
+                    new_columns.append(gen_agg(old_columns, key, value))
+                alchemy_query = alchemy_query.with_only_columns(new_columns)
             for rangeq in range_queries:
                 if rangeq.range.start:
                     alchemy_query = alchemy_query.offset(rangeq.range.start)

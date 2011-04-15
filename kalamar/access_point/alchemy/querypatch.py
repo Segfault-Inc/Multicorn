@@ -21,7 +21,7 @@ Query helpers for the Alchemy access point.
 """
 
 from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
-    QueryRange, QuerySelect
+    QueryRange, QuerySelect, QueryAggregate
 
 from ...request import _AndOr
 
@@ -41,7 +41,7 @@ def query_chain_validator(self, access_point, properties):
 
     """
     last_seen = None
-    orders = [None, QuerySelect, QueryFilter, QueryDistinct, QueryOrder, QueryRange]
+    orders = [None, QuerySelect, QueryFilter, QueryDistinct, QueryOrder, QueryAggregate, QueryRange]
     for index, sub_query in enumerate(self.queries):
         splitted_queries = [QueryChain(sublist) if sublist else None
                 for sublist in (self.queries[:index], self.queries[index:])]
@@ -136,6 +136,9 @@ def query_select_validator(self, access_point, properties):
     else:
         return None, self
 
+def query_aggregate_validator(self, access_point, properties):
+    # Assume its valid
+    return self, None
 
 
 
@@ -145,6 +148,7 @@ QueryFilter.alchemy_validate = query_filter_validator
 QueryOrder.alchemy_validate = standard_validator
 QueryRange.alchemy_validate = standard_validator
 QuerySelect.alchemy_validate = query_select_validator
+QueryAggregate.alchemy_validate = query_aggregate_validator
 
 
 # pylint: enable=W0613
