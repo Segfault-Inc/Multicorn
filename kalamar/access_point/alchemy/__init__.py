@@ -459,6 +459,8 @@ class Alchemy(AccessPoint):
             managed by this access_point.
             Else, we fall back on "software" joins.
         """
+        # Initialize the table before anything
+        self._table
         properties = kalamar_query.validate(self.properties)
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
