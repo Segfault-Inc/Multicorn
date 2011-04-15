@@ -492,7 +492,7 @@ class Alchemy(AccessPoint):
                 range_queries.append(can)
             elif isinstance(can, kquery.QueryDistinct):
                 distinct_queries.append(can)
-            elif isinstance(can, kquery.QueryAggregates):
+            elif isinstance(can, kquery.QueryAggregate):
                 aggregates_queries.append(can)
             for query in filter_queries:
                alchemy_conditions.append(self._build_where(query.condition, tree))
@@ -507,9 +507,10 @@ class Alchemy(AccessPoint):
                         expression.asc(key) if reverse else expression.desc(key))
             for agg in aggregates_queries:
                 new_columns = []
-                alchemy_query = alchemy_query.group_by(*agg.groupers)
                 old_columns = dict((elem.name, elem)
                         for elem in alchemy_query._raw_columns)
+                groupers = [ col for name, col in old_columns.items() if name in agg.groupers]
+                alchemy_query = alchemy_query.group_by(*groupers)
                 for grouper in agg.groupers:
                     # Keep grouper columns
                     new_columns.append(old_columns[grouper])

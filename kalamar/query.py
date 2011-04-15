@@ -348,7 +348,7 @@ class QueryAggregate(Query):
         for key, agg in self.aggregates.items():
             new_props[key] = prop = agg.return_property(properties)
             if not prop:
-                raise BadQueryException("Aggregate %s cannot work on %s"
+                raise BadQueryException(self, "Aggregate %s cannot work on %s"
                         % (agg, properties.get(key, None)))
         self.expected_properties = properties
         return new_props
