@@ -47,6 +47,9 @@ class Query(object):
         """Validate the query."""
         raise NotImplementedError
 
+    def __or__(self, other):
+        return QueryChain([self, other])
+
 
 class BadQueryException(Exception):
     """Exception raised when a query cannot be validated."""
@@ -84,6 +87,10 @@ class QueryChain(Query):
         for sub_query in self.queries:
             properties = sub_query.validate(properties)
         return properties
+
+    def __or__(self, other):
+        self.queries.append(other)
+        return self
 
     def __repr__(self):
         return "\n-->".join([str(sub) for sub in self.queries])
@@ -310,7 +317,7 @@ class QueryAggregate(Query):
     >>> group = QueryAggregate({'sum_a': sum('a'), 'count': count(), 'b': ''})
     >>> props = group.validate({'a': Property(int), 'b': Property(unicode)})
     >>> list(group(items))
-    [{'sum_a': 8, 'count': 2, 'b': 'jane'}, {'sum_a': 11, 'count': 2, 'b': 'joe'}]
+    [{'sum_a': 8, 'count': 2, u'b': 'jane'}, {'sum_a': 11, 'count': 2, u'b': 'joe'}]
 
     """
 
@@ -322,15 +329,15 @@ class QueryAggregate(Query):
             if value:
                 self.aggregates[key] = value
             else:
-                self.groupers.append(key)
-        self.key_fun = lambda x: [x[key] for key in self.groupers]
+                self.groupers.append(make_request_property(key))
+        self.key_fun = lambda x: [key.get_value(x) for key in self.groupers]
         self.expected_properties = {}
 
     def __call__(self, items):
         # TODO: skip sort if possible
         items = sorted(items, key=self.key_fun)
         for key, group in itertools.groupby(items, self.key_fun):
-            new_item = dict(zip(self.groupers, key))
+            new_item = dict(zip((grouper.name for grouper in self.groupers), key))
             group = list(group)
             new_item.update((key, value.initializer(self.expected_properties))
                 for key, value in self.aggregates.items())
@@ -344,7 +351,7 @@ class QueryAggregate(Query):
         # aggregates function. Maybe take a look at python3 type hints ?
         new_props = {}
         for key in self.groupers:
-            new_props[key] = properties[key]
+            new_props[key.name] = properties[key.name]
         for key, agg in self.aggregates.items():
             new_props[key] = prop = agg.return_property(properties)
             if not prop:
@@ -352,3 +359,10 @@ class QueryAggregate(Query):
                         % (agg, properties.get(key, None)))
         self.expected_properties = properties
         return new_props
+
+select = QuerySelect
+filter = QueryFilter
+range = QueryRange
+sort = QueryOrder
+aggregate = QueryAggregate
+distinct = QueryDistinct

@@ -32,6 +32,7 @@ from kalamar.item import MultiDict
 from kalamar.request import Condition, Or
 from kalamar.value import to_unicode
 from kalamar import func
+from kalamar import query as q
 from kalamar.access_point.alchemy import Alchemy
 from kalamar.access_point.mongo import Mongo
 from kalamar.access_point.xml import XML
@@ -381,6 +382,15 @@ def test_view_aggregate(site):
     results = list(site.view("things",
         aggregate={'sum': func.sum('name')}))
     eq_(len(results), 1)
+
+@common
+def test_filter_aggregate(site):
+    query =  q.aggregate({'name': '', 'count': func.count()})\
+            |q.filter(Condition('count', '>', 1))
+    results = list(site.view('things', query=query))
+    eq_(len(results), 1)
+    eq_(results[0], {'name': 'bar', 'count': 2})
+
 
 @common
 def test_view_star_request(site):

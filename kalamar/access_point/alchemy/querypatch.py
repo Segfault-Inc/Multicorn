@@ -23,9 +23,13 @@ Query helpers for the Alchemy access point.
 from ...query import QueryChain, QueryDistinct, QueryFilter, QueryOrder, \
     QueryRange, QuerySelect, QueryAggregate
 
-from ...request import _AndOr
+from sqlalchemy.sql import expression
+from ...request import _AndOr, Condition, And, Or, Not, RequestProperty
 
+from ...item import AbstractItem
 
+class QueryHaving(QueryFilter):
+    pass
 
 # Monky-patchers are allowed to skip some arguments
 # pylint: disable=W0613
@@ -41,12 +45,16 @@ def query_chain_validator(self, access_point, properties):
 
     """
     last_seen = None
-    orders = [None, QuerySelect, QueryFilter, QueryDistinct, QueryOrder, QueryAggregate, QueryRange]
+    orders = [None, QuerySelect, QueryHaving, QueryFilter, QueryDistinct, QueryOrder, QueryAggregate, QueryRange]
     for index, sub_query in enumerate(self.queries):
         splitted_queries = [QueryChain(sublist) if sublist else None
                 for sublist in (self.queries[:index], self.queries[index:])]
         if sub_query.__class__ in orders:
-            if orders.index(sub_query.__class__) < orders.index(last_seen):
+            # Specific case: a "Filter" following an "Aggregate" should
+            # result in a 'having' clause
+            if sub_query.__class__ == QueryFilter and last_seen == QueryAggregate:
+                self.queries[index] = sub_query = QueryHaving(sub_query.condition)
+            elif orders.index(sub_query.__class__) < orders.index(last_seen):
                 access_point.site.logger.debug("In SQL : %s, In python: %s" %
                         (splitted_queries[0], splitted_queries[1]))
                 return splitted_queries
@@ -62,6 +70,11 @@ def query_chain_validator(self, access_point, properties):
         properties = sub_query.validate(properties)
     return self, None
 
+
+def query_chain_to_alchemy(self, access_point, tree, alchemy_query):
+    for query in self.queries:
+        alchemy_query = query.to_alchemy(access_point, tree, alchemy_query)
+    return alchemy_query
 
 def standard_validator(self, access_point, properties):
     """Validator for query types which can always be managed by SQLAlchemy."""
@@ -106,7 +119,9 @@ def query_filter_validator(self, access_point, properties):
     else:
         return None, self
 
-
+def query_filter_to_alchemy(self, access_point, tree, alchemy_query):
+    alchemy_query.append_whereclause(_build_where(access_point, self.condition, tree))
+    return alchemy_query
 
 def query_select_validator(self, access_point, properties):
     """Validate that the query select can be managed from SQLAlchemy.
@@ -136,10 +151,75 @@ def query_select_validator(self, access_point, properties):
     else:
         return None, self
 
+def query_select_to_alchemy(self, access_point, tree, alchemy_query):
+    return alchemy_query
+
 def query_aggregate_validator(self, access_point, properties):
     # Assume its valid
     return self, None
 
+def query_aggregate_to_alchemy(self, access_point, tree, alchemy_query):
+    new_columns = []
+    old_columns = dict((elem.name, elem) for elem in alchemy_query._raw_columns)
+    groupers = [ col for name, col in old_columns.items()
+            if name in (group.name for group in self.groupers)]
+    alchemy_query = alchemy_query.group_by(*groupers)
+    for grouper in self.groupers:
+        # Keep grouper columns
+        new_columns.append(old_columns.get(grouper.name, grouper.name))
+    for key, value in self.aggregates.items():
+        gen_agg = access_point.dialect.SUPPORTED_AGGREGATES[value.__class__]
+        new_columns.append(gen_agg(old_columns, key, value))
+    return alchemy_query.with_only_columns(new_columns)
+
+
+def _make_condition(condition, column):
+    value = condition.value
+    if isinstance(value, AbstractItem):
+        # TODO: manage multiple foreign key
+        value = value.reference_repr()
+    if condition.operator == "=":
+        return column == value
+    elif condition.operator == "!=":
+        return column != value
+    else:
+        return column.op(condition.operator)(value)
+
+
+
+def _build_where(access_point, condition, tree):
+    if isinstance(condition, (And, Or, Not)):
+        alchemy_conditions = tuple(
+            _build_where(access_point, sub_condition, tree)
+            for sub_condition in condition.sub_requests)
+        return condition.alchemy_function(alchemy_conditions)
+    else:
+        prop = condition.property
+        column = tree.find_table(prop)
+        assert column is not None, "Something went wrong during the validation"
+        return _make_condition(condition, column)
+
+
+def query_range_to_alchemy(self, access_point, tree, alchemy_query):
+    if self.range.start:
+        alchemy_query = alchemy_query.offset(self.range.start)
+    if self.range.stop:
+        alchemy_query = alchemy_query.limit(
+            self.range.stop - (self.range.start or 0))
+    return alchemy_query
+
+def query_order_to_alchemy(self, access_point, tree, alchemy_query):
+    for key, reverse in self.orderbys:
+        alchemy_query = alchemy_query.order_by(
+            expression.asc(key) if reverse else expression.desc(key))
+    return alchemy_query
+
+def query_having_to_alchemy(self, access_point, tree, alchemy_query):
+    selectable = alchemy_query.c[self.condition.property.name].proxies[0]
+    return alchemy_query.having(_make_condition(self.condition, selectable))
+
+def query_distinct_to_alchemy(self, access_point, tree, alchemy_query):
+    return alchemy_query.distinct()
 
 
 QueryChain.alchemy_validate = query_chain_validator
@@ -150,5 +230,14 @@ QueryRange.alchemy_validate = standard_validator
 QuerySelect.alchemy_validate = query_select_validator
 QueryAggregate.alchemy_validate = query_aggregate_validator
 
+
+QueryChain.to_alchemy = query_chain_to_alchemy
+QueryFilter.to_alchemy = query_filter_to_alchemy
+QuerySelect.to_alchemy = query_select_to_alchemy
+QueryOrder.to_alchemy = query_order_to_alchemy
+QueryRange.to_alchemy = query_range_to_alchemy
+QueryHaving.to_alchemy = query_having_to_alchemy
+QueryDistinct.to_alchemy = query_distinct_to_alchemy
+QueryAggregate.to_alchemy = query_aggregate_to_alchemy
 
 # pylint: enable=W0613

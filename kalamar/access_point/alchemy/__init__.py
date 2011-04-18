@@ -28,7 +28,6 @@ from datetime import datetime, date
 from decimal import Decimal
 
 from .. import AccessPoint
-from ...item import AbstractItem, Item
 from ...request import Condition, And, Or, Not, RequestProperty
 from ...property import Property
 from ... import query as kquery
@@ -101,6 +100,29 @@ class QueryNode(object):
         if self.property:
             return self.property.access_point.name
         return self.table.name
+
+    def find_table(self, property):
+        if property.child_property:
+           return self.children[property.name].find_table(property.child_property)
+        matching = filter(lambda x: x.name == property.name, self.selects)
+        name = None
+        if matching:
+            name = matching[0]._element.name
+        if self.property == property:
+            name = property.name
+        if name:
+            return self.table.c[name]
+        # Bruteforce on aliases
+        for child in self.children.values():
+            col = child.find_table(property)
+            if col is not None:
+                return col
+        if self.property and property.name in (prop.name
+                for prop in self.property.remote_ap.identity_properties):
+            return self.table.c[property.name]
+        if self.property is None:
+            return self.table.c[property.name]
+
 
 
 
@@ -226,20 +248,6 @@ class Alchemy(AccessPoint):
         else:
             return prop.column
 
-    def to_alchemy_condition(self, condition):
-        """Convert a kalamar condition to an sqlalchemy condition."""
-        if isinstance(condition, (And, Or, Not)):
-            alchemy_conditions = tuple(
-                self.to_alchemy_condition(sub_condition)
-                for sub_condition in condition.sub_requests)
-            return condition.alchemy_function(alchemy_conditions)
-        else:
-            column = self._get_column(condition.property.name)
-            value = condition.value
-            if isinstance(value, AbstractItem):
-                value = value.reference_repr()
-            return self.dialect.make_condition(column, condition.operator, value)
-
     def __item_from_result(self, result):
         """Create an item from a result line."""
         lazy_props = {}
@@ -274,9 +282,11 @@ class Alchemy(AccessPoint):
 
     def __to_pk_where_clause(self, item):
         """Build an alchemy condition matching this item on its pks."""
-        return self.to_alchemy_condition(And(*[
+        tree = QueryNode()
+        tree.table = self._table
+        return querypatch._build_where(self, And(*[
                     Condition(prop.name, "=", item[prop.name])
-                    for prop in self.identity_properties]))
+                    for prop in self.identity_properties]), tree)
 
     def __transform_to_table(self, item):
         """Transform an item to a dict so that it can be saved."""
@@ -360,6 +370,13 @@ class Alchemy(AccessPoint):
                 node = tree.add_child(prop)
                 self.extract_properties_select(sub_select, prop.remote_ap.properties, node)
 
+    def extract_properties_aggregate(self, query, properties, tree):
+        for grouper in query.groupers:
+            col = tree.find_table(grouper)
+            if col is not None and col not in tree.selects:
+                selectable = self.dialect.SUPPORTED_FUNCS[grouper.__class__](
+                    col, grouper)
+                tree.selects.append(selectable.label(grouper.name))
 
     def extract_properties_filter(self, query, properties, tree):
         def extract_properties_from_tree(properties_tree, properties, tree):
@@ -382,14 +399,13 @@ class Alchemy(AccessPoint):
         extract_properties_from_tree(query.condition.properties_tree, properties,
                 tree)
 
-
-
-
     def extract_properties(self, query, properties, tree):
         if isinstance(query, kquery.QuerySelect):
             self.extract_properties_select(query, properties, tree)
-        elif isinstance(query, kquery.QueryFilter):
+        elif query.__class__ ==  kquery.QueryFilter:
             self.extract_properties_filter(query, properties, tree)
+        elif isinstance(query, kquery.QueryAggregate):
+            self.extract_properties_aggregate(query, properties, tree)
         elif isinstance(query, kquery.QueryChain):
             for sub in query.queries:
                 self.extract_properties(sub, properties, tree)
@@ -413,49 +429,6 @@ class Alchemy(AccessPoint):
         query = inner_build_join(self._table, tree)
         return query, tree
 
-    def _build_where(self, condition, tree):
-        def find_table(property, tree):
-            if property.child_property:
-               return find_table(property.child_property, tree.children[property.name])
-            matching = filter(lambda x: x.name == property.name, tree.selects)
-            name = None
-            if matching:
-                name = matching[0]._element.name
-            if tree.property == property:
-                name = property.name
-            if name:
-                return tree.table.c[name]
-            # Bruteforce on aliases
-            for child in tree.children.values():
-                col = find_table(property, child)
-                if col is not None:
-                    return col
-            if tree.property and property.name in (prop.name
-                    for prop in tree.property.remote_ap.identity_properties):
-                return tree.table.c[property.name]
-            if tree.property is None:
-                return tree.table.c[property.name]
-
-        if isinstance(condition, (And, Or, Not)):
-            alchemy_conditions = tuple(
-                self._build_where(sub_condition, tree)
-                for sub_condition in condition.sub_requests)
-            return condition.alchemy_function(alchemy_conditions)
-        else:
-            prop = condition.property
-            column = find_table(prop, tree)
-            assert column is not None, "Something went wrong during the validation"
-            value = condition.value
-            if isinstance(value, AbstractItem):
-                # TODO: manage multiple foreign key
-                value = value.reference_repr()
-            if condition.operator == "=":
-                return column == value
-            elif condition.operator == "!=":
-                return column != value
-            else:
-                return column.op(condition.operator)(value)
-
     def _build_select(self, tree):
         return reduce(list.__add__, (self._build_select(child)
             for child in tree.children.values()), tree.selects)
@@ -472,60 +445,10 @@ class Alchemy(AccessPoint):
         can, cants = kalamar_query.alchemy_validate(self, self.properties)
         if can:
             join, tree = self._build_join(can, self.properties)
-            filter_queries = []
-            order_queries = []
-            range_queries = []
-            distinct_queries = []
-            aggregates_queries = []
-            alchemy_conditions = []
-            if isinstance(can, kquery.QueryChain):
-                filter_queries = [query for query in can.queries if isinstance(query, kquery.QueryFilter)]
-                order_queries = [query for query in can.queries if isinstance(query, kquery.QueryOrder)]
-                range_queries = [query for query in can.queries if isinstance(query, kquery.QueryRange)]
-                distinct_queries = [query for query in can.queries if isinstance(query, kquery.QueryDistinct)]
-                aggregates_queries = [query for query in can.queries if isinstance(query, kquery.QueryAggregate)]
-            elif isinstance(can, kquery.QueryFilter):
-                filter_queries.append(can)
-            elif isinstance(can, kquery.QueryOrder):
-                order_queries.append(can)
-            elif isinstance(can, kquery.QueryRange):
-                range_queries.append(can)
-            elif isinstance(can, kquery.QueryDistinct):
-                distinct_queries.append(can)
-            elif isinstance(can, kquery.QueryAggregate):
-                aggregates_queries.append(can)
-            for query in filter_queries:
-               alchemy_conditions.append(self._build_where(query.condition, tree))
             alchemy_query = expression.select(columns=self._build_select(tree), from_obj=join)
             for select in self._build_select(tree):
                 alchemy_query.append_column(select)
-            for where in alchemy_conditions:
-                alchemy_query.append_whereclause(where)
-            for orderq in order_queries:
-                for key, reverse in orderq.orderbys:
-                    alchemy_query = alchemy_query.order_by(
-                        expression.asc(key) if reverse else expression.desc(key))
-            for agg in aggregates_queries:
-                new_columns = []
-                old_columns = dict((elem.name, elem)
-                        for elem in alchemy_query._raw_columns)
-                groupers = [ col for name, col in old_columns.items() if name in agg.groupers]
-                alchemy_query = alchemy_query.group_by(*groupers)
-                for grouper in agg.groupers:
-                    # Keep grouper columns
-                    new_columns.append(old_columns[grouper])
-                for key, value in agg.aggregates.items():
-                    gen_agg = self.dialect.SUPPORTED_AGGREGATES[value.__class__]
-                    new_columns.append(gen_agg(old_columns, key, value))
-                alchemy_query = alchemy_query.with_only_columns(new_columns)
-            for rangeq in range_queries:
-                if rangeq.range.start:
-                    alchemy_query = alchemy_query.offset(rangeq.range.start)
-                if rangeq.range.stop:
-                    alchemy_query = alchemy_query.limit(
-                        rangeq.range.stop - (rangeq.range.start or 0))
-            if distinct_queries:
-                alchemy_query = alchemy_query.distinct()
+            alchemy_query = can.to_alchemy(self, tree, alchemy_query)
             # If no column were added to the select clause, select
             # everything
             if not alchemy_query.c:
