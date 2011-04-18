@@ -109,7 +109,7 @@ def query_filter_validator(self, access_point, properties):
             if isinstance(remote_ap, Alchemy) \
                     and access_point.url == remote_ap.url:
                 return all(inner_manage(new_name, values, remote_ap.properties)
-                           for new_name, values in cond_tree[name].items())
+                           for new_name, values in values.items())
             else:
                 return False
     if check_operators(self.condition) and \

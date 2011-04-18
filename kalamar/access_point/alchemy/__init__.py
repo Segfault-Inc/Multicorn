@@ -105,13 +105,10 @@ class QueryNode(object):
         if property.child_property:
            return self.children[property.name].find_table(property.child_property)
         matching = filter(lambda x: x.name == property.name, self.selects)
-        name = None
         if matching:
-            name = matching[0]._element.name
+            return matching[0]._element
         if self.property == property:
-            name = property.name
-        if name:
-            return self.table.c[name]
+            return self.table.c[property.name]
         # Bruteforce on aliases
         for child in self.children.values():
             col = child.find_table(property)
