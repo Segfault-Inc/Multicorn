@@ -1,7 +1,7 @@
 from ... import func
 from ... request import RequestProperty
 from sqlalchemy.dialects.postgresql.base import PGDialect
-from sqlalchemy.sql import functions as sqlfunctions
+from sqlalchemy.sql import func as sqlfunctions
 
 
 def get_dialect(engine):
@@ -48,11 +48,11 @@ class AlchemyDialect(object):
                 return column.op(operator)(value)
 
 
-class PostGresDialect(object):
+class PostGresDialect(AlchemyDialect):
 
     SUPPORTED_OPERATORS = AlchemyDialect.SUPPORTED_OPERATORS + ["~=", "~!="]
 
     def __init__(self):
         self.SUPPORTED_FUNCS.update({
-            func.slice:lambda col, func:
-                sqlfunctions.substr(col, slice.start, slice.stop - slice.start)})
+            func.slice:lambda col, slicefun:
+                sqlfunctions.substr(col, slicefun.range.start, slicefun.range.stop - slicefun.range.start + 1)})

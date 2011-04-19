@@ -55,16 +55,18 @@ def query_chain_validator(self, access_point, properties):
             if sub_query.__class__ == QueryFilter and last_seen == QueryAggregate:
                 self.queries[index] = sub_query = QueryHaving(sub_query.condition)
             elif orders.index(sub_query.__class__) < orders.index(last_seen):
-                access_point.site.logger.debug("In SQL : %s, In python: %s" %
+                access_point.site.logger.warning("In SQL : %s, In python: %s" %
                         (splitted_queries[0], splitted_queries[1]))
                 return splitted_queries
             last_seen = sub_query.__class__
         else:
+            access_point.site.logger.warning("In SQL : %s, In python: %s" %
+                        (splitted_queries[0], splitted_queries[1]))
             return splitted_queries
         managed, not_managed = sub_query.alchemy_validate(
             access_point, properties)
         if not_managed is not None:
-            access_point.site.logger.debug("In SQL : %s, In python: %s" %
+            access_point.site.logger.warning("In SQL : %s, In python: %s" %
                     (splitted_queries[0], splitted_queries[1]))
             return splitted_queries
         properties = sub_query.validate(properties)

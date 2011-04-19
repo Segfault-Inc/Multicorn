@@ -204,7 +204,7 @@ class Alchemy(AccessPoint):
             metadata.bind = engine
             Alchemy.__metadatas[self.url] = metadata
         self.metadata = metadata
-        self.dialect = dialect.get_dialect(metadata.bind)
+        self.dialect = dialect.get_dialect(metadata.bind.dialect)
 
 
         # We must do 3 things here:
