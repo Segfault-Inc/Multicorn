@@ -395,8 +395,11 @@ def test_filter_aggregate(site):
 def test_transform_fun(site):
     results = list(site.view('things', {
         'doubleid': func.addition('id', 'id'),
+        'id_plus_one': func.addition('id', func.constant(1)),
         'squaredid': func.product('id', 'id'),
         'one': func.division('id', 'id'),
+        'one_alternative': func.constant(1),
+        'test': func.constant('test'),
         'zero': func.substraction('id', 'id'),
         'name': 'name',
         'UPPER': func.upper('name'),
@@ -407,9 +410,12 @@ def test_transform_fun(site):
     assert all([x['doubleid'] == 2 * x['id'] for x in results])
     assert all([x['squaredid'] == x['id'] * x['id'] for x in results])
     assert all([x['one'] == 1 for x in results])
+    assert all([x['one_alternative'] == 1 for x in results])
     assert all([x['zero'] == 0 for x in results])
     assert all([x['UPPER'] == x['name'].upper() for x in results])
     assert all([x['lower'] == x['name'].lower() for x in results])
+    assert all([x['test'] == 'test' for x in results])
+    assert all([x['id_plus_one'] == x['id'] + 1 for x in results])
 
 
 @common

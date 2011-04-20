@@ -17,6 +17,7 @@ class base_func(object):
 
 
 
+
 class transform_func(base_func, RequestProperty):
 
 
@@ -119,6 +120,29 @@ class coalesce(transform_func):
             return self.replacement
         return value
 
+class constant(transform_func):
+
+    def __init__(self, constant):
+        self.constant = constant
+
+    def _copy(self):
+        return self.__class__(self.constant)
+
+    def get_value(self, Item):
+        return self.constant
+
+    def return_property(self, value):
+        return Property(type(self.constant))
+
+    @property
+    def name(self):
+        return "constant(%s)" % self.constant
+
+    @property
+    def child_property(self):
+       return None
+
+
 class upper(transform_func):
 
     def __call__(self, value):
@@ -176,26 +200,25 @@ class multi_column_transform(transform_func):
     def child_property(self):
         return None
 
-class product(multi_column_transform):
+class standard_operator_func(multi_column_transform):
 
     def get_value(self, item):
-        return reduce(operator.__mul__, [property.get_value(item)
+        return reduce(self.OPERATOR, [property.get_value(item)
             for property in self.properties])
 
-class addition(multi_column_transform):
 
-    def get_value(self, item):
-        return reduce(operator.__add__, [property.get_value(item)
-            for property in self.properties])
+class product(standard_operator_func):
 
-class substraction(multi_column_transform):
+    OPERATOR = operator.__mul__
 
-    def get_value(self, item):
-        return reduce(operator.__sub__, [property.get_value(item)
-            for property in self.properties])
+class addition(standard_operator_func):
 
-class division(multi_column_transform):
+    OPERATOR = operator.__add__
 
-    def get_value(self, item):
-        return reduce(operator.__div__, [property.get_value(item)
-            for property in self.properties])
+class substraction(standard_operator_func):
+
+    OPERATOR = operator.__sub__
+
+class division(standard_operator_func):
+
+    OPERATOR = operator.__div__
