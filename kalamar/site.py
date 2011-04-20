@@ -42,16 +42,22 @@ def _translate_request(request, aliases):
     elif isinstance(request, Condition):
         name = repr(request.property)
         if name in aliases:
-            return Condition(
-                aliases.get(name, name), request.operator, request.value)
+            # The complete path has already been selected,
+            # Let's use the alias instead !
+            new_name = aliases.get(name, name)
+            request.property.name = new_name
+            request.property.child_property = None
+            return request
         elif name in aliases.values():
-            return Condition(name, request.operator, request.value)
+            return request
         elif ".".join(name.split(".")[:-1] + ["*"]) in aliases:
             return request
         else:
             new_name = "__%s" % name.replace(".", "_")
             aliases[name] = new_name
-            return Condition(new_name, request.operator, request.value)
+            request.property.name = new_name
+            request.property.child_property = None
+            return request
 
 
 def _delegate_to_acces_point(method_name, first_arg_is_a_request=False):

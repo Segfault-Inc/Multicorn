@@ -65,12 +65,12 @@ class Mongo(AccessPoint):
             item = {}
             for prop in self.properties.values():
                 if prop.relation != "one-to-many":
-                    item[prop.name] = mongo_item[prop.nosql_name] 
+                    item[prop.name] = mongo_item[prop.nosql_name]
             item = self.create(item)
             if request.test(item):
                 item.saved = True
                 yield item
-                    
+
     def delete(self, item):
         nosql_dict = {}
         for key, value in item.items():

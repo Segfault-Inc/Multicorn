@@ -108,16 +108,6 @@ def normalize(properties, request):
     Raises an exception if the property is not supplied or if it can't be cast.
 
     """
-    def _remote_cast(request_property, root_property, value):
-        """Recursively cast ``value``."""
-        if request_property.child_property:
-            name = request_property.child_property.name
-            return _remote_cast(
-                request_property.child_property,
-                root_property.remote_ap.properties[name], value)
-        else:
-            return root_property.cast((value,))[0]
-
     def _inner_normalize(request):
         """Recursively normalize ``request``."""
         if isinstance(request, (And, Or)):
@@ -131,8 +121,8 @@ def normalize(properties, request):
             if root not in properties:
                 raise KeyError(
                     "This access point has no %r property." % root)
-            value = _remote_cast(
-                request.property, properties[root], request.value)
+            return_property = request.property.return_property(properties)
+            value = return_property.cast((request.value,))[0]
             return Condition(request.property, request.operator, value)
     return _inner_normalize(make_request(request)).simplify()
 
@@ -249,6 +239,9 @@ class RequestProperty(object):
         return isinstance(other, self.__class__) and \
             self.__hash__() == other.__hash__()
 
+    def return_property(self, properties):
+        return properties.get(self.name, None)
+
 
 class ComposedRequestProperty(RequestProperty):
     """Nested property from an item.
@@ -263,13 +256,24 @@ class ComposedRequestProperty(RequestProperty):
         self.inner = inner
 
     def get_value(self, item):
-        return self.child_property.get_value(item[self.name])
+        if self.child_property:
+            return self.child_property.get_value(item[self.name])
+        else:
+            return super(ComposedRequestProperty, self).get_value(item)
 
     def __repr__(self):
         return "%s.%r" % (self.name, self.child_property)
 
     def __hash__(self):
         return hash((hash(self.name), hash(self.child_property)))
+
+    def return_property(self, properties):
+        if self.child_property:
+            properties = properties.get(self.name, None)\
+                    .remote_ap.properties
+            return self.child_property.return_property(properties)
+        return properties.get(self.name, None)
+
 
 
 class _AndOr(Request):

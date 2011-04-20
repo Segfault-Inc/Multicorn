@@ -216,7 +216,8 @@ class QuerySelect(Query):
         sub_mappings = {}
         for alias, prop in tuple(self.mapping.items()):
             if prop.child_property is not None:
-                sub_mapping = sub_mappings.setdefault(prop.name, {})
+                newprop = make_request_property(prop.name)
+                sub_mapping = sub_mappings.setdefault(newprop, {})
                 sub_mapping[alias] = prop.child_property
                 self.mapping.pop(alias)
         self.sub_selects = dict(((name, QuerySelect(object_mapping = value))
@@ -237,7 +238,7 @@ class QuerySelect(Query):
                     newitem[alias] = prop.get_value(item)
             if self.sub_selects:
                 sub_generators = tuple(
-                    sub_select(item.get(prop, None)) for prop, sub_select
+                    sub_select(prop.get_value(item)) for prop, sub_select
                     in self.sub_selects.items())
                 for cartesian_item in itertools.product(*sub_generators):
                     to_yield = dict(newitem)
@@ -255,19 +256,16 @@ class QuerySelect(Query):
                             (("%s%s" % (name, oldname)), oldprop)
                             for oldname, oldprop in properties.items()]))
             else:
-                try:
-                    old_prop = properties[prop.name]
-                except KeyError:
+                old_prop = prop.return_property(properties)
+                if old_prop is None:
                     raise BadQueryException(self,
                             "This request has no %r property" % prop.name)
-                new_props[name] = old_prop 
-        for name, sub_select in self.sub_selects.items():
-            try:
-                root = properties[name]
-                child_properties = root.remote_ap.properties
-            except KeyError:
-                raise BadQueryException(self, "%r is not a valid property" %
-                        name)
+                new_props[name] = old_prop
+        for prop, sub_select in self.sub_selects.items():
+            root = prop.return_property(properties)
+            if root is None or root.remote_ap is None:
+                raise BadQueryException(self, "%r is not a valid property" % prop.name)
+            child_properties = root.remote_ap.properties
             new_props.update(sub_select.validate(child_properties))
         return new_props
 

@@ -1,7 +1,7 @@
 from ... import func
 from ... request import RequestProperty
 from sqlalchemy.dialects.postgresql.base import PGDialect
-from sqlalchemy.sql import func as sqlfunctions
+from sqlalchemy.sql import func as sqlfunctions, expression
 
 
 def get_dialect(engine):
@@ -20,6 +20,8 @@ class AlchemyDialect(object):
         RequestProperty: lambda col, fun: col,
         func.coalesce: lambda col, fun:
             sqlfunctions.coalesce(col, fun.replacement),
+        func.extract: lambda col, extract:
+            expression.extract(extract.field, col),
     }
 
     SUPPORTED_AGGREGATES = {
@@ -34,7 +36,9 @@ class AlchemyDialect(object):
 
     }
 
-
+    def get_selectable(self, property, col):
+        fun = self.SUPPORTED_FUNCS.get(property.__class__, None)
+        return fun(col, property) if fun else col
 
     def make_condition(self, column, operator, value):
         if operator in self.SUPPORTED_OPERATORS:
@@ -54,5 +58,5 @@ class PostGresDialect(AlchemyDialect):
 
     def __init__(self):
         self.SUPPORTED_FUNCS.update({
-            func.slice:lambda col, slicefun:
+            func.slice: lambda col, slicefun:
                 sqlfunctions.substr(col, slicefun.range.start, slicefun.range.stop - slicefun.range.start + 1)})

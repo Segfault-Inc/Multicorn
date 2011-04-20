@@ -386,10 +386,30 @@ def test_view_aggregate(site):
 @common
 def test_filter_aggregate(site):
     query =  q.aggregate({'name': '', 'count': func.count()})\
-            |q.filter(Condition('count', '>', 1))
+            | q.filter(Condition('count', '>', 1))
     results = list(site.view('things', query=query))
     eq_(len(results), 1)
     eq_(results[0], {'name': 'bar', 'count': 2})
+
+@common
+def test_transform_fun(site):
+    results = list(site.view('things', {
+        'doubleid': func.addition('id', 'id'),
+        'squaredid': func.product('id', 'id'),
+        'one': func.division('id', 'id'),
+        'zero': func.substraction('id', 'id'),
+        'name': 'name',
+        'UPPER': func.upper('name'),
+        'lower': func.lower('name'),
+        'id': 'id'
+    }))
+    eq_(len(results), 3)
+    assert all([x['doubleid'] == 2 * x['id'] for x in results])
+    assert all([x['squaredid'] == x['id'] * x['id'] for x in results])
+    assert all([x['one'] == 1 for x in results])
+    assert all([x['zero'] == 0 for x in results])
+    assert all([x['UPPER'] == x['name'].upper() for x in results])
+    assert all([x['lower'] == x['name'].lower() for x in results])
 
 
 @common

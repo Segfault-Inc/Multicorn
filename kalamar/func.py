@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from .request import RequestProperty, make_request_property
 from .property import Property
 import __builtin__
+import operator
 
 
 class base_func(object):
@@ -117,3 +118,84 @@ class coalesce(transform_func):
         if value is None:
             return self.replacement
         return value
+
+class upper(transform_func):
+
+    def __call__(self, value):
+        if value is None:
+            return value
+        return value.upper()
+
+
+class lower(transform_func):
+
+    def __call__(self, value):
+        if value is None:
+            return value
+        return value.lower()
+
+
+
+class extract(transform_func):
+
+    def __init__(self, property_name, field):
+        super(extract, self).__init__(property_name)
+        self.field = field
+
+    def return_property(self, properties):
+        # TODO: manage various datatypes. Currently, only date is
+        # supported, yielding integers
+        return Property(int)
+
+    def _copy(self):
+        return self.__class__(self.property, self.field)
+
+    def __call__(self, value):
+        if value is None:
+            return None
+        else:
+            return getattr(value, self.field)
+
+class multi_column_transform(transform_func):
+
+    def __init__(self, *args):
+        self.properties = [make_request_property(prop) for prop in args]
+
+    def _copy(self):
+        return self.__class__(*self.properties)
+
+    @property
+    def name(self):
+        return "%s(%s)" % (self.__class__, [prop.name for prop in self.properties])
+
+    def return_property(self, properties):
+        # A multi column property has the same type as the first property
+        return Property(properties.get(self.properties[0].name).type)
+
+    @property
+    def child_property(self):
+        return None
+
+class product(multi_column_transform):
+
+    def get_value(self, item):
+        return reduce(operator.__mul__, [property.get_value(item)
+            for property in self.properties])
+
+class addition(multi_column_transform):
+
+    def get_value(self, item):
+        return reduce(operator.__add__, [property.get_value(item)
+            for property in self.properties])
+
+class substraction(multi_column_transform):
+
+    def get_value(self, item):
+        return reduce(operator.__sub__, [property.get_value(item)
+            for property in self.properties])
+
+class division(multi_column_transform):
+
+    def get_value(self, item):
+        return reduce(operator.__div__, [property.get_value(item)
+            for property in self.properties])

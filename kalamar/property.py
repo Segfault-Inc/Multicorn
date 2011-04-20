@@ -134,7 +134,7 @@ class Property(object):
 
     @property
     def remote_property(self):
-        """Remote property for linked porperties."""
+        """Remote property for linked properties."""
         if not self.__remote_property:
             if self.remote_ap:
                 properties = self.remote_ap.properties

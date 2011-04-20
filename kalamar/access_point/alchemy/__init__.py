@@ -85,21 +85,13 @@ class QueryNode(object):
         self.children = {}
         self.name = None
         self.selects = []
-        self.table = self.property.remote_ap._table.alias(self.alias)\
+        self.table = self.property.remote_ap._table.alias()\
                 if self.property else None
 
 
     def add_child(self, property):
         return self.children.setdefault(property.name,
                 QueryNode(property, self))
-
-    @property
-    def alias(self):
-        if self.parent and self.parent.alias:
-            return "_".join([self.parent.alias, self.property.remote_ap.name, self.property.remote_property.name])
-        if self.property:
-            return self.property.access_point.name
-        return self.table.name
 
     def find_table(self, property):
         if property.child_property:
@@ -337,8 +329,7 @@ class Alchemy(AccessPoint):
 
     def extract_properties_select(self, query, properties, tree):
         def append_select(tree, property, column, name):
-            selectable = self.dialect.SUPPORTED_FUNCS[property.__class__](
-                    column, property)
+            selectable = self.dialect.get_selectable(property, column)
             tree.selects.append(selectable.label(name))
 
         for name, value in query.mapping.items():
@@ -348,31 +339,30 @@ class Alchemy(AccessPoint):
                         append_select(tree, value, tree.table.c[pname], ''.join([name, pname]))
             else:
                 append_select(tree, value, tree.table.c[value.name], name)
-        for name, sub_select in query.sub_selects.items():
-            prop = properties[name]
+        for prop, sub_select in query.sub_selects.items():
+            return_property = prop.return_property(properties)
             # If we are just fetching the identity properties, we do not
             # need a join
             remote_id_props_names = [fp.name
-                    for fp in prop.remote_ap.identity_properties]
+                    for fp in return_property.remote_ap.identity_properties]
             if all((submapping.name in remote_id_props_names
                 for submapping in sub_select.mapping.values()))\
                     and not sub_select.sub_selects\
-                    and prop.relation != 'one-to-many':
-                for submapping, prop in sub_select.mapping.items():
-                    append_select(tree, prop, tree.table.c[name], submapping)
+                    and return_property.relation != 'one-to-many':
+                for submapping, subprop in sub_select.mapping.items():
+                    append_select(tree, subprop, tree.table.c[prop.name], submapping)
             else:
                 # If we are taking this branch with an instance
-                assert isinstance(prop.remote_ap, Alchemy),\
+                assert isinstance(return_property.remote_ap, Alchemy),\
                 "Not an Alchemy access point. Something went wrong during the validation"
-                node = tree.add_child(prop)
-                self.extract_properties_select(sub_select, prop.remote_ap.properties, node)
+                node = tree.add_child(return_property)
+                self.extract_properties_select(sub_select, return_property.remote_ap.properties, node)
 
     def extract_properties_aggregate(self, query, properties, tree):
         for grouper in query.groupers:
             col = tree.find_table(grouper)
             if col is not None and col not in tree.selects:
-                selectable = self.dialect.SUPPORTED_FUNCS[grouper.__class__](
-                    col, grouper)
+                selectable = self.dialect.get_selectable(grouper, col)
                 tree.selects.append(selectable.label(grouper.name))
 
     def extract_properties_filter(self, query, properties, tree):
