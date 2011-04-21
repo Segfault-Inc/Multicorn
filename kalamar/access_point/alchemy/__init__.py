@@ -28,7 +28,7 @@ from datetime import datetime, date
 from decimal import Decimal
 
 from .. import AccessPoint
-from ...request import Condition, And, Or, Not, RequestProperty
+from ...request import Condition, And, Or, Not, RequestProperty, make_request_property
 from ...property import Property
 from ... import query as kquery
 from ...value import to_unicode
@@ -106,11 +106,7 @@ class QueryNode(object):
             col = child.find_table(property)
             if col is not None:
                 return col
-        if self.property and property.name in (prop.name
-                for prop in self.property.remote_ap.identity_properties):
-            return self.table.c[property.name]
-        if self.property is None:
-            return self.table.c[property.name]
+        return self.table.c.get(property.name, None)
 
 
 
@@ -328,17 +324,18 @@ class Alchemy(AccessPoint):
         self._table.delete().where(whereclause).execute()
 
     def extract_properties_select(self, query, properties, tree):
-        def append_select(tree, property, column, name):
-            selectable = self.dialect.get_selectable(property, column)
+        def append_select(tree, property, name):
+            selectable = self.dialect.get_selectable(property, tree)
             tree.selects.append(selectable.label(name))
 
         for name, value in query.mapping.items():
             if value.name == '*':
                 for pname, prop in properties.items():
                     if prop.relation != 'one-to-many':
-                        append_select(tree, value, tree.table.c[pname], ''.join([name, pname]))
+                        prop = make_request_property(pname)
+                        append_select(tree, prop, ''.join((name, pname)))
             else:
-                append_select(tree, value, tree.table.c[value.name], name)
+                append_select(tree, value, name)
         for prop, sub_select in query.sub_selects.items():
             return_property = prop.return_property(properties)
             # If we are just fetching the identity properties, we do not
@@ -349,8 +346,8 @@ class Alchemy(AccessPoint):
                 for submapping in sub_select.mapping.values()))\
                     and not sub_select.sub_selects\
                     and return_property.relation != 'one-to-many':
-                for submapping, subprop in sub_select.mapping.items():
-                    append_select(tree, subprop, tree.table.c[prop.name], submapping)
+                for alias, subprop in sub_select.mapping.items():
+                    append_select(tree, prop, alias)
             else:
                 # If we are taking this branch with an instance
                 assert isinstance(return_property.remote_ap, Alchemy),\
@@ -360,10 +357,8 @@ class Alchemy(AccessPoint):
 
     def extract_properties_aggregate(self, query, properties, tree):
         for grouper in query.groupers:
-            col = tree.find_table(grouper)
-            if col is not None and col not in tree.selects:
-                selectable = self.dialect.get_selectable(grouper, col)
-                tree.selects.append(selectable.label(grouper.name))
+            selectable = self.dialect.get_selectable(grouper, tree)
+            tree.selects.append(selectable.label(grouper.name))
 
     def extract_properties_filter(self, query, properties, tree):
         def extract_properties_from_tree(properties_tree, properties, tree):

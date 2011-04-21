@@ -137,7 +137,7 @@ def query_select_validator(self, access_point, properties):
     def isvalid(select, properties):
         """Check if ``select`` is valid according to ``properties``."""
         for value in select.mapping.values():
-            if value.__class__ not in access_point.dialect.SUPPORTED_FUNCS:
+            if not access_point.dialect.supports(value, properties):
                 return False
         for prop, sub_select in select.sub_selects.items():
             remote_ap = prop.return_property(properties).remote_ap
@@ -197,9 +197,7 @@ def _build_where(access_point, condition, tree):
         return condition.alchemy_function(alchemy_conditions)
     else:
         prop = condition.property
-        column = tree.find_table(prop)
-        assert column is not None, "Something went wrong during the validation"
-        selectable = access_point.dialect.get_selectable(prop, column)
+        selectable = access_point.dialect.get_selectable(prop, tree)
         return _make_condition(condition, selectable)
 
 

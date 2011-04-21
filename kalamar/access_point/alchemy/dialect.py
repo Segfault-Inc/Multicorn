@@ -2,7 +2,7 @@ from ... import func
 from ... request import RequestProperty
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.sql import func as sqlfunctions, expression
-
+import operator
 
 def get_dialect(engine):
     if PGDialect in engine.__class__.__bases__:
@@ -33,12 +33,51 @@ class AlchemyDialect(object):
             sqlfunctions.min(columns[func.property.name]).label(name),
         func.sum: lambda columns, name, func:
             sqlfunctions.sum(columns[func.property.name]).label(name)
-
     }
 
-    def get_selectable(self, property, col):
-        fun = self.SUPPORTED_FUNCS.get(property.__class__, None)
-        return fun(col, property) if fun else col
+    def _find_fun(self, property, clazz=None):
+        """Find the corresponding method for a property"""
+        clazz = clazz or property.__class__
+        fun = getattr(self, 'func_%s' % clazz.__name__, None)
+        return fun
+
+    def func_RequestProperty(self, property, tree):
+        return tree.find_table(property)
+
+    def func_ComposedRequestProperty(self, property, tree):
+        return tree.find_table(property)
+
+    def func_addition(self, property, tree):
+        properties = [self.get_selectable(prop, tree) for prop in property.properties]
+        return reduce(operator.__add__, properties)
+
+    def func_product(self, property, tree):
+        properties = [self.get_selectable(prop, tree) for prop in property.properties]
+        return reduce(operator.__mul__, properties)
+
+    def func_division(self, property, tree):
+        properties = [self.get_selectable(prop, tree) for prop in property.properties]
+        return reduce(operator.__div__, properties)
+
+    def func_substraction(self, property, tree):
+        properties = [self.get_selectable(prop, tree) for prop in property.properties]
+        return reduce(operator.__sub__, properties)
+
+    def func_coalesce(self, property, tree):
+        return sqlfunctions.coalesce(self.get_selectable(property.property, tree),
+                property.replacement)
+
+    def func_constant(self, property, tree):
+        return property.constant
+
+    def func_extract(self, property, tree):
+        return expression.extract(property.field, self.get_selectable(property.property))
+
+    def get_selectable(self, property, tree):
+        return self._find_fun(property)(property, tree)
+
+    def supports(self, property, properties):
+        return self._find_fun(property) is not None
 
     def make_condition(self, column, operator, value):
         if operator in self.SUPPORTED_OPERATORS:
@@ -60,3 +99,18 @@ class PostGresDialect(AlchemyDialect):
         self.SUPPORTED_FUNCS.update({
             func.slice: lambda col, slicefun:
                 sqlfunctions.substr(col, slicefun.range.start, slicefun.range.stop - slicefun.range.start + 1)})
+
+    def func_slice(self, slicefun, tree):
+        return sqlfunctions.substr(self.get_selectable(slicefun.property),
+                slicefun.range.start,
+                slicefun.range.stop - slicefun.range.start + 1)
+
+    def func_upper(self, property, tree):
+        return sqlfunctions.upper(self.get_selectable(property.property, tree))
+
+
+    def func_lower(self, property, tree):
+        return sqlfunctions.lower(self.get_selectable(property.property, tree))
+
+
+
