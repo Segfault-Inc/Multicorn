@@ -101,7 +101,7 @@ class PostGresDialect(AlchemyDialect):
                 sqlfunctions.substr(col, slicefun.range.start, slicefun.range.stop - slicefun.range.start + 1)})
 
     def func_slice(self, slicefun, tree):
-        return sqlfunctions.substr(self.get_selectable(slicefun.property),
+        return sqlfunctions.substr(self.get_selectable(slicefun.property, tree),
                 slicefun.range.start,
                 slicefun.range.stop - slicefun.range.start + 1)
 
