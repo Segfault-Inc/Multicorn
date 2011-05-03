@@ -16,8 +16,6 @@ class base_func(object):
         return properties.get(self.property.name, None)
 
 
-
-
 class transform_func(base_func, RequestProperty):
 
 
