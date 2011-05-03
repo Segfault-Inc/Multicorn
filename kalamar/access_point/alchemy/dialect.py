@@ -71,7 +71,7 @@ class AlchemyDialect(object):
         return property.constant
 
     def func_extract(self, property, tree):
-        return expression.extract(property.field, self.get_selectable(property.property))
+        return expression.extract(property.field, self.get_selectable(property.property, tree))
 
     def get_selectable(self, property, tree):
         return self._find_fun(property)(property, tree)
