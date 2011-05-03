@@ -138,6 +138,8 @@ def query_select_validator(self, access_point, properties):
         """Check if ``select`` is valid according to ``properties``."""
         for value in select.mapping.values():
             if not access_point.dialect.supports(value, properties):
+                access_point.site.logger.warning(
+                    'Access point does not support %s' % value)
                 return False
         for prop, sub_select in select.sub_selects.items():
             remote_ap = prop.return_property(properties).remote_ap

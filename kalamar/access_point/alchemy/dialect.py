@@ -1,12 +1,15 @@
 from ... import func
 from ... request import RequestProperty
 from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.dialects.sqlite.base import SQLiteDialect
 from sqlalchemy.sql import func as sqlfunctions, expression
 import operator
 
 def get_dialect(engine):
     if PGDialect in engine.__class__.__bases__:
         return PostGresDialect()
+    elif SQLiteDialect in engine.__class__.__bases__:
+        return SQLite3Dialect()
     else:
         return AlchemyDialect()
 
@@ -104,6 +107,17 @@ class PostGresDialect(AlchemyDialect):
         return sqlfunctions.substr(self.get_selectable(slicefun.property, tree),
                 slicefun.range.start,
                 slicefun.range.stop - slicefun.range.start + 1)
+
+    def func_upper(self, property, tree):
+        return sqlfunctions.upper(self.get_selectable(property.property, tree))
+
+
+    def func_lower(self, property, tree):
+        return sqlfunctions.lower(self.get_selectable(property.property, tree))
+
+
+
+class SQLite3Dialect(AlchemyDialect):
 
     def func_upper(self, property, tree):
         return sqlfunctions.upper(self.get_selectable(property.property, tree))
