@@ -149,7 +149,8 @@ class Alchemy(AccessPoint):
             # Transpose the kalamar relation in alchemy if possible
             if isinstance(foreign_ap, Alchemy):
                 foreign_table = foreign_ap.tablename
-                foreign_ap._table
+                if foreign_ap is not self:
+                    foreign_ap._table
                 if foreign_ap.schema:
                     foreign_table = "%s.%s" % (foreign_ap.schema, foreign_table)
                 # TODO: Fix this for circular dependencies
