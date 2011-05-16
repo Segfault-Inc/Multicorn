@@ -102,7 +102,9 @@ class Property(object):
                         yield self.remote_ap.loader_from_reference_repr(unicode(value))(None)[0]
             else:
                 yield None
-        if not self.mandatory and values == (None,):
+        # DO NOT test for mandatory: when doing outer joins, a condition
+        # can be None
+        if values == (None,):
             return values
         if all(type(value) == self.type for value in values):
             return values
