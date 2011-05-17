@@ -186,6 +186,8 @@ def _make_condition(condition, column):
         return column == value
     elif condition.operator == "!=":
         return column != value
+    elif condition.operator == '~=':
+        return column.op('~')(value)
     else:
         return column.op(condition.operator)(value)
 
