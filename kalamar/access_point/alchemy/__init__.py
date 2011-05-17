@@ -156,7 +156,7 @@ class Alchemy(AccessPoint):
                 # TODO: Fix this for circular dependencies
                 foreign_column = self._get_column(
                     "%s.%s" % (prop.name, prop.remote_property.name))
-                foreign_name = "%s.%s" % (foreign_table, foreign_column.name)
+                foreign_name = "%s.%s" % (foreign_table, foreign_column.key)
                 foreign_key = ForeignKey(
                     foreign_name, use_alter=True,
                     name="%s_%s_fkey" % (self.tablename, prop.name))
