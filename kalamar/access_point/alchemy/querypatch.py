@@ -94,7 +94,7 @@ def query_filter_validator(self, access_point, properties):
 
     cond_tree = self.condition.properties_tree
     def check_operators(condition):
-        if isinstance(condition, _AndOr):
+        if isinstance(condition, (_AndOr, Not)):
             return all(check_operators(c) for c in condition.sub_requests)
         else:
             return condition.operator in access_point.dialect.SUPPORTED_OPERATORS
@@ -186,6 +186,8 @@ def _make_condition(condition, column):
         return column == value
     elif condition.operator == "!=":
         return column != value
+    elif condition.operator == '~=':
+        return column.op('~')(value)
     else:
         return column.op(condition.operator)(value)
 
