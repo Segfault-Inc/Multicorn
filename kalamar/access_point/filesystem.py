@@ -26,6 +26,7 @@ Access point storing items in a filesystem.
 import os
 import re
 import io
+import unicodedata
 
 from . import AccessPoint
 from ..item import Item
@@ -120,7 +121,7 @@ class FileSystem(AccessPoint):
 
     def __init__(self, root_dir, pattern, properties,
                  content_property="content"):
-        self.root_dir = root_dir
+        self.root_dir = to_unicode(root_dir)
         self.content_property = content_property
 
         self._ordered_properties = tuple(
@@ -157,6 +158,7 @@ class FileSystem(AccessPoint):
             property_part = remaining_path_parts[0]
             remaining_path_parts = remaining_path_parts[1:]
             for basename in os.listdir(root):
+                basename = unicodedata.normalize("NFC", basename)
                 match = property_part.regexp.match(basename)
                 if not match:
                     continue

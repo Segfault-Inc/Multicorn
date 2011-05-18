@@ -26,6 +26,7 @@ Kalamar helpers for value casting.
 import decimal
 import datetime
 import io
+import unicodedata
 
 from .item import Item, AbstractItem
 
@@ -270,9 +271,10 @@ def to_unicode(value, encoding="utf-8"):
         return value
     else:
         try:
-            return unicode(value, encoding=encoding)
+            string = unicode(value, encoding=encoding)
         except:
-            return unicode(value)
+            string = unicode(value)
+        return unicodedata.normalize("NFC", string)
 
 
 def to_type(value, data_type):
