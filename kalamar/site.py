@@ -28,6 +28,7 @@ from .request import normalize, make_request, And, Condition, Or, Not
 from .query import QueryFilter, QuerySelect, QueryChain, QueryOrder, QueryRange,\
     QueryDistinct, QueryAggregate
 
+from .access_point import DEFAULT_PARAMETER
 
 def _translate_request(request, aliases):
     """Translate high-level ``request`` to low-level using ``aliases``."""
@@ -142,6 +143,19 @@ class Site(object):
             for prop_name in [name for name in line if name.startswith("__")]:
                 line.pop(prop_name)
             yield line
+
+    def from_repr(self, access_point_name, repr, default=DEFAULT_PARAMETER):
+        """
+        Return an item of ``access_point_name`` from the ``repr`` string.
+        ``repr`` should have been generated with item.__repr__()
+        """
+        identity = repr.split("/")
+        access_point = self.access_points[access_point_name]
+        id_properties = [
+            prop.name
+            for prop in access_point.identity_properties]
+        request = dict(zip(id_properties, identity))
+        return self.open(access_point_name, request, default)
 
     create = _delegate_to_acces_point("create")
     delete = _delegate_to_acces_point("delete")

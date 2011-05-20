@@ -292,6 +292,14 @@ def test_eq(site):
     eq_(item1, item2)
 
 @common
+def test_from_repr(site):
+    """Test opening an object from repr."""
+    item = site.open("things", {"name": "foo"})
+    repr_ = item.__repr__()
+    item_from_repr = site.from_repr('things', repr_)
+    eq_(item, item_from_repr)
+
+@common
 def test_view(site):
     """Test simple view request."""
     items = list(site.view("things", {"foo": "name"}))
