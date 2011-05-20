@@ -404,8 +404,8 @@ class Alchemy(AccessPoint):
             for name, node in tree.children.items():
                 if node.property:
                     if node.table.element != join:
-                        col1 = node.parent.table.c[node.property.column.name]
-                        col2 = node.table.c[node.property.remote_property.column.name]
+                        col1 = node.parent.table.c[node.property.column.key]
+                        col2 = node.table.c[node.property.remote_property.column.key]
                         join = join.outerjoin(node.table, onclause = col1 == col2)
                 join = inner_build_join(join, node)
             return join
