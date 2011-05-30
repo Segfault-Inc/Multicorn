@@ -295,7 +295,7 @@ def to_type(value, data_type):
 def to_number(value, data_type):
     """Return ``value`` if instance of ``int`` or ``float``, else cast.
 
-    If ``bool(value)`` is ``None``, return 0.
+    If ``bool(value)`` is ``False``, return 0.
 
     >>> to_number(1, int)
     1
