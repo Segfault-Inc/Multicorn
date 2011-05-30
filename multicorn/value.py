@@ -265,7 +265,7 @@ def to_unicode(value, encoding="utf-8"):
 
 
 def to_type(value, data_type):
-    """Return ``value`` if instance of ``data_type`` else raise error.
+    """Return ``value`` if instance of ``data_type``, else cast.
 
     >>> to_type(1, int)
     1
@@ -291,13 +291,33 @@ def to_type(value, data_type):
             raise ValueError("%s cannot be cast to %s." % (
                     value, data_type.__name__))
 
+
 def to_number(value, data_type):
+    """Return ``value`` if instance of ``int`` or ``float``, else cast.
+
+    If ``bool(value)`` is ``None``, return 0.
+
+    >>> to_number(1, int)
+    1
+    >>> to_number("1", int)
+    1
+    >>> to_number("1", float)
+    1.0
+    >>> to_number("", float)
+    0.0
+    >>> to_number({}, int)
+    0
+    >>> to_number("a", float) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
+    Traceback (most recent call last):
+        ....
+    ValueError: a cannot be cast to float.
+
+    """
     if isinstance(value, data_type) or value is None:
         return value
     if not value:
         return data_type(0)
     return to_type(value, data_type)
-
 
 
 PROPERTY_TYPES = {
