@@ -1,0 +1,9 @@
+{
+  "name": "Multicorn",
+  "description": "Content Management Library",
+  "menu": [
+    {"name": "Documentation", "link": "/documentation"},
+    {"name": "Contribute", "link": "/contribute"},
+    {"name": "Download", "link": "/download"}
+  ]
+}
