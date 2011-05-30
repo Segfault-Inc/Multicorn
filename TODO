@@ -1,15 +1,15 @@
-====================================
- Dyko - A Lightweight Web Framework
-====================================
+========================================
+ Multicorn - Content Management Library
+========================================
 
 ------
  TODO
 ------
 
 Here are the main features that we hope to have in the future versions of
-Dyko. A full version of this file can be found at:
+Multicorn. A full version of this file can be found at:
 
-http://redmine.kozea.fr/projects/dyko/roadmap
+http://redmine.kozea.fr/projects/multicorn/roadmap
 
 0.5
 ===
@@ -22,4 +22,3 @@ http://redmine.kozea.fr/projects/dyko/roadmap
 ===
 
 * 100% test coverage
-* Python 3 support

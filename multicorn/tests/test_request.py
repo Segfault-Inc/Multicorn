@@ -1,0 +1,152 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under 3-clause BSD
+
+"""
+Request test.
+
+Test the request module.
+
+"""
+
+# Nose redefines assert_equal and assert_not_equal
+# pylint: disable=E0611
+from nose.tools import assert_equal, assert_not_equal
+# pylint: enable=E0611
+
+from multicorn.request import Condition, Not, And, Or
+
+
+def test_hash_condition():
+    """Assert that the hash method works on Condition."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "tortue")
+    condition3 = Condition("name", "<", "hibou")
+    condition4 = Condition("name", ">", "tortue")
+    condition5 = Condition("bob", "<", "tortue")
+
+    assert_equal(hash(condition1), hash(condition2))
+    assert_not_equal(hash(condition1), hash(condition3))
+    assert_not_equal(hash(condition1), hash(condition4))
+    assert_not_equal(hash(condition1), hash(condition5))
+
+def test_hash_and():
+    """Assert that the hash method works on And."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+
+    condition4 = And(condition1, condition2)
+    condition5 = And(condition3, condition2)
+    condition6 = And(condition1, condition3)
+
+    assert_equal(hash(condition4), hash(condition5))
+    assert_not_equal(hash(condition4), hash(condition6))
+
+def test_hash_or():
+    """Assert that the hash method works on Or."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+
+    condition4 = Or(condition1, condition2)
+    condition5 = Or(condition3, condition2)
+    condition6 = Or(condition1, condition3)
+
+    assert_equal(hash(condition4), hash(condition5))
+    assert_not_equal(hash(condition4), hash(condition6))
+
+def test_hash_not():
+    """Assert that the hash method works on Not."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+
+    condition4 = Not(condition1)
+    condition5 = Not(condition3)
+    condition6 = Not(condition2)
+
+    assert_equal(hash(condition4), hash(condition5))
+    assert_not_equal(hash(condition4), hash(condition6))
+
+def test_eq_condition():
+    """Assert that the eq operator works on Condition."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", "<", "tortue")
+    condition3 = Condition("name", "<", "hibou")
+    condition4 = Condition("name", ">", "tortue")
+    condition5 = Condition("bob", "<", "tortue")
+
+    assert_equal(condition1, condition2)
+    assert_not_equal(condition1, condition3)
+    assert_not_equal(condition1, condition4)
+    assert_not_equal(condition1, condition5)
+
+    assert_equal(condition1.properties_tree, {"name": condition1.property})
+    assert_equal(condition2.properties_tree, {"name": condition2.property})
+    assert_equal(condition3.properties_tree, {"name": condition3.property})
+    assert_equal(condition4.properties_tree, {"name": condition4.property})
+    assert_equal(condition5.properties_tree, {"bob": condition5.property})
+
+def test_and():
+    """Assert that the operators works on And."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", ">=", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+
+    condition4 = And(condition1, condition2)
+    condition5 = And(condition3, condition2)
+    condition6 = And(condition1, condition3)
+
+    assert_equal(condition4, condition5)
+    assert_not_equal(condition4, condition6)
+
+    assert_equal(condition4.properties_tree, {"name": condition1.property})
+    assert_equal(condition5.properties_tree, {"name": condition1.property})
+    assert_equal(condition6.properties_tree, {"name": condition1.property})
+
+def test_or():
+    """Assert that the operators works on Or."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", ">=", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+
+    condition4 = Or(condition1, condition2)
+    condition5 = Or(condition3, condition2)
+    condition6 = Or(condition1, condition3)
+
+    assert_equal(condition4, condition5)
+    assert_not_equal(condition4, condition6)
+
+    assert_equal(condition4.properties_tree, {"name": condition1.property})
+    assert_equal(condition5.properties_tree, {"name": condition1.property})
+    assert_equal(condition6.properties_tree, {"name": condition1.property})
+
+def test_not():
+    """Assert that the operators works on Not."""
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", ">=", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+
+    condition4 = Not(condition1)
+    condition5 = Not(condition3)
+    condition6 = Not(condition2)
+
+    assert_equal(condition4, condition5)
+    assert_not_equal(condition4, condition6)
+
+    assert_equal(condition4.properties_tree, {"name": condition1.property})
+    assert_equal(condition5.properties_tree, {"name": condition3.property})
+    assert_equal(condition6.properties_tree, {"name": condition2.property})
+
+
+def test_operators():
+    condition1 = Condition("name", "<", "tortue")
+    condition2 = Condition("name", ">=", "hibou")
+    condition3 = Condition("name", "<", "tortue")
+    condition4 = Or(condition1, condition2)
+    condition5 = And(condition3, condition2)
+
+    assert_equal(condition4, condition1 | condition2)
+    assert_equal(condition5, condition3 & condition2)
+
