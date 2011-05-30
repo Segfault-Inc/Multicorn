@@ -307,6 +307,8 @@ def to_number(value, data_type):
     0.0
     >>> to_number({}, int)
     0
+    >>> to_number((), complex)
+    0j
     >>> to_number("a", float) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
     Traceback (most recent call last):
         ....
