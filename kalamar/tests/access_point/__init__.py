@@ -13,9 +13,10 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Kraken.  If not, see <http://www.gnu.org/licenses/>.
+# along with Kalamar.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Kraken access points test suite.
+Kalamar access points test suite.
 
 """
+

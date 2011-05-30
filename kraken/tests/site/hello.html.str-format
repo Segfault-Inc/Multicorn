@@ -1,1 +1,0 @@
-<html><body>Hello × {request.args[name]}!</body></html>

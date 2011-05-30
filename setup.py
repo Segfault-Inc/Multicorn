@@ -48,7 +48,7 @@ setup(
     platforms="Any",
     packages=find_packages(
         exclude=["*._test", "*._test.*", "test.*", "test"]),
-    provides=["kalamar", "kraken"],
+    provides=["kalamar"],
     package_data={
         "kalamar": ["access_point/xml/xml2rst.xsl"]},
     extras_require={
