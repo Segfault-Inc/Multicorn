@@ -6,7 +6,7 @@
 /.noseids
 /build
 /dist
-/Dyko.egg-info
+/Multicorn.egg-info
 /profile_results
 *.swp
 
