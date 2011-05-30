@@ -1,5 +1,6 @@
 from ... import func
 from ... request import RequestProperty
+from functools import reduce
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.sqlite.base import SQLiteDialect
 from sqlalchemy.sql import func as sqlfunctions, expression
@@ -60,7 +61,7 @@ class AlchemyDialect(object):
 
     def func_division(self, property, tree):
         properties = [self.get_selectable(prop, tree) for prop in property.properties]
-        return reduce(operator.__div__, properties)
+        return reduce(operator.__truediv__, properties)
 
     def func_substraction(self, property, tree):
         properties = [self.get_selectable(prop, tree) for prop in property.properties]

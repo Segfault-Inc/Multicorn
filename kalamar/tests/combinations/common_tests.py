@@ -137,16 +137,11 @@ def test_aggregate(site):
     eq_(len(results), 1)
     eq_(results[0]['count'], 2)
     agg = {"count": func.count(), "second_ap_name": ""}
-    results = list(site.view("first_ap",
+    results = site.view("first_ap",
         aliases={"second_ap_name": "second_ap.name"},
-        aggregate=agg))
-    eq_(len(results), 3)
-    # "None" second_ap
-    eq_(results[0]['count'], 1)
-    # AAA
-    eq_(results[1]['count'], 2)
-    # BBB
-    eq_(results[2]['count'], 2)
+        aggregate=agg)
+    counts = dict((result["second_ap_name"], result["count"]) for result in results)
+    eq_({None: 1, 'second_ap AAA': 2, 'second_ap BBB': 2}, counts)
 
 
 @common

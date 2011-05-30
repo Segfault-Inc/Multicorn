@@ -55,10 +55,7 @@ setup(
         "Werkzeug": ["werkzeug>=0.5"],
         "docutils": ["docutils>=0.6"],
         "lxml": ["lxml>=2.0"],
-        "Genshi": ["genshi>=0.5"],
-        "Mako": ["mako>=0.3"],
-        "SQLAlchemy": ["sqlalchemy>=0.6"],
-        "Jinja2": ["jinja2>=2.0"]},
+        "SQLAlchemy": ["sqlalchemy>=0.6"]},
     keywords=["web", "framework", "database"],
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -70,4 +67,7 @@ setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.1",
+        "Programming Language :: Python :: 3.2",
         "Topic :: Software Development :: Libraries :: Application Frameworks"])

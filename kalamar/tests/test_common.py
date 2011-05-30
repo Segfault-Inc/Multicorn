@@ -372,23 +372,15 @@ def test_view_transform(site):
 def test_view_aggregate(site):
     results = list(site.view("things",
         aggregate={'name': '', 'count': func.count()}))
-    eq_(len(results), 2)
-    eq_(results[0], {'name': 'bar', 'count': 2})
-    eq_(results[1], {'name': 'foo', 'count': 1})
-    results = list(site.view("things",
-        aggregate={'max': func.max('id')}))
-    eq_(len(results), 1)
-    eq_(results[0], {'max': 3})
-    results = list(site.view("things",
-        aggregate={'min': func.min('id')}))
-    eq_(len(results), 1)
-    eq_(results[0], {'min': 1})
-    results = list(site.view("things",
-        aggregate={'sum': func.sum('id')}))
-    eq_(len(results), 1)
-    eq_(results[0], {'sum': 6})
-    results = list(site.view("things",
-        aggregate={'sum': func.sum('name')}))
+    counts = dict((item['name'], item['count']) for item in results)
+    eq_(counts, {'bar': 2, 'foo': 1})
+    results = list(site.view("things", aggregate={'max': func.max('id')}))
+    eq_(results, [{'max': 3}])
+    results = list(site.view("things", aggregate={'min': func.min('id')}))
+    eq_(results, [{'min': 1}])
+    results = list(site.view("things", aggregate={'sum': func.sum('id')}))
+    eq_(results, [{'sum': 6}])
+    results = list(site.view("things", aggregate={'sum': func.sum('name')}))
     eq_(len(results), 1)
 
 @common

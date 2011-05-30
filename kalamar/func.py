@@ -1,8 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from .request import RequestProperty, make_request_property
 from .property import Property
-import __builtin__
 import operator
+from functools import reduce
+
+try:
+    import __builtin__ as builtins
+except ImportError:
+    import builtins
 
 
 class base_func(object):
@@ -77,7 +82,7 @@ class max(base_aggregate):
     def __call__(self, accumulator, item):
         if accumulator is None:
             return self.property.get_value(item)
-        return __builtin__.max(accumulator, self.property.get_value(item))
+        return builtins.max(accumulator, self.property.get_value(item))
 
 class min(base_aggregate):
 
@@ -87,7 +92,7 @@ class min(base_aggregate):
     def __call__(self, accumulator, item):
         if accumulator is None:
             return self.property.get_value(item)
-        return __builtin__.min(accumulator, self.property.get_value(item))
+        return builtins.min(accumulator, self.property.get_value(item))
 
 class slice(transform_func):
 
@@ -97,9 +102,9 @@ class slice(transform_func):
     def __init__(self, property_name, select_range):
         super(slice, self).__init__(property_name)
         if hasattr(select_range, "__iter__"):
-            self.range = __builtin__.slice(*select_range)
+            self.range = builtins.slice(*select_range)
         else:
-            self.range= __builtin__.slice(select_range)
+            self.range= builtins.slice(select_range)
 
     def __call__(self, value):
         return value[self.range] if value else value
@@ -219,4 +224,4 @@ class substraction(standard_operator_func):
 
 class division(standard_operator_func):
 
-    OPERATOR = operator.__div__
+    OPERATOR = operator.__truediv__

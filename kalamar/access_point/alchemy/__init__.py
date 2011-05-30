@@ -26,6 +26,7 @@ Access point storing items in a RDBMS.
 from __future__ import print_function
 from datetime import datetime, date
 from decimal import Decimal
+from functools import reduce
 
 from .. import AccessPoint
 from ...request import Condition, And, Or, Not, RequestProperty, make_request_property
@@ -96,7 +97,7 @@ class QueryNode(object):
     def find_table(self, property):
         if property.child_property:
            return self.children[property.name].find_table(property.child_property)
-        matching = filter(lambda x: x.name == property.name, self.selects)
+        matching = list(filter(lambda x: x.name == property.name, self.selects))
         if matching:
             return matching[0]._element
         if self.property == property:

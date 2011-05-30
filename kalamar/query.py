@@ -297,25 +297,28 @@ class QueryRange(Query):
 
 
 class QueryAggregate(Query):
-    """Query grouping a set of items, and performing aggrefates
-    on them
+    """Query grouping a set of items, and performing aggretates on them.
 
     >>> from .func import count, sum, max
-    >>> items = [{'a': 1, 'b': 'joe'}, {'a': 3, 'b': 'jane'}, {'a': 10,\
-            'b': 'joe'}, {'a': 5, 'b': 'jane'}]
+    >>> items = [
+    ...     {'a': 1, 'b': 'joe'}, {'a': 3, 'b': 'jane'},
+    ...     {'a': 10, 'b': 'joe'}, {'a': 5, 'b': 'jane'}]
     >>> group = QueryAggregate({'count': count()})
     >>> list(group(items))
     [{'count': 4}]
     >>> group = QueryAggregate({'sum_a': sum('a'), 'sum_b': sum('b')})
     >>> props = group.validate({'a': Property(int), 'b': Property(unicode)})
-    >>> dict([(key, value.type) for key, value in props.items()])
-    {'sum_a': <type 'int'>, 'sum_b': <type 'unicode'>}
-    >>> list(group(items))
-    [{'sum_a': 19, 'sum_b': u'joejanejoejane'}]
+    >>> dict([(key, value.type) for key, value in props.items()]) == {
+    ...     'sum_a': int, 'sum_b': unicode}
+    True
+    >>> list(group(items)) == [{'sum_a': 19, 'sum_b': 'joejanejoejane'}]
+    True
     >>> group = QueryAggregate({'sum_a': sum('a'), 'count': count(), 'b': ''})
     >>> props = group.validate({'a': Property(int), 'b': Property(unicode)})
-    >>> list(group(items))
-    [{'sum_a': 8, 'count': 2, u'b': 'jane'}, {'sum_a': 11, 'count': 2, u'b': 'joe'}]
+    >>> set(frozenset(item.items()) for item in group(items)) == set([
+    ...         frozenset([('sum_a', 8), ('count', 2), ('b', 'jane')]),
+    ...         frozenset([('sum_a', 11), ('count', 2), ('b', 'joe')])])
+    True
 
     """
 
@@ -328,15 +331,15 @@ class QueryAggregate(Query):
                 self.aggregates[key] = value
             else:
                 self.groupers.append(make_request_property(key))
-        self.key_fun = lambda x: [key.get_value(x) for key in self.groupers]
         self.expected_properties = {}
 
     def __call__(self, items):
-        # TODO: skip sort if possible
-        items = sorted(items, key=self.key_fun)
-        for key, group in itertools.groupby(items, self.key_fun):
+        groups = {}
+        for item in items:
+            values = tuple(key.get_value(item) for key in self.groupers)
+            groups.setdefault(values, []).append(item)
+        for key, group in groups.items():
             new_item = dict(zip((grouper.name for grouper in self.groupers), key))
-            group = list(group)
             new_item.update((key, value.initializer(self.expected_properties))
                 for key, value in self.aggregates.items())
             for line in group:
