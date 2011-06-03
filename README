@@ -1,5 +1,5 @@
-kalamar-queries
----------------
+Multicorn-queries
+-----------------
 
 A set of objects to describe queries such as map, filter, reduce; and a
 pure-python `executor` to run these queries on an iterable of mappings.
