@@ -9,29 +9,28 @@ import aggregates as a
 
 
 class _Query(object):
-    def __init__(self, parts=None):
-        self.parts = parts or ()
+    def __init__(self, operations=None):
+        self.operations = operations or ()
     
-    def _add_part(self, *new_part):
-        new_parts = self.parts + (new_part,)
-        return _Query(new_parts)
-    
+    def _add_operation(self, operation, *args):
+        return _Query(self.operations + ((operation, args),))
+        
     def select(self, **new_data):
-        return self._add_part('select', new_data)
+        return self._add_operation('select', new_data)
     
     def where(self, condition):
-        return self._add_part('where', condition)
+        return self._add_operation('where', condition)
         
     def sort(self, *keys):
-        return self._add_part('sort', keys)
+        return self._add_operation('sort', keys)
     
     def aggregate(self, by=None, **aggregated_data):
-        return self._add_part('aggregate', by or a.By(), aggregated_data)
+        return self._add_operation('aggregate', by or a.By(), aggregated_data)
     
     def __getitem__(self, index):
         if not isinstance(index, slice):
             raise ValueError('Query objects only support slicing, not indexing')
-        return self._add_part('slice', index)
+        return self._add_operation('slice', index)
 
 Query = _Query()
 
@@ -103,8 +102,8 @@ EXECUTORS = {
 
 def execute(query, data):
     """`data`: an iterable of mappings."""
-    for part in query.parts:
-        data = EXECUTORS[part[0]](data, *part[1:])
-    return data
+    return reduce(
+        lambda data, (operation, args): EXECUTORS[operation](data, *args),
+        query.operations, data)
 
 
