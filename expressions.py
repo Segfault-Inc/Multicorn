@@ -1,38 +1,36 @@
 # coding: utf8
 import operator
 
+
 class AbstractExpression(object):
-    pass
+    @classmethod
+    def _add_magic_method(cls, name, operator_function, reverse=False):
+        # Do this in a function so that the closure will hold each value of
+        # `operator_function`
+        if reverse:
+            forward_operator = operator_function
+            operator_function = lambda self, other: forward_operator(other, self)
+            name = '__r%s__' % name
+        else:
+            name = '__%s__' % name
+
+        def magic_method(self, *args):
+            return Operation(operator_function, self, *args)
+        magic_method.__name__ = name
+        setattr(cls, name, magic_method)
 
 # Dynamically add methods to AbstractExpression.
-# Include these? index, concat, contains
-for name in '''lt le eq ne ge gt abs add and div floordiv invert lshift mod mul
-               neg or pos pow rshift sub truediv xor'''.split():
-    name = '__%s__' % name
-    # Use a closure here to hold each `operator_function`
-    def method_factory(operator_function):
-        # Use *args as some methods take one parameter (other than self)
-        # and others zero. The method’s `self` is also in *args
-        def magic_method(*args):
-            return Operation(operator_function, *args)
-        magic_method.__name__ = operator_function.__name__
-        return magic_method
-    setattr(AbstractExpression, name, method_factory(getattr(operator, name)))
+# Include these? index, concat, contains, divmod
+for names, reverse in (
+        ('''lt le eq ne ge gt abs add and div floordiv invert lshift mod mul
+            neg or pos pow rshift sub truediv xor''', False),
+        # Reversed operators: eg. 1 + r.foo => r.foo.__radd__(1)
+        ('''add sub mul floordiv div truediv mod pow lshift rshift and or
+            xor''', True)):
+    for name in names.split():
+        AbstractExpression._add_magic_method(
+            name, getattr(operator, '__%s__' % name), reverse)
 
-# Reversed operator: eg. 1 + r.foo => r.foo.__radd__(1)
-# Include divmod?
-for name in '''add sub mul floordiv div truediv mod pow lshift rshift and or
-                xor'''.split():
-    r_name = '__r%s__' % name
-    name = '__%s__' % name
-    # Use a closure here to hold each `operator_function`
-    def method_factory(operator_function):
-        def magic_method(self, other):
-            # Reversed argument order
-            return Operation(operator_function, other, self)
-        magic_method.__name__ = operator_function.__name__
-        return magic_method
-    setattr(AbstractExpression, r_name, method_factory(getattr(operator, name)))
 
 
 class Operation(AbstractExpression):
