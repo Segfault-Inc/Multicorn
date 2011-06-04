@@ -45,13 +45,30 @@ PARAGRAPH = "//paragraph"
 SECTION = "//section"
 
 
+_doctree_cache = {}
+def memoized_publish_doctree(source):
+    result = _doctree_cache.get(source)
+    if result is None:
+        result = docutils.core.publish_doctree(source=source)
+        _doctree_cache[source] = result
+    return result
+
+_xslt_cache = {}
+def memoized_xslt(tree):
+    key = etree.tostring(tree)
+    result = _xslt_cache.get(key)
+    if result is None:
+        result = to_bytes(MAIN_XSLT(tree))[:-1]
+        _xslt_cache[key] = result
+    return result
+
 class RestItem(XMLItem):
     """Base ReST item."""
     @property
     def xml_tree(self):
         if self._xml_tree is None:
             parser = etree.XMLParser()
-            docutils_tree = docutils.core.publish_doctree(
+            docutils_tree = memoized_publish_doctree(
                 source = self[self.access_point.stream_property].read())
             xmlstring = docutils_tree.asdom().toxml()
             if xmlstring == None or not(xmlstring.strip()):
@@ -133,5 +150,5 @@ class Rest(XML):
     def preprocess_save(self, item):
         if len(item.unsaved_properties):
             self.update_xml_tree(item)
-            string = to_bytes(MAIN_XSLT(item.xml_tree))[:-1]
+            string = memoized_xslt(item.xml_tree)
             item[self.stream_property] = StringIO(string)
