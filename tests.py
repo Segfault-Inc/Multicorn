@@ -58,13 +58,13 @@ def test():
         dict(toto='foo', tata=6),
         dict(toto='bar', tata=42),
     ]
-    
+
     try:
         Query[1]
     except ValueError:
         pass
     else:
-        assert False, 'Expected ValueError'        
+        assert False, 'Expected ValueError'
 
     res = exec_(Query.aggregate(price=a.Sum(r.price * 2)))
     assert res == [dict(price=54)]

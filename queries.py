@@ -11,25 +11,25 @@ import aggregates as a
 class _Query(object):
     def __init__(self, operations=None):
         self.operations = operations or ()
-    
+
     def _add_operation(self, operation, *args):
         return _Query(self.operations + ((operation, args),))
-        
+
     def select(self, **data):
         return self._add_operation('select', data)
-    
+
     def select_also(self, **new_data):
         return self._add_operation('select_also', new_data)
-    
+
     def where(self, condition):
         return self._add_operation('where', condition)
-        
+
     def sort(self, *keys):
         return self._add_operation('sort', keys)
-    
+
     def aggregate(self, by=None, **aggregated_data):
         return self._add_operation('aggregate', by or a.By(), aggregated_data)
-    
+
     def __getitem__(self, index):
         if not isinstance(index, slice):
             raise ValueError('Query objects only support slicing, not indexing')
@@ -82,7 +82,7 @@ class PythonExecutor(object):
             groups.setdefault(values, []).append(element)
             # TODO: maybe do not keep all elements but compute aggregates
             # step-by-step?
-            
+
         for criteria_values, elements in groups.iteritems():
             result = dict(zip(names, criteria_values))
             for name, aggregate in aggregates.iteritems():
@@ -101,10 +101,10 @@ class PythonExecutor(object):
                     value = max(aggregated_values)
                 else:
                     raise ValueError('Unkown aggregate type: ', aggregate)
-                
+
                 result[name] = value
             yield result
-            
+
 
     @staticmethod
     def execute_slice(data, slice_):
