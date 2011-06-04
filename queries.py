@@ -15,8 +15,11 @@ class _Query(object):
     def _add_operation(self, operation, *args):
         return _Query(self.operations + ((operation, args),))
         
-    def select(self, **new_data):
-        return self._add_operation('select', new_data)
+    def select(self, **data):
+        return self._add_operation('select', data)
+    
+    def select_also(self, **new_data):
+        return self._add_operation('select_also', new_data)
     
     def where(self, condition):
         return self._add_operation('where', condition)
@@ -35,16 +38,33 @@ class _Query(object):
 Query = _Query()
 
 
+def _evaluate_dict(element, expressions):
+    """
+    {name: expression} => {name: evaluated_value}
+    """
+    for name, expression in expressions.iteritems():
+        yield name, evaluate(expression, element)
+
 class PythonExecutor(object):
     @staticmethod
     def execute_select(data, expressions):
         for element in data:
-            yield dict((name, evaluate(expression, element))
-                       for name, expression in expressions.iteritems())
+            yield dict(_evaluate_dict(element, expressions))
+
+    @staticmethod
+    def execute_select_also(data, expressions):
+        for element in data:
+            # Merge existing values and new, evaluated values.
+            # New values with the same name can override existing ones.
+            new_element = dict(element)
+            new_element.update(_evaluate_dict(element, expressions))
+            yield new_element
 
     @staticmethod
     def execute_where(data, condition):
-        return itertools.ifilter(functools.partial(evaluate, condition), data)
+        for element in data:
+            if evaluate(condition, element):
+                yield element
 
     @staticmethod
     def execute_sort(data, key_expressions):

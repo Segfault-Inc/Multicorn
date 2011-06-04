@@ -20,6 +20,13 @@ def test():
         dict(toto='bar', price=D('5.98')),
     ]
 
+    res = exec_(Query.select_also(price=r.price * r.tax))
+    assert res == [
+        dict(toto='foo', tata=42, price=D('11.96'), tax=D('1.196')),
+        dict(toto='foo', tata=6, price=12, tax=1),
+        dict(toto='bar', tata=42, price=D('5.98'), tax=D('1.196')),
+    ]
+
     res = exec_(Query.where(r.toto == 'foo').select(price=r.price))
     assert res == [
         dict(price=10),
