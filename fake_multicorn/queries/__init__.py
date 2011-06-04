@@ -4,8 +4,8 @@ from __future__ import division
 
 import itertools
 import functools
-from expressions import r, evaluate
-import aggregates as a
+from .expressions import r, evaluate
+from . import aggregates as a
 
 
 class _Query(object):
