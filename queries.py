@@ -27,8 +27,14 @@ class _Query(object):
     def sort(self, *keys):
         return self._add_operation('sort', keys)
 
-    def aggregate(self, by=None, **aggregated_data):
-        return self._add_operation('aggregate', by or a.By(), aggregated_data)
+    def aggregate(self, *args, **aggregated_data):
+        if not args:
+            by = a.By()
+        elif len(args) == 1:
+            by = args[0]
+        else:
+            raise TypeError('aggregate takes at most one positional argument.')
+        return self._add_operation('aggregate', by, aggregated_data)
 
     def __getitem__(self, index):
         if not isinstance(index, slice):
