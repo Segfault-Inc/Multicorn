@@ -11,7 +11,7 @@ def test():
         dict(toto='bar', tata=42, price=5, tax=D('1.196')),
     ]
     def exec_(query):
-        return list(execute(query, data))
+        return list(execute(data, query))
 
     res = exec_(Query.select(toto=r.toto, price=r.price * r.tax))
     assert res == [

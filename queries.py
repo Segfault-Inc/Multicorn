@@ -100,10 +100,12 @@ EXECUTORS = {
     'slice': execute_slice,
 }
 
-def execute(query, data):
+def execute_operation(data, operation):
+    name, args = operation
+    return EXECUTORS[name](data, *args)
+
+def execute(data, query):
     """`data`: an iterable of mappings."""
-    return reduce(
-        lambda data, (operation, args): EXECUTORS[operation](data, *args),
-        query.operations, data)
+    return reduce(execute_operation, query.operations, data)
 
 
