@@ -155,6 +155,36 @@ def test_isolate():
         == repr((r.foo + 2, Literal(True)))
     assert repr(isolate_expression(r.foo + 2, ['bar'])) \
         == repr((Literal(True), r.foo + 2))
+    
+    def test_isolate_query_failure(q1, names):
+        """Test that isolate_query did not isolate anything."""
+        e2, q2 = isolate_query(q1, names)
+        assert repr(e2) == 'True'
+        assert q2.operations == q1.operations
+    
+    # Can only isolate a where on the start of the query
+    test_isolate_query_failure(Query[1:].where(r.foo == 4), ['foo'])
+    
+    # Can not isolate this name in a &
+    test_isolate_query_failure(Query.where(r.foo | r.bar)[1:], ['bar'])
+    
+    e1 = r.foo > 7
+    e2 = r.foo < 10
+    q1 = Query.where(e1).where(e2)[1:]
+    e3, q2 = isolate_query(q1, ['foo'])
+    assert repr(e3) == repr(e1 & e2)
+    assert q2.operations == q1.operations[2:]
+
+    q1 = Query.where(e1 & r.bar).where((r.bar == 0) & e2)[1:]
+    e3, q2 = isolate_query(q1, ['foo'])
+    assert repr(e3) == repr(e1 & e2)
+    assert q2.operations[0].kind == 'where'
+    assert q2.operations[1].kind == 'where'
+    cond1, = q2.operations[0].args
+    cond2, = q2.operations[1].args
+    assert repr(cond1 & cond2) == repr(r.bar & (r.bar == 0))
+    assert q2.operations[2:] == q1.operations[2:]
+    
 
 @suite.test
 def test_access_points():

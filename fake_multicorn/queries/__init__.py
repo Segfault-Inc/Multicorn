@@ -5,7 +5,7 @@ from __future__ import division
 import itertools
 import functools
 import collections
-from .expressions import r, _ensure_expression
+from .expressions import r, _ensure_expression, Literal
 from . import aggregates as a
 
 
@@ -32,6 +32,13 @@ class _Query(object):
         `Query.where(a).sort(b)`
         """
         return _Query(self.operations + other.operations)
+    
+    def noop(self):
+        """
+        Query.noop() is the no-op query, less weird than just Query.
+        q.noop() is equivalent to q.
+        """
+        return self
 
     def select(self, **data):
         data = _ensure_expression_dict(data)
@@ -43,7 +50,11 @@ class _Query(object):
 
     def where(self, condition):
         condition = _ensure_expression(condition)
-        return self._add_operation('where', condition)
+        if isinstance(condition, Literal) and  condition.value:
+            # condition is always True, no need to add an operation
+            return self.noop()
+        else:
+            return self._add_operation('where', condition)
 
     def sort(self, *keys):
         keys = tuple(_ensure_expression(key) for key in keys)
