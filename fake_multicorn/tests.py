@@ -93,10 +93,13 @@ def test_access_points():
     @metadata.register
     @access_point.Memory.declarative
     class foos:
-        properties = {'hello': unicode}
-    
-    i = foos.create({'hello': 'World!'})
+        properties = {'hello': unicode, 'buzziness': int}
+        ids = ['hello']
 
+    foos.create(dict(hello='World', buzziness=4), save=True)
+
+    assert list(foos.search(Query.select(fu=r.hello + '!'))) \
+        == [{'fu': 'World!'}]
 
 def test():
     test_queries()

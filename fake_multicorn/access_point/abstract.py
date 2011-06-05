@@ -1,6 +1,8 @@
 from multicorn.property import Property
 from multicorn.item import Item
 
+from .. import queries
+
 
 class AbstractAccessPoint(object):
 
@@ -31,13 +33,25 @@ class AbstractAccessPoint(object):
             if not name.startswith('__'))
         return cls(**args)
         
-    def __init__(self, name, properties):
+    def __init__(self, name, properties, identity_properties):
         self.name = name
-        self.properties = dict(
-            # If prop is not a Property already, assume it is the type
-            (name, (prop if isinstance(prop, Property) else Property(prop)))
-            for name, prop in properties.iteritems())
         self.metadata = None
+
+        self.properties = {}
+        for name, prop in properties.iteritems():
+            if not isinstance(prop, Property):
+                # Assume it's just a type.
+                prop = Property(prop)
+            self.properties[name] = prop
+            prop.bind(self, name)
+            if name in identity_properties:
+                prop.mandatory = True
+                prop.identity = True
+
+        self.identity_properties = []
+        for name in identity_properties:
+            self.identity_properties.append(self.properties[name])
+
 
     def bind(self, metadata):
         """
@@ -49,12 +63,33 @@ class AbstractAccessPoint(object):
         else:
             raise RuntimeError('This access point is already bound.')
     
-    def create(self, properties=None, lazy_loaders=None):
+    def create(self, properties=None, lazy_loaders=None, save=True):
         """Create and return a new item."""
         properties = properties or {}
         lazy_loaders = lazy_loaders or {}
         item = self.ItemClass(self, properties, lazy_loaders)
         item.modified = True
         item.saved = False
+        if save:
+            self.save(item)
         return item
+    
+    # Minimal API for concrete access points
+    
+    def save(self, item):
+        """Return an iterable of all items in this access points."""
+        raise NotImplementedError
+    
+    def _all(self):
+        """Return an iterable of all items in this access points."""
+        raise NotImplementedError
+
+    # Can be overridden to optimize
+    
+    def search(self, query=None):
+        """Execute the given query and return an iterable of items."""
+        if query is None:
+            # The empty query does nothing and gives all items.
+            query = queries.Query
+        return queries.execute(self._all(), query)
 
