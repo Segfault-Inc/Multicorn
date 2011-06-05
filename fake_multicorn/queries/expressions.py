@@ -2,10 +2,63 @@
 import operator
 
 
+def _ensure_expression(expression):
+    """
+    Ensure that the given parameter is an Expression. If it is not, wrap it
+    in a Literal.
+    """
+    if isinstance(expression, Expression):
+        return expression
+    else:
+        return Literal(expression)
+
+
 class Expression(object):
     """
     Abstract base class for Operation, Variable and Literal
     """
+    
+    # Since bool inherits from int, `&` and `|` (bitwise `and` and `or`)
+    # behave as expected on booleans
+
+    # Magic method for `self & other`, not `self and other`
+    def __and__(self, other):
+        other = _ensure_expression(other)
+        # Simplify logic when possible
+        for a, b in ((self, other), (other, self)):
+            if isinstance(a, Literal):
+                if a.value:
+                    return b # True is the neutral element of and
+                else:
+                    return Literal(False) # False is the absorbing element
+        return Operation(operator.and_, self, other)
+    
+    # Magic method for `self | other`, not `self or other`
+    def __or__(self, other):
+        other = _ensure_expression(other)
+        # Simplify logic when possible
+        for a, b in ((self, other), (other, self)):
+            if isinstance(a, Literal):
+                if a.value:
+                    return Literal(True) # True is the absorbing element of or
+                else:
+                    return b # False is the neutral element
+        return Operation(operator.or_, self, other)
+
+    # `&` and `|` are commutative
+    __rand__ = __and__
+    __ror__ = __or__
+    
+    # However `~` (bitwise invert) does not behave as a logical `not`
+    # on booleans:
+    #   (~True, ~False) == (~1, ~0) == (-2, -1)
+    # We want to use `~` on expressions as the logical `not`.
+    def __invert__(self):
+        # Simplify logic when possible
+        if isinstance(self, Literal):
+            return Literal(not self.value)
+        # Use `not_` instead of `invert` here:
+        return Operation(operator.not_, self)
     
     @classmethod
     def _add_magic_method(cls, name, operator_function, reverse=False):
@@ -17,28 +70,20 @@ class Expression(object):
             if reverse:
                 args = args[::-1]
             return Operation(operator_function, *(
-                arg if isinstance(arg, Expression) else Literal(arg)
-                for arg in args))
+                _ensure_expression(arg) for arg in args))
         magic_method.__name__ = name
         setattr(cls, name, magic_method)
 
 # Dynamically add methods to AbstractExpression.
-# Include these? index, concat, contains, divmod
+# Include these? abs, index, concat, contains, divmod
 for names, reverse in (
-        ('''lt le eq ne ge gt abs add and div floordiv lshift mod mul
-            neg or pos pow rshift sub truediv xor''', False),
+        ('''lt le eq ne ge gt add div floordiv lshift mod mul
+            neg pos pow rshift sub truediv''', False),
         # Reversed operators: eg. 1 + r.foo => r.foo.__radd__(1)
-        ('''add sub mul floordiv div truediv mod pow lshift rshift and or
-            xor''', True)):
+        ('''add sub mul floordiv div truediv mod pow lshift rshift''', True)):
     for name in names.split():
         Expression._add_magic_method(
             name, getattr(operator, '__%s__' % name), reverse)
-
-# Since bool inherits from int, `&` and `|` (bitwise `and` and `or`) behave
-# as expected on boolean, but `~` (bitwise invert) does not:
-#   (~True, ~False) == (~1, ~0) == (-2, -1)
-# We want to use `~` on expressions as the boolean `not`.
-Expression._add_magic_method('invert', operator.not_)
 
 
 class Operation(Expression):
@@ -48,7 +93,8 @@ class Operation(Expression):
         self._affected_variables = None # Not computed yet.
 
     def __repr__(self):
-        return 'Op(%s, %r)' % (self.operator_function.__name__, self.args)
+        return 'Op(%s, %s)' % (
+            self.operator_function.__name__.strip('_'), repr(self.args)[1:-1])
 
     def evaluate(self, namespace):
         # Some operators don’t like *generator
@@ -89,7 +135,8 @@ class Literal(Expression):
         self.value = value
 
     def __repr__(self):
-        return 'Lit(%r)' % (self.value,)
+        return repr(self.value)
+#        return 'Lit(%r)' % (self.value,)
     
     def evaluate(self, namespace):
         return self.value

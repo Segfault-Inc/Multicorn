@@ -3,11 +3,28 @@ from attest import Tests, assert_hook
 
 from .queries import Query, execute
 from .queries import aggregates as a
-from .queries.expressions import r
+from .queries.expressions import r, Literal
 from . import access_point, Metadata
 
 
 suite = Tests()
+
+
+@suite.test
+def test_logical_simplifications():
+    assert repr(r.foo & True) == 'Var(foo)'
+    assert repr(r.foo | False) == 'Var(foo)'
+    assert repr(r.foo & False) == 'False'
+    assert repr(r.foo | True) == 'True'
+
+    assert repr(True & r.foo) == 'Var(foo)'
+    assert repr(False | r.foo) == 'Var(foo)'
+    assert repr(False & r.foo) == 'False'
+    assert repr(True | r.foo) == 'True'
+
+    assert repr(~r.foo) == 'Op(not, Var(foo))'
+    assert repr(~Literal('hello')) == 'False'
+    assert repr(~Literal('')) == 'True'
 
 
 @suite.test

@@ -1,15 +1,4 @@
-from .expressions import Expression, Literal
-
-
-def _ensure_expression(expression):
-    """
-    Ensure that the given parameter is an Expression. If it is not, wrap it
-    in a Literal.
-    """
-    if isinstance(expression, Expression):
-        return expression
-    else:
-        return Literal(expression)
+from .expressions import Expression, Literal, _ensure_expression
 
 
 class By(object):

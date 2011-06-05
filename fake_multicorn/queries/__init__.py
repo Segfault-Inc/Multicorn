@@ -5,8 +5,7 @@ from __future__ import division
 import itertools
 import functools
 import collections
-from .expressions import r
-from .aggregates import _ensure_expression
+from .expressions import r, _ensure_expression
 from . import aggregates as a
 
 
