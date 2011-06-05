@@ -4,7 +4,7 @@ from attest import Tests, assert_hook
 from .queries import Query, execute
 from .queries import aggregates as a
 from .queries.expressions import r, Expression, Literal
-from .queries.isolate import isolate_expression, isolate_query
+from .queries.isolate import isolate_expression, isolate_query, isolate_values
 from . import access_point, Metadata
 
 
@@ -145,7 +145,7 @@ def test_queries():
 
 
 @suite.test
-def test_isolate():
+def test_isolate_expression():
     assert (r.foo * 2 + r.bar).affected_variables() == set(['foo', 'bar'])
     
     assert repr(isolate_expression(
@@ -156,6 +156,9 @@ def test_isolate():
     assert repr(isolate_expression(r.foo + 2, ['bar'])) \
         == repr((Literal(True), r.foo + 2))
     
+
+@suite.test
+def test_isolate_query():
     def test_isolate_query_failure(q1, names):
         """Test that isolate_query did not isolate anything."""
         e2, q2 = isolate_query(q1, names)
@@ -184,7 +187,24 @@ def test_isolate():
     cond2, = q2.operations[1].args
     assert repr(cond1 & cond2) == repr(r.bar & (r.bar == 0))
     assert q2.operations[2:] == q1.operations[2:]
-    
+
+
+@suite.test
+def test_isolate_values():
+    values, remainder = isolate_values(
+        (r.foo == 4) & (r.bar > 0) & (2 == r.baz) & r.z)
+    assert values == {'foo': 4, 'baz': 2}
+    assert repr(remainder) == repr((r.bar > 0) & r.z)
+
+    values, remainder = isolate_values(r.foo == 4)
+    assert values == {'foo': 4}
+    assert repr(remainder) == repr(Literal(True))
+
+    # foo can never be both 4 and 5
+    values, remainder = isolate_values((r.foo == 4) & (5 == r.foo))
+    assert values == {}
+    assert repr(remainder) == repr(Literal(False))
+
 
 @suite.test
 def test_access_points():

@@ -1,5 +1,5 @@
 from operator import __and__
-from .expressions import Operation, Literal
+from .expressions import Operation, Literal, Variable
 from . import _Query, Query
 
 
@@ -14,7 +14,7 @@ def isolate_expression(expression, isolated_variables):
         # `expression` only affects the variables we want to isolate.
         return (expression, Literal(True))
 
-    elif isinstance(expression, Operation) and expression.name == 'and':
+    elif isinstance(expression, Operation) and expression.op_name == 'and':
         a, b = expression.args
         a1, a2 = isolate_expression(a, isolated_variables)
         b1, b2 = isolate_expression(b, isolated_variables)
@@ -44,3 +44,33 @@ def isolate_query(query, isolated_variables):
     e3, query = isolate_query(query, isolated_variables)
     
     return (e1 & e3, Query.where(e2) + query)
+
+
+def isolate_values(expression):
+    """
+    Return `(values, remainder)` such that `values` is a dict of name: value
+    pairs and `(r.n1 == v1) & (r.n2 == v2) & ... & remainder` is equivalent
+    to `expression`, with `values` as big as possible.
+    """
+    if isinstance(expression, Operation):
+        if expression.op_name == 'eq':
+            a, b = expression.args
+            if not isinstance(a, Variable):
+                # In case we have `4 == r.foo`
+                b, a = a, b
+            if isinstance(a, Variable) and isinstance(b, Literal):
+                return {a.name: b.value}, Literal(True)
+        elif expression.op_name == 'and':
+            values = {}
+            remainder = Literal(True)
+            for arg in expression.args:
+                these_values, this_remainder = isolate_values(arg)
+                for key, value in these_values.iteritems():
+                    if values.setdefault(key, value) != value:
+                        # Two different values for the same name:
+                        # r.foo == 4 & r.foo == 5 is always False.
+                        return {}, Literal(False)
+                remainder &= this_remainder
+            return values, remainder
+    return {}, expression
+

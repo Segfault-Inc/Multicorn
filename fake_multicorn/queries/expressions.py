@@ -93,7 +93,7 @@ class Operation(Expression):
         self._affected_variables = None # Not computed yet.
 
     @property
-    def name(self):
+    def op_name(self):
         """
         The name of the operator function without leading or trailing
         underscores.
@@ -102,7 +102,7 @@ class Operation(Expression):
 
     def __repr__(self):
         # Make a list to avoid the trailing comma in one-element tuples.
-        return 'Op(%s, %s)' % (self.name, repr(list(self.args))[1:-1])
+        return 'Op(%s, %s)' % (self.op_name, repr(list(self.args))[1:-1])
 
     def evaluate(self, namespace):
         # Some operators don’t like *generator
