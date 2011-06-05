@@ -5,7 +5,7 @@ from __future__ import division
 import itertools
 import functools
 import collections
-from .expressions import r, _ensure_expression, Literal
+from .expressions import r, _ensure_expression, Literal, Variable
 from . import aggregates as a
 
 
@@ -48,9 +48,11 @@ class _Query(object):
         new_data = _ensure_expression_dict(new_data)
         return self._add_operation('select_also', new_data)
 
-    def where(self, condition):
+    def where(self, condition=True, **equalities):
         condition = _ensure_expression(condition)
-        if isinstance(condition, Literal) and  condition.value:
+        for name, value in equalities.iteritems():
+            condition &= Variable(name) == value
+        if isinstance(condition, Literal) and condition.value:
             # condition is always True, no need to add an operation
             return self.noop()
         else:

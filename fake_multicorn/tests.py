@@ -69,6 +69,13 @@ def test_queries():
         dict(price=12),
     ]
 
+    # keword args also work for equalities
+    res = exec_(Query.where(toto='foo').select(price=r.price))
+    assert res == [
+        dict(price=10),
+        dict(price=12),
+    ]
+
     # Test chaining two Query objects
     res = exec_(Query.where(r.toto == 'foo') + Query.select(price=r.price))
     assert res == [
@@ -86,6 +93,12 @@ def test_queries():
     # Bitwise `and` used as a boolean `and`, not the precedence we would like
     res = exec_(Query.where((r.toto == 'foo') & (r.price > 11))
                      .select(price=r.price))
+    assert res == [
+        dict(price=12),
+    ]
+
+    # Mix positional and keyword args as with &
+    res = exec_(Query.where(r.price > 11, toto='foo').select(price=r.price))
     assert res == [
         dict(price=12),
     ]
@@ -219,7 +232,7 @@ def test_access_points():
     q = Query.sort(r.buzziness).select(fu=r.hello + '!')
     assert list(foos.search(q)) == [{'fu': 'World!'}, {'fu': 'Lipsum!'}]
 
-    q = Query.where(r.hello == 'Lipsum')
+    q = Query.where(hello='Lipsum')
     assert foos.get(q.select(b=r.buzziness)) == {'b': 4}
 
     item = foos.get(q)
@@ -237,14 +250,13 @@ def test_access_points():
     
     with attest.raises(SlowQuery):
         # buzziness is not an identity property, this is a slow query
-        foos.get(Query.where(r.buzziness == 4))
+        foos.get(Query.where(buzziness=4))
 
     with attest.raises(SlowQuery):
         # foo is only part of the identity, this is a slow query
-        foos.get(Query.where(r.foo == 1))
+        foos.get(Query.where(foo=1))
 
     # Whole identity, this is a fast query
-    assert foos.get(Query.where((r.hello == 'Lipsum') & (r.foo == 1))
-                         .select(b=r.buzziness)) \
+    assert foos.get(Query.where(hello='Lipsum', foo=1).select(b=r.buzziness)) \
         == {'b': 4}
 
