@@ -20,6 +20,7 @@ def test_queries():
     def exec_(query):
         return list(execute(data, query))
 
+    # Computed column
     res = exec_(Query.select(toto=r.toto, price=r.price * r.tax))
     assert res == [
         dict(toto='foo', price=D('11.96')),
@@ -53,6 +54,22 @@ def test_queries():
         pass
     else:
         assert False, 'Expected KeyError'
+
+    # Bitwise `and` used as a boolean `and`, not the precedence we would like
+    res = exec_(Query.where((r.toto == 'foo') & (r.price > 11))
+                     .select(price=r.price))
+    assert res == [
+        dict(price=12),
+    ]
+
+    res1 = exec_(Query.where((r.toto == 'bar') | (r.price > 11))
+                      .select(price=r.price))
+    res2 = exec_(Query.where((r.toto == 'bar') | ~(r.price < 11))
+                      .select(price=r.price))
+    assert res1 == res2 == [
+        dict(price=12),
+        dict(price=5),
+    ]
 
     res = exec_(Query.sort(-r.price).select(toto=r.toto, tata=r.tata))
     assert res == [

@@ -25,7 +25,7 @@ class Expression(object):
 # Dynamically add methods to AbstractExpression.
 # Include these? index, concat, contains, divmod
 for names, reverse in (
-        ('''lt le eq ne ge gt abs add and div floordiv invert lshift mod mul
+        ('''lt le eq ne ge gt abs add and div floordiv lshift mod mul
             neg or pos pow rshift sub truediv xor''', False),
         # Reversed operators: eg. 1 + r.foo => r.foo.__radd__(1)
         ('''add sub mul floordiv div truediv mod pow lshift rshift and or
@@ -34,6 +34,11 @@ for names, reverse in (
         Expression._add_magic_method(
             name, getattr(operator, '__%s__' % name), reverse)
 
+# Since bool inherits from int, `&` and `|` (bitwise `and` and `or`) behave
+# as expected on boolean, but `~` (bitwise invert) does not:
+#   (~True, ~False) == (~1, ~0) == (-2, -1)
+# We want to use `~` on expressions as the boolean `not`.
+Expression._add_magic_method('invert', operator.not_)
 
 
 class Operation(Expression):
