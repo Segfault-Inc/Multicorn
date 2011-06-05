@@ -1,10 +1,16 @@
 from decimal import Decimal as D
+from attest import Tests, assert_hook
 
 from .queries import Query, execute
 from .queries import aggregates as a
 from .queries.expressions import r
 from . import access_point, Metadata
 
+
+suite = Tests()
+
+
+@suite.test
 def test_queries():
     data = [
         dict(toto='foo', tata=42, price=10, tax=D('1.196')),
@@ -94,6 +100,7 @@ def test_queries():
     ]
 
 
+@suite.test
 def test_access_points():
     metadata = Metadata()
     
@@ -115,9 +122,4 @@ def test_access_points():
     item = foos.get(q)
     # This is an actual Item, not a dict.
     assert item.identity.conditions == {'hello': 'Lipsum'}
-
-def test():
-    test_queries()
-    test_access_points()
-    print 'Tests ok'
 
