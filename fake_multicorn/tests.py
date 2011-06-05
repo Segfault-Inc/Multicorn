@@ -3,7 +3,8 @@ from attest import Tests, assert_hook
 
 from .queries import Query, execute
 from .queries import aggregates as a
-from .queries.expressions import r, Literal
+from .queries.expressions import r, Expression, Literal
+from .queries.isolate import isolate_expression, isolate_query
 from . import access_point, Metadata
 
 
@@ -12,19 +13,28 @@ suite = Tests()
 
 @suite.test
 def test_logical_simplifications():
-    assert repr(r.foo & True) == 'Var(foo)'
-    assert repr(r.foo | False) == 'Var(foo)'
-    assert repr(r.foo & False) == 'False'
-    assert repr(r.foo | True) == 'True'
+    for true, false in ((True, False), (1, 0), ('a', '')):
+        assert repr(r.foo & true) == 'Var(foo)'
+        assert repr(r.foo | false) == 'Var(foo)'
+        assert repr(r.foo & false) == 'False'
+        assert repr(r.foo | true) == 'True'
 
-    assert repr(True & r.foo) == 'Var(foo)'
-    assert repr(False | r.foo) == 'Var(foo)'
-    assert repr(False & r.foo) == 'False'
-    assert repr(True | r.foo) == 'True'
+        assert repr(true & r.foo) == 'Var(foo)'
+        assert repr(false | r.foo) == 'Var(foo)'
+        assert repr(false & r.foo) == 'False'
+        assert repr(true | r.foo) == 'True'
 
     assert repr(~r.foo) == 'Op(not, Var(foo))'
     assert repr(~Literal('hello')) == 'False'
     assert repr(~Literal('')) == 'True'
+    
+    # Augmented assignment doesn't need to be defined explicitly
+    assert not hasattr(Expression, '__iadd__')
+    a = b = r.foo
+    a &= r.bar
+    assert repr(a) == 'Op(and, Var(foo), Var(bar))'
+    # No in-place mutation
+    assert repr(b) == 'Var(foo)'
 
 
 @suite.test
@@ -137,7 +147,14 @@ def test_queries():
 @suite.test
 def test_isolate():
     assert (r.foo * 2 + r.bar).affected_variables() == set(['foo', 'bar'])
-
+    
+    assert repr(isolate_expression(
+        (r.foo == 4) & (r.bar > 0) & r.baz, ['foo', 'baz']
+    )) == repr(((r.foo == 4) & r.baz, r.bar > 0))
+    assert repr(isolate_expression(r.foo + 2, ['foo'])) \
+        == repr((r.foo + 2, Literal(True)))
+    assert repr(isolate_expression(r.foo + 2, ['bar'])) \
+        == repr((Literal(True), r.foo + 2))
 
 @suite.test
 def test_access_points():

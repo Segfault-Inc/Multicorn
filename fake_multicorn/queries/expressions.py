@@ -92,9 +92,17 @@ class Operation(Expression):
         self.args = args
         self._affected_variables = None # Not computed yet.
 
+    @property
+    def name(self):
+        """
+        The name of the operator function without leading or trailing
+        underscores.
+        """
+        return self.operator_function.__name__.strip('_')
+
     def __repr__(self):
-        return 'Op(%s, %s)' % (
-            self.operator_function.__name__.strip('_'), repr(self.args)[1:-1])
+        # Make a list to avoid the trailing comma in one-element tuples.
+        return 'Op(%s, %s)' % (self.name, repr(list(self.args))[1:-1])
 
     def evaluate(self, namespace):
         # Some operators don’t like *generator
