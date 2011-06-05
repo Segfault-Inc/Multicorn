@@ -84,7 +84,7 @@ class Literal(Expression):
         self.value = value
 
     def __repr__(self):
-        return repr(self.value)
+        return 'Lit(%r)' % (self.value,)
     
     def evaluate(self, namespace):
         return self.value

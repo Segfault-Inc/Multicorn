@@ -4,30 +4,50 @@ from __future__ import division
 
 import itertools
 import functools
+import collections
 from .expressions import r
+from .aggregates import _ensure_expression
 from . import aggregates as a
+
+
+Operation = collections.namedtuple('Operation', 'kind, args')
+
+
+def _ensure_expression_dict(dict_):
+    """Ensure that all values in a dict are Expression objects."""
+    return dict(
+        (key, _ensure_expression(value))
+        for key, value in dict_.iteritems())
 
 
 class _Query(object):
     def __init__(self, operations=None):
         self.operations = operations or ()
 
-    def _add_operation(self, operation, *args):
-        return _Query(self.operations + ((operation, args),))
+    def _add_operation(self, kind, *args):
+        return _Query(self.operations + (Operation(kind, args),))
     
     def __add__(self, other):
+        """
+        eg. `Query.where(a) + Query.sort(b)` is equivalent to
+        `Query.where(a).sort(b)`
+        """
         return _Query(self.operations + other.operations)
 
     def select(self, **data):
+        data = _ensure_expression_dict(data)
         return self._add_operation('select', data)
 
     def select_also(self, **new_data):
+        new_data = _ensure_expression_dict(new_data)
         return self._add_operation('select_also', new_data)
 
     def where(self, condition):
+        condition = _ensure_expression(condition)
         return self._add_operation('where', condition)
 
     def sort(self, *keys):
+        keys = tuple(_ensure_expression(key) for key in keys)
         return self._add_operation('sort', keys)
 
     def aggregate(self, *args, **aggregated_data):
@@ -35,6 +55,7 @@ class _Query(object):
             by = a.By()
         elif len(args) == 1:
             by = args[0]
+            by.criteria = _ensure_expression_dict(by.criteria)
         else:
             raise TypeError('aggregate takes at most one positional argument.')
         return self._add_operation('aggregate', by, aggregated_data)
@@ -109,6 +130,8 @@ class PythonExecutor(object):
                 elif isinstance(aggregate, a.Max):
                     value = max(aggregated_values)
                 else:
+                    print aggregate, type(aggregate)
+                    print a.Sum
                     raise ValueError('Unkown aggregate type: ', aggregate)
 
                 result[name] = value
