@@ -79,11 +79,10 @@ class MutableMultiMapping(MultiMapping, MutableMapping):
         """Set ``(value,)`` as the tuple of values associated to ``key``."""
         self.setlist(key, (value,))
     
-    # MultiMapping has got a very strange signature for update, without self
-    # argument, enabling to use the method as a function. This is definitely
-    # not what we want.
-    # pylint: disable=W0221
-    def update(self, *args, **kwargs):
+    # The self argument is positional-only, in *args. This allows the method
+    # to take a keyword argument named `self` without conflict.
+    # See http://bugs.python.org/issue9137
+    def update(*args, **kwargs):
         """Set values of the given mapping to the current mapping.
 
         The given arguments can be ``key=value`` named arguments, a regular
@@ -91,13 +90,13 @@ class MutableMultiMapping(MultiMapping, MutableMapping):
         couples.
 
         """
-        if not args:
-            other = kwargs
-        elif len(args) == 1:
-            other = args[0]
-        else:
-            raise TypeError(
-                "update expected at most 1 arguments, got %i" % len(args))
+        if len(args) > 2:
+            raise TypeError("update() takes at most 2 positional "
+                            "arguments ({} given)".format(len(args)))
+        elif not args:
+            raise TypeError("update() takes at least 1 argument (0 given)")
+        self = args[0]
+        other = args[1] if len(args) >= 2 else ()
 
         if isinstance(other, MultiMapping):
             # We have a MultiMapping object with a getlist method
@@ -105,9 +104,8 @@ class MutableMultiMapping(MultiMapping, MutableMapping):
             for key in other:
                 self.setlist(key, other.getlist(key))
             # pylint: enable=E1103
-        else:
-            super(MutableMultiMapping, self).update(other)
-    # pylint: enable=W0221
+            other = ()
+        super(MutableMultiMapping, self).update(other, **kwargs)
 
 # pylint: enable=W0232
 

@@ -9,9 +9,13 @@ Test the Item class.
 
 """
 
+import sys
+from nose.plugins.skip import SkipTest
+
 from multicorn.access_point.memory import Memory
 from multicorn.property import Property
 from .common import make_site
+from multicorn.item import MultiDict
 
 
 
@@ -45,3 +49,16 @@ def test_item_representation():
     site = make_site(memory_make_ap(), fill=True)
     item = tuple(site.search("things"))[0]
     assert item.reference_repr() == "2"
+
+
+def test_update_self():
+    """Test `MutableMultiMapping.update` with a keword argument named `self`"""
+    if sys.version_info < (2, 7, 0, 'alpha', 3):
+        # This test depends on http://bugs.python.org/issue9137 being fixed.
+        # The fix was fist released in CPython 2.7.0a3:
+        # http://svn.python.org/projects/python/tags/r271/Misc/NEWS
+        raise SkipTest
+    dict_ = MultiDict()
+    dict_.update(self=4)
+    assert dict_ == {'self': 4}
+
