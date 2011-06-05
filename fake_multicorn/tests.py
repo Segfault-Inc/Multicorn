@@ -101,6 +101,11 @@ def test_queries():
 
 
 @suite.test
+def test_isolate():
+    assert (r.foo * 2 + r.bar).affected_variables() == set(['foo', 'bar'])
+
+
+@suite.test
 def test_access_points():
     metadata = Metadata()
     

@@ -50,6 +50,20 @@ class Operation(Expression):
         args = tuple(arg.evaluate(namespace) for arg in self.args)
         return self.operator_function(*args)
 
+    def affected_variables(self):
+        """
+        Return the set of the variables affected by this expression:
+        
+            >>> sorted((r.foo + r.bar + 4).affected_variables())
+            ['bar', 'foo']
+        """
+        if self._affected_variables is None:
+            self._affected_variables = frozenset(
+                name
+                for arg in self.args
+                for name in arg.affected_variables())
+        return self._affected_variables
+
 
 class Variable(Expression):
     def __init__(self, name):
@@ -61,6 +75,9 @@ class Variable(Expression):
     def evaluate(self, namespace):
         return namespace[self.name]
 
+    def affected_variables(self):
+        return (self.name,)
+
 
 class Literal(Expression):
     def __init__(self, value):
@@ -71,6 +88,9 @@ class Literal(Expression):
     
     def evaluate(self, namespace):
         return self.value
+
+    def affected_variables(self):
+        return () # empty tuple
 
 
 class Root(object):
