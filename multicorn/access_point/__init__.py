@@ -23,7 +23,10 @@ DEFAULT_PARAMETER = object()
 
 
 class NotOneMatchingItem(Exception):
-    """Not one object has been returned."""
+    """
+    Exactly one item was expected but a different number (zero or more than
+    one) came.
+    """
     value = __doc__
 
 
@@ -38,7 +41,7 @@ class ItemDoesNotExist(NotOneMatchingItem):
 
 
 class AlreadyRegistered(RuntimeError):
-    """Access point is already registered so a site."""
+    """Access point is already registered to a site."""
     value = __doc__
 
 
