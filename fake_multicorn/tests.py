@@ -96,10 +96,18 @@ def test_access_points():
         properties = {'hello': unicode, 'buzziness': int}
         ids = ['hello']
 
-    foos.create(dict(hello='World', buzziness=4), save=True)
+    foos.create(dict(hello='World', buzziness=0), save=True)
+    foos.create(dict(hello='Lipsum', buzziness=4), save=True)
 
-    assert list(foos.search(Query.select(fu=r.hello + '!'))) \
-        == [{'fu': 'World!'}]
+    q = Query.sort(r.buzziness).select(fu=r.hello + '!')
+    assert list(foos.search(q)) == [{'fu': 'World!'}, {'fu': 'Lipsum!'}]
+
+    q = Query.where(r.hello == 'Lipsum')
+    assert foos.get(q.select(b=r.buzziness)) == {'b': 4}
+
+    item = foos.get(q)
+    # This is an actual Item, not a dict.
+    assert item.identity.conditions == {'hello': 'Lipsum'}
 
 def test():
     test_queries()

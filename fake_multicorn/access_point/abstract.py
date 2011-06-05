@@ -1,5 +1,6 @@
 from multicorn.property import Property
 from multicorn.item import Item
+from multicorn.access_point import ItemDoesNotExist, MultipleMatchingItems
 
 from .. import queries
 
@@ -92,4 +93,21 @@ class AbstractAccessPoint(object):
             # The empty query does nothing and gives all items.
             query = queries.Query
         return queries.execute(self._all(), query)
+
+    def get(self, query=None):
+        """
+        Same as search but return exactly one item.
+        Raise if there are more or less than one result.
+        """
+        results = iter(self.search(query))
+        try:
+            item = next(results)
+        except StopIteration:
+            raise ItemDoesNotExist
+        try:
+            next(results)
+        except StopIteration:
+            return item
+        else:
+            raise MultipleMatchingItems
 
