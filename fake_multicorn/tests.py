@@ -1,5 +1,6 @@
 from decimal import Decimal as D
 from attest import Tests, assert_hook
+import attest
 
 from .queries import Query, execute
 from .queries import aggregates as a
@@ -117,12 +118,8 @@ def test_queries():
         dict(toto='bar', tata=42),
     ]
 
-    try:
+    with attest.raises(ValueError):
         Query[1]
-    except ValueError:
-        pass
-    else:
-        assert False, 'Expected ValueError'
 
     res = exec_(Query.aggregate(price=a.Sum(r.price * 2)))
     assert res == [dict(price=54)]
@@ -213,11 +210,11 @@ def test_access_points():
     @metadata.register
     @access_point.Memory.declarative
     class foos:
-        properties = {'hello': unicode, 'buzziness': int}
-        ids = ['hello']
+        properties = {'hello': unicode, 'foo': int, 'buzziness': int}
+        ids = ['hello', 'foo']
 
-    foos.create(dict(hello='World', buzziness=0), save=True)
-    foos.create(dict(hello='Lipsum', buzziness=4), save=True)
+    foos.create(dict(hello='World', foo=1, buzziness=0), save=True)
+    foos.create(dict(hello='Lipsum', foo=1, buzziness=4), save=True)
 
     q = Query.sort(r.buzziness).select(fu=r.hello + '!')
     assert list(foos.search(q)) == [{'fu': 'World!'}, {'fu': 'Lipsum!'}]
@@ -227,5 +224,27 @@ def test_access_points():
 
     item = foos.get(q)
     # This is an actual Item, not a dict.
-    assert item.identity.conditions == {'hello': 'Lipsum'}
+    assert item.identity.conditions == {'hello': 'Lipsum', 'foo': 1}
+    
+    
+    # Make sure we're not doing a slow query
+    class SlowQuery(Exception):
+        pass
+    def _all():
+        # Fast queries should not go through here.
+        raise SlowQuery()
+    foos._all = _all
+    
+    with attest.raises(SlowQuery):
+        # buzziness is not an identity property, this is a slow query
+        foos.get(Query.where(r.buzziness == 4))
+
+    with attest.raises(SlowQuery):
+        # foo is only part of the identity, this is a slow query
+        foos.get(Query.where(r.foo == 1))
+
+    # Whole identity, this is a fast query
+    assert foos.get(Query.where((r.hello == 'Lipsum') & (r.foo == 1))
+                         .select(b=r.buzziness)) \
+        == {'b': 4}
 

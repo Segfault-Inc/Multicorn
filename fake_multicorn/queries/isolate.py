@@ -74,3 +74,9 @@ def isolate_values(expression):
             return values, remainder
     return {}, expression
 
+
+def isolate_values_from_query(query, isolated_variables):
+    expression, query_remainder = isolate_query(query, isolated_variables)
+    values, expression_remainder = isolate_values(expression)
+    return values, Query.where(expression_remainder) + query_remainder
+
