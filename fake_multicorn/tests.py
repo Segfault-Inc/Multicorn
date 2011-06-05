@@ -90,8 +90,12 @@ def test_queries():
 def test_access_points():
     metadata = Metadata()
     
-    foos = access_point.Memory(name='foos')
-    metadata.register(foos)
+    @metadata.register
+    @access_point.Memory.declarative
+    class foos:
+        properties = {'hello': unicode}
+    
+    i = foos.create({'hello': 'World!'})
 
 
 def test():
