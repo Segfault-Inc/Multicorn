@@ -4,7 +4,7 @@ from __future__ import division
 
 import itertools
 import functools
-from .expressions import r, evaluate
+from .expressions import r
 from . import aggregates as a
 
 
@@ -52,7 +52,7 @@ def _evaluate_dict(element, expressions):
     {name: expression} => {name: evaluated_value}
     """
     for name, expression in expressions.iteritems():
-        yield name, evaluate(expression, element)
+        yield name, expression.evaluate(element)
 
 class PythonExecutor(object):
     @staticmethod
@@ -72,13 +72,13 @@ class PythonExecutor(object):
     @staticmethod
     def execute_where(data, condition):
         for element in data:
-            if evaluate(condition, element):
+            if condition.evaluate(element):
                 yield element
 
     @staticmethod
     def execute_sort(data, key_expressions):
         def key_function(element):
-            return tuple(evaluate(key, element) for key in key_expressions)
+            return tuple(key.evaluate(element) for key in key_expressions)
         return sorted(data, key=key_function)
 
     @staticmethod
@@ -87,7 +87,7 @@ class PythonExecutor(object):
         names = sorted(criteria.keys())
         groups = {}
         for element in data:
-            values = tuple(evaluate(criteria[name], element) for name in names)
+            values = tuple(criteria[name].evaluate(element) for name in names)
             groups.setdefault(values, []).append(element)
             # TODO: maybe do not keep all elements but compute aggregates
             # step-by-step?
@@ -95,7 +95,7 @@ class PythonExecutor(object):
         for criteria_values, elements in groups.iteritems():
             result = dict(zip(names, criteria_values))
             for name, aggregate in aggregates.iteritems():
-                aggregated_values = (evaluate(aggregate.expression, element)
+                aggregated_values = (aggregate.expression.evaluate(element)
                                      for element in elements)
                 if isinstance(aggregate, a.Count):
                     value = len(elements)
