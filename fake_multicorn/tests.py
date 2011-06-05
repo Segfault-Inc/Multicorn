@@ -34,6 +34,13 @@ def test_queries():
         dict(price=12),
     ]
 
+    # Test chaining two Query objects
+    res = exec_(Query.where(r.toto == 'foo') + Query.select(price=r.price))
+    assert res == [
+        dict(price=10),
+        dict(price=12),
+    ]
+
     try:
         exec_(Query.select(price=r.price).where(r.toto == 'foo'))
     except KeyError:

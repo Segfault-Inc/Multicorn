@@ -14,6 +14,9 @@ class _Query(object):
 
     def _add_operation(self, operation, *args):
         return _Query(self.operations + ((operation, args),))
+    
+    def __add__(self, other):
+        return _Query(self.operations + other.operations)
 
     def select(self, **data):
         return self._add_operation('select', data)
