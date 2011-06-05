@@ -5,17 +5,14 @@ import operator
 class AbstractExpression(object):
     @classmethod
     def _add_magic_method(cls, name, operator_function, reverse=False):
-        # Do this in a function so that the closure will hold each value of
-        # `operator_function`
-        if reverse:
-            forward_operator = operator_function
-            operator_function = lambda self, other: forward_operator(other, self)
-            name = '__r%s__' % name
-        else:
-            name = '__%s__' % name
-
-        def magic_method(self, *args):
-            return Operation(operator_function, self, *args)
+        name = '__%s%s__' % (('r' if reverse else ''), name)
+        # Define the method inside a function so that the closure will hold
+        # each value of `operator_function` and `reverse`
+        def magic_method(*args):
+            # `*args` here includes the method’s `self`
+            if reverse:
+                args = args[::-1]
+            return Operation(operator_function, *args)
         magic_method.__name__ = name
         setattr(cls, name, magic_method)
 
