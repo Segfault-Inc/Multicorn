@@ -1,11 +1,12 @@
-# coding: utf8
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from __future__ import division
 
 import itertools
-import functools
 import collections
-from .expressions import r, _ensure_expression, Literal, Variable
+from .expressions import _ensure_expression, Literal, Variable
 from . import aggregates as a
 
 
