@@ -6,4 +6,5 @@ from attest import Tests
 
 
 all = Tests('.'.join((__name__, mod, 'suite'))
-            for mod in ('test_queries',))
+            for mod in ('test_queries',
+                        'test_item'))
