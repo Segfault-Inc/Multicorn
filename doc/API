@@ -1,0 +1,38 @@
+Classes
+-------
+
+Multicorn:
+    (Was Site.) Main object, typically one per app.
+    
+    - corns: A dict of {'name': Corn instance}
+    
+    * register(): Register a corn
+
+
+Corn:
+    (Was AccessPoint.) Roughly "contains" a set of items.
+    
+    - name
+    - multicorn: Multicorn instance this corn is bound to
+    - properties: collection of Property instances
+    - identity_properties: list of the names of the properties that form each
+                           item’s “identity” in this corn.
+    
+    * search(): Return an iterable of items matching the given query.
+    * open(): Like search(), but expect a single result and return it.
+    * create(): Create a new (unsaved) item.
+    * save(): Save (insert or update) an item in this corn.
+
+
+Property:
+    Metadata about a given property in a given Corn.
+    
+    - name
+    - type
+
+
+Item:
+    Behaves as MutableMapping (dict-like) of values for this corn’s properties,
+    with a fixed set of key. A value can be set to None but not removed.
+    
+    - corn: the Corn instance this item is coming from
