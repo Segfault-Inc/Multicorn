@@ -6,8 +6,10 @@ from __future__ import division
 
 import itertools
 import collections
-from .expressions import _ensure_expression, Literal, Variable
 from . import aggregates as a
+from .expressions import _ensure_expression, Literal, Variable
+# Not used here, to be imported from here
+from .expressions import r
 
 
 Operation = collections.namedtuple('Operation', 'kind, args')
