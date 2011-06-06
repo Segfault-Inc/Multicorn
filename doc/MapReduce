@@ -1,0 +1,31 @@
+Unified query/expression objects
+--------------------------------
+
+An expression represents an “item”. An “item” does not have to be an
+Item instance (but it can).
+
+An actual value is obtained by executing/evaluating an expression against a
+base item, typically the sequence of all Items in a Corn.
+
+
+Expressions represent one of:
+    A literal value
+    A sequence of items
+    ??? A variable
+
+
+`All`:
+    Represents the unmodified base item. (It is named so as the base item
+    is a sequence of Items in Multicorn.)
+
+On expressions representing sequences:
+    Returning a new sequence:
+        .filter(item -> boolean)
+        .map(item -> new item)
+        .sort(item -> sort key)
+        ???  .groupby(item -> grouping key)
+        [slice]
+
+    .reduce((acc, item -> new acc), initial acc)
+        or  .reduce(pre-defined marker such as Sum)
+    [index]   (Maybe?)

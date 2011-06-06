@@ -1,0 +1,51 @@
+Meta documentation
+##################
+
+The website should *be* the doc.
+
+
+Introduction (front page)
+=========================
+
+We have about 5 seconds of attention here. We need to tell what Multicorn is
+and convince the reader that it is great and they need it.
+
+
+Quickstart
+----------
+
+If possible, show some working in very few lines. A “hello world”, conceptually.
+
+
+Tutorial
+========
+
+Now we have the reader’s interest. Show how to install and get started.
+Cover what Multicorn can do in breadth but not in depth, narrative style.
+No need to be comprehensive, even in breadth.
+
+
+Writing a new /corn/
+--------------------
+
+* Minimal interface
+* How to optimize, helpers for this
+
+
+API reference
+=============
+
+Cover every module, function, class, attribute, method and such. Mostly from
+docstrings but not only. Include every built-in “corn”. Detail what is 
+“optimized” (eg. translated into SQL) and what is not.
+
+Changelog
+=========
+
+Well, you know. Just higher level than `git log`.
+
+About the project
+=================
+
+Repeat how to install, tell where to find the source, how to report bugs,
+submit patches, contact the authors.
