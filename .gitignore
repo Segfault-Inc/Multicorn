@@ -9,10 +9,3 @@
 /Multicorn.egg-info
 /profile_results
 *.swp
-
-# zc.buildout
-/.installed.cfg
-/bin
-/develop-eggs
-/eggs
-/parts
