@@ -13,32 +13,61 @@ class RequestWrapper(object):
     
     @classmethod
     def from_request(cls, request):
-        return cls.class_map[type(request)](request)
+        for class_ in type(request).mro():
+            wrapper_class = cls.class_map.get(class_, None)
+            if wrapped_class is not None:
+                return wrapper_class(request)
+        raise TypeError('No request wrapper for type %s.' % type(request))
     
     def __init__(self, wrapped_request):
         self.wrapped_request = wrapped_request
-#        self.wrapped_state = getattr(wrapped_request,
-#            '_%s__state' % type(wrapped_request).__name__)
-        # Directly get from __dict__ to avoid name mangling.
-        self.wrapped_state = wrapped_request.__dict__['__state']
-    
-    def __getattr__(self, name):
-        return getattr(self.wrapped_state, name)
+        self.args = wrapped_request._Request__args
 
 
 @RequestWrapper.register_wrapper(requests.Literal)
 class LiteralWrapper(RequestWrapper):
-    pass
+    def __init__(self, *args, **kwargs):
+        super(LiteralWrapper, self).__init__(*args, **kwargs)
+        self.value, = self.args
+
+
+@RequestWrapper.register_wrapper(requests.List)
+class ListWrapper(RequestWrapper):
+    def __init__(self, *args, **kwargs):
+        super(ListWrapper, self).__init__(*args, **kwargs)
+        self.value, = self.args
+        self.value = [self.from_request(r) for r in self.value]
+
+
+@RequestWrapper.register_wrapper(requests.Tuple)
+class TupleWrapper(RequestWrapper):
+    def __init__(self, *args, **kwargs):
+        super(TupleWrapper, self).__init__(*args, **kwargs)
+        self.value, = self.args
+        self.value = tuple(self.from_request(r) for r in self.value)
+
+
+@RequestWrapper.register_wrapper(requests.Dict)
+class DictWrapper(RequestWrapper):
+    def __init__(self, *args, **kwargs):
+        super(DictWrapper, self).__init__(*args, **kwargs)
+        self.value, = self.args
+        self.value = dict(
+            (key, self.from_request(value)) 
+            for key, value in self.value.iteritems())
 
 
 @RequestWrapper.register_wrapper(requests.Root)
 class RootWrapper(RequestWrapper):
-    pass
+    def __init__(self, *args, **kwargs):
+        super(RootWrapper, self).__init__(*args, **kwargs)
+        self.scope_depth, = self.args
 
 
 @RequestWrapper.register_wrapper(requests.Operation)
 class OperationWrapper(RequestWrapper):
-    pass
-
+    def __init__(self, *args, **kwargs):
+        super(OperationWrapper, self).__init__(*args, **kwargs)
+        self.args = tuple(self.from_request(r) for r in self.args)
 
 
