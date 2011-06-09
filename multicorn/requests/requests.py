@@ -8,21 +8,16 @@ import sys
 
 def ensure_request(obj):
     """
-    * If obj is a Request, return as-is.
-    * If it is a list, tuple or dict, apply recursively to all elements.
-    * Otherwise, wrap in a Literal.
+    Return a Request object for `obj`.
     """
     if isinstance(obj, Request):
         return request
     elif isinstance(obj, list):
-        return [ensure_request(element) for element in obj]
+        return List(obj)
     elif isinstance(request, tuple):
-        return tuple(ensure_request(element) for element in obj)
-    elif isinstance(obj, tuple):
-        return dict(
-            # TODO: what about fancy keys? (non-unicode or even Request)
-            (key, ensure_request(value))
-            for key, value in obj.iteritems())
+        return Tuple(obj)
+    elif isinstance(obj, dict):
+        return Dict(obj)
     else:
         return Literal(obj)
 
@@ -31,12 +26,31 @@ class Request(object):
     def __init__(self, *args):
         self.__args = args
 
-    # Magic methods are added later
+    # Magic methods are added later, at the bottom of this module
 
 
 class Literal(Request):
-    def __init__(self, value): # only one argument
-        super(Literal, self).__init__(value)
+    pass
+
+
+class List(Request):
+    def __init__(self, ob):
+        super(List, self).__init__(
+            [ensure_request(element) for element in obj])
+
+
+class Tuple(Request):
+    def __init__(self, ob):
+        super(Tuple, self).__init__(
+            tuple(ensure_request(element) for element in obj))
+
+
+class Dict(Request):
+    def __init__(self, ob):
+        super(Dict, self).__init__(dict(
+            # TODO: what about fancy keys? (non-unicode or even Request)
+            (key, ensure_request(value))
+            for key, value in obj.iteritems()))
 
 
 class Root(Request): # TODO better name
