@@ -70,4 +70,11 @@ class OperationWrapper(RequestWrapper):
         super(OperationWrapper, self).__init__(*args, **kwargs)
         self.args = tuple(self.from_request(r) for r in self.args)
 
+        request_class = type(self.wrapped_request)
+        self.method_name = requests.METHOD_NAME_OPERATION_CLASS.get(
+            request_class, None)
+        self.operator_name = requests.OPERATOR_NAME_BY_OPERATION_CLASS.get(
+            request_class, None)
+        assert (self.method_name and not self.operator_name) or (
+                self.operator_name and not self.method_name)
 

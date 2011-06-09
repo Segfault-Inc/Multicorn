@@ -55,14 +55,15 @@ class Dict(Request):
 
 class Root(Request): # TODO better name
     def __init__(self, scope_depth=0):
-        if scope_depth > 0:
-            # TODO better message
-            raise ValueError('scope_depth must be negative')
         super(Root, self).__init__(int(scope_depth))
 
     def __call__(self, more_depth):
+        more_depth = int(more_depth)
+        if more_depth > 0:
+            # TODO better message
+            raise ValueError('depth must be negative')
         scope_depth, = self._Request__args
-        return Root(scope_depth + int(more_depth))
+        return Root(scope_depth + more_depth)
 
 
 class Operation(Request):
@@ -92,7 +93,7 @@ class REQUEST_METHODS:
     def sort(sort_key):
         return (ensure_request(sort_key),)
 
-    def group_by(group_key):
+    def groupby(group_key):
         return (ensure_request(group_key),)
 
     # () is the empty tuple
@@ -136,11 +137,18 @@ assert not (OPERATORS & REQUEST_METHOD_NAMES)
 OPERATION_CLASS_BY_OPERATOR_NAME = {}
 OPERATION_CLASS_BY_METHOD_NAME = {}
 
+OPERATOR_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
+    OPERATION_CLASS_BY_OPERATOR_NAME.iteritems())
+
+METHOD_NAME_OPERATION_CLASS = dict((v, k) for k, v in
+    OPERATION_CLASS_BY_METHOD_NAME.iteritems())
+
+
 for names, registry in (
         (OPERATORS, OPERATION_CLASS_BY_OPERATOR_NAME),
         (REQUEST_METHOD_NAMES, OPERATION_CLASS_BY_METHOD_NAME)):
     for name in names:
-        class_name = '%sOperation' % name.title()
+        class_name = name.title() + 'Operation'
         class_ = type(class_name, (Operation,), {})
         # Add the new class in the scope of the current module, as if we had
         # written eg. a `class AddOperation(Operation):` statement.
