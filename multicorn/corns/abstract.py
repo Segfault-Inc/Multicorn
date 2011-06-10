@@ -24,23 +24,23 @@ class ItemDoesNotExist(NotOneMatchingItem):
     value = __doc__
 
 
-class Property(object):
+class Type(object):
 
-    def __init__(self, corn=None, path=None, type=type):
+    def __init__(self, corn=None, name=None, type=object):
         self.corn = corn
-        self.path = path or ()
+        self.name = name
         self.type = type
 
-class Dict(Property):
+class Dict(Type):
 
-    def __init__(self, corn=None, path=None, mapping=None):
-        super(Dict, self).__init__(corn=corn, path=path, type=dict)
+    def __init__(self, corn=None, name=None, mapping=None):
+        super(Dict, self).__init__(corn=corn, name=name, type=dict)
         self.mapping = mapping
 
-class List(Property):
+class List(Type):
 
-    def __init__(self, corn=None, path=None, inner_type=Property(type=object)):
-        super(Dict, self).__init__(corn=corn, path=path, type=list)
+    def __init__(self, corn=None, name=None, inner_type=Type(type=object)):
+        super(Dict, self).__init__(corn=corn, name=name, type=list)
         self.inner_type = inner_type
 
 class AbstractCorn(object):
@@ -70,7 +70,7 @@ class AbstractCorn(object):
         Register a property within this corn.
         AbstractCorn just assumes the type object
         """
-        self.properties[name] = Property(corn=self, path=(name,))
+        self.properties[name] = Type(corn=self, name=name)
 
 
     def create(self, values=None, lazy_values=None, save=True):
