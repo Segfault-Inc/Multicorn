@@ -272,11 +272,23 @@ class SumWrapper(RequestWrapper):
             return Type(type=object)
 
 
-@RequestWrapper.register_wrapper(requests.GetitemRequest)
-class GetitemWrapper(OperationWrapper):
+@RequestWrapper.register_wrapper(requests.SliceRequest)
+class SliceWrapper(PreservingWrapper):
     def _init_other_args(self):
-        subject, key = self.args
-        self.attr_name = key # int, slice, string, ...
+        subject, self.slice = self.args
+
+@RequestWrapper.register_wrapper(requests.IndexRequest)
+class IndexWrapper(OperationWrapper):
+    def _init_other_args(self):
+        subject, self.index = self.args
+
+    def return_type(self, contexts=()):
+        subject_type = self.subject.return_type(contexts)
+        if isinstance(subject_type, List):
+            return subject_type.inner_type
+        else:
+            # Once again, let's say its possible but undefined
+            return Type(type=object)
 
 
 @RequestWrapper.register_wrapper(requests.OneRequest)

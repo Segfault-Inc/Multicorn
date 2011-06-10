@@ -39,7 +39,11 @@ class Request(object):
 
     def __getitem__(self, key):
         # No ensure_request() on key
-        return GetitemRequest(self, key)
+        if isinstance(key, slice):
+            return SliceRequest(self, key)
+        elif isinstance(key, int):
+            return IndexRequest(self, key)
+        raise TypeError('getitem notation ("[]") is only supported for slice and integers')
 
     # Other magic methods are added later, at the bottom of this module.
 
@@ -181,6 +185,12 @@ for names, registry in (
 
 del names, registry, name
 
+class SliceRequest(Request):
+    pass
+
+class IndexRequest(Request):
+    pass
+
 
 # A GetattrRequest class was generated above, but override with this one
 # that has a __call__
@@ -188,7 +198,7 @@ class GetattrRequest(OperationRequest):
     def __call__(*args, **kwargs):
         """
         Implement methods on requests:
-        Replace eg. `GetattrRequest(s, 'map')(...)` by 
+        Replace eg. `GetattrRequest(s, 'map')(...)` by
         `MapRequest(s, *REQUEST_METHODS['map'](...))`
         """
         if not args:
