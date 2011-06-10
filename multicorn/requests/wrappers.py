@@ -35,6 +35,9 @@ class RequestWrapper(object):
 
     def return_type(self, contexts=()):
         raise NotImplementedError("return_type is not implemented")
+    
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.wrapped_request)
 
 
 @RequestWrapper.register_wrapper(requests.StoredItemsRequest)
@@ -112,14 +115,16 @@ class OperationWrapper(RequestWrapper):
         super(OperationWrapper, self).__init__(*args, **kwargs)
 
         request_class = type(self.wrapped_request)
-        self.method_name = requests.METHOD_NAME_OPERATION_CLASS.get(
+        self.method_name = requests.METHOD_NAME_BY_OPERATION_CLASS.get(
             request_class, None)
         self.operator_name = requests.OPERATOR_NAME_BY_OPERATION_CLASS.get(
             request_class, None)
+            
         assert (self.method_name and not self.operator_name) or (
                 self.operator_name and not self.method_name)
 
-        self.subject = self.args[0] = self.from_request(self.args[0])
+        self.subject = self.from_request(self.args[0])
+        self.args = (self.subject,) + self.args[1:]
         self._init_other_args()
 
     def _init_other_args(self):

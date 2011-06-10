@@ -25,8 +25,23 @@ def ensure_request(obj):
 class Request(object):
     def __init__(self, *args):
         self.__args = args
+    
+    def __repr__(self):
+        return '%s(%s)' % (
+            self.__class__.__name__,
+            # Use list() to avoid the trailing comma in
+            # one-element tuples.
+            repr(list(self.__args))[1:-1])
+    
+    def __getattr__(self, name):
+        # No ensure_request() on name
+        return GetattrRequest(self, name)
 
-    # Magic methods are added later, at the bottom of this module
+    def __getitem__(self, key):
+        # No ensure_request() on key
+        return GetitemRequest(self, key)
+
+    # Other magic methods are added later, at the bottom of this module.
 
 
 class StoredItemsRequest(Request):
@@ -40,20 +55,20 @@ class LiteralRequest(Request):
 
 
 class ListRequest(Request):
-    def __init__(self, ob):
-        super(List, self).__init__(
+    def __init__(self, obj):
+        super(ListRequest, self).__init__(
             [ensure_request(element) for element in obj])
 
 
 class TupleRequest(Request):
-    def __init__(self, ob):
-        super(Tuple, self).__init__(
+    def __init__(self, obj):
+        super(TupleRequest, self).__init__(
             tuple(ensure_request(element) for element in obj))
 
 
 class DictRequest(Request):
-    def __init__(self, ob):
-        super(Dict, self).__init__(dict(
+    def __init__(self, obj):
+        super(DictRequest, self).__init__(dict(
             # TODO: what about fancy keys? (non-unicode or even Request)
             (key, ensure_request(value))
             for key, value in obj.iteritems()))
@@ -92,17 +107,18 @@ class REQUEST_METHODS:
 
     def filter(*args, **kwargs):
         if not args:
-            predicate = Literal(True)
+            predicate = LiteralRequest(True)
         elif len(args) == 1:
             predicate, = args
             predicate = ensure_request(predicate)
         else:
             raise TypeError('filter takes at most one positional argument.')
         for name, value in kwargs.iteritems():
-            predicate &= (getattr(Root(), name) == value)
+            predicate &= (getattr(ContextRequest(), name) == value)
         return (predicate,)
 
     def map(new_item):
+        print ensure_request(new_item)
         return (ensure_request(new_item),)
 
     def sort(sort_key):
@@ -152,13 +168,6 @@ assert not (OPERATORS & REQUEST_METHOD_NAMES)
 OPERATION_CLASS_BY_OPERATOR_NAME = {}
 OPERATION_CLASS_BY_METHOD_NAME = {}
 
-OPERATOR_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
-    OPERATION_CLASS_BY_OPERATOR_NAME.iteritems())
-
-METHOD_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
-    OPERATION_CLASS_BY_METHOD_NAME.iteritems())
-
-
 for names, registry in (
         (OPERATORS, OPERATION_CLASS_BY_OPERATOR_NAME),
         (REQUEST_METHOD_NAMES, OPERATION_CLASS_BY_METHOD_NAME)):
@@ -206,7 +215,7 @@ def _add_magic_method(operator_name):
 
     magic_name = '__%s__' % operator_name
     # Only generate a magic method if it is not there already.
-    if not hasattr(Request, magic_name):
+    if magic_name not in vars(Request):
         def magic_method(*args):
             # `*args` here includes `self`, the Request instance.
             return operation_class(*(ensure_request(arg) for arg in args))
@@ -214,7 +223,7 @@ def _add_magic_method(operator_name):
 
     magic_name = '__r%s__' % operator_name
     # Only generate a magic method if it is not there already.
-    if not hasattr(Request, magic_name) and name in REVERSED_OPERATORS:
+    if magic_name not in vars(Request) and name in REVERSED_OPERATORS:
         def magic_method(*args):
             # `*args` here includes `self`, the Request instance.
             args = args[::1]
@@ -225,4 +234,10 @@ for name in OPERATORS:
     _add_magic_method(name)
 
 del name, _add_magic_method
+
+OPERATOR_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
+    OPERATION_CLASS_BY_OPERATOR_NAME.iteritems())
+
+METHOD_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
+    OPERATION_CLASS_BY_METHOD_NAME.iteritems())
 
