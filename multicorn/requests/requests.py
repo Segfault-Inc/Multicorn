@@ -29,6 +29,12 @@ class Request(object):
     # Magic methods are added later, at the bottom of this module
 
 
+class StoredItemsRequest(Request):
+    """
+    Represents the sequence of all items stored in a Storage
+    """
+
+
 class LiteralRequest(Request):
     pass
 
@@ -70,10 +76,19 @@ class OperationRequest(Request):
     pass
 
 
+ARGUMENT_NOT_GIVEN = object()
+
 class REQUEST_METHODS:
     # Namespace class, not meant to be instantiated
     # These just pre-process the arguments given to a method and return
     # a tuple of arguments to instantiate *Operation classes.
+
+    def one(default=ARGUMENT_NOT_GIVEN):
+        if default is ARGUMENT_NOT_GIVEN:
+            default = None
+        else:
+            default = ensure_request(default)
+        return (default,)
     
     def filter(*args, **kwargs):
         if not args:

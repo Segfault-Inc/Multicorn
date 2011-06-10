@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
+
 from . import requests
 from .types import Type, Dict, List
 
@@ -13,13 +18,17 @@ class RequestWrapper(object):
         return decorator
 
     @classmethod
-    def from_request(cls, request):
-        for class_ in type(request).mro():
+    def class_from_request_class(cls, request_class):
+        for class_ in request_class.mro():
             wrapper_class = cls.class_map.get(class_, None)
-            if wrapped_class is not None:
-                return wrapper_class(request)
-        raise TypeError('No request wrapper for type %s.' % type(request))
-
+            if wrapper_class is not None:
+                return wrapper_class
+        raise TypeError('No request wrapper for type %s.' % request_class)
+    
+    @classmethod
+    def from_request(cls, request):
+        return cls.class_from_request_class(type(request))(request)
+    
     def __init__(self, wrapped_request):
         self.wrapped_request = wrapped_request
         self.args = wrapped_request._Request__args
@@ -27,6 +36,13 @@ class RequestWrapper(object):
     def resultingtypes(self):
         raise NotImplementedError("Resultingtypes is not implemented")
 
+
+
+@RequestWrapper.register_wrapper(requests.StoredItemsRequest)
+class StoredItemsWrapper(RequestWrapper):
+    def __init__(self, *args, **kwargs):
+        super(StoredItemsWrapper, self).__init__(*args, **kwargs)
+        self.storage, = self.args
 
 
 @RequestWrapper.register_wrapper(requests.LiteralRequest)
@@ -88,7 +104,6 @@ class RootWrapper(RequestWrapper):
 class OperationWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(OperationWrapper, self).__init__(*args, **kwargs)
-        self.args = tuple(self.from_request(r) for r in self.args)
 
         request_class = type(self.wrapped_request)
         self.method_name = requests.METHOD_NAME_OPERATION_CLASS.get(
@@ -98,13 +113,19 @@ class OperationWrapper(RequestWrapper):
         assert (self.method_name and not self.operator_name) or (
                 self.operator_name and not self.method_name)
 
-@RequestWrapper.register_wrapper(requests.GetattrOperation)
-class GetattrOperationWrapper(OperationWrapper):
+        self.subject = self.args[0] = self.from_request(self.args[0])
+        self._init_other_args()
 
-    def __init__(self, *args, **kwargs):
-        super(GetattrOperationWrapper, self).__init__(*args, **kwargs)
-        self.subject = self.args[0]
-        self.key = self.args[1]
+    def _init_other_args(self):
+        self.args = (self.subject,) + tuple(
+            self.from_request(r) for r in self.args[1:])
+
+
+@RequestWrapper.register_wrapper(requests.GetattrRequest)
+class GetattrWrapper(OperationWrapper):
+    def _init_other_args(self):
+        subject, attr_name = self.args
+        self.attr_name = attr_name # supposed to be str or unicode
 
     def resultingtypes(self):
         initial_types = self.subject.resultingtypes()
@@ -114,4 +135,20 @@ class GetattrOperationWrapper(OperationWrapper):
             #If the subject is not an item-like, can't infer anything
             return Type(type=object)
 
+
+@RequestWrapper.register_wrapper(requests.GetitemRequest)
+class GetitemWrapper(OperationWrapper):
+    def _init_other_args(self):
+        subject, key = self.args
+        self.attr_name = key # int, slice, string, ...
+        
+
+@RequestWrapper.register_wrapper(requests.OneRequest)
+class OneWrapper(OperationWrapper):
+    def _init_other_args(self):
+        subject, default = self.args
+        if default is not None:
+            default = self.from_request(default)
+        self.default = default        
+        
 
