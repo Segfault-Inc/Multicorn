@@ -41,3 +41,8 @@ def test_filter():
     Corn = make_corn()
     type = return_type(Corn.all.filter(c.name == 'lol'))
     assert expected_type(Corn) == type
+
+@suite.test
+def test_map():
+    Corn = make_corn()
+    type = return_type(Corn.all.map(c.name))
