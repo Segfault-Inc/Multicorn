@@ -183,13 +183,12 @@ class ArithmeticOperationWrapper(OperationWrapper):
 for operator in BOOL_OPERATORS:
    defclass(operator, ArithmeticOperationWrapper)
 
-@RequestWrapper.register_wrapper(requests.FilterRequest)
-class FilterWrapper(RequestWrapper):
 
-    def __init__(self, *args, **kwargs):
-        super(FilterWrapper, self)
-        self.subject = self.args[0]
-        self.predicate = self.args[1]
+@RequestWrapper.register_wrapper(requests.FilterRequest)
+class FilterWrapper(OperationWrapper):
+    def _init_other_args(self):
+        super(FilterWrapper, self)._init_other_args()
+        subject, self.predicate = self.args
 
     def return_type(self, contexts=()):
         # A filter does not modify its subject
@@ -198,12 +197,10 @@ class FilterWrapper(RequestWrapper):
 
 
 @RequestWrapper.register_wrapper(requests.MapRequest)
-class MapWrapper(RequestWrapper):
-
-    def __init__(self, *args, **kwargs):
-        super(MapWrapper, self).__init__(self, *args, **kwargs)
-        self.suject = self.args[0]
-        self.operation = self.args[1]
+class MapWrapper(OperationWrapper):
+    def _init_other_args(self):
+        super(MapWrapper, self)._init_other_args()
+        subject, self.operation = self.args
 
     def return_type(self, contexts=()):
         return self.operation.return_type(contexts + (self.subject,))
@@ -211,10 +208,9 @@ class MapWrapper(RequestWrapper):
 
 @RequestWrapper.register_wrapper(requests.SortRequest)
 class GroupbyWrapper(RequestWrapper):
-
-    def __init__(self, *args, **kwargs):
-        super(GroupbyWrapper, self).__init__(self, *args, **kwargs)
-        self.subject = self.args[0]
+    def _init_other_args(self):
+        super(GroupbyWrapper, self)._init_other_args()
+        subject, self.key = self.args
 
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
@@ -223,12 +219,7 @@ class GroupbyWrapper(RequestWrapper):
             'elements': List(inner_type=key_type)})
 
 
-class PreservingWrapper(RequestWrapper):
-
-    def __init__(self, *args, **kwargs):
-        super(PreservingWrapper, self).__init__(*args, **kwargs)
-        self.subject = self.args[0]
-
+class PreservingWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         return self.suject.return_type(contexts)
 
@@ -258,10 +249,6 @@ class LenWrapper(RequestWrapper):
 
 @RequestWrapper.register_wrapper(requests.SumRequest)
 class SumWrapper(RequestWrapper):
-    def __init__(self, *args, **kwargs):
-        super(SumWrapper, self).__init__(*args, **kwargs)
-        self.subject = self.args[0]
-
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
         if isinstance(subject_type, List):
