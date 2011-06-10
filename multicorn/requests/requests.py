@@ -59,9 +59,9 @@ class DictRequest(Request):
             for key, value in obj.iteritems()))
 
 
-class RootRequest(Request): # TODO better name
+class ContextRequest(Request):
     def __init__(self, scope_depth=0):
-        super(Root, self).__init__(int(scope_depth))
+        super(ContextRequest, self).__init__(int(scope_depth))
 
     def __call__(self, more_depth):
         more_depth = int(more_depth)

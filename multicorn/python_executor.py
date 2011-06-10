@@ -46,8 +46,8 @@ class DictExecutor(PythonExecutor, wrappers.DictWrapper):
             for key, value in self.value.iteritems())
 
 
-@PythonExecutor.register_wrapper(requests.RootRequest)
-class RootExecutor(PythonExecutor, wrappers.RootWrapper):
+@PythonExecutor.register_wrapper(requests.ContextRequest)
+class ContextExecutor(PythonExecutor, wrappers.ContextWrapper):
     def execute(self, contexts):
         assert self.scope_depth <= 0
         # scope_depth of 0 -> last element

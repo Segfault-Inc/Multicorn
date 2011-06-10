@@ -93,10 +93,10 @@ class DictWrapper(RequestWrapper):
 
 
 
-@RequestWrapper.register_wrapper(requests.RootRequest)
-class RootWrapper(RequestWrapper):
+@RequestWrapper.register_wrapper(requests.ContextRequest)
+class ContextWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
-        super(RootWrapper, self).__init__(*args, **kwargs)
+        super(ContextWrapper, self).__init__(*args, **kwargs)
         self.scope_depth, = self.args
 
 
