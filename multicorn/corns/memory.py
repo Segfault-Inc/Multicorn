@@ -4,6 +4,7 @@
 
 from .abstract import AbstractCorn
 from ..queries import isolate
+from ..requests.types import Type
 from .. import queries
 
 class Memory(AbstractCorn):
@@ -41,3 +42,6 @@ class Memory(AbstractCorn):
             # through the whole storage.
             item = self._storage[key]
             return queries.execute([item], query_remainder)
+
+    def register(self, name, type=object, **kwargs):
+        self.properties[name] = Type(corn=self, name=name, type=type)

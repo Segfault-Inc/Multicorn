@@ -4,6 +4,7 @@
 from ..item import BaseItem
 from .. import queries
 from ..requests.types import Type
+from ..requests.requests import StoredItemsRequest
 
 
 # Just a base class for the two other in case you want to catch both.
@@ -88,6 +89,11 @@ class AbstractCorn(object):
     def _all(self):
         """Return an iterable of all items in this access points."""
         raise NotImplementedError
+
+    @property
+    def all(self):
+        """Return a request object representing the list of all items."""
+        return StoredItemsRequest(self)
 
     # Can be overridden to optimize
 

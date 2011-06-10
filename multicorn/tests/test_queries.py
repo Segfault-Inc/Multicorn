@@ -31,7 +31,7 @@ def test_logical_simplifications():
     assert repr(~r.foo) == 'Op(not, Var(foo))'
     assert repr(~Literal('hello')) == 'False'
     assert repr(~Literal('')) == 'True'
-    
+
     # Augmented assignment doesn't need to be defined explicitly
     assert not hasattr(Expression, '__iadd__')
     a = b = r.foo
@@ -160,7 +160,7 @@ def test_queries():
 @suite.test
 def test_isolate_expression():
     assert (r.foo * 2 + r.bar).affected_variables() == set(['foo', 'bar'])
-    
+
     assert repr(isolate_expression(
         (r.foo == 4) & (r.bar > 0) & r.baz, ['foo', 'baz']
     )) == repr(((r.foo == 4) & r.baz, r.bar > 0))
@@ -168,7 +168,7 @@ def test_isolate_expression():
         == repr((r.foo + 2, Literal(True)))
     assert repr(isolate_expression(r.foo + 2, ['bar'])) \
         == repr((Literal(True), r.foo + 2))
-    
+
 
 @suite.test
 def test_isolate_query():
@@ -177,13 +177,13 @@ def test_isolate_query():
         e2, q2 = isolate_query(q1, names)
         assert repr(e2) == 'True'
         assert q2.operations == q1.operations
-    
+
     # Can only isolate a where on the start of the query
     test_isolate_query_failure(Query[1:].where(r.foo == 4), ['foo'])
-    
+
     # Can not isolate this name in a &
     test_isolate_query_failure(Query.where(r.foo | r.bar)[1:], ['bar'])
-    
+
     e1 = r.foo > 7
     e2 = r.foo < 10
     q1 = Query.where(e1).where(e2)[1:]

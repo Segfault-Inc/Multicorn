@@ -37,12 +37,15 @@ class RequestWrapper(object):
         raise NotImplementedError("return_type is not implemented")
 
 
-
 @RequestWrapper.register_wrapper(requests.StoredItemsRequest)
 class StoredItemsWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(StoredItemsWrapper, self).__init__(*args, **kwargs)
         self.storage, = self.args
+
+    def return_type(self, context=()):
+        return List(inner_type=Dict(
+            mapping=self.storage.properties, corn=self.storage))
 
 
 @RequestWrapper.register_wrapper(requests.LiteralRequest)
@@ -239,8 +242,8 @@ class MaxWrapper(PreservingWrapper):
 class MinWrapper(PreservingWrapper):
     pass
 
-@RequestWrapper.register_wrapper(requests.CountRequest)
-class CountWrapper(RequestWrapper):
+@RequestWrapper.register_wrapper(requests.LenRequest)
+class LenWrapper(RequestWrapper):
 
     def return_type(self, contexts=()):
         return Type(type=int)
@@ -275,3 +278,11 @@ class OneWrapper(OperationWrapper):
             default = self.from_request(default)
         self.default = default
 
+    def return_type(self, context=()):
+        subject_type = self.subject.return_type(context)
+        if isinstance(subject_type, List):
+            return subject_type.inner_type
+        else:
+            # What should we do with something not a list ?
+            # Probably an object !
+            return Type(type=object)

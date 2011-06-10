@@ -11,10 +11,10 @@ def ensure_request(obj):
     Return a Request object for `obj`.
     """
     if isinstance(obj, Request):
-        return request
+        return obj
     elif isinstance(obj, list):
         return ListRequest(obj)
-    elif isinstance(request, tuple):
+    elif isinstance(obj, tuple):
         return TupleRequest(obj)
     elif isinstance(obj, dict):
         return DictRequest(obj)
@@ -89,7 +89,7 @@ class REQUEST_METHODS:
         else:
             default = ensure_request(default)
         return (default,)
-    
+
     def filter(*args, **kwargs):
         if not args:
             predicate = Literal(True)
@@ -101,7 +101,7 @@ class REQUEST_METHODS:
         for name, value in kwargs.iteritems():
             predicate &= (getattr(Root(), name) == value)
         return (predicate,)
-    
+
     def map(new_item):
         return (ensure_request(new_item),)
 
@@ -186,7 +186,7 @@ class GetattrRequest(OperationRequest):
             raise TypeError("No positional argument given for 'self'.")
         self = args[0]
         args = args[1:]
-        
+
         subject, attr_name = self._Request__args
 
         preprocessor = REQUEST_METHODS.get(attr_name, None)
@@ -203,7 +203,7 @@ OPERATION_CLASS_BY_OPERATOR_NAME['getattr'] = GetattrRequest
 # Add magic methods to Request
 def _add_magic_method(operator_name):
     operation_class = OPERATION_CLASS_BY_OPERATOR_NAME[operator_name]
-    
+
     magic_name = '__%s__' % operator_name
     # Only generate a magic method if it is not there already.
     if not hasattr(Request, magic_name):
