@@ -29,7 +29,7 @@ class RequestWrapper(object):
 
 
 
-@RequestWrapper.register_wrapper(requests.Literal)
+@RequestWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(LiteralWrapper, self).__init__(*args, **kwargs)
@@ -39,7 +39,7 @@ class LiteralWrapper(RequestWrapper):
         return Type(type=type(self.value))
 
 
-@RequestWrapper.register_wrapper(requests.List)
+@RequestWrapper.register_wrapper(requests.ListRequest)
 class ListWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(ListWrapper, self).__init__(*args, **kwargs)
@@ -51,7 +51,7 @@ class ListWrapper(RequestWrapper):
 
 
 
-@RequestWrapper.register_wrapper(requests.Tuple)
+@RequestWrapper.register_wrapper(requests.TupleRequest)
 class TupleWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(TupleWrapper, self).__init__(*args, **kwargs)
@@ -63,7 +63,7 @@ class TupleWrapper(RequestWrapper):
 
 
 
-@RequestWrapper.register_wrapper(requests.Dict)
+@RequestWrapper.register_wrapper(requests.DictRequest)
 class DictWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(DictWrapper, self).__init__(*args, **kwargs)
@@ -77,14 +77,14 @@ class DictWrapper(RequestWrapper):
 
 
 
-@RequestWrapper.register_wrapper(requests.Root)
+@RequestWrapper.register_wrapper(requests.RootRequest)
 class RootWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(RootWrapper, self).__init__(*args, **kwargs)
         self.scope_depth, = self.args
 
 
-@RequestWrapper.register_wrapper(requests.Operation)
+@RequestWrapper.register_wrapper(requests.OperationRequest)
 class OperationWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(OperationWrapper, self).__init__(*args, **kwargs)
