@@ -122,11 +122,10 @@ class REQUEST_METHODS:
         return (predicate,)
 
     def map(new_item):
-        print ensure_request(new_item)
         return (ensure_request(new_item),)
 
-    def sort(sort_key):
-        return (ensure_request(sort_key),)
+    def sort(*sort_keys):
+        return tuple(ensure_request(key) for key in sort_keys)
 
     def groupby(group_key):
         return (ensure_request(group_key),)

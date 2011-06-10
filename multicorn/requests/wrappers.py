@@ -3,6 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 import sys
+import collections
 from . import requests
 from .types import Type, Dict, List
 
@@ -127,18 +128,19 @@ class OperationWrapper(RequestWrapper):
                 self.operator_name and not self.method_name)
 
         self.subject = self.from_request(self.args[0])
-        self.args = (self.subject,) + self.args[1:]
+        self.other_args = self.args[1:]
+        self.args = (self.subject,) + self.other_args
         self._init_other_args()
 
     def _init_other_args(self):
-        self.args = (self.subject,) + tuple(
-            self.from_request(r) for r in self.args[1:])
+        self.other_args = tuple(self.from_request(r) for r in self.other_args)
+        self.args = (self.subject,) + self.other_args
 
 
 @RequestWrapper.register_wrapper(requests.GetattrRequest)
 class GetattrWrapper(OperationWrapper):
     def _init_other_args(self):
-        subject, attr_name = self.args
+        attr_name, = self.other_args
         self.attr_name = attr_name # supposed to be str or unicode
 
     def return_type(self, contexts=()):
@@ -175,7 +177,7 @@ class ArithmeticOperationWrapper(OperationWrapper):
 
     def return_type(self, contexts=()):
         left_type = self.args[0].return_type(contexts)
-        right_type = self.args[0].return_type(contexts)
+        right_type = self.args[1].return_type(contexts)
         if left_type.type == right_type.type:
             return Type(type=left_type.type)
         else:
@@ -213,7 +215,6 @@ class MapWrapper(OperationWrapper):
 
 @RequestWrapper.register_wrapper(requests.GroupbyRequest)
 class GroupbyWrapper(OperationWrapper):
-
     def _init_other_args(self):
         super(GroupbyWrapper, self)._init_other_args()
         subject, self.key = self.args
@@ -237,7 +238,19 @@ class DistinctWrapper(PreservingWrapper):
 
 @RequestWrapper.register_wrapper(requests.SortRequest)
 class SortWrapper(PreservingWrapper):
-    pass
+
+    SortKey = collections.namedtuple('SortKey', 'key, reverse')
+
+    def _init_other_args(self):
+        super(SortWrapper, self)._init_other_args()
+        self.sort_keys = tuple(
+            (self.SortKey(sort_key.subject, reverse=True)
+             if getattr(sort_key, 'operator_name', '') == 'neg' else
+             self.SortKey(sort_key, reverse=False))
+            for sort_key in self.other_args)
+        self.other_args = self.sort_keys
+        self.args = (self.subject,) + self.other_args
+        
 
 @RequestWrapper.register_wrapper(requests.MaxRequest)
 class MaxWrapper(PreservingWrapper):
@@ -274,6 +287,7 @@ class SliceWrapper(PreservingWrapper):
 class IndexWrapper(OperationWrapper):
     def _init_other_args(self):
         subject, self.index = self.args
+        self.key, = self.other_args # int, slice, string, ...
 
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
@@ -287,10 +301,9 @@ class IndexWrapper(OperationWrapper):
 @RequestWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(OperationWrapper):
     def _init_other_args(self):
-        subject, default = self.args
-        if default is not None:
-            default = self.from_request(default)
-        self.default = default
+        self.default, = self.other_args
+        if self.default is not None:
+            self.default = self.from_request(self.default)
 
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
