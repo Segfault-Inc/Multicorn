@@ -13,13 +13,13 @@ def ensure_request(obj):
     if isinstance(obj, Request):
         return request
     elif isinstance(obj, list):
-        return List(obj)
+        return ListRequest(obj)
     elif isinstance(request, tuple):
-        return Tuple(obj)
+        return TupleRequest(obj)
     elif isinstance(obj, dict):
-        return Dict(obj)
+        return DictRequest(obj)
     else:
-        return Literal(obj)
+        return LiteralRequest(obj)
 
 
 class Request(object):
@@ -29,23 +29,23 @@ class Request(object):
     # Magic methods are added later, at the bottom of this module
 
 
-class Literal(Request):
+class LiteralRequest(Request):
     pass
 
 
-class List(Request):
+class ListRequest(Request):
     def __init__(self, ob):
         super(List, self).__init__(
             [ensure_request(element) for element in obj])
 
 
-class Tuple(Request):
+class TupleRequest(Request):
     def __init__(self, ob):
         super(Tuple, self).__init__(
             tuple(ensure_request(element) for element in obj))
 
 
-class Dict(Request):
+class DictRequest(Request):
     def __init__(self, ob):
         super(Dict, self).__init__(dict(
             # TODO: what about fancy keys? (non-unicode or even Request)
@@ -53,7 +53,7 @@ class Dict(Request):
             for key, value in obj.iteritems()))
 
 
-class Root(Request): # TODO better name
+class RootRequest(Request): # TODO better name
     def __init__(self, scope_depth=0):
         super(Root, self).__init__(int(scope_depth))
 
@@ -66,7 +66,7 @@ class Root(Request): # TODO better name
         return Root(scope_depth + more_depth)
 
 
-class Operation(Request):
+class OperationRequest(Request):
     pass
 
 
@@ -140,7 +140,7 @@ OPERATION_CLASS_BY_METHOD_NAME = {}
 OPERATOR_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
     OPERATION_CLASS_BY_OPERATOR_NAME.iteritems())
 
-METHOD_NAME_OPERATION_CLASS = dict((v, k) for k, v in
+METHOD_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
     OPERATION_CLASS_BY_METHOD_NAME.iteritems())
 
 
@@ -148,21 +148,24 @@ for names, registry in (
         (OPERATORS, OPERATION_CLASS_BY_OPERATOR_NAME),
         (REQUEST_METHOD_NAMES, OPERATION_CLASS_BY_METHOD_NAME)):
     for name in names:
-        class_name = name.title() + 'Operation'
-        class_ = type(class_name, (Operation,), {})
+        class_name = name.title() + 'Request'
+        class_ = type(class_name, (OperationRequest,), {})
         # Add the new class in the scope of the current module, as if we had
-        # written eg. a `class AddOperation(Operation):` statement.
+        # written eg. a `class AddOperation(OperationRequest):` statement.
         setattr(sys.modules[__name__], class_name, class_)
         registry[name] = class_
 
 del names, registry, name
 
 
-class GetattrOperation(Operation):
+# A GetattrRequest class was generated above, but override with this one
+# that has a __call__
+class GetattrRequest(OperationRequest):
     def __call__(*args, **kwargs):
         """
         Implement methods on requests:
-        Replace eg. `GetattrOperation(s, 'map')` by `MapOperation(s, ...)`
+        Replace eg. `GetattrRequest(s, 'map')(...)` by 
+        `MapRequest(s, *REQUEST_METHODS['map'](...))`
         """
         if not args:
             raise TypeError("No positional argument given for 'self'.")
@@ -179,7 +182,7 @@ class GetattrOperation(Operation):
         args = preprocessor(*args, **kwargs)
         return class_(subject, *args)
 
-OPERATION_CLASS_BY_OPERATOR_NAME['getattr'] = GetattrOperation
+OPERATION_CLASS_BY_OPERATOR_NAME['getattr'] = GetattrRequest
 
 
 # Add magic methods to Request
