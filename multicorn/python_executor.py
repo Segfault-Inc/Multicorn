@@ -9,54 +9,45 @@ from .requests import requests
 from .requests import wrappers
 
 
-def add(self, other):
-    """
-    A `+` operator that also works on mappings:
-    
-        add({'a': 3, 'b': 5}, {'b': 8, 'c': 13})
-         == {'a': 3, 'b': 8, 'c': 13}
-        
-    """
-    if isinstance(self, Mapping) and isinstance(other, Mapping):
-        result = dict(self)
-        result.update(other)
-        return result
-    else:
-        return self + other
-
 
 class PythonExecutor(wrappers.RequestWrapper):
     class_map = wrappers.RequestWrapper.class_map.copy()
 
 
+@PythonExecutor.register_wrapper(requests.StoredItemsRequest)
+class StoredItemExecutor(PythonExecutor, wrappers.StoredItemsWrapper):
+    def execute(self, contexts):
+        return self.storage._all()
+
+
 @PythonExecutor.register_wrapper(requests.LiteralRequest)
-class LiteralExecutor(PythonExecutor):
+class LiteralExecutor(PythonExecutor, wrappers.LiteralWrapper):
     def execute(self, contexts):
         return self.value
 
 
 @PythonExecutor.register_wrapper(requests.ListRequest)
-class ListExecutor(PythonExecutor):
+class ListExecutor(PythonExecutor, wrappers.ListWrapper):
     def execute(self, contexts):
         return [element.execute(contexts) for element in self.value]
 
 
 @PythonExecutor.register_wrapper(requests.TupleRequest)
-class TupleExecutor(PythonExecutor):
+class TupleExecutor(PythonExecutor, wrappers.TupleWrapper):
     def execute(self, contexts):
         return tuple(element.execute(contexts) for element in self.value)
 
 
 @PythonExecutor.register_wrapper(requests.DictRequest)
-class DictExecutor(PythonExecutor):
+class DictExecutor(PythonExecutor, wrappers.DictWrapper):
     def execute(self, contexts):
         return dict(
-            (key, value.execute(contexts)) 
+            (key, value.execute(contexts))
             for key, value in self.value.iteritems())
 
 
-@PythonExecutor.register_wrapper(requests.RootRequest)
-class RootExecutor(PythonExecutor):
+@PythonExecutor.register_wrapper(requests.ContextRequest)
+class ContextExecutor(PythonExecutor, wrappers.ContextWrapper):
     def execute(self, contexts):
         assert self.scope_depth <= 0
         # scope_depth of 0 -> last element
@@ -66,7 +57,7 @@ class RootExecutor(PythonExecutor):
 
 
 @PythonExecutor.register_wrapper(requests.OperationRequest)
-class OperationExecutor(PythonExecutor):
+class OperationExecutor(PythonExecutor, wrappers.OperationWrapper):
     def execute(self, contexts):
         # TODO: message for this error
         assert self.operator_name and not self.method_name
@@ -77,18 +68,28 @@ class OperationExecutor(PythonExecutor):
 
 
 def operation_executor(request_class, include_contexts=False,
+                       execute_all=False):
     def decorator(function):
         def execute(self, contexts):
-            subject = self.args[0]
-            other_args = self.args[1:]
-            exectuted_subject = subject.execute(contexts)
-            if include_contexts:
-                return function(contexts, exectuted_subject, *other_args)
+            if execute_all:
+                args = tuple(arg.execute(contexts) for arg in self.args)
             else:
-                return function(exectuted_subject, *other_args)
+                subject = self.args[0]
+                other_args = self.args[1:]
+                exectuted_subject = subject.execute(contexts)
+                args = (exectuted_subject,) + other_args
+            if include_contexts:
+                args = (contexts,) + args
+            return function(*args)
         
-        class_name = request_class.__name__ + 'Executor'
-        executor_class = type(class_name, (PythonExecutor,),
+        name = request_class.__name__
+        assert name.endswith('Request')
+        name = name[:-len('Request')] # remove the Request suffix
+        class_name = name + 'Executor'
+        base_wrapper = wrappers.RequestWrapper.class_from_request_class(
+            request_class)
+        executor_class = type(class_name,
+                              (OperationExecutor, base_wrapper),
                               {'execute': execute})
         setattr(sys.modules[__name__], class_name, executor_class)
         PythonExecutor.register_wrapper(request_class)(executor_class)
@@ -150,10 +151,43 @@ def distinct(sequence):
             seen.add(element)
             yield element
 
+
+@operation_executor(requests.OneRequest, include_contexts=True)
+def execute_one(contexts, sequence, default):
+    iterator = iter(sequence)
+    stop_iteration_marker = object()
+    element = next(iterator, stop_iteration_marker)
+    if element is stop_iteration_marker:
+        if default is None:
+            # TODO specific exception
+            raise IndexError('.one() on an empty sequence')
+        else:
+            element = default.execute(contexts)
+    if next(iterator, stop_iteration_marker) is stop_iteration_marker:
+        return element
+    else:
+        # TODO specific exception
+        raise ValueError('More than one element in .one()')
+
+
+@operation_executor(requests.AddRequest, execute_all=True)
+def execute_add(left, right):
+    if isinstance(left, Mapping) and isinstance(right, Mapping):
+        result = dict(left)
+        result.update(right)
+        return result
+    else:
+        return left + right
+
+
 operation_executor(requests.SumRequest)(sum)
 operation_executor(requests.MinRequest)(min)
 operation_executor(requests.MaxRequest)(max)
 operation_executor(requests.LenRequest)(len) # TODO: handle generators
 
 del operation_executor
+
+
+def execute(request):
+    return PythonExecutor.from_request(request).execute(())
 

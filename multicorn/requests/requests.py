@@ -29,6 +29,12 @@ class Request(object):
     # Magic methods are added later, at the bottom of this module
 
 
+class StoredItemsRequest(Request):
+    """
+    Represents the sequence of all items stored in a Storage
+    """
+
+
 class LiteralRequest(Request):
     pass
 
@@ -53,9 +59,9 @@ class DictRequest(Request):
             for key, value in obj.iteritems()))
 
 
-class RootRequest(Request): # TODO better name
+class ContextRequest(Request):
     def __init__(self, scope_depth=0):
-        super(Root, self).__init__(int(scope_depth))
+        super(ContextRequest, self).__init__(int(scope_depth))
 
     def __call__(self, more_depth):
         more_depth = int(more_depth)
@@ -70,10 +76,19 @@ class OperationRequest(Request):
     pass
 
 
+ARGUMENT_NOT_GIVEN = object()
+
 class REQUEST_METHODS:
     # Namespace class, not meant to be instantiated
     # These just pre-process the arguments given to a method and return
     # a tuple of arguments to instantiate *Operation classes.
+
+    def one(default=ARGUMENT_NOT_GIVEN):
+        if default is ARGUMENT_NOT_GIVEN:
+            default = None
+        else:
+            default = ensure_request(default)
+        return (default,)
     
     def filter(*args, **kwargs):
         if not args:
