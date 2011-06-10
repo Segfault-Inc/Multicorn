@@ -3,7 +3,7 @@ import attest
 
 
 from multicorn.corns.memory import Memory
-from multicorn.corns.abstract import Type
+from multicorn.requests.types import Type
 from multicorn import Multicorn
 from multicorn.declarative import declare, Property
 

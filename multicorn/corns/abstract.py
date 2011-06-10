@@ -3,6 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 from ..item import BaseItem
 from .. import queries
+from ..requests.types import Type
 
 
 # Just a base class for the two other in case you want to catch both.
@@ -23,25 +24,6 @@ class ItemDoesNotExist(NotOneMatchingItem):
     """No object has been returned."""
     value = __doc__
 
-
-class Type(object):
-
-    def __init__(self, corn=None, name=None, type=object):
-        self.corn = corn
-        self.name = name
-        self.type = type
-
-class Dict(Type):
-
-    def __init__(self, corn=None, name=None, mapping=None):
-        super(Dict, self).__init__(corn=corn, name=name, type=dict)
-        self.mapping = mapping
-
-class List(Type):
-
-    def __init__(self, corn=None, name=None, inner_type=Type(type=object)):
-        super(Dict, self).__init__(corn=corn, name=name, type=list)
-        self.inner_type = inner_type
 
 class AbstractCorn(object):
 

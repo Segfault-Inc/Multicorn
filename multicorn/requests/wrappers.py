@@ -1,4 +1,5 @@
 from . import requests
+from .types import Type, Dict, List
 
 
 class RequestWrapper(object):
@@ -10,7 +11,7 @@ class RequestWrapper(object):
             cls.class_map[wrapped_class] = wrapper_class
             return wrapper_class
         return decorator
-    
+
     @classmethod
     def from_request(cls, request):
         for class_ in type(request).mro():
@@ -18,10 +19,14 @@ class RequestWrapper(object):
             if wrapped_class is not None:
                 return wrapper_class(request)
         raise TypeError('No request wrapper for type %s.' % type(request))
-    
+
     def __init__(self, wrapped_request):
         self.wrapped_request = wrapped_request
         self.args = wrapped_request._Request__args
+
+    def resultingtypes(self):
+        raise NotImplementedError("Resultingtypes is not implemented")
+
 
 
 @RequestWrapper.register_wrapper(requests.Literal)
@@ -29,6 +34,9 @@ class LiteralWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(LiteralWrapper, self).__init__(*args, **kwargs)
         self.value, = self.args
+
+    def resultingtypes(self):
+        return Type(type=type(self.value))
 
 
 @RequestWrapper.register_wrapper(requests.List)
@@ -38,6 +46,10 @@ class ListWrapper(RequestWrapper):
         self.value, = self.args
         self.value = [self.from_request(r) for r in self.value]
 
+    def resultingtypes(self):
+        return Type(type=list)
+
+
 
 @RequestWrapper.register_wrapper(requests.Tuple)
 class TupleWrapper(RequestWrapper):
@@ -46,6 +58,10 @@ class TupleWrapper(RequestWrapper):
         self.value, = self.args
         self.value = tuple(self.from_request(r) for r in self.value)
 
+    def resultingtypes(self):
+        return Type(type=tuple)
+
+
 
 @RequestWrapper.register_wrapper(requests.Dict)
 class DictWrapper(RequestWrapper):
@@ -53,8 +69,12 @@ class DictWrapper(RequestWrapper):
         super(DictWrapper, self).__init__(*args, **kwargs)
         self.value, = self.args
         self.value = dict(
-            (key, self.from_request(value)) 
+            (key, self.from_request(value))
             for key, value in self.value.iteritems())
+
+    def resultingtypes(self):
+        return Type(type=dict)
+
 
 
 @RequestWrapper.register_wrapper(requests.Root)
@@ -77,4 +97,21 @@ class OperationWrapper(RequestWrapper):
             request_class, None)
         assert (self.method_name and not self.operator_name) or (
                 self.operator_name and not self.method_name)
+
+@RequestWrapper.register_wrapper(requests.GetattrOperation)
+class GetattrOperationWrapper(OperationWrapper):
+
+    def __init__(self, *args, **kwargs):
+        super(GetattrOperationWrapper, self).__init__(*args, **kwargs)
+        self.subject = self.args[0]
+        self.key = self.args[1]
+
+    def resultingtypes(self):
+        initial_types = self.subject.resultingtypes()
+        if isinstance(initial_types, Dict):
+            return initial_types.mapping[self.key]
+        else:
+            #If the subject is not an item-like, can't infer anything
+            return Type(type=object)
+
 

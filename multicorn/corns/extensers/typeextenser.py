@@ -3,7 +3,7 @@ import decimal
 import datetime
 from collections import namedtuple
 from . import AbstractCornExtenser
-from ..abstract import Type 
+from ...requests.types import Type, Dict, List
 
 
 class FixedOffsetTimeZone(datetime.tzinfo):
