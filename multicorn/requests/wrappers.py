@@ -102,6 +102,9 @@ class ContextWrapper(RequestWrapper):
         super(ContextWrapper, self).__init__(*args, **kwargs)
         self.scope_depth, = self.args
 
+    def return_type(self, context=()):
+        return context[self.scope_depth - 1].return_type(context[:-1])
+
 
 @RequestWrapper.register_wrapper(requests.OperationRequest)
 class OperationWrapper(RequestWrapper):
@@ -262,6 +265,7 @@ class SumWrapper(RequestWrapper):
         else:
             # If this really supposed to happen?
             return Type(type=object)
+
 
 @RequestWrapper.register_wrapper(requests.GetitemRequest)
 class GetitemWrapper(OperationWrapper):
