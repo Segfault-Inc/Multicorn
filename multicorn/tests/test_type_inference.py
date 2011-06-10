@@ -6,7 +6,6 @@ from multicorn import Multicorn
 from multicorn.declarative import declare, Property
 from multicorn.requests.types import Type, Dict, List
 from multicorn.requests.wrappers import RequestWrapper
-from multicorn im
 
 suite = Tests()
 
