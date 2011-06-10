@@ -46,7 +46,7 @@ class StoredItemsWrapper(RequestWrapper):
         super(StoredItemsWrapper, self).__init__(*args, **kwargs)
         self.storage, = self.args
 
-    def return_type(self, context=()):
+    def return_type(self, contexts=()):
         return List(inner_type=Dict(
             mapping=self.storage.properties, corn=self.storage))
 
@@ -95,7 +95,10 @@ class DictWrapper(RequestWrapper):
             for key, value in self.value.iteritems())
 
     def return_type(self, contexts=()):
-        return Type(type=dict)
+        mapping = {}
+        for key, request in self.value.iteritems():
+            mapping[key] = request.return_type(contexts)
+        return Dict(mapping=mapping)
 
 
 
@@ -105,8 +108,8 @@ class ContextWrapper(RequestWrapper):
         super(ContextWrapper, self).__init__(*args, **kwargs)
         self.scope_depth, = self.args
 
-    def return_type(self, context=()):
-        return context[self.scope_depth - 1].return_type(context[:-1])
+    def return_type(self, contexts=()):
+        return contexts[self.scope_depth - 1]
 
 
 @RequestWrapper.register_wrapper(requests.OperationRequest)
@@ -119,7 +122,7 @@ class OperationWrapper(RequestWrapper):
             request_class, None)
         self.operator_name = requests.OPERATOR_NAME_BY_OPERATION_CLASS.get(
             request_class, None)
-            
+
         assert (self.method_name and not self.operator_name) or (
                 self.operator_name and not self.method_name)
 
@@ -158,7 +161,7 @@ def defclass(operator, base_class):
     class_name = operator.title() + 'Wrapper'
     request_class = getattr(requests, operator.title() + 'Request')
     class_ = type(class_name, (base_class,), {})
-    class_ = RequestWrapper.register_wrapper(request_class)
+    class_ = RequestWrapper.register_wrapper(request_class)(class_)
     setattr(sys.modules[__name__], class_name, class_)
 
 
@@ -180,7 +183,7 @@ class ArithmeticOperationWrapper(OperationWrapper):
             return Type(type=object)
 
 
-for operator in BOOL_OPERATORS:
+for operator in ARITHMETIC_OPERATORS:
    defclass(operator, ArithmeticOperationWrapper)
 
 
@@ -193,7 +196,8 @@ class FilterWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         # A filter does not modify its subject
         # assert self.predicate.return_type().type == bool
-        return self.subject.return_type(contexts + (self.subject,))
+        return self.subject.return_type(contexts +
+                (self.subject.return_type(contexts),))
 
 
 @RequestWrapper.register_wrapper(requests.MapRequest)
@@ -203,20 +207,22 @@ class MapWrapper(OperationWrapper):
         subject, self.operation = self.args
 
     def return_type(self, contexts=()):
-        return self.operation.return_type(contexts + (self.subject,))
+        newcontext = self.subject.return_type(contexts).inner_type
+        return List(inner_type=self.operation.return_type(contexts + (newcontext,)))
 
 
-@RequestWrapper.register_wrapper(requests.SortRequest)
-class GroupbyWrapper(RequestWrapper):
+@RequestWrapper.register_wrapper(requests.GroupbyRequest)
+class GroupbyWrapper(OperationWrapper):
+
     def _init_other_args(self):
         super(GroupbyWrapper, self)._init_other_args()
         subject, self.key = self.args
 
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
-        key_type = self.key.return_type(contexts + (self.subject,))
-        return Dict(mapping={'grouper': subject_type,
-            'elements': List(inner_type=key_type)})
+        key_type = self.key.return_type(contexts + (subject_type.inner_type,))
+        return List(inner_type=Dict(mapping={'grouper': key_type,
+            'elements': subject_type}))
 
 
 class PreservingWrapper(OperationWrapper):
@@ -286,8 +292,8 @@ class OneWrapper(OperationWrapper):
             default = self.from_request(default)
         self.default = default
 
-    def return_type(self, context=()):
-        subject_type = self.subject.return_type(context)
+    def return_type(self, contexts=()):
+        subject_type = self.subject.return_type(contexts)
         if isinstance(subject_type, List):
             return subject_type.inner_type
         else:

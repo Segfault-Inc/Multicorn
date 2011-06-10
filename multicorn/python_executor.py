@@ -11,7 +11,7 @@ from .requests import wrappers
 
 
 class PythonExecutor(wrappers.RequestWrapper):
-    class_map = wrappers.RequestWrapper.class_map.copy()
+    class_map = {}
 
 
 @PythonExecutor.register_wrapper(requests.StoredItemsRequest)

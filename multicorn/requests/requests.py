@@ -88,7 +88,7 @@ class ContextRequest(Request):
             # TODO better message
             raise ValueError('depth must be negative')
         scope_depth, = self._Request__args
-        return Root(scope_depth + more_depth)
+        return ContextRequest(scope_depth + more_depth)
 
 
 class OperationRequest(Request):
@@ -185,12 +185,11 @@ for names, registry in (
 
 del names, registry, name
 
-class SliceRequest(Request):
+class SliceRequest(OperationRequest):
     pass
 
-class IndexRequest(Request):
+class IndexRequest(OperationRequest):
     pass
-
 
 # A GetattrRequest class was generated above, but override with this one
 # that has a __call__

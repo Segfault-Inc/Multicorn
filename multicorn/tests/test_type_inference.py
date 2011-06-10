@@ -15,8 +15,8 @@ def make_corn():
     @mc.register
     @declare(Memory, identity_properties=("id",))
     class Corn(object):
-        id = Property(int)
-        name = Property(unicode)
+        id = Property(type=int)
+        name = Property(type=unicode)
     return Corn
 
 
@@ -46,3 +46,24 @@ def test_filter():
 def test_map():
     Corn = make_corn()
     type = return_type(Corn.all.map(c.name))
+    assert type == List(inner_type=Corn.properties['name'])
+
+@suite.test
+def test_groupby():
+    Corn = make_corn()
+    type = return_type(Corn.all.groupby(c.name).map(c.elements.map(c(-1).grouper)))
+    assert type == List(inner_type=List(inner_type=Corn.properties['name']))
+
+@suite.test
+def test_nimp():
+    Corn = make_corn()
+    type = return_type(Corn.all.map({'name': c.name, 'grou': c.id + 5, 'id': c.id}))
+    assert type == List(inner_type=Dict(mapping={
+        'name': Corn.properties['name'],
+        'id': Corn.properties['id'],
+        'grou': Type(type=int)}))
+
+
+
+
+
