@@ -102,14 +102,19 @@ def operation_executor(request_class, include_contexts=False,
 def execute_getattr(subject, attr_name):
     # XXX The execution of __getattr__ is actually __getitem__ !!
     # eg. if r represents item, r.firstname represents item['firstname']
-    return subject.execute(contexts)[attr_name]
+    return subject[attr_name]
 
 
 @operation_executor(requests.GetitemRequest)
 def execute_getitem(subject, key):
-    # TODO special handling in case `exectuted_subject` is a generator
+    # TODO special handling in case `subject` is a generator
     # other cases?
-    return exectuted_subject[key]
+    try:
+        return subject[key]
+    except TypeError:
+        # subject could be an iterable without a __getitem__ like a generator
+        # TODO: implement indexing and slicing
+        raise
 
 
 @operation_executor(requests.SortRequest, include_contexts=True)
