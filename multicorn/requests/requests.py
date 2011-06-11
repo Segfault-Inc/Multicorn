@@ -125,6 +125,10 @@ class REQUEST_METHODS:
         return (ensure_request(new_item),)
 
     def sort(*sort_keys):
+        if not sort_keys:
+            # Default to comparing the element themselves, ie req.sort()
+            # is the same as req.sort(CONTEXT)
+            sort_keys = (ContextRequest(),)
         return tuple(ensure_request(key) for key in sort_keys)
 
     def groupby(group_key):

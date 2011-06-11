@@ -76,3 +76,10 @@ def test_sort():
     r(SOURCE.sort(-c.toto, c.tata).map((c.toto, c.tata)),
       [('foo', 42), ('bar', 6), ('bar', 42)])
 
+    r(SOURCE.map(c.price).sort(),
+      [5, 10, 12])
+    r(SOURCE.map(c.price).sort(c),
+      [5, 10, 12])
+    r(SOURCE.map(c.price).sort(-c),
+      [12, 10, 5])
+
