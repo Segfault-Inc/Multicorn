@@ -29,6 +29,7 @@ class RequestWrapper(object):
 
     @classmethod
     def from_request(cls, request):
+        request = requests.as_request(request)
         return cls.class_from_request_class(type(request))(request)
 
     def __init__(self, wrapped_request):
