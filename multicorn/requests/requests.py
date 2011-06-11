@@ -6,7 +6,7 @@
 import sys
 
 
-def ensure_request(obj):
+def as_request(obj):
     """
     Return a Request object for `obj`.
     """
@@ -34,11 +34,11 @@ class Request(object):
             repr(list(self.__args))[1:-1])
     
     def __getattr__(self, name):
-        # No ensure_request() on name
+        # No as_request() on name
         return GetattrRequest(self, name)
 
     def __getitem__(self, key):
-        # No ensure_request() on key
+        # No as_request() on key
         if isinstance(key, slice):
             return SliceRequest(self, key)
         elif isinstance(key, int):
@@ -61,20 +61,20 @@ class LiteralRequest(Request):
 class ListRequest(Request):
     def __init__(self, obj):
         super(ListRequest, self).__init__(
-            [ensure_request(element) for element in obj])
+            [as_request(element) for element in obj])
 
 
 class TupleRequest(Request):
     def __init__(self, obj):
         super(TupleRequest, self).__init__(
-            tuple(ensure_request(element) for element in obj))
+            tuple(as_request(element) for element in obj))
 
 
 class DictRequest(Request):
     def __init__(self, obj):
         super(DictRequest, self).__init__(dict(
             # TODO: what about fancy keys? (non-unicode or even Request)
-            (key, ensure_request(value))
+            (key, as_request(value))
             for key, value in obj.iteritems()))
 
 
@@ -106,7 +106,7 @@ class REQUEST_METHODS:
         if default is ARGUMENT_NOT_GIVEN:
             default = None
         else:
-            default = ensure_request(default)
+            default = as_request(default)
         return (default,)
 
     def filter(*args, **kwargs):
@@ -114,7 +114,7 @@ class REQUEST_METHODS:
             predicate = LiteralRequest(True)
         elif len(args) == 1:
             predicate, = args
-            predicate = ensure_request(predicate)
+            predicate = as_request(predicate)
         else:
             raise TypeError('filter takes at most one positional argument.')
         for name, value in kwargs.iteritems():
@@ -122,17 +122,17 @@ class REQUEST_METHODS:
         return (predicate,)
 
     def map(new_item):
-        return (ensure_request(new_item),)
+        return (as_request(new_item),)
 
     def sort(*sort_keys):
         if not sort_keys:
             # Default to comparing the element themselves, ie req.sort()
             # is the same as req.sort(CONTEXT)
             sort_keys = (ContextRequest(),)
-        return tuple(ensure_request(key) for key in sort_keys)
+        return tuple(as_request(key) for key in sort_keys)
 
     def groupby(group_key):
-        return (ensure_request(group_key),)
+        return (as_request(group_key),)
 
     # () is the empty tuple
     def sum(): return ()
@@ -232,7 +232,7 @@ def _add_magic_method(operator_name):
     if magic_name not in vars(Request):
         def magic_method(*args):
             # `*args` here includes `self`, the Request instance.
-            return operation_class(*(ensure_request(arg) for arg in args))
+            return operation_class(*(as_request(arg) for arg in args))
         setattr(Request, magic_name, magic_method)
 
     magic_name = '__r%s__' % operator_name

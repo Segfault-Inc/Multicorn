@@ -6,8 +6,7 @@ from decimal import Decimal as D
 from attest import Tests, assert_hook
 import attest
 
-from ..requests import CONTEXT as c
-from ..requests.requests import LiteralRequest
+from ..requests import CONTEXT as c, literal
 from ..python_executor import execute
 
 
@@ -20,7 +19,7 @@ DATA = [
     dict(toto='bar', tata=42, price=5, tax=D('1.196')),
 ]
 
-SOURCE = LiteralRequest(DATA)
+SOURCE = literal(DATA)
 
 
 @suite.test
