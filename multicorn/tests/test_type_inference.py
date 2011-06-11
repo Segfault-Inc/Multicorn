@@ -17,6 +17,7 @@ def make_corn():
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
+        lastname = Property(type=unicode)
     return Corn
 
 
@@ -62,8 +63,43 @@ def test_nimp():
         'name': Corn.properties['name'],
         'id': Corn.properties['id'],
         'grou': Type(type=int)}))
-
-
-
-
-
+    type = return_type(Corn.all.one())
+    assert type == Dict(corn=Corn, mapping=Corn.properties)
+    type = return_type(Corn.all.map({
+        'name': c.name + c.lastname,
+        'test': c.len() + 10}).one())
+    assert type == Dict(mapping={
+        'name': Type(type=unicode),
+        'test': Type(type=int)})
+    type = return_type(Corn.all.map({
+        'max': Corn.all.max(),
+        'min': Corn.all.min(),
+        'len': Corn.all.len(),
+        'sum': Corn.all.sum(),
+        'distinct': Corn.all.distinct(),
+        'bool': c.name == c.lastname,
+        'otherbool': ~(c.id < 3),
+        'andor': (c.id < 3) | (c.name.len() < 2) & (c.lastname + "test"),
+        'add': Corn.all.map(c.name + c.lastname),
+        'sub': Corn.all.map(c.name + c.lastname),
+        'mul': Corn.all.map(c.id * c.id),
+        'div': Corn.all.map(c.id / c.id),
+        'index': Corn.all[10],
+        'slice': Corn.all[10:20],
+        'one': Corn.all.one(),
+        'sort': Corn.all.sort(c.name, ~c.lastname),
+        'groupby': Corn.all.groupby(c.name),
+        }))
+    assert isinstance(type, List)
+    mapping = type.inner_type.mapping
+    for key in ('max', 'min', 'sum', 'one', 'index'):
+        assert mapping[key] == Dict(mapping=Corn.properties, corn=Corn)
+    for key in ('len',):
+        assert mapping[key] == Type(type=int)
+    for key in ('bool', 'otherbool', 'andor'):
+        assert mapping[key] == Type(type=bool)
+    for key in ('distinct', 'slice', 'sort'):
+        assert mapping[key] == expected_type(Corn)
+    assert mapping['groupby'] == List(inner_type=Dict(mapping={
+        'grouper': Corn.properties['name'],
+        'elements': expected_type(Corn)}))

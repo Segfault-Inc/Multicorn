@@ -157,7 +157,7 @@ class BooleanOperationWrapper(OperationWrapper):
         return Type(type=bool)
 
 BOOL_OPERATORS = ('and', 'or', 'xor', 'contains', 'eq', 'ne',
-    'lt', 'gt', 'le', 'ge')
+    'lt', 'gt', 'le', 'ge', 'invert')
 
 def defclass(operator, base_class):
     class_name = operator.title() + 'Wrapper'
@@ -225,15 +225,29 @@ class GroupbyWrapper(OperationWrapper):
         return List(inner_type=Dict(mapping={'grouper': key_type,
             'elements': subject_type}))
 
+@RequestWrapper.register_wrapper(requests.LenRequest)
+class LenWrapper(RequestWrapper):
+
+    def return_type(self, contexts=()):
+        return Type(type=int)
+
+
 
 class PreservingWrapper(OperationWrapper):
+
     def return_type(self, contexts=()):
-        return self.suject.return_type(contexts)
+        return self.subject.return_type(contexts)
 
 
 @RequestWrapper.register_wrapper(requests.DistinctRequest)
 class DistinctWrapper(PreservingWrapper):
     pass
+
+@RequestWrapper.register_wrapper(requests.SliceRequest)
+class SliceWrapper(PreservingWrapper):
+    def _init_other_args(self):
+        subject, self.slice = self.args
+
 
 
 @RequestWrapper.register_wrapper(requests.SortRequest)
@@ -250,66 +264,39 @@ class SortWrapper(PreservingWrapper):
             for sort_key in self.other_args)
         self.other_args = self.sort_keys
         self.args = (self.subject,) + self.other_args
-        
 
-@RequestWrapper.register_wrapper(requests.MaxRequest)
-class MaxWrapper(PreservingWrapper):
-    pass
+class AggregateWrapper(OperationWrapper):
 
-@RequestWrapper.register_wrapper(requests.MinRequest)
-class MinWrapper(PreservingWrapper):
-    pass
-
-@RequestWrapper.register_wrapper(requests.LenRequest)
-class LenWrapper(RequestWrapper):
-
-    def return_type(self, contexts=()):
-        return Type(type=int)
-
-@RequestWrapper.register_wrapper(requests.SumRequest)
-class SumWrapper(RequestWrapper):
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
         if isinstance(subject_type, List):
-            # Is sum supposed to keep the type ?
             return subject_type.inner_type
-        else:
-            # If this really supposed to happen?
-            return Type(type=object)
+        return Type(type==object)
 
 
-@RequestWrapper.register_wrapper(requests.SliceRequest)
-class SliceWrapper(PreservingWrapper):
-    def _init_other_args(self):
-        subject, self.slice = self.args
+@RequestWrapper.register_wrapper(requests.MaxRequest)
+class MaxWrapper(AggregateWrapper):
+    pass
+
+
+@RequestWrapper.register_wrapper(requests.MinRequest)
+class MinWrapper(AggregateWrapper):
+    pass
+
+
+@RequestWrapper.register_wrapper(requests.SumRequest)
+class SumWrapper(AggregateWrapper):
+    pass
 
 @RequestWrapper.register_wrapper(requests.IndexRequest)
-class IndexWrapper(OperationWrapper):
+class IndexWrapper(AggregateWrapper):
     def _init_other_args(self):
         subject, self.index = self.args
         self.key, = self.other_args # int, slice, string, ...
 
-    def return_type(self, contexts=()):
-        subject_type = self.subject.return_type(contexts)
-        if isinstance(subject_type, List):
-            return subject_type.inner_type
-        else:
-            # Once again, let's say its possible but undefined
-            return Type(type=object)
-
-
 @RequestWrapper.register_wrapper(requests.OneRequest)
-class OneWrapper(OperationWrapper):
+class OneWrapper(AggregateWrapper):
     def _init_other_args(self):
         self.default, = self.other_args
         if self.default is not None:
             self.default = self.from_request(self.default)
-
-    def return_type(self, contexts=()):
-        subject_type = self.subject.return_type(contexts)
-        if isinstance(subject_type, List):
-            return subject_type.inner_type
-        else:
-            # What should we do with something not a list ?
-            # Probably an object !
-            return Type(type=object)

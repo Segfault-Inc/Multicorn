@@ -63,22 +63,12 @@ class AbstractCorn(object):
             self.save(item)
         return item
 
-    def open(self, query=None):
+    def open(self, request=None):
         """
         Same as search but return exactly one item.
         Raise if there are more or less than one result.
         """
-        results = iter(self.search(query))
-        try:
-            item = next(results)
-        except StopIteration:
-            raise ItemDoesNotExist
-        try:
-            next(results)
-        except StopIteration:
-            return item
-        else:
-            raise MultipleMatchingItems
+        return self.all.filter(request).one().execute()
 
     # Minimal API for concrete access points
 

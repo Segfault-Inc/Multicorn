@@ -215,6 +215,8 @@ class GetattrRequest(OperationRequest):
         return class_(subject, *args)
 
 OPERATION_CLASS_BY_OPERATOR_NAME['getattr'] = GetattrRequest
+OPERATION_CLASS_BY_METHOD_NAME['index'] = IndexRequest
+OPERATION_CLASS_BY_METHOD_NAME['slice'] = SliceRequest
 
 
 # Add magic methods to Request
@@ -243,9 +245,11 @@ for name in OPERATORS:
 
 del name, _add_magic_method
 
+
 OPERATOR_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
     OPERATION_CLASS_BY_OPERATOR_NAME.iteritems())
 
 METHOD_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
     OPERATION_CLASS_BY_METHOD_NAME.iteritems())
+
 
