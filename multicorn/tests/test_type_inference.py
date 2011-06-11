@@ -21,8 +21,6 @@ def make_corn():
     return Corn
 
 
-def expected_type(Corn):
-    return List(inner_type=Dict(corn=Corn, mapping=Corn.properties))
 
 def return_type(request):
     return RequestWrapper.from_request(request).return_type()
@@ -35,13 +33,13 @@ def test_simple_types():
     assert isinstance(type.inner_type, Dict)
     item_def = type.inner_type.mapping
     assert 'id' in item_def
-    assert expected_type(Corn) == type
+    assert List(Corn.type) == type
 
 @suite.test
 def test_filter():
     Corn = make_corn()
     type = return_type(Corn.all.filter(c.name == 'lol'))
-    assert expected_type(Corn) == type
+    assert List(Corn.type) == type
 
 @suite.test
 def test_map():
@@ -62,15 +60,15 @@ def test_nimp():
     assert type == List(inner_type=Dict(mapping={
         'name': Corn.properties['name'],
         'id': Corn.properties['id'],
-        'grou': Type(type=int)}))
+        'grou': Type(int)}))
     type = return_type(Corn.all.one())
     assert type == Dict(corn=Corn, mapping=Corn.properties)
     type = return_type(Corn.all.map({
         'name': c.name + c.lastname,
         'test': c.len() + 10}).one())
     assert type == Dict(mapping={
-        'name': Type(type=unicode),
-        'test': Type(type=int)})
+        'name': Type(unicode),
+        'test': Type(int)})
     type = return_type(Corn.all.map({
         'max': Corn.all.max(),
         'min': Corn.all.min(),
@@ -99,18 +97,18 @@ def test_nimp():
     assert isinstance(type, List)
     mapping = type.inner_type.mapping
     for key in ('max', 'min', 'sum', 'one', 'index'):
-        assert mapping[key] == Dict(mapping=Corn.properties, corn=Corn)
+        assert mapping[key] == Corn.type
     for key in ('len',):
-        assert mapping[key] == Type(type=int)
+        assert mapping[key] == Type(int)
     for key in ('bool', 'otherbool', 'andor'):
-        assert mapping[key] == Type(type=bool)
+        assert mapping[key] == Type(bool)
     for key in ('distinct', 'slice', 'sort'):
-        assert mapping[key] == expected_type(Corn)
-    assert mapping['groupby'] == List(inner_type=Dict(mapping={
+        assert mapping[key] == List(Corn.type)
+    assert mapping['groupby'] == List(Dict(mapping={
         'grouper': Corn.properties['name'],
-        'elements': expected_type(Corn)}))
-    assert mapping['heterogeneous_list'] == List(inner_type=Type(type=object))
-    assert mapping['homogeneous_list'] == List(inner_type=Type(type=unicode))
-    assert mapping['tuple'] == Type(type=tuple)
-    assert mapping['onedefaulthomogeneous'] == expected_type(Corn).inner_type
-    assert mapping['onedefault'] == Type(type=object)
+        'elements': List(Corn.type)}))
+    assert mapping['heterogeneous_list'] == List(Type(object))
+    assert mapping['homogeneous_list'] == List(Type(unicode))
+    assert mapping['tuple'] == Type(tuple)
+    assert mapping['onedefaulthomogeneous'] == Corn.type
+    assert mapping['onedefault'] == Type(object)

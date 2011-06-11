@@ -3,7 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 from ..item import BaseItem
 from .. import queries
-from ..requests.types import Type
+from ..requests.types import Type, List, Dict
 from ..requests.requests import StoredItemsRequest
 
 
@@ -84,6 +84,11 @@ class AbstractCorn(object):
     def all(self):
         """Return a request object representing the list of all items."""
         return StoredItemsRequest(self)
+
+    @property
+    def type(self):
+        return Dict(corn=self, mapping=self.properties)
+
 
     # Can be overridden to optimize
 

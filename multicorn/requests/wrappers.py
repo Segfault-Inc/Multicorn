@@ -37,7 +37,7 @@ class RequestWrapper(object):
 
     def return_type(self, contexts=()):
         raise NotImplementedError("return_type is not implemented")
-    
+
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.wrapped_request)
 
@@ -49,9 +49,7 @@ class StoredItemsWrapper(RequestWrapper):
         self.storage, = self.args
 
     def return_type(self, contexts=()):
-        return List(inner_type=Dict(
-            mapping=self.storage.properties, corn=self.storage))
-
+        return List(self.storage.type)
 
 @RequestWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(RequestWrapper):

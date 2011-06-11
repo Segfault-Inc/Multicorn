@@ -1,6 +1,6 @@
 class Type(object):
 
-    def __init__(self, corn=None, name=None, type=object):
+    def __init__(self,type=object, corn=None, name=None,):
         self.corn = corn
         self.name = name
         self.type = type
@@ -21,7 +21,7 @@ class Type(object):
 
 class Dict(Type):
 
-    def __init__(self, corn=None, name=None, mapping=None):
+    def __init__(self, mapping=None,corn=None, name=None):
         super(Dict, self).__init__(corn=corn, name=name, type=dict)
         self.mapping = mapping
 
@@ -32,7 +32,7 @@ class Dict(Type):
 
 class List(Type):
 
-    def __init__(self, corn=None, name=None, inner_type=Type(type=object)):
+    def __init__(self, inner_type=Type(type=object), corn=None, name=None):
         super(List, self).__init__(corn=corn, name=name, type=list)
         self.inner_type = inner_type
 
