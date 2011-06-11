@@ -87,8 +87,14 @@ def test_nimp():
         'index': Corn.all[10],
         'slice': Corn.all[10:20],
         'one': Corn.all.one(),
+        'onedefault': Corn.all.one(None),
+        'onedefaulthomogeneous': Corn.all.one(Corn.all.one()),
         'sort': Corn.all.sort(c.name, ~c.lastname),
         'groupby': Corn.all.groupby(c.name),
+        'heterogeneous_list': Corn.all + ['toto', 3],
+        'homogeneous_list': [u'toto', u'tata'],
+        'tuple': (1, 2, 3)
+
         }))
     assert isinstance(type, List)
     mapping = type.inner_type.mapping
@@ -103,3 +109,8 @@ def test_nimp():
     assert mapping['groupby'] == List(inner_type=Dict(mapping={
         'grouper': Corn.properties['name'],
         'elements': expected_type(Corn)}))
+    assert mapping['heterogeneous_list'] == List(inner_type=Type(type=object))
+    assert mapping['homogeneous_list'] == List(inner_type=Type(type=unicode))
+    assert mapping['tuple'] == Type(type=tuple)
+    assert mapping['onedefaulthomogeneous'] == expected_type(Corn).inner_type
+    assert mapping['onedefault'] == Type(type=object)

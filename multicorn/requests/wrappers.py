@@ -6,6 +6,7 @@ import sys
 import collections
 from . import requests
 from .types import Type, Dict, List
+from operator import eq
 
 
 class RequestWrapper(object):
@@ -70,7 +71,12 @@ class ListWrapper(RequestWrapper):
         self.value = [self.from_request(r) for r in self.value]
 
     def return_type(self, contexts=()):
-        return Type(type=list)
+        if self.value:
+            inner_type = self.value[0].return_type(contexts)
+            if all((value.return_type(contexts) == inner_type
+                for value in self.value)):
+                return List(inner_type=inner_type)
+        return List(inner_type=Type(type=object))
 
 
 
@@ -178,12 +184,7 @@ class ArithmeticOperationWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         left_type = self.args[0].return_type(contexts)
         right_type = self.args[1].return_type(contexts)
-        if left_type.type == right_type.type:
-            return Type(type=left_type.type)
-        else:
-            # TODO: refine type inference for heterogeneous types
-            return Type(type=object)
-
+        return left_type.common_type(right_type)
 
 for operator in ARITHMETIC_OPERATORS:
    defclass(operator, ArithmeticOperationWrapper)
@@ -300,3 +301,13 @@ class OneWrapper(AggregateWrapper):
         self.default, = self.other_args
         if self.default is not None:
             self.default = self.from_request(self.default)
+
+    def return_type(self, contexts=()):
+        self.subject_type = super(OneWrapper, self).return_type(contexts)
+        if self.default:
+            return self.default.return_type(contexts).common_type(
+                    self.subject_type)
+        else:
+            return self.subject_type
+
+
