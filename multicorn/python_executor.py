@@ -117,57 +117,43 @@ def execute_getitem(subject, key):
 
 @operation_executor(requests.SortRequest, include_contexts=True)
 def execute_sort(contexts, sequence, *sort_keys):
-    reverse_list = [key.reverse for key in sort_keys]
-    all_reverse = all(reverse_list)
-    all_non_reverse = not any(reverse_list)
+    assert sort_keys, 'Got a sort request with no sort key.'
+
+    all_reverse = all(key.reverse for key in sort_keys)
+    all_non_reverse = all(not key.reverse for key in sort_keys)
     if all_reverse or all_non_reverse:
+        # The sort direction is the same for all keys: we can use a single
+        # key function and a single `reverse` argument.
         def key_function(element):
             return tuple(key.execute(contexts + (element,))
                          for key, reverse in sort_keys)
         return sorted(sequence, key=key_function, reverse=all_reverse)
     else:
-        # Mixed reverse and non-reverse keys: the obvious key function can not
-        # do this. Fall back on this.
-        # Do not use cmp() or sorted(..., cmp=...) as they are not available
-        # in Python 3.
-        class ComparingKey(object):
-            __slots__ = ['values']
-            
-            def __init__(self, element):
-                self.values = tuple(
-                    key.execute(contexts + (element,))
-                    for key, reverse in sort_keys)
+        # Mixed sort direction : the obvious key function can not do this.
 
-            def _cmp(self, other):
-                for self_value, other_value, reverse in zip(
-                        self.values, other.values, reverse_list):
-                    if self_value > other_value:
-                        if reverse:
-                            return -1
-                        else:
-                            return 1
-                    if self_value < other_value:
-                        if reverse:
-                            return 1
-                        else:
-                            return -1
-                    # if we get here, self_value == other_value
-                # if we get here, all values are equal.
-                return 0
+        # http://wiki.python.org/moin/HowTo/Sorting/#Sort_Stability_and_Complex_Sorts
+        # According to this page, sorts are guaranteed to be stable (so the
+        # following is correct) and the Timsort algorithm used takes advantage
+        # of any ordering already present (so it should not be too inefficient).
+        
+        # TODO: benchmark this vs other solutions like in git 005a2d6:
+        # Make a ComparingKey class and use it as a key function. (Inspired
+        # by functools.cmp_to_key)
+        
+        def key_function(element):
+            # key_request is referenced in the outer scope, and will change
+            # for each iteration of the for-loop below.
+            # No need to re-define the same function for each iteration.
+            return key_request.execute(contexts + (element,))
 
-            def __lt__(self, other):
-                return self._cmp(other) < 0
-            def __gt__(self, other):
-                return self._cmp(other) > 0
-            def __eq__(self, other):
-                return self._cmp(other) == 0
-            def __le__(self, other):
-                return self._cmp(other) <= 0
-            def __ge__(self, other):
-                return self._cmp(other) >= 0
-            def __ne__(self, other):
-                return self._cmp(other) != 0
-        return sorted(sequence, key=ComparingKey)
+        sequence = list(sequence)
+        # sort_keys is in most-significant key fist, we want to do successive
+        # sorts least-significant fist.
+        for key_request, reverse in reversed(sort_keys):
+            sequence.sort(key=key_function, reverse=reverse)
+        
+        return sequence
+
 
 @operation_executor(requests.MapRequest, include_contexts=True)
 def execute_map(contexts, sequence, new_element):
