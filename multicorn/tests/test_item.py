@@ -97,3 +97,45 @@ def test_item():
         del item['foo']
     with attest.raises(TypeError):
         del item['ispum']
+
+    # Raise on extra properties
+    with attest.raises(ValueError) as extra:
+        BaseItem(
+            corn,
+            {'foo': 3, 'bar': 5, 'oof': 1},
+            {'baz': baz_loader, 'fuu': fuu_loader})
+    assert extra.message == "Unexpected properties: ('oof',)"
+
+    with attest.raises(ValueError) as extra:
+        BaseItem(
+            corn,
+            {'foo': 3, 'bar': 5},
+            {'baz': baz_loader, 'fuu': fuu_loader, 'rab': lambda x: x})
+    assert extra.message == "Unexpected properties: ('rab',)"
+
+    with attest.raises(ValueError) as extra:
+        BaseItem(
+            corn,
+            {'foo': 3, 'bar': 5, 'oof': 1},
+            {'baz': baz_loader, 'fuu': fuu_loader, 'rab': lambda x: x})
+    assert "Unexpected properties:" in extra.message
+
+    # Raise on missing properties
+    with attest.raises(ValueError) as extra:
+        BaseItem(
+            corn,
+            {'foo': 3},
+            {'baz': baz_loader, 'fuu': fuu_loader})
+    assert extra.message == "Missing properties: ('bar',)"
+    with attest.raises(ValueError) as extra:
+        BaseItem(
+            corn,
+            {'foo': 3, 'bar': 5},
+            {'baz': baz_loader})
+    assert extra.message == "Missing properties: ('fuu',)"
+    with attest.raises(ValueError) as extra:
+        BaseItem(
+            corn,
+            {'foo': 3},
+            {'baz': baz_loader})
+    assert "Missing properties:" in extra.message

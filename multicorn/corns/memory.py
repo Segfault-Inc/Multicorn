@@ -7,6 +7,7 @@ from ..queries import isolate
 from ..requests.types import Type
 from .. import queries
 
+
 class Memory(AbstractCorn):
     """
     A simple access point that keep Python Item objects in memory.

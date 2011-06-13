@@ -7,4 +7,3 @@ class BaseProperty(object):
     def __init__(self, name, type_=object):
         self.name = name
         self.type = type_
-

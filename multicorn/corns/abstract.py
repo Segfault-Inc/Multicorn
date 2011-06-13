@@ -55,7 +55,6 @@ class AbstractCorn(object):
         """
         self.properties[name] = Type(corn=self, name=name)
 
-
     def create(self, values=None, lazy_values=None, save=True):
         """Create and return a new item."""
         item = self.Item(self, values or {}, lazy_values or {})
@@ -89,9 +88,7 @@ class AbstractCorn(object):
     def type(self):
         return Dict(corn=self, mapping=self.properties)
 
-
     # Can be overridden to optimize
-
     def execute(self, request):
         """Execute the given query and return an iterable of items."""
         wrapped_query = self.RequestWrapper.wrap(request)
