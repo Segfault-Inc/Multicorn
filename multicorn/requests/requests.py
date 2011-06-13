@@ -149,6 +149,12 @@ class ContextRequest(Request):
 
 
 class OperationRequest(Request):
+    # For subclasses: name of the special method on Request object that return
+    # this class.
+    # Eg. Request.__add__ returns a AddRequest instance so
+    # AddRequest.operator_name is 'add'
+    operator_name = None
+    
     @self_with_attrs
     def __init__(self, *args):
         self.args = args
@@ -203,6 +209,17 @@ class REQUEST_METHODS:
 REQUEST_METHODS = REQUEST_METHODS.__dict__
 REQUEST_METHOD_NAMES = frozenset(REQUEST_METHODS)
 
+OPERATION_CLASS_BY_METHOD_NAME = {}
+
+for name in REQUEST_METHOD_NAMES:
+    class_name = name.title() + 'Request'
+    class_ = type(class_name, (OperationRequest,), {})
+    # Add the new class in the scope of the current module, as if we had
+    # written eg. a `class AddOperation(OperationRequest):` statement.
+    setattr(sys.modules[__name__], class_name, class_)
+    OPERATION_CLASS_BY_METHOD_NAME[name] = class_
+    del class_name, class_
+
 
 # XXX when is __concat__ used instead of __add__?
 # http://docs.python.org/library/operator.html?#operator.__concat__ says for
@@ -230,27 +247,46 @@ assert REVERSED_OPERATORS < OPERATORS # strict inclusion
 assert not (OPERATORS & REQUEST_METHOD_NAMES)
 
 
-OPERATION_CLASS_BY_OPERATOR_NAME = {}
-OPERATION_CLASS_BY_METHOD_NAME = {}
+def _add_magic_method(operator_name):
+    class_name = name.title() + 'Request'
+    operation_class = type(class_name, (OperationRequest,), {
+        'operator_name': operator_name})
+    # Add the new class in the scope of the current module, as if we had
+    # written eg. a `class AddOperation(OperationRequest):` statement.
+    setattr(sys.modules[__name__], class_name, operation_class)
 
-for names, registry in (
-        (OPERATORS, OPERATION_CLASS_BY_OPERATOR_NAME),
-        (REQUEST_METHOD_NAMES, OPERATION_CLASS_BY_METHOD_NAME)):
-    for name in names:
-        class_name = name.title() + 'Request'
-        class_ = type(class_name, (OperationRequest,), {})
-        # Add the new class in the scope of the current module, as if we had
-        # written eg. a `class AddOperation(OperationRequest):` statement.
-        setattr(sys.modules[__name__], class_name, class_)
-        registry[name] = class_
+    magic_name = '__%s__' % operator_name
+    # Only generate a magic method if it is not there already.
+    if magic_name not in vars(Request):
+        def magic_method(*args):
+            # `*args` here includes `self`, the Request instance.
+            return operation_class(*(as_request(arg) for arg in args))
+        magic_method.__name__ = magic_name
+        setattr(Request, magic_name, magic_method)
 
-del names, registry, name
+    magic_name = '__r%s__' % operator_name
+    # Only generate a magic method if it is not there already.
+    if magic_name not in vars(Request) and name in REVERSED_OPERATORS:
+        def magic_method(*args):
+            # `*args` here includes `self`, the Request instance.
+            args = args[::1]
+            return operation_class(*(as_request(arg) for arg in args))
+        magic_method.__name__ = magic_name
+        setattr(Request, magic_name, magic_method)
+
+for name in OPERATORS:
+    _add_magic_method(name)
+
+del name, _add_magic_method
+
 
 class SliceRequest(OperationRequest):
     pass
 
+
 class IndexRequest(OperationRequest):
     pass
+
 
 class AttributeRequest(OperationRequest):
     @self_with_attrs
@@ -269,42 +305,4 @@ class AttributeRequest(OperationRequest):
         class_ = OPERATION_CLASS_BY_METHOD_NAME[attr_name]
         args = preprocessor(*args, **kwargs)
         return class_(subject, *args)
-
-OPERATION_CLASS_BY_METHOD_NAME['index'] = IndexRequest
-OPERATION_CLASS_BY_METHOD_NAME['slice'] = SliceRequest
-
-
-# Add magic methods to Request
-def _add_magic_method(operator_name):
-    operation_class = OPERATION_CLASS_BY_OPERATOR_NAME[operator_name]
-
-    magic_name = '__%s__' % operator_name
-    # Only generate a magic method if it is not there already.
-    if magic_name not in vars(Request):
-        def magic_method(*args):
-            # `*args` here includes `self`, the Request instance.
-            return operation_class(*(as_request(arg) for arg in args))
-        setattr(Request, magic_name, magic_method)
-
-    magic_name = '__r%s__' % operator_name
-    # Only generate a magic method if it is not there already.
-    if magic_name not in vars(Request) and name in REVERSED_OPERATORS:
-        def magic_method(*args):
-            # `*args` here includes `self`, the Request instance.
-            args = args[::1]
-            return operation_class(*args)
-        setattr(Request, magic_name, magic_method)
-
-for name in OPERATORS:
-    _add_magic_method(name)
-
-del name, _add_magic_method
-
-
-OPERATOR_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
-    OPERATION_CLASS_BY_OPERATOR_NAME.iteritems())
-
-METHOD_NAME_BY_OPERATION_CLASS = dict((v, k) for k, v in
-    OPERATION_CLASS_BY_METHOD_NAME.iteritems())
-
 

@@ -60,8 +60,7 @@ class ContextExecutor(PythonExecutor, wrappers.ContextWrapper):
 class OperationExecutor(PythonExecutor, wrappers.OperationWrapper):
     def execute(self, contexts):
         # TODO: message for this error
-        assert self.operator_name and not self.method_name
-
+        assert self.operator_name
         args = [arg.execute(contexts) for arg in self.args]
         operator_function = getattr(operator, '__%s__' % self.operator_name)
         return operator_function(*args)
