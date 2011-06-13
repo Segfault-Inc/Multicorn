@@ -192,8 +192,8 @@ class FilterWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         # A filter does not modify its subject
         # assert self.predicate.return_type().type == bool
-        return self.subject.return_type(contexts +
-                (self.subject.return_type(contexts),))
+        return self.subject.return_type(contexts)
+
 
 
 @RequestWrapper.register_wrapper(requests.MapRequest)
