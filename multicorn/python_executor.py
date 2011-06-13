@@ -4,10 +4,10 @@
 
 import sys
 import operator
+from collections import Mapping
 
 from .requests import requests
 from .requests import wrappers
-
 
 
 class PythonExecutor(wrappers.RequestWrapper):
@@ -78,10 +78,10 @@ def operation_executor(request_class, include_contexts=False,
             if include_contexts:
                 args = (contexts,) + args
             return function(*args)
-        
+
         name = request_class.__name__
         assert name.endswith('Request')
-        name = name[:-len('Request')] # remove the Request suffix
+        name = name[:-len('Request')]  # remove the Request suffix
         class_name = name + 'Executor'
         base_wrapper = wrappers.RequestWrapper.class_from_request_class(
             request_class)
@@ -135,12 +135,13 @@ def execute_sort(contexts, sequence, *sort_keys):
         # http://wiki.python.org/moin/HowTo/Sorting/#Sort_Stability_and_Complex_Sorts
         # According to this page, sorts are guaranteed to be stable (so the
         # following is correct) and the Timsort algorithm used takes advantage
-        # of any ordering already present (so it should not be too inefficient).
-        
+        # of any ordering already present
+        # (so it should not be too inefficient).
+
         # TODO: benchmark this vs other solutions like in git 005a2d6:
         # Make a ComparingKey class and use it as a key function. (Inspired
         # by functools.cmp_to_key)
-        
+
         def key_function(element):
             # key_request is referenced in the outer scope, and will change
             # for each iteration of the for-loop below.
@@ -152,7 +153,7 @@ def execute_sort(contexts, sequence, *sort_keys):
         # sorts least-significant fist.
         for key_request, reverse in reversed(sort_keys):
             sequence.sort(key=key_function, reverse=reverse)
-        
+
         return sequence
 
 
@@ -220,11 +221,10 @@ def execute_add(left, right):
 operation_executor(requests.SumRequest)(sum)
 operation_executor(requests.MinRequest)(min)
 operation_executor(requests.MaxRequest)(max)
-operation_executor(requests.LenRequest)(len) # TODO: handle generators
+operation_executor(requests.LenRequest)(len)  # TODO: handle generators
 
 del operation_executor
 
 
 def execute(request):
     return PythonExecutor.from_request(request).execute(())
-
