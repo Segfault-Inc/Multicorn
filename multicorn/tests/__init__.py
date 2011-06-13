@@ -9,5 +9,6 @@ all = Tests('.'.join((__name__, mod, 'suite'))
             for mod in ('test_requests',
                         'test_instantiation',
                         'test_type_inference',
+                        'test_helpers',
                         'test_queries',
                         'test_item'))

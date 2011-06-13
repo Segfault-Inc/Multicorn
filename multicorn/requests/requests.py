@@ -28,18 +28,20 @@ class WithRealAttributes(object):
     Wrap a Request object to allow access to its attributes without going
     through `Request.__getattribute__` and `Request.__setattr__`.
     """
-    __slots__ = ('_obj',)
-    
-    def __init__(self, obj):
-        object.__setattr__(self, '_obj', obj)
+    __slots__ = ('_wrapped_obj',)
 
-    def __getattribute__(self, name):
-        obj = object.__getattribute__(self, '_obj')
-        return object.__getattribute__(obj, name)
+    def __init__(self, obj):
+        object.__setattr__(self, '_wrapped_obj', obj)
+
+    def __getattr__(self, name):
+        return object.__getattribute__(self._wrapped_obj, name)
 
     def __setattr__(self, name, value):
-        obj = object.__getattribute__(self, '_obj')
-        object.__setattr__(obj, name, value)
+        object.__setattr__(self._wrapped_obj, name, value)
+
+    def obj_type(self):
+        return type(self._wrapped_obj)
+
 
 
 def self_with_attrs(method):
@@ -80,8 +82,9 @@ class Request(object):
         else:
             return AttributeRequest(self, name)
 
-    def __setattr__(self, name):
+    def __setattr__(self, name, value):
         raise AttributeError('Can not assign to request attributes.')
+
 
     def __getitem__(self, key):
         # No as_request() on key
@@ -152,6 +155,21 @@ class OperationRequest(Request):
     @self_with_attrs
     def __init__(self, *args):
         self.args = args
+
+    @self_with_attrs
+    def copy_replace(self, replace, replacement):
+        newargs = []
+        for arg in self.args:
+            wrapper = WithRealAttributes(arg)
+            if arg is replace:
+                newargs.append(replacement)
+            elif hasattr(wrapper, 'copy_replace'):
+                newargs.append(wrapper.copy_replace(replace, replacement))
+            else:
+                newargs.append(arg)
+        return self.obj_type()(*newargs)
+
+
 
 
 ARGUMENT_NOT_GIVEN = object()

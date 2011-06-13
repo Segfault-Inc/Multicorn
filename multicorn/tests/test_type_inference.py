@@ -1,5 +1,4 @@
-from attest import Tests, assert_hook
-import attest
+from attest import Tests
 
 from multicorn.corns.memory import Memory
 from multicorn import Multicorn

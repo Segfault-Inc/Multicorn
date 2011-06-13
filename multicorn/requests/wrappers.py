@@ -27,6 +27,7 @@ class RequestWrapper(object):
                 return wrapper_class
         raise TypeError('No request wrapper for type %s.' % request_class)
 
+
     @classmethod
     def from_request(cls, request):
         request = requests.as_request(request)
@@ -34,11 +35,12 @@ class RequestWrapper(object):
 
     def __init__(self, wrapped_request):
         self.wrapped_request = wrapped_request
-    
+
     def __getattr__(self, name):
         return object.__getattribute__(self.wrapped_request, name)
 
     def return_type(self, contexts=()):
+        """Contexts is a tuple representing the stack of types accessible via context(index)"""
         raise NotImplementedError("return_type is not implemented")
 
     def __repr__(self):
@@ -52,6 +54,9 @@ class StoredItemsWrapper(RequestWrapper):
 
     def return_type(self, contexts=()):
         return List(self.storage.type)
+
+
+
 
 @RequestWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(RequestWrapper):
