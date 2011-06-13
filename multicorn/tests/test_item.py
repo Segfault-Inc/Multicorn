@@ -21,14 +21,14 @@ def test_item():
                        for name in (
                            'foo', 'bar', 'baz', 'fuu')]
 
-    def baz_loader():
+    def baz_loader(item):
         baz_loader.calls += 1
         return 8
 
     class Fuu_loader():
         value = None
 
-        def __call__(self):
+        def __call__(self, item):
             if self.value is None:
                 self.calls += 1
                 self.value = 10 + 2
