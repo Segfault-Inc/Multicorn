@@ -116,16 +116,6 @@ class OperationWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(OperationWrapper, self).__init__(*args, **kwargs)
 
-        request_class = type(self.wrapped_request)
-        self.method_name = requests.METHOD_NAME_BY_OPERATION_CLASS.get(
-            request_class, None)
-        self.operator_name = requests.OPERATOR_NAME_BY_OPERATION_CLASS.get(
-            request_class, None)
-
-        # TODO: remove self.method_name?
-#        assert (self.method_name and not self.operator_name) or (
-#                self.operator_name and not self.method_name)
-
         self.subject = self.from_request(self.args[0])
         self.other_args = self.args[1:]
         self.args = (self.subject,) + self.other_args
@@ -192,8 +182,8 @@ class FilterWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         # A filter does not modify its subject
         # assert self.predicate.return_type().type == bool
-        return self.subject.return_type(contexts +
-                (self.subject.return_type(contexts),))
+        return self.subject.return_type(contexts)
+
 
 
 @RequestWrapper.register_wrapper(requests.MapRequest)

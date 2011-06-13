@@ -46,7 +46,7 @@ class BaseItem(MutableMapping):
 
     def __getitem__(self, key):
         if key not in self._values and key in self._lazy_values:
-            return self._lazy_values[key]()
+            return self._lazy_values[key](self)
         return self._values[key]
 
     def __setitem__(self, key, value):
