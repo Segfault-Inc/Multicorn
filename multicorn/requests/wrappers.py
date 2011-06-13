@@ -34,7 +34,9 @@ class RequestWrapper(object):
 
     def __init__(self, wrapped_request):
         self.wrapped_request = wrapped_request
-        self.args = wrapped_request._Request__args
+    
+    def __getattr__(self, name):
+        return object.__getattribute__(self.wrapped_request, name)
 
     def return_type(self, contexts=()):
         raise NotImplementedError("return_type is not implemented")
@@ -47,7 +49,6 @@ class RequestWrapper(object):
 class StoredItemsWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(StoredItemsWrapper, self).__init__(*args, **kwargs)
-        self.storage, = self.args
 
     def return_type(self, contexts=()):
         return List(self.storage.type)
@@ -56,7 +57,6 @@ class StoredItemsWrapper(RequestWrapper):
 class LiteralWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(LiteralWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
 
     def return_type(self, contexts=()):
         return Type(type=type(self.value))
@@ -66,7 +66,6 @@ class LiteralWrapper(RequestWrapper):
 class ListWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(ListWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
         self.value = [self.from_request(r) for r in self.value]
 
     def return_type(self, contexts=()):
@@ -83,7 +82,6 @@ class ListWrapper(RequestWrapper):
 class TupleWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(TupleWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
         self.value = tuple(self.from_request(r) for r in self.value)
 
     def return_type(self, contexts=()):
@@ -95,7 +93,6 @@ class TupleWrapper(RequestWrapper):
 class DictWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(DictWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
         self.value = dict(
             (key, self.from_request(value))
             for key, value in self.value.iteritems())
@@ -110,10 +107,6 @@ class DictWrapper(RequestWrapper):
 
 @RequestWrapper.register_wrapper(requests.ContextRequest)
 class ContextWrapper(RequestWrapper):
-    def __init__(self, *args, **kwargs):
-        super(ContextWrapper, self).__init__(*args, **kwargs)
-        self.scope_depth, = self.args
-
     def return_type(self, contexts=()):
         return contexts[self.scope_depth - 1]
 
@@ -129,8 +122,9 @@ class OperationWrapper(RequestWrapper):
         self.operator_name = requests.OPERATOR_NAME_BY_OPERATION_CLASS.get(
             request_class, None)
 
-        assert (self.method_name and not self.operator_name) or (
-                self.operator_name and not self.method_name)
+        # TODO: remove self.method_name?
+#        assert (self.method_name and not self.operator_name) or (
+#                self.operator_name and not self.method_name)
 
         self.subject = self.from_request(self.args[0])
         self.other_args = self.args[1:]
@@ -142,8 +136,8 @@ class OperationWrapper(RequestWrapper):
         self.args = (self.subject,) + self.other_args
 
 
-@RequestWrapper.register_wrapper(requests.GetattrRequest)
-class GetattrWrapper(OperationWrapper):
+@RequestWrapper.register_wrapper(requests.AttributeRequest)
+class AttributeWrapper(OperationWrapper):
     def _init_other_args(self):
         attr_name, = self.other_args
         self.attr_name = attr_name # supposed to be str or unicode
