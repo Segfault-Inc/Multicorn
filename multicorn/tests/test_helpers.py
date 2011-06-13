@@ -34,6 +34,6 @@ def test_simple_helpers():
     assert left_chain[-1] == filter
     full_result = list(PythonExecutor.from_request(request).execute(()))
     first_part_result = list(PythonExecutor.from_request(request).execute(()))
-    second_part_result = list(PythonExecutor.from_request(request).execute((first_part_result,)))
+    second_part_result = list(
+        PythonExecutor.from_request(request).execute((first_part_result,)))
     assert full_result == second_part_result
-
