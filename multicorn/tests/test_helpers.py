@@ -28,7 +28,7 @@ def test_simple_helpers():
     # because we append a dummy context
     right_chain = helpers.as_chain(right)
     assert isinstance(right_chain[0], c.__class__)
-    assert isinstance(WithRealAttributes(right_chain[1]).args[0], c.__class__)
+    assert isinstance(WithRealAttributes(right_chain[1]).subject, c.__class__)
     assert len(right_chain) == 2
     left_chain = helpers.as_chain(left)
     assert left_chain[-1] == filter

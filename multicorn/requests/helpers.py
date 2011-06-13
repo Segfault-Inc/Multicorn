@@ -18,5 +18,5 @@ def as_chain(request):
     chain = [request]
     request = WithRealAttributes(request)
     if issubclass(request.obj_type(), OperationRequest):
-        chain = as_chain(request.args[0]) + chain
+        chain = as_chain(request.subject) + chain
     return chain

@@ -3,7 +3,6 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 import sys
-import collections
 from . import requests
 from .types import Type, Dict, List
 from operator import eq
@@ -27,7 +26,6 @@ class RequestWrapper(object):
                 return wrapper_class
         raise TypeError('No request wrapper for type %s.' % request_class)
 
-
     @classmethod
     def from_request(cls, request):
         request = requests.as_request(request)
@@ -36,6 +34,9 @@ class RequestWrapper(object):
     def __init__(self, wrapped_request):
         self.wrapped_request = wrapped_request
 
+    # Default to getting attributes in the wrapped request, but not on
+    # setting: setting puts the new value in the wrapper, which may hide
+    # an attribute in the wrapped request.
     def __getattr__(self, name):
         return object.__getattribute__(self.wrapped_request, name)
 
@@ -49,18 +50,12 @@ class RequestWrapper(object):
 
 @RequestWrapper.register_wrapper(requests.StoredItemsRequest)
 class StoredItemsWrapper(RequestWrapper):
-    def __init__(self, *args, **kwargs):
-        super(StoredItemsWrapper, self).__init__(*args, **kwargs)
-
     def return_type(self, contexts=()):
         return List(self.storage.type)
 
 
 @RequestWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(RequestWrapper):
-    def __init__(self, *args, **kwargs):
-        super(LiteralWrapper, self).__init__(*args, **kwargs)
-
     def return_type(self, contexts=()):
         return Type(type=type(self.value))
 
@@ -115,23 +110,21 @@ class ContextWrapper(RequestWrapper):
 class OperationWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(OperationWrapper, self).__init__(*args, **kwargs)
+        self.subject = self.from_request(self.subject)
 
-        self.subject = self.from_request(self.args[0])
-        self.other_args = self.args[1:]
-        self.args = (self.subject,) + self.other_args
-        self._init_other_args()
 
-    def _init_other_args(self):
-        self.other_args = tuple(self.from_request(r) for r in self.other_args)
-        self.args = (self.subject,) + self.other_args
+# UnaryOperationRequest has nothing more than OperationWrapper
+
+
+@RequestWrapper.register_wrapper(requests.BinaryOperationRequest)
+class BinaryOperationWrapper(OperationWrapper):
+    def __init__(self, *args, **kwargs):
+        super(BinaryOperationWrapper, self).__init__(*args, **kwargs)
+        self.other = self.from_request(self.other)
 
 
 @RequestWrapper.register_wrapper(requests.AttributeRequest)
 class AttributeWrapper(OperationWrapper):
-    def _init_other_args(self):
-        attr_name, = self.other_args
-        self.attr_name = attr_name  # supposed to be str or unicode
-
     def return_type(self, contexts=()):
         initial_types = self.subject.return_type(contexts)
         if isinstance(initial_types, Dict):
@@ -141,13 +134,13 @@ class AttributeWrapper(OperationWrapper):
             return Type(type=object)
 
 
-class BooleanOperationWrapper(OperationWrapper):
-
+class BooleanOperationWrapper(BinaryOperationWrapper):
     def return_type(self, contexts=()):
         return Type(type=bool)
 
+# Only the binary ones, exclude invert.
 BOOL_OPERATORS = ('and', 'or', 'xor', 'contains', 'eq', 'ne',
-                  'lt', 'gt', 'le', 'ge', 'invert')
+                  'lt', 'gt', 'le', 'ge')
 
 
 def defclass(operator, base_class):
@@ -160,50 +153,61 @@ def defclass(operator, base_class):
 for operator in BOOL_OPERATORS:
     defclass(operator, BooleanOperationWrapper)
 
+
+@RequestWrapper.register_wrapper(requests.InvertRequest)
+class InvertOperationWrapper(OperationWrapper):
+    def return_type(self, contexts=()):
+        return Type(type=bool)
+
+
 ARITHMETIC_OPERATORS = ('add', 'sub', 'mul', 'floordiv',
                         'div', 'truediv', 'pow', 'mod')
 
 
-class ArithmeticOperationWrapper(OperationWrapper):
-
+class ArithmeticOperationWrapper(BinaryOperationWrapper):
     def return_type(self, contexts=()):
-        left_type = self.args[0].return_type(contexts)
-        right_type = self.args[1].return_type(contexts)
+        left_type = self.subject.return_type(contexts)
+        right_type = self.other.return_type(contexts)
         return left_type.common_type(right_type)
 
 for operator in ARITHMETIC_OPERATORS:
     defclass(operator, ArithmeticOperationWrapper)
 
 
-@RequestWrapper.register_wrapper(requests.FilterRequest)
-class FilterWrapper(OperationWrapper):
-    def _init_other_args(self):
-        super(FilterWrapper, self)._init_other_args()
-        subject, self.predicate = self.args
-
+@RequestWrapper.register_wrapper(requests.DistinctRequest)
+@RequestWrapper.register_wrapper(requests.SliceRequest)
+class PreservingWrapper(OperationWrapper):
+    """
+    Return type is the same as the operation’s subject.
+    """
     def return_type(self, contexts=()):
-        # A filter does not modify its subject
-        # assert self.predicate.return_type().type == bool
         return self.subject.return_type(contexts)
+
+
+@RequestWrapper.register_wrapper(requests.FilterRequest)
+class FilterWrapper(PreservingWrapper):
+    def __init__(self, *args, **kwargs):
+        super(FilterWrapper, self).__init__(*args, **kwargs)
+        self.predicate = self.from_request(self.predicate)
 
 
 @RequestWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(OperationWrapper):
-    def _init_other_args(self):
-        super(MapWrapper, self)._init_other_args()
-        subject, self.operation = self.args
+    def __init__(self, *args, **kwargs):
+        super(MapWrapper, self).__init__(*args, **kwargs)
+        self.new_value = self.from_request(self.new_value)
 
     def return_type(self, contexts=()):
         newcontext = self.subject.return_type(contexts).inner_type
         return List(
-            inner_type=self.operation.return_type(contexts + (newcontext,)))
+            inner_type=self.new_value.return_type(contexts + (newcontext,)))
 
 
 @RequestWrapper.register_wrapper(requests.GroupbyRequest)
 class GroupbyWrapper(OperationWrapper):
-    def _init_other_args(self):
-        super(GroupbyWrapper, self)._init_other_args()
-        subject, self.key = self.args
+    def __init__(self, *args, **kwargs):
+        super(GroupbyWrapper, self).__init__(*args, **kwargs)
+        self.key = self.from_request(self.key)
 
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
@@ -213,47 +217,25 @@ class GroupbyWrapper(OperationWrapper):
 
 
 @RequestWrapper.register_wrapper(requests.LenRequest)
-class LenWrapper(RequestWrapper):
-
+class LenWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         return Type(type=int)
 
 
-class PreservingWrapper(OperationWrapper):
-
-    def return_type(self, contexts=()):
-        return self.subject.return_type(contexts)
-
-
-@RequestWrapper.register_wrapper(requests.DistinctRequest)
-class DistinctWrapper(PreservingWrapper):
-    pass
-
-
-@RequestWrapper.register_wrapper(requests.SliceRequest)
-class SliceWrapper(PreservingWrapper):
-    def _init_other_args(self):
-        subject, self.slice = self.args
-
-
 @RequestWrapper.register_wrapper(requests.SortRequest)
 class SortWrapper(PreservingWrapper):
-
-    SortKey = collections.namedtuple('SortKey', 'key, reverse')
-
-    def _init_other_args(self):
-        super(SortWrapper, self)._init_other_args()
+    def __init__(self, *args, **kwargs):
+        super(SortWrapper, self).__init__(*args, **kwargs)
         self.sort_keys = tuple(
-            (self.SortKey(sort_key.subject, reverse=True)
-             if getattr(sort_key, 'operator_name', '') == 'neg' else
-             self.SortKey(sort_key, reverse=False))
-            for sort_key in self.other_args)
-        self.other_args = self.sort_keys
-        self.args = (self.subject,) + self.other_args
+            (self.from_request(sort_key), reverse)
+            for sort_key, reverse in self.sort_keys)
 
 
+@RequestWrapper.register_wrapper(requests.MaxRequest)
+@RequestWrapper.register_wrapper(requests.MinRequest)
+@RequestWrapper.register_wrapper(requests.SumRequest)
+@RequestWrapper.register_wrapper(requests.IndexRequest)
 class AggregateWrapper(OperationWrapper):
-
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
         if isinstance(subject_type, List):
@@ -261,32 +243,12 @@ class AggregateWrapper(OperationWrapper):
         return Type(type == object)
 
 
-@RequestWrapper.register_wrapper(requests.MaxRequest)
-class MaxWrapper(AggregateWrapper):
-    pass
-
-
-@RequestWrapper.register_wrapper(requests.MinRequest)
-class MinWrapper(AggregateWrapper):
-    pass
-
-
-@RequestWrapper.register_wrapper(requests.SumRequest)
-class SumWrapper(AggregateWrapper):
-    pass
-
-
-@RequestWrapper.register_wrapper(requests.IndexRequest)
-class IndexWrapper(AggregateWrapper):
-    def _init_other_args(self):
-        subject, self.index = self.args
-        self.key, = self.other_args  # int, slice, string, ...
 
 
 @RequestWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(AggregateWrapper):
-    def _init_other_args(self):
-        self.default, = self.other_args
+    def __init__(self, *args, **kwargs):
+        super(OneWrapper, self).__init__(*args, **kwargs)
         if self.default is not None:
             self.default = self.from_request(self.default)
 

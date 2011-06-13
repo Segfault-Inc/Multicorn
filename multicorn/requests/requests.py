@@ -152,6 +152,10 @@ class ContextRequest(Request):
 
 
 class OperationRequest(Request):
+    """
+    Abstract base class for requests that are based on at least one other
+    request. That "main" sub-request is in the `subject` attribute.
+    """
     # For subclasses: name of the special method on Request object that return
     # this class.
     # Eg. Request.__add__ returns a AddRequest instance so
@@ -159,13 +163,11 @@ class OperationRequest(Request):
     operator_name = None
 
     @self_with_attrs
-    def __init__(self, *args):
-        self.args = args
-
-    @self_with_attrs
     def copy_replace(self, replace, replacement):
         newargs = []
-        for arg in self.args:
+        for arg_name in self.arg_spec:
+            arg = getattr(self, arg_name)
+            
             wrapper = WithRealAttributes(arg)
             if arg is replace:
                 newargs.append(replacement)
@@ -173,70 +175,41 @@ class OperationRequest(Request):
                 newargs.append(wrapper.copy_replace(replace, replacement))
             else:
                 newargs.append(arg)
-        return self.obj_type()(*newargs)
-
-
-
-
-ARGUMENT_NOT_GIVEN = object()
-
-class REQUEST_METHODS:
-    # Namespace class, not meant to be instantiated
-    # These just pre-process the arguments given to a method and return
-    # a tuple of arguments to instantiate *Operation classes.
-
-    def one(default=ARGUMENT_NOT_GIVEN):
-        if default is ARGUMENT_NOT_GIVEN:
-            default = None
+        if hasattr(self, 'from_attributes'):
+            return self.from_attributes(*newargs)
         else:
-            default = as_request(default)
-        return (default,)
+            return self.obj_type()(*newargs)
 
-    def filter(*args, **kwargs):
-        if not args:
-            predicate = LiteralRequest(True)
-        elif len(args) == 1:
-            predicate, = args
-            predicate = as_request(predicate)
-        else:
-            raise TypeError('filter takes at most one positional argument.')
-        for name, value in kwargs.iteritems():
-            predicate &= (getattr(ContextRequest(), name) == value)
-        return (predicate,)
 
-    def map(new_item):
-        return (as_request(new_item),)
+class UnaryOperationRequest(Request):
+    """
+    Abstract base class for request objects constructed with only one argument,
+    another request object.
+    
+    Eg.  ~some_req is NegationRequest(some_req)
+    """
+    
+    arg_spec = ('subject',)
+    
+    @self_with_attrs
+    def __init__(self, subject):
+        self.subject = subject
 
-    def sort(*sort_keys):
-        if not sort_keys:
-            # Default to comparing the element themselves, ie req.sort()
-            # is the same as req.sort(CONTEXT)
-            sort_keys = (ContextRequest(),)
-        return tuple(as_request(key) for key in sort_keys)
 
-    def groupby(group_key):
-        return (as_request(group_key),)
-
-    # () is the empty tuple
-    def sum(): return ()
-    def min(): return ()
-    def max(): return ()
-    def len(): return ()
-    def distinct(): return ()
-
-REQUEST_METHODS = REQUEST_METHODS.__dict__
-REQUEST_METHOD_NAMES = frozenset(REQUEST_METHODS)
-
-OPERATION_CLASS_BY_METHOD_NAME = {}
-
-for name in REQUEST_METHOD_NAMES:
-    class_name = name.title() + 'Request'
-    class_ = type(class_name, (OperationRequest,), {})
-    # Add the new class in the scope of the current module, as if we had
-    # written eg. a `class AddOperation(OperationRequest):` statement.
-    setattr(sys.modules[__name__], class_name, class_)
-    OPERATION_CLASS_BY_METHOD_NAME[name] = class_
-    del class_name, class_
+class BinaryOperationRequest(Request):
+    """
+    Abstract base class for request objects constructed with two arguments,
+    both request objects.
+    
+    Eg.  some_req + other_req is AddRequest(some_req, other_req)
+    """
+    
+    arg_spec = ('subject', 'other')
+    
+    @self_with_attrs
+    def __init__(self, subject, other):
+        self.subject = subject
+        self.other = as_request(other)
 
 
 # XXX when is __concat__ used instead of __add__?
@@ -245,14 +218,18 @@ for name in REQUEST_METHOD_NAMES:
 
 # eg. `a + 1` is `a.__add__(1)`
 # include these? abs, divmod
-OPERATORS = frozenset('''
+BINARY_OPERATORS = frozenset('''
     eq ne lt gt le ge
-    pos neg invert
     add sub mul floordiv div truediv pow mod
     lshift rshift
     and or xor
     contains concat
 '''.split())
+
+UNARY_OPERATORS = frozenset('''
+    pos neg invert
+'''.split())
+
 
 # eg. `1 + a` is `a.__radd__(1)`
 REVERSED_OPERATORS = frozenset('''
@@ -261,13 +238,19 @@ REVERSED_OPERATORS = frozenset('''
     and or xor
 '''.split())
 
-assert REVERSED_OPERATORS < OPERATORS # strict inclusion
-assert not (OPERATORS & REQUEST_METHOD_NAMES)
+assert not (BINARY_OPERATORS & UNARY_OPERATORS)
+assert REVERSED_OPERATORS < BINARY_OPERATORS # strict inclusion
+OPERATORS = BINARY_OPERATORS | UNARY_OPERATORS
 
 
 def _add_magic_method(operator_name):
     class_name = name.title() + 'Request'
-    operation_class = type(class_name, (OperationRequest,), {
+    if operator_name in BINARY_OPERATORS:
+        base_class = BinaryOperationRequest
+    else:
+        assert operator_name in UNARY_OPERATORS
+        base_class = UnaryOperationRequest
+    operation_class = type(class_name, (base_class,), {
         'operator_name': operator_name})
     # Add the new class in the scope of the current module, as if we had
     # written eg. a `class AddOperation(OperationRequest):` statement.
@@ -278,7 +261,7 @@ def _add_magic_method(operator_name):
     if magic_name not in vars(Request):
         def magic_method(*args):
             # `*args` here includes `self`, the Request instance.
-            return operation_class(*(as_request(arg) for arg in args))
+            return operation_class(*args)
         magic_method.__name__ = magic_name
         setattr(Request, magic_name, magic_method)
 
@@ -288,7 +271,7 @@ def _add_magic_method(operator_name):
         def magic_method(*args):
             # `*args` here includes `self`, the Request instance.
             args = args[::1]
-            return operation_class(*(as_request(arg) for arg in args))
+            return operation_class(*args)
         magic_method.__name__ = magic_name
         setattr(Request, magic_name, magic_method)
 
@@ -299,28 +282,183 @@ del name, _add_magic_method
 
 
 class SliceRequest(OperationRequest):
-    pass
+    """
+    some_req[4:-1] is SliceRequest(some_req, slice(4, -1, None))
+    other_req[::2] is SliceRequest(other_req, slice(None, None, 2))
+    """
+
+    arg_spec = ('subject', 'slice')
+    
+    @self_with_attrs
+    def __init__(self, subject, slice_):
+        self.subject = subject
+        self.slice = slice_  # No as_request() ?
 
 
 class IndexRequest(OperationRequest):
-    pass
+    """
+    some_req[4] is IndexRequest(some_req, 4)
+    other_req[-1] is IndexRequest(other_req, -1)
+    """
+
+    arg_spec = ('subject', 'index')
+    
+    @self_with_attrs
+    def __init__(self, subject, index):
+        self.subject = subject
+        self.index = index  # No as_request() ?
 
 
 class AttributeRequest(OperationRequest):
+    """
+    some_req.firstname is AttributeRequest(req, 'firstname')
+
+    Also has magic to implement methods on requests such as `some_req.one()`.
+    """
+
+    arg_spec = ('subject', 'attr_name')
+    
+    _methods = {}
+
+    @classmethod
+    def _register_method(cls, method_name):
+        """
+        Class decorator to register classes that implement methods on
+        Request objects.
+        """
+        def decorator(class_):
+            cls._methods[method_name] = class_
+            return class_
+        return decorator
+
+    @self_with_attrs
+    def __init__(self, subject, attr_name):
+        self.subject = subject
+        self.attr_name = attr_name  # No as_request()
+
     @self_with_attrs
     def __call__(self, *args, **kwargs):
         """
         Implement methods on requests:
-        Replace eg. `GetattrRequest(s, 'map')(...)` by
-        `MapRequest(s, *REQUEST_METHODS['map'](...))`
+        Replace eg. `GetattrRequest(s, 'map')(...)` by `MapRequest(s, ...))`
         """
-        subject, attr_name = self.args
-
-        preprocessor = REQUEST_METHODS.get(attr_name, None)
-        if preprocessor is None:
+        class_ = self._methods.get(self.attr_name, None)
+        if class_ is None:
             raise TypeError('Request objects do not have a %s method.'
-                            % attr_name)
-        class_ = OPERATION_CLASS_BY_METHOD_NAME[attr_name]
-        args = preprocessor(*args, **kwargs)
-        return class_(subject, *args)
+                            % self.attr_name)
+        return class_(self.subject, *args, **kwargs)
+
+
+ARGUMENT_NOT_GIVEN = object()
+
+@AttributeRequest._register_method('one')
+class OneRequest(OperationRequest):
+
+    arg_spec = ('subject', 'default')
+    
+    @self_with_attrs
+    def __init__(self, subject, default=ARGUMENT_NOT_GIVEN):
+        self.subject = subject
+        if default is ARGUMENT_NOT_GIVEN:
+            self.default = None
+        else:
+            self.default = as_request(default)
+
+
+@AttributeRequest._register_method('filter')
+class FilterRequest(OperationRequest):
+
+    arg_spec = ('subject', 'predicate')
+    
+    @self_with_attrs
+    def __init__(self, subject, predicate=ARGUMENT_NOT_GIVEN, **kwargs):
+        self.subject = subject
+
+        if predicate is ARGUMENT_NOT_GIVEN:
+            predicate = LiteralRequest(True)
+        else:
+            predicate = as_request(predicate)
+
+        for name, value in kwargs.iteritems():
+            predicate &= (getattr(ContextRequest(), name) == value)
+
+        self.predicate = predicate
+
+
+@AttributeRequest._register_method('map')
+class MapRequest(OperationRequest):
+
+    arg_spec = ('subject', 'new_value')
+    
+    @self_with_attrs
+    def __init__(self, subject, new_value):
+        self.subject = subject
+        self.new_value = as_request(new_value)
+
+
+@AttributeRequest._register_method('sort')
+class SortRequest(OperationRequest):
+
+    arg_spec = ('subject', 'sort_keys')
+    
+    @self_with_attrs
+    def __init__(self, subject, *sort_keys):
+        self.subject = subject
+        if not sort_keys:
+            # Default to comparing the element themselves, ie req.sort()
+            # is the same as req.sort(CONTEXT)
+            sort_keys = (ContextRequest(),)
+
+        self.sort_keys = tuple()
+        for sort_key in sort_keys:
+            sort_key = as_request(sort_key)
+            wrapped_sort_key = WithRealAttributes(sort_key)
+            reverse = (getattr(wrapped_sort_key, 'operator_name', '')
+                       == 'neg')
+            if reverse:
+                sort_key = wrapped_sort_key.subject
+            
+            self.sort_keys += ((sort_key, reverse),)
+    
+    @classmethod
+    def from_attributes(cls, subject, sort_keys):
+        return cls(subject, *(
+            -key if reverse else key
+            for key, reverse in sort_keys))
+
+
+@AttributeRequest._register_method('groupby')
+class GroupbyRequest(OperationRequest):
+
+    arg_spec = ('subject', 'key')
+    
+    @self_with_attrs
+    def __init__(self, subject, key):
+        self.subject = subject
+        self.key = as_request(key)
+
+
+@AttributeRequest._register_method('sum')
+class SumRequest(UnaryOperationRequest):
+    pass
+
+
+@AttributeRequest._register_method('min')
+class MinRequest(UnaryOperationRequest):
+    pass
+
+
+@AttributeRequest._register_method('max')
+class MaxRequest(UnaryOperationRequest):
+    pass
+
+
+@AttributeRequest._register_method('len')
+class LenRequest(UnaryOperationRequest):
+    pass
+
+
+@AttributeRequest._register_method('distinct')
+class DistinctRequest(UnaryOperationRequest):
+    pass
 
