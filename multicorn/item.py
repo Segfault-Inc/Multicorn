@@ -19,7 +19,18 @@ class BaseItem(MutableMapping):
         self.corn = corn
         self._values = dict(values or {})
         self._lazy_values = dict(lazy_values or {})
-        # TODO: raise if we don’t have all values.
+        self.corn.properties
+
+        corn_properties = {property.name for property in self.corn.properties}
+        given_keys = set(values.keys()) | set(lazy_values.keys())
+        extra_keys = given_keys - corn_properties
+        if extra_keys:
+            raise ValueError(
+                "Unexpected properties: %r" % (tuple(extra_keys),))
+        missing_keys = corn_properties - given_keys
+        if missing_keys:
+            raise ValueError(
+                "Missing properties: %r" % (tuple(missing_keys),))
 
     def __len__(self):
         return len(self.corn.properties)
