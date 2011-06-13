@@ -69,11 +69,6 @@ class Request(object):
     To access the actual attributes of Request objects, one needs to use
     `object.__getattribute__` and `object.__setattr__`.
     """
-    
-    @self_with_attrs
-    def __init__(self, *args):
-        self.args = args
-
     # TODO: test `del some_request.fistname`. It should raise.
     def __getattribute__(self, name):
         if name.startswith('__') and name.endswith('__'):
@@ -103,48 +98,60 @@ class StoredItemsRequest(Request):
     """
     Represents the sequence of all items stored in a Storage
     """
+    @self_with_attrs
+    def __init__(self, storage):
+        self.storage = storage
 
 
 class LiteralRequest(Request):
-    pass
+    @self_with_attrs
+    def __init__(self, value):
+        self.value = value
 
 
 class ListRequest(Request):
+    @self_with_attrs
     def __init__(self, obj):
-        super(ListRequest, self).__init__(
-            [as_request(element) for element in obj])
+        self.value = [as_request(element) for element in obj]
 
 
 class TupleRequest(Request):
+    @self_with_attrs
     def __init__(self, obj):
-        super(TupleRequest, self).__init__(
-            tuple(as_request(element) for element in obj))
+        self.value = tuple(as_request(element) for element in obj)
 
 
 class DictRequest(Request):
+    @self_with_attrs
     def __init__(self, obj):
-        super(DictRequest, self).__init__(dict(
+        self.value = dict(
             # TODO: what about fancy keys? (non-unicode or even Request)
             (key, as_request(value))
-            for key, value in obj.iteritems()))
+            for key, value in obj.iteritems())
 
 
 class ContextRequest(Request):
+    @self_with_attrs
     def __init__(self, scope_depth=0):
-        super(ContextRequest, self).__init__(int(scope_depth))
+        scope_depth = int(scope_depth)
+        if scope_depth > 0:
+            # TODO better message
+            raise ValueError('Depth must be negative or zero.')
+        self.scope_depth = scope_depth
 
     @self_with_attrs
     def __call__(self, more_depth):
         more_depth = int(more_depth)
         if more_depth > 0:
             # TODO better message
-            raise ValueError('depth must be negative')
-        scope_depth, = self.args
-        return ContextRequest(scope_depth + more_depth)
+            raise ValueError('Depth must be negative or zero.')
+        return ContextRequest(self.scope_depth + more_depth)
 
 
 class OperationRequest(Request):
-    pass
+    @self_with_attrs
+    def __init__(self, *args):
+        self.args = args
 
 
 ARGUMENT_NOT_GIVEN = object()

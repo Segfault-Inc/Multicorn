@@ -49,7 +49,6 @@ class RequestWrapper(object):
 class StoredItemsWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(StoredItemsWrapper, self).__init__(*args, **kwargs)
-        self.storage, = self.args
 
     def return_type(self, contexts=()):
         return List(self.storage.type)
@@ -58,7 +57,6 @@ class StoredItemsWrapper(RequestWrapper):
 class LiteralWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(LiteralWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
 
     def return_type(self, contexts=()):
         return Type(type=type(self.value))
@@ -68,7 +66,6 @@ class LiteralWrapper(RequestWrapper):
 class ListWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(ListWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
         self.value = [self.from_request(r) for r in self.value]
 
     def return_type(self, contexts=()):
@@ -85,7 +82,6 @@ class ListWrapper(RequestWrapper):
 class TupleWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(TupleWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
         self.value = tuple(self.from_request(r) for r in self.value)
 
     def return_type(self, contexts=()):
@@ -97,7 +93,6 @@ class TupleWrapper(RequestWrapper):
 class DictWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(DictWrapper, self).__init__(*args, **kwargs)
-        self.value, = self.args
         self.value = dict(
             (key, self.from_request(value))
             for key, value in self.value.iteritems())
@@ -112,10 +107,6 @@ class DictWrapper(RequestWrapper):
 
 @RequestWrapper.register_wrapper(requests.ContextRequest)
 class ContextWrapper(RequestWrapper):
-    def __init__(self, *args, **kwargs):
-        super(ContextWrapper, self).__init__(*args, **kwargs)
-        self.scope_depth, = self.args
-
     def return_type(self, contexts=()):
         return contexts[self.scope_depth - 1]
 
