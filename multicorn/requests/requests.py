@@ -4,6 +4,7 @@
 
 
 import sys
+import functools
 
 
 def as_request(obj):
@@ -22,20 +23,70 @@ def as_request(obj):
         return LiteralRequest(obj)
 
 
+class WithRealAttributes(object):
+    """
+    Wrap a Request object to allow access to its attributes without going
+    through `Request.__getattribute__` and `Request.__setattr__`.
+    """
+    __slots__ = ('_obj',)
+    
+    def __init__(self, obj):
+        object.__setattr__(self, '_obj', obj)
+
+    def __getattribute__(self, name):
+        obj = object.__getattribute__(self, '_obj')
+        return object.__getattribute__(obj, name)
+
+    def __setattr__(self, name, value):
+        obj = object.__getattribute__(self, '_obj')
+        object.__setattr__(obj, name, value)
+
+
+def self_with_attrs(method):
+    """
+    Decorate a method so that the first argument `self` is wrapped with
+    WithRealAttributes.
+    """
+    @functools.wraps(method)
+    def decorated_method(self, *args, **kwargs):
+        return method(WithRealAttributes(self), *args, **kwargs)
+    return decorated_method
+
+
 class Request(object):
+    """
+    Abstract base class for all request objects.
+    
+    This class defines special methods like `__add__` so that python operators
+    can be used on requests, as in `req = req1 + req2`.
+    
+    In particular, this class defines `__getattribute__` so that attribute
+    lookup as in `some_request.firstname` also returns a request, except for
+    special methods: `some_request.__add__` will return the method. For
+    consistency, assigning to request attributes is forbidden:
+    `some_request.firstname = 'Alfred'` raises an exception.
+    
+    To access the actual attributes of Request objects, one needs to use
+    `object.__getattribute__` and `object.__setattr__`.
+    """
+    
+    @self_with_attrs
     def __init__(self, *args):
-        self.__args = args
-    
-    def __repr__(self):
-        return '%s(%s)' % (
-            self.__class__.__name__,
-            # Use list() to avoid the trailing comma in
-            # one-element tuples.
-            repr(list(self.__args))[1:-1])
-    
-    def __getattr__(self, name):
-        # No as_request() on name
-        return GetattrRequest(self, name)
+        self.args = args
+
+    # TODO: test `del some_request.fistname`. It should raise.
+    def __getattribute__(self, name):
+        if name.startswith('__') and name.endswith('__'):
+            # Special methods such as __add__.
+            # According to the following link CPython may not go through here
+            # to get them, but there seems to be no guarantee that it does not.
+            # http://docs.python.org/reference/datamodel.html#new-style-special-lookup
+            return object.__getattribute__(self, name)
+        else:
+            return AttributeRequest(self, name)
+
+    def __setattr__(self, name):
+        raise AttributeError('Can not assign to request attributes.')
 
     def __getitem__(self, key):
         # No as_request() on key
@@ -82,12 +133,13 @@ class ContextRequest(Request):
     def __init__(self, scope_depth=0):
         super(ContextRequest, self).__init__(int(scope_depth))
 
+    @self_with_attrs
     def __call__(self, more_depth):
         more_depth = int(more_depth)
         if more_depth > 0:
             # TODO better message
             raise ValueError('depth must be negative')
-        scope_depth, = self._Request__args
+        scope_depth, = self.args
         return ContextRequest(scope_depth + more_depth)
 
 
@@ -158,7 +210,6 @@ OPERATORS = frozenset('''
     lshift rshift
     and or xor
     contains concat
-    getattr getitem
 '''.split())
 
 # eg. `1 + a` is `a.__radd__(1)`
@@ -194,21 +245,15 @@ class SliceRequest(OperationRequest):
 class IndexRequest(OperationRequest):
     pass
 
-# A GetattrRequest class was generated above, but override with this one
-# that has a __call__
-class GetattrRequest(OperationRequest):
-    def __call__(*args, **kwargs):
+class AttributeRequest(OperationRequest):
+    @self_with_attrs
+    def __call__(self, *args, **kwargs):
         """
         Implement methods on requests:
         Replace eg. `GetattrRequest(s, 'map')(...)` by
         `MapRequest(s, *REQUEST_METHODS['map'](...))`
         """
-        if not args:
-            raise TypeError("No positional argument given for 'self'.")
-        self = args[0]
-        args = args[1:]
-
-        subject, attr_name = self._Request__args
+        subject, attr_name = self.args
 
         preprocessor = REQUEST_METHODS.get(attr_name, None)
         if preprocessor is None:
@@ -218,7 +263,6 @@ class GetattrRequest(OperationRequest):
         args = preprocessor(*args, **kwargs)
         return class_(subject, *args)
 
-OPERATION_CLASS_BY_OPERATOR_NAME['getattr'] = GetattrRequest
 OPERATION_CLASS_BY_METHOD_NAME['index'] = IndexRequest
 OPERATION_CLASS_BY_METHOD_NAME['slice'] = SliceRequest
 

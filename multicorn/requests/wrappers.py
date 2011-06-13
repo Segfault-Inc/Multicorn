@@ -34,7 +34,9 @@ class RequestWrapper(object):
 
     def __init__(self, wrapped_request):
         self.wrapped_request = wrapped_request
-        self.args = wrapped_request._Request__args
+    
+    def __getattr__(self, name):
+        return object.__getattribute__(self.wrapped_request, name)
 
     def return_type(self, contexts=()):
         raise NotImplementedError("return_type is not implemented")
@@ -129,8 +131,9 @@ class OperationWrapper(RequestWrapper):
         self.operator_name = requests.OPERATOR_NAME_BY_OPERATION_CLASS.get(
             request_class, None)
 
-        assert (self.method_name and not self.operator_name) or (
-                self.operator_name and not self.method_name)
+        # TODO: remove self.method_name?
+#        assert (self.method_name and not self.operator_name) or (
+#                self.operator_name and not self.method_name)
 
         self.subject = self.from_request(self.args[0])
         self.other_args = self.args[1:]
@@ -142,8 +145,8 @@ class OperationWrapper(RequestWrapper):
         self.args = (self.subject,) + self.other_args
 
 
-@RequestWrapper.register_wrapper(requests.GetattrRequest)
-class GetattrWrapper(OperationWrapper):
+@RequestWrapper.register_wrapper(requests.AttributeRequest)
+class AttributeWrapper(OperationWrapper):
     def _init_other_args(self):
         attr_name, = self.other_args
         self.attr_name = attr_name # supposed to be str or unicode

@@ -96,14 +96,16 @@ def operation_executor(request_class, include_contexts=False,
     return decorator
 
 
-@operation_executor(requests.GetattrRequest)
-def execute_getattr(subject, attr_name):
+@operation_executor(requests.AttributeRequest)
+def execute_getattribute(subject, attr_name):
     # XXX The execution of __getattr__ is actually __getitem__ !!
     # eg. if r represents item, r.firstname represents item['firstname']
     return subject[attr_name]
 
 
-@operation_executor(requests.GetitemRequest)
+# TODO: different handling?
+@operation_executor(requests.SliceRequest)
+@operation_executor(requests.IndexRequest)
 def execute_getitem(subject, key):
     # TODO special handling in case `subject` is a generator
     # other cases?
