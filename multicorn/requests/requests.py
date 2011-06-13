@@ -29,7 +29,7 @@ class WithRealAttributes(object):
     through `Request.__getattribute__` and `Request.__setattr__`.
     """
     __slots__ = ('_obj',)
-    
+
     def __init__(self, obj):
         object.__setattr__(self, '_obj', obj)
 
@@ -56,16 +56,16 @@ def self_with_attrs(method):
 class Request(object):
     """
     Abstract base class for all request objects.
-    
+
     This class defines special methods like `__add__` so that python operators
     can be used on requests, as in `req = req1 + req2`.
-    
+
     In particular, this class defines `__getattribute__` so that attribute
     lookup as in `some_request.firstname` also returns a request, except for
     special methods: `some_request.__add__` will return the method. For
     consistency, assigning to request attributes is forbidden:
     `some_request.firstname = 'Alfred'` raises an exception.
-    
+
     To access the actual attributes of Request objects, one needs to use
     `object.__getattribute__` and `object.__setattr__`.
     """
@@ -154,7 +154,7 @@ class OperationRequest(Request):
     # Eg. Request.__add__ returns a AddRequest instance so
     # AddRequest.operator_name is 'add'
     operator_name = None
-    
+
     @self_with_attrs
     def __init__(self, *args):
         self.args = args

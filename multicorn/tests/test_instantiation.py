@@ -9,6 +9,7 @@ from multicorn.declarative import declare, Property
 
 suite = Tests()
 
+
 @suite.test
 def test_simple_instantiation():
     mc = Multicorn()

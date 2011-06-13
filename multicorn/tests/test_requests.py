@@ -49,7 +49,7 @@ def test_map():
         SOURCE.map(c.price * c.tax),
         [D('11.96'), 12, D('5.98')]
     )
-    
+
 
 @suite.test
 def test_filter():
@@ -127,6 +127,7 @@ def test_sort():
         [12, 10, 5]
     )
 
+
 @suite.test
 def test_aggregates():
     assert_list(
@@ -149,4 +150,3 @@ def test_aggregates():
         SOURCE.map(c.price).max(),
         12
     )
-

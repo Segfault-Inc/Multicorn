@@ -48,6 +48,7 @@ def test_queries():
         dict(toto='foo', tata=6, price=12, tax=1),
         dict(toto='bar', tata=42, price=5, tax=D('1.196')),
     ]
+
     def exec_(query):
         return list(execute(data, query))
 
@@ -150,7 +151,8 @@ def test_queries():
         dict(toto='_bar!', price=10),
     ]
 
-    res = exec_(Query.aggregate(a.By(tata=r.tata), nb=a.Count(None)).sort(r.nb))
+    res = exec_(Query.aggregate(a.By(tata=r.tata),
+                                nb=a.Count(None)).sort(r.nb))
     assert res == [
         dict(tata=6, nb=1),
         dict(tata=42, nb=2),
@@ -217,5 +219,3 @@ def test_isolate_values():
     values, remainder = isolate_values((r.foo == 4) & (5 == r.foo))
     assert values == {}
     assert repr(remainder) == repr(Literal(False))
-
-

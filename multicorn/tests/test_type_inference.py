@@ -10,8 +10,10 @@ from multicorn.requests.wrappers import RequestWrapper
 
 suite = Tests()
 
+
 def make_corn():
     mc = Multicorn()
+
     @mc.register
     @declare(Memory, identity_properties=("id",))
     class Corn(object):
@@ -21,9 +23,9 @@ def make_corn():
     return Corn
 
 
-
 def return_type(request):
     return RequestWrapper.from_request(request).return_type()
+
 
 @suite.test
 def test_simple_types():
@@ -35,11 +37,13 @@ def test_simple_types():
     assert 'id' in item_def
     assert List(Corn.type) == type
 
+
 @suite.test
 def test_filter():
     Corn = make_corn()
     type = return_type(Corn.all.filter(c.name == 'lol'))
     assert List(Corn.type) == type
+
 
 @suite.test
 def test_map():
@@ -47,16 +51,20 @@ def test_map():
     type = return_type(Corn.all.map(c.name))
     assert type == List(inner_type=Corn.properties['name'])
 
+
 @suite.test
 def test_groupby():
     Corn = make_corn()
-    type = return_type(Corn.all.groupby(c.name).map(c.elements.map(c(-1).grouper)))
+    type = return_type(
+        Corn.all.groupby(c.name).map(c.elements.map(c(-1).grouper)))
     assert type == List(inner_type=List(inner_type=Corn.properties['name']))
+
 
 @suite.test
 def test_nimp():
     Corn = make_corn()
-    type = return_type(Corn.all.map({'name': c.name, 'grou': c.id + 5, 'id': c.id}))
+    type = return_type(
+        Corn.all.map({'name': c.name, 'grou': c.id + 5, 'id': c.id}))
     assert type == List(inner_type=Dict(mapping={
         'name': Corn.properties['name'],
         'id': Corn.properties['id'],
@@ -92,8 +100,8 @@ def test_nimp():
         'heterogeneous_list': Corn.all + ['toto', 3],
         'homogeneous_list': [u'toto', u'tata'],
         'tuple': (1, 2, 3)
-
         }))
+
     assert isinstance(type, List)
     mapping = type.inner_type.mapping
     for key in ('max', 'min', 'sum', 'one', 'index'):
