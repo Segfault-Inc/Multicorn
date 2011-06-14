@@ -7,6 +7,10 @@ import sys
 import functools
 
 
+# Marker to distinguish "Nothing was given" and "`None` was explicitly given".
+ARGUMENT_NOT_GIVEN = object()
+
+
 def as_request(obj):
     """
     Return a Request object for `obj`.
@@ -106,37 +110,116 @@ class Request(object):
     def __invert__(self):
         return NotRequest(self)
 
+    @self_with_attrs
+    def __repr__(self):
+        return '%s(%s)' % (self.obj_type().__name__, ', '.join(
+            repr(getattr(self, attr_name)) for attr_name in self.arg_spec))
+
     # Other magic methods are added later, at the bottom of this module.
+
+    def one(self, default=ARGUMENT_NOT_GIVEN):
+        if default is ARGUMENT_NOT_GIVEN:
+            default = None
+        else:
+            default = as_request(default)
+        return OneRequest(self, default)
+
+    def filter(self, predicate=ARGUMENT_NOT_GIVEN, **kwargs):
+        if predicate is ARGUMENT_NOT_GIVEN:
+            predicate = LiteralRequest(True)
+        else:
+            predicate = as_request(predicate)
+
+        for name, value in kwargs.iteritems():
+            predicate &= (getattr(ContextRequest(), name) == value)
+
+        return FilterRequest(self, as_request(predicate))
+
+    def map(self, new_value):
+        return MapRequest(self, as_request(new_value))
+
+    def sort(self, *sort_keys):
+        if not sort_keys:
+            # Default to comparing the element themselves, ie req.sort()
+            # is the same as req.sort(CONTEXT)
+            sort_keys = (ContextRequest(),)
+
+        # If a sort_key is a negation (NegRequest), unwrap it and mark it as
+        # "reverse", so that we can sort in the other direction for sort keys
+        # that do not have a negative value (ie. non-numbers)
+        decorated_sort_keys = []
+        for sort_key in sort_keys:
+            sort_key = as_request(sort_key)
+            wrapped_sort_key = WithRealAttributes(sort_key)
+            reverse = (getattr(wrapped_sort_key, 'operator_name', '')
+                       == 'neg')
+            if reverse:
+                sort_key = wrapped_sort_key.subject
+            
+            decorated_sort_keys.append((sort_key, reverse))
+        return SortRequest(self, decorated_sort_keys)
+
+    def groupby(self, key):
+        return GroupbyRequest(self, as_request(key))
+
+    def sum(self):
+        return SumRequest(self)
+
+    def min(self):
+        return MinRequest(self)
+
+    def max(self):
+        return MaxRequest(self)
+
+    def len(self):
+        return LenRequest(self)
+
+    def distinct(self):
+        return DistinctRequest(self)
 
 
 class StoredItemsRequest(Request):
     """
     Represents the sequence of all items stored in a Storage
     """
+    arg_spec = ('storage',)
+    
     @self_with_attrs
     def __init__(self, storage):
         self.storage = storage
 
 
 class LiteralRequest(Request):
+    arg_spec = ('value',)
+    
     @self_with_attrs
     def __init__(self, value):
         self.value = value
+    
+    @self_with_attrs
+    def __repr__(self):
+        return repr(self.value)
 
 
 class ListRequest(Request):
+    arg_spec = ('value',)
+    
     @self_with_attrs
     def __init__(self, obj):
         self.value = [as_request(element) for element in obj]
 
 
 class TupleRequest(Request):
+    arg_spec = ('value',)
+    
     @self_with_attrs
     def __init__(self, obj):
         self.value = tuple(as_request(element) for element in obj)
 
 
 class DictRequest(Request):
+    arg_spec = ('value',)
+    
     @self_with_attrs
     def __init__(self, obj):
         self.value = dict(
@@ -146,6 +229,8 @@ class DictRequest(Request):
 
 
 class ContextRequest(Request):
+    arg_spec = ('scope_depth',)
+    
     @self_with_attrs
     def __init__(self, scope_depth=0):
         scope_depth = int(scope_depth)
@@ -188,10 +273,7 @@ class OperationRequest(Request):
                 newargs.append(wrapper.copy_replace(replace, replacement))
             else:
                 newargs.append(arg)
-        if hasattr(self, 'from_attributes'):
-            return self.from_attributes(*newargs)
-        else:
-            return self.obj_type()(*newargs)
+        return self.obj_type()(*newargs)
 
 
 class UnaryOperationRequest(Request):
@@ -332,19 +414,6 @@ class AttributeRequest(OperationRequest):
     """
 
     arg_spec = ('subject', 'attr_name')
-    
-    _methods = {}
-
-    @classmethod
-    def _register_method(cls, method_name):
-        """
-        Class decorator to register classes that implement methods on
-        Request objects.
-        """
-        def decorator(class_):
-            cls._methods[method_name] = class_
-            return class_
-        return decorator
 
     @self_with_attrs
     def __init__(self, subject, attr_name):
@@ -355,125 +424,77 @@ class AttributeRequest(OperationRequest):
     def __call__(self, *args, **kwargs):
         """
         Implement methods on requests:
-        Replace eg. `GetattrRequest(s, 'map')(...)` by `MapRequest(s, ...))`
+        eg. `some_req.map` is `GetattrRequest(some_req, 'map')`, but
+        `some_req.map(...)` is `Request.map(some_req, ...)`.
         """
-        class_ = self._methods.get(self.attr_name, None)
-        if class_ is None:
+        method = getattr(WithRealAttributes(self.subject), self.attr_name, None)
+        if method is None:
             raise TypeError('Request objects do not have a %s method.'
                             % self.attr_name)
-        return class_(self.subject, *args, **kwargs)
+        return method(*args, **kwargs)
 
 
-ARGUMENT_NOT_GIVEN = object()
-
-@AttributeRequest._register_method('one')
 class OneRequest(OperationRequest):
-
     arg_spec = ('subject', 'default')
     
     @self_with_attrs
-    def __init__(self, subject, default=ARGUMENT_NOT_GIVEN):
+    def __init__(self, subject, default):
         self.subject = subject
-        if default is ARGUMENT_NOT_GIVEN:
-            self.default = None
-        else:
-            self.default = as_request(default)
+        self.default = default
 
 
-@AttributeRequest._register_method('filter')
 class FilterRequest(OperationRequest):
-
     arg_spec = ('subject', 'predicate')
     
     @self_with_attrs
-    def __init__(self, subject, predicate=ARGUMENT_NOT_GIVEN, **kwargs):
+    def __init__(self, subject, predicate):
         self.subject = subject
-
-        if predicate is ARGUMENT_NOT_GIVEN:
-            predicate = LiteralRequest(True)
-        else:
-            predicate = as_request(predicate)
-
-        for name, value in kwargs.iteritems():
-            predicate &= (getattr(ContextRequest(), name) == value)
-
         self.predicate = predicate
 
 
-@AttributeRequest._register_method('map')
 class MapRequest(OperationRequest):
-
     arg_spec = ('subject', 'new_value')
     
     @self_with_attrs
     def __init__(self, subject, new_value):
         self.subject = subject
-        self.new_value = as_request(new_value)
+        self.new_value = new_value
 
 
-@AttributeRequest._register_method('sort')
 class SortRequest(OperationRequest):
-
     arg_spec = ('subject', 'sort_keys')
     
     @self_with_attrs
-    def __init__(self, subject, *sort_keys):
+    def __init__(self, subject, sort_keys):
         self.subject = subject
-        if not sort_keys:
-            # Default to comparing the element themselves, ie req.sort()
-            # is the same as req.sort(CONTEXT)
-            sort_keys = (ContextRequest(),)
-
-        self.sort_keys = tuple()
-        for sort_key in sort_keys:
-            sort_key = as_request(sort_key)
-            wrapped_sort_key = WithRealAttributes(sort_key)
-            reverse = (getattr(wrapped_sort_key, 'operator_name', '')
-                       == 'neg')
-            if reverse:
-                sort_key = wrapped_sort_key.subject
-            
-            self.sort_keys += ((sort_key, reverse),)
-    
-    @classmethod
-    def from_attributes(cls, subject, sort_keys):
-        return cls(subject, *(
-            -key if reverse else key
-            for key, reverse in sort_keys))
+        self.sort_keys = tuple(sort_keys)
 
 
-@AttributeRequest._register_method('groupby')
 class GroupbyRequest(OperationRequest):
-
     arg_spec = ('subject', 'key')
     
     @self_with_attrs
     def __init__(self, subject, key):
         self.subject = subject
-        self.key = as_request(key)
+        self.key = key
 
 
-@AttributeRequest._register_method('sum')
 class SumRequest(UnaryOperationRequest):
     pass
 
 
-@AttributeRequest._register_method('min')
 class MinRequest(UnaryOperationRequest):
     pass
 
 
-@AttributeRequest._register_method('max')
 class MaxRequest(UnaryOperationRequest):
     pass
 
 
-@AttributeRequest._register_method('len')
 class LenRequest(UnaryOperationRequest):
     pass
 
 
-@AttributeRequest._register_method('distinct')
 class DistinctRequest(UnaryOperationRequest):
     pass
 
