@@ -36,6 +36,33 @@ def assert_value(request, expected):
 
 
 @suite.test
+def test_logical_simplifications():
+    for true, false in ((True, False), (1, 0), ('a', '')):
+        assert repr(c.foo & true) == "Attribute[Context[0], 'foo']"
+        assert repr(c.foo | false) == "Attribute[Context[0], 'foo']"
+        assert repr(c.foo & false) == 'False'
+        assert repr(c.foo | true) == 'True'
+
+        assert repr(true & c.foo) == "Attribute[Context[0], 'foo']"
+        assert repr(false | c.foo) == "Attribute[Context[0], 'foo']"
+        assert repr(false & c.foo) == 'False'
+        assert repr(true | c.foo) == 'True'
+
+    assert repr(~c.foo) == "Not[Attribute[Context[0], 'foo']]"
+    assert repr(~literal('hello')) == 'False'
+    assert repr(~literal('')) == 'True'
+
+    # Augmented assignment doesn't need to be defined explicitly
+    a = b = c.foo
+    assert not hasattr(type(a), '__iadd__')
+    a &= c.bar
+    assert repr(a) == \
+        "And[Attribute[Context[0], 'foo'], Attribute[Context[0], 'bar']]"
+    # No in-place mutation
+    assert repr(b) == "Attribute[Context[0], 'foo']"
+
+
+@suite.test
 def test_map():
     assert_list(
         SOURCE.map(c.price),
