@@ -344,7 +344,7 @@ class OperationRequest(Request):
         return self.obj_type()(*newargs)
 
 
-class UnaryOperationRequest(Request):
+class UnaryOperationRequest(OperationRequest):
     """
     Abstract base class for request objects constructed with only one argument,
     another request object.
@@ -375,7 +375,7 @@ class NegRequest(UnaryOperationRequest):
     operator_name = 'neg'
 
 
-class BinaryOperationRequest(Request):
+class BinaryOperationRequest(OperationRequest):
     """
     Abstract base class for request objects constructed with two arguments,
     both request objects.

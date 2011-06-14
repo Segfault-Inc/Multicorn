@@ -14,79 +14,8 @@ class PythonExecutor(wrappers.RequestWrapper):
     class_map = {}
 
 
-@PythonExecutor.register_wrapper(requests.StoredItemsRequest)
-class StoredItemExecutor(PythonExecutor, wrappers.StoredItemsWrapper):
-    def execute(self, contexts):
-        return self.storage._all()
-
-
-@PythonExecutor.register_wrapper(requests.LiteralRequest)
-class LiteralExecutor(PythonExecutor, wrappers.LiteralWrapper):
-    def execute(self, contexts):
-        return self.value
-
-
-@PythonExecutor.register_wrapper(requests.ListRequest)
-class ListExecutor(PythonExecutor, wrappers.ListWrapper):
-    def execute(self, contexts):
-        return [element.execute(contexts) for element in self.value]
-
-
-@PythonExecutor.register_wrapper(requests.TupleRequest)
-class TupleExecutor(PythonExecutor, wrappers.TupleWrapper):
-    def execute(self, contexts):
-        return tuple(element.execute(contexts) for element in self.value)
-
-
-@PythonExecutor.register_wrapper(requests.DictRequest)
-class DictExecutor(PythonExecutor, wrappers.DictWrapper):
-    def execute(self, contexts):
-        return dict(
-            (key, value.execute(contexts))
-            for key, value in self.value.iteritems())
-
-
-@PythonExecutor.register_wrapper(requests.ContextRequest)
-class ContextExecutor(PythonExecutor, wrappers.ContextWrapper):
-    def execute(self, contexts):
-        assert self.scope_depth <= 0
-        # scope_depth of 0 -> last element
-        # scope_depth of -1 -> second last element
-        # ...
-        return contexts[self.scope_depth - 1]
-
-
-@PythonExecutor.register_wrapper(requests.BinaryOperationRequest)
-class BinaryOperationExecutor(PythonExecutor, wrappers.BinaryOperationWrapper):
-    def execute(self, contexts):
-        # TODO: message for this error
-        assert self.operator_name
-        left = self.subject.execute(contexts)
-        right = self.other.execute(contexts)
-        operator_function = getattr(operator, '__%s__' % self.operator_name)
-        return operator_function(left, right)
-
-
-@PythonExecutor.register_wrapper(requests.UnaryOperationRequest)
-class UnaryOperationExecutor(PythonExecutor, wrappers.OperationWrapper):
-    def execute(self, contexts):
-        # TODO: message for this error
-        assert self.operator_name
-        subject = self.subject.execute(contexts)
-        operator_function = getattr(operator, '__%s__' % self.operator_name)
-        return operator_function(subject)
-
-
-def simple_executor(request_class, include_contexts=False, include_self=False):
+def register_executor(request_class):
     def decorator(function):
-        def execute(self, contexts):
-            args = (self.subject.execute(contexts),)
-            if include_contexts:
-                args = (contexts,) + args
-            if include_self:
-                args = (self,) + args
-            return function(*args)
-
         name = request_class.__name__
         assert name.endswith('Request')
         name = name[:-len('Request')]  # remove the Request suffix
@@ -95,23 +24,79 @@ def simple_executor(request_class, include_contexts=False, include_self=False):
             request_class)
         executor_class = type(class_name,
                               (PythonExecutor, base_wrapper),
-                              {'execute': execute})
-        setattr(sys.modules[__name__], class_name, executor_class)
+                              {'execute': function})
         PythonExecutor.register_wrapper(request_class)(executor_class)
 
         return function
     return decorator
 
 
-@simple_executor(requests.AttributeRequest, include_self=True)
-def execute_getattribute(self, subject):
+@register_executor(requests.StoredItemsRequest)
+def execute_storage(self, contexts):
+    return self.storage._all()
+
+
+@register_executor(requests.LiteralRequest)
+def execute_literal(self, contexts):
+    return self.value
+
+
+@register_executor(requests.ListRequest)
+def execute_list(self, contexts):
+    return [element.execute(contexts) for element in self.value]
+
+
+@register_executor(requests.TupleRequest)
+def execute_tuple(self, contexts):
+    return tuple(element.execute(contexts) for element in self.value)
+
+
+@register_executor(requests.DictRequest)
+def execute_dict(self, contexts):
+    return dict(
+        (key, value.execute(contexts))
+        for key, value in self.value.iteritems())
+
+
+@register_executor(requests.ContextRequest)
+def execute_context(self, contexts):
+    assert self.scope_depth <= 0
+    # scope_depth of 0 -> last element
+    # scope_depth of -1 -> second last element
+    # ...
+    return contexts[self.scope_depth - 1]
+
+
+@register_executor(requests.BinaryOperationRequest)
+def execute_binary_operation(self, contexts):
+    # TODO: message for this error
+    assert self.operator_name
+    left = self.subject.execute(contexts)
+    right = self.other.execute(contexts)
+    operator_function = getattr(operator, '__%s__' % self.operator_name)
+    return operator_function(left, right)
+
+
+@register_executor(requests.UnaryOperationRequest)
+def execute_unary_operation(self, contexts):
+    # TODO: message for this error
+    assert self.operator_name
+    subject = self.subject.execute(contexts)
+    operator_function = getattr(operator, '__%s__' % self.operator_name)
+    return operator_function(subject)
+
+
+@register_executor(requests.AttributeRequest)
+def execute_attribute(self, contexts):
+    subject = self.subject.execute(contexts)
     # XXX The execution of __getattr__ is actually __getitem__ !!
     # eg. if r represents item, r.firstname represents item['firstname']
     return subject[self.attr_name]
 
 
-@simple_executor(requests.SliceRequest, include_self=True)
-def execute_slice(self, subject):
+@register_executor(requests.SliceRequest)
+def execute_slice(self, contexts):
+    subject = self.subject.execute(contexts)
     try:
         return subject[self.slice]
     except TypeError:
@@ -119,8 +104,9 @@ def execute_slice(self, subject):
         # TODO: implement indexing and slicing
         raise
 
-@simple_executor(requests.IndexRequest, include_self=True)
-def execute_index(self, subject):
+@register_executor(requests.IndexRequest)
+def execute_index(self, contexts):
+    subject = self.subject.execute(contexts)
     try:
         return subject[self.index]
     except TypeError:
@@ -129,9 +115,9 @@ def execute_index(self, subject):
         raise
 
 
-@simple_executor(requests.SortRequest, include_contexts=True,
-                 include_self=True)
-def execute_sort(self, contexts, sequence):
+@register_executor(requests.SortRequest)
+def execute_sort(self, contexts):
+    sequence = self.subject.execute(contexts)
     sort_keys = self.sort_keys
     assert sort_keys, 'Got a sort request with no sort key.'
 
@@ -172,23 +158,24 @@ def execute_sort(self, contexts, sequence):
         return sequence
 
 
-@simple_executor(requests.MapRequest, include_contexts=True, include_self=True)
-def execute_map(self, contexts, sequence):
+@register_executor(requests.MapRequest)
+def execute_map(self, contexts):
+    sequence = self.subject.execute(contexts)
     for element in sequence:
         yield self.new_value.execute(contexts + (element,))
 
 
-@simple_executor(requests.FilterRequest, include_contexts=True,
-                 include_self=True)
-def execute_filter(self, contexts, sequence):
+@register_executor(requests.FilterRequest)
+def execute_filter(self, contexts):
+    sequence = self.subject.execute(contexts)
     for element in sequence:
         if self.predicate.execute(contexts + (element,)):
             yield element
 
 
-@simple_executor(requests.GroupbyRequest, include_contexts=True,
-                 include_self=True)
-def execute_groupby(self, contexts, sequence):
+@register_executor(requests.GroupbyRequest)
+def execute_groupby(self, contexts):
+    sequence = self.subject.execute(contexts)
     groups = {}
     for element in sequence:
         key = self.key.execute(contexts + (element,))
@@ -198,8 +185,9 @@ def execute_groupby(self, contexts, sequence):
         yield {'grouper': grouper, 'elements': elements}
 
 
-@simple_executor(requests.DistinctRequest)
-def distinct(sequence):
+@register_executor(requests.DistinctRequest)
+def distinct(self, contexts):
+    sequence = self.subject.execute(contexts)
     seen = set()
     for element in sequence:
         if element not in seen:
@@ -207,8 +195,9 @@ def distinct(sequence):
             yield element
 
 
-@simple_executor(requests.OneRequest, include_contexts=True, include_self=True)
-def execute_one(self, contexts, sequence):
+@register_executor(requests.OneRequest)
+def execute_one(self, contexts):
+    sequence = self.subject.execute(contexts)
     iterator = iter(sequence)
     stop_iteration_marker = object()
     element = next(iterator, stop_iteration_marker)
@@ -225,9 +214,9 @@ def execute_one(self, contexts, sequence):
         raise ValueError('More than one element in .one()')
 
 
-@simple_executor(requests.AddRequest, include_contexts=True, include_self=True)
-def execute_add(self, contexts, subject):
-    left = subject
+@register_executor(requests.AddRequest)
+def execute_add(self, contexts):
+    left = self.subject.execute(contexts)
     right = self.other.execute(contexts)
     if isinstance(left, Mapping) and isinstance(right, Mapping):
         result = dict(left)
@@ -237,27 +226,33 @@ def execute_add(self, contexts, subject):
         return left + right
 
 
-@simple_executor(requests.AndRequest, include_contexts=True, include_self=True)
-def execute_and(self, contexts, subject):
-    left = subject
+@register_executor(requests.AndRequest)
+def execute_and(self, contexts):
+    left = self.subject.execute(contexts)
     right = self.other.execute(contexts)
     return bool(left and right)
 
 
-@simple_executor(requests.OrRequest, include_contexts=True, include_self=True)
-def execute_or(self, contexts, subject):
-    left = subject
+@register_executor(requests.OrRequest)
+def execute_or(self, contexts):
+    left = self.subject.execute(contexts)
     right = self.other.execute(contexts)
     return bool(left or right)
 
 
-simple_executor(requests.NotRequest)(operator.not_)
-simple_executor(requests.SumRequest)(sum)
-simple_executor(requests.MinRequest)(min)
-simple_executor(requests.MaxRequest)(max)
-simple_executor(requests.LenRequest)(len)  # TODO: handle generators
+def simple_executor(class_, function):
+    @register_executor(class_)
+    def execute(self, contexts):
+        subject = self.subject.execute(contexts)
+        return function(subject)
 
-del simple_executor
+simple_executor(requests.NotRequest, operator.not_)
+simple_executor(requests.SumRequest, sum)
+simple_executor(requests.MinRequest, min)
+simple_executor(requests.MaxRequest, max)
+simple_executor(requests.LenRequest, len)  # TODO: handle generators
+
+del register_executor, simple_executor
 
 
 def execute(request):
