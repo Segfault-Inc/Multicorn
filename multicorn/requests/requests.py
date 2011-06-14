@@ -80,6 +80,7 @@ class Request(object):
             # http://docs.python.org/reference/datamodel.html#new-style-special-lookup
             return object.__getattribute__(self, name)
         else:
+            # No as_request() on the name
             return AttributeRequest(self, name)
 
     def __setattr__(self, name, value):
@@ -87,12 +88,23 @@ class Request(object):
 
 
     def __getitem__(self, key):
-        # No as_request() on key
+        # XXX No as_request() on key ?
         if isinstance(key, slice):
             return SliceRequest(self, key)
         elif isinstance(key, int):
             return IndexRequest(self, key)
         raise TypeError('getitem notation ("[]") is only supported for slice and integers')
+    
+    # XXX do we need this?
+    def __pos__(self):
+        """+some_req is some_req, a no-op."""
+        return self
+
+    def __neg__(self):
+        return NegRequest(self)
+
+    def __invert__(self):
+        return NotRequest(self)
 
     # Other magic methods are added later, at the bottom of this module.
 
@@ -156,10 +168,11 @@ class OperationRequest(Request):
     Abstract base class for requests that are based on at least one other
     request. That "main" sub-request is in the `subject` attribute.
     """
-    # For subclasses: name of the special method on Request object that return
-    # this class.
-    # Eg. Request.__add__ returns a AddRequest instance so
-    # AddRequest.operator_name is 'add'
+    # For subclasses: the name of the function in the `operator` module that
+    # implement this operation, or None.
+    # Eg. AddRequest.operator_name is 'add' so AddRequest(r1, r2) represents
+    # `operator.__add__(v1, v2)` which is the same as `v1 + v2`, where r1 and
+    # r2 respectively represent v1 and v2.
     operator_name = None
 
     @self_with_attrs
@@ -186,7 +199,7 @@ class UnaryOperationRequest(Request):
     Abstract base class for request objects constructed with only one argument,
     another request object.
     
-    Eg.  ~some_req is NegationRequest(some_req)
+    Eg.  ~some_req is NotRequest(some_req)
     """
     
     arg_spec = ('subject',)
@@ -194,6 +207,22 @@ class UnaryOperationRequest(Request):
     @self_with_attrs
     def __init__(self, subject):
         self.subject = subject
+
+
+class NotRequest(UnaryOperationRequest):
+    """
+    Logical negation:  ~some_req is NotRequest(some_req)
+    """
+    # Returned by Request.__invert__, but we really want it to be `not`, not
+    # `invert`. There is no __not__ special method that we can override.
+    operator_name = 'not'
+
+
+class NegRequest(UnaryOperationRequest):
+    """
+    Arithmetic negation:  -some_req is NegRequest(some_req)
+    """
+    operator_name = 'neg'
 
 
 class BinaryOperationRequest(Request):
@@ -209,7 +238,7 @@ class BinaryOperationRequest(Request):
     @self_with_attrs
     def __init__(self, subject, other):
         self.subject = subject
-        self.other = as_request(other)
+        self.other = other
 
 
 # XXX when is __concat__ used instead of __add__?
@@ -226,11 +255,6 @@ BINARY_OPERATORS = frozenset('''
     contains concat
 '''.split())
 
-UNARY_OPERATORS = frozenset('''
-    pos neg invert
-'''.split())
-
-
 # eg. `1 + a` is `a.__radd__(1)`
 REVERSED_OPERATORS = frozenset('''
     add sub mul floordiv div truediv mod pow
@@ -238,19 +262,12 @@ REVERSED_OPERATORS = frozenset('''
     and or xor
 '''.split())
 
-assert not (BINARY_OPERATORS & UNARY_OPERATORS)
 assert REVERSED_OPERATORS < BINARY_OPERATORS # strict inclusion
-OPERATORS = BINARY_OPERATORS | UNARY_OPERATORS
 
 
 def _add_magic_method(operator_name):
     class_name = name.title() + 'Request'
-    if operator_name in BINARY_OPERATORS:
-        base_class = BinaryOperationRequest
-    else:
-        assert operator_name in UNARY_OPERATORS
-        base_class = UnaryOperationRequest
-    operation_class = type(class_name, (base_class,), {
+    operation_class = type(class_name, (BinaryOperationRequest,), {
         'operator_name': operator_name})
     # Add the new class in the scope of the current module, as if we had
     # written eg. a `class AddOperation(OperationRequest):` statement.
@@ -259,23 +276,21 @@ def _add_magic_method(operator_name):
     magic_name = '__%s__' % operator_name
     # Only generate a magic method if it is not there already.
     if magic_name not in vars(Request):
-        def magic_method(*args):
-            # `*args` here includes `self`, the Request instance.
-            return operation_class(*args)
+        def magic_method(self, other):
+            return operation_class(self, as_request(other))
         magic_method.__name__ = magic_name
         setattr(Request, magic_name, magic_method)
 
     magic_name = '__r%s__' % operator_name
     # Only generate a magic method if it is not there already.
     if magic_name not in vars(Request) and name in REVERSED_OPERATORS:
-        def magic_method(*args):
-            # `*args` here includes `self`, the Request instance.
-            args = args[::1]
-            return operation_class(*args)
+        def magic_method(self, other):
+            # Swap arguments
+            return operation_class(as_request(other), self)
         magic_method.__name__ = magic_name
         setattr(Request, magic_name, magic_method)
 
-for name in OPERATORS:
+for name in BINARY_OPERATORS:
     _add_magic_method(name)
 
 del name, _add_magic_method
@@ -292,7 +307,7 @@ class SliceRequest(OperationRequest):
     @self_with_attrs
     def __init__(self, subject, slice_):
         self.subject = subject
-        self.slice = slice_  # No as_request() ?
+        self.slice = slice_
 
 
 class IndexRequest(OperationRequest):
@@ -306,7 +321,7 @@ class IndexRequest(OperationRequest):
     @self_with_attrs
     def __init__(self, subject, index):
         self.subject = subject
-        self.index = index  # No as_request() ?
+        self.index = index
 
 
 class AttributeRequest(OperationRequest):
@@ -334,7 +349,7 @@ class AttributeRequest(OperationRequest):
     @self_with_attrs
     def __init__(self, subject, attr_name):
         self.subject = subject
-        self.attr_name = attr_name  # No as_request()
+        self.attr_name = attr_name
 
     @self_with_attrs
     def __call__(self, *args, **kwargs):

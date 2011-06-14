@@ -154,8 +154,8 @@ for operator in BOOL_OPERATORS:
     defclass(operator, BooleanOperationWrapper)
 
 
-@RequestWrapper.register_wrapper(requests.InvertRequest)
-class InvertOperationWrapper(OperationWrapper):
+@RequestWrapper.register_wrapper(requests.NotRequest)
+class NotOperationWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         return Type(type=bool)
 
