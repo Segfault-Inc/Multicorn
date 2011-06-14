@@ -47,17 +47,30 @@ class RequestWrapper(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.wrapped_request)
 
+    def used_types(self, contexts=()):
+        return {self.return_type(contexts): self}
+
+    def merge_dict(self, left, right):
+        for type, expr in right.iteritems():
+            exprs = left.setdefault(type, [])
+            exprs.append(expr)
+
 
 @RequestWrapper.register_wrapper(requests.StoredItemsRequest)
 class StoredItemsWrapper(RequestWrapper):
     def return_type(self, contexts=()):
         return List(self.storage.type)
 
+    def used_types(self, contexts=()):
+        return {self.return_type(contexts).inner_type: self}
+
+
 
 @RequestWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(RequestWrapper):
     def return_type(self, contexts=()):
         return Type(type=type(self.value))
+
 
 
 @RequestWrapper.register_wrapper(requests.ListRequest)
@@ -74,6 +87,14 @@ class ListWrapper(RequestWrapper):
                 return List(inner_type=inner_type)
         return List(inner_type=Type(type=object))
 
+    def used_types(self, contexts=()):
+        types = {}
+        for value in self.value:
+            used_types = value.used_types(contexts)
+            self.merge_dict(types, used_types)
+        return types
+
+
 
 @RequestWrapper.register_wrapper(requests.TupleRequest)
 class TupleWrapper(RequestWrapper):
@@ -83,6 +104,13 @@ class TupleWrapper(RequestWrapper):
 
     def return_type(self, contexts=()):
         return Type(type=tuple)
+
+    def used_types(self, contexts=()):
+        types = {}
+        for value in self.value:
+            used_types = value.used_types(contexts)
+            self.merge_dict(types, used_types)
+        return types
 
 
 @RequestWrapper.register_wrapper(requests.DictRequest)
@@ -99,6 +127,14 @@ class DictWrapper(RequestWrapper):
             mapping[key] = request.return_type(contexts)
         return Dict(mapping=mapping)
 
+    def used_types(self, contexts=()):
+        types = {}
+        for value in self.value.values():
+            used_types = value.used_types(contexts)
+            self.merge_dict(types, used_types)
+        return types
+
+
 
 @RequestWrapper.register_wrapper(requests.ContextRequest)
 class ContextWrapper(RequestWrapper):
@@ -112,6 +148,11 @@ class OperationWrapper(RequestWrapper):
         super(OperationWrapper, self).__init__(*args, **kwargs)
         self.subject = self.from_request(self.subject)
 
+    def return_type(self, contexts=()):
+        return self.subject.return_type(contexts)
+
+    def used_types(self, contexts=()):
+        return self.subject.used_types(contexts)
 
 # UnaryOperationRequest has nothing more than OperationWrapper
 
@@ -121,6 +162,14 @@ class BinaryOperationWrapper(OperationWrapper):
     def __init__(self, *args, **kwargs):
         super(BinaryOperationWrapper, self).__init__(*args, **kwargs)
         self.other = self.from_request(self.other)
+
+    def used_types(self, contexts=()):
+        types = {}
+        for other in (self.subject, self.other):
+            self.merge_dict(types, other.used_types(contexts))
+        return types
+
+
 
 
 @RequestWrapper.register_wrapper(requests.AttributeRequest)
@@ -132,6 +181,9 @@ class AttributeWrapper(OperationWrapper):
         else:
             # If the subject is not an item-like, can't infer anything
             return Type(type=object)
+
+    def used_types(self, contexts=()):
+        return {self.return_type(contexts): self}
 
 
 class BooleanOperationWrapper(BinaryOperationWrapper):
@@ -190,6 +242,12 @@ class FilterWrapper(PreservingWrapper):
         super(FilterWrapper, self).__init__(*args, **kwargs)
         self.predicate = self.from_request(self.predicate)
 
+    def used_types(self, contexts=()):
+        types = super(FilterWrapper, self).used_types(contexts)
+        self.merge_dict(types, self.predicate.used_types(contexts +
+            (self.subject.return_type(contexts).inner_type,)))
+        return types
+
 
 @RequestWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(OperationWrapper):
@@ -201,6 +259,13 @@ class MapWrapper(OperationWrapper):
         newcontext = self.subject.return_type(contexts).inner_type
         return List(
             inner_type=self.new_value.return_type(contexts + (newcontext,)))
+
+    def used_types(self, contexts=()):
+        newcontext = self.subject.return_type(contexts).inner_type
+        types = self.subject_type.used_types(contexts)
+        self.merge_dict(types, self.new_value.used_types(newcontext))
+        return types
+
 
 
 @RequestWrapper.register_wrapper(requests.GroupbyRequest)
@@ -214,6 +279,13 @@ class GroupbyWrapper(OperationWrapper):
         key_type = self.key.return_type(contexts + (subject_type.inner_type,))
         return List(inner_type=Dict(mapping={'grouper': key_type,
             'elements': subject_type}))
+
+    def used_types(self, contexts=()):
+        newcontexts = contexts + (self.subject.return_type(contexts))
+        types = self.subject.used_types(contexts)
+        self.merge_dict(types, self.key.used_types(newcontexts))
+        return types
+
 
 
 @RequestWrapper.register_wrapper(requests.LenRequest)
@@ -241,8 +313,6 @@ class AggregateWrapper(OperationWrapper):
         if isinstance(subject_type, List):
             return subject_type.inner_type
         return Type(type == object)
-
-
 
 
 @RequestWrapper.register_wrapper(requests.OneRequest)

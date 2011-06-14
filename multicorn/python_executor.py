@@ -62,7 +62,6 @@ class BinaryOperationExecutor(PythonExecutor, wrappers.BinaryOperationWrapper):
         # TODO: message for this error
         assert self.operator_name
         left = self.subject.execute(contexts)
-        print self.other
         right = self.other.execute(contexts)
         operator_function = getattr(operator, '__%s__' % self.operator_name)
         return operator_function(left, right)

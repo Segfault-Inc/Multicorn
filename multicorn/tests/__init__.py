@@ -11,4 +11,5 @@ all = Tests('.'.join((__name__, mod, 'suite'))
                         'test_type_inference',
                         'test_helpers',
                         'test_queries',
+                        'test_memory',
                         'test_item'))

@@ -5,6 +5,7 @@
 from ..item import BaseItem
 from .. import queries
 from ..requests.types import Type, List, Dict
+from ..python_executor import PythonExecutor
 from ..requests.requests import StoredItemsRequest
 
 
@@ -31,7 +32,7 @@ class AbstractCorn(object):
 
     Item = BaseItem
     #TODO: fix and uncomment
-    #RequestWrapper = PythonRequestWrapper
+    RequestWrapper = PythonExecutor
 
     def __init__(self, name, identity_properties):
         self.name = name

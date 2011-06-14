@@ -6,7 +6,6 @@
 import sys
 import functools
 
-
 # Marker to distinguish "Nothing was given" and "`None` was explicitly given".
 ARGUMENT_NOT_GIVEN = object()
 
@@ -25,6 +24,29 @@ def as_request(obj):
         return DictRequest(obj)
     else:
         return LiteralRequest(obj)
+
+def as_chain(request):
+    """Return a (wrapped) request as a chain of successive operations"""
+    chain = [request]
+    request = WithRealAttributes(request)
+    if issubclass(request.obj_type(), OperationRequest):
+        chain = as_chain(request.subject) + chain
+    return chain
+
+def cut_request(request, after):
+    """Cut the request in two equivalent requests such as "after" is the
+    last request in the left hand side."""
+    chain = as_chain(request)
+    if chain[-1] is after:
+        return chain, []
+    for idx, request_part in enumerate(chain):
+        if request_part is after:
+            empty_context = ContextRequest()
+            tail = WithRealAttributes(chain[-1]).copy_replace(after, empty_context)
+            return after, tail
+    raise ValueError("The given delimitor request is not in the request")
+
+
 
 
 class WithRealAttributes(object):
@@ -108,15 +130,55 @@ class Request(object):
         return NegRequest(self)
 
     def __invert__(self):
-        return NotRequest(self)
+        # Simplify logic when possible
+        if isinstance(self, LiteralRequest):
+            return LiteralRequest(not WithRealAttributes(self).value)
+        else:
+            return NotRequest(self)
+
+    def __and__(self, other):
+        other = as_request(other)
+        # Simplify logic when possible
+        for a, b in ((self, other), (other, self)):
+            if isinstance(a, LiteralRequest):
+                if WithRealAttributes(a).value:
+                    # True is the neutral element of and
+                    return b
+                else:
+                    # False is the absorbing element
+                    return LiteralRequest(False)
+        return AndRequest(self, other)
+
+    def __or__(self, other):
+        other = as_request(other)
+        # Simplify logic when possible
+        for a, b in ((self, other), (other, self)):
+            if isinstance(a, LiteralRequest):
+                if WithRealAttributes(a).value:
+                    # True is the absorbing element of or
+                    return LiteralRequest(True)
+                else:
+                    # False is the neutral element
+                    return b
+        return OrRequest(self, other)
+
+    # `&` and `|` are commutative
+    __rand__ = __and__
+    __ror__ = __or__
 
     @self_with_attrs
     def __repr__(self):
-        return '%s(%s)' % (self.obj_type().__name__, ', '.join(
+        name = self.obj_type().__name__
+        assert name.endswith('Request')
+        name = name[:-len('Request')]
+        return '%s[%s]' % (name, ', '.join(
             repr(getattr(self, attr_name)) for attr_name in self.arg_spec))
 
     # Other magic methods are added later, at the bottom of this module.
 
+    # Just like attributes, these methods can be accessed with eg.
+    # `object.__getattribute__(some_req).map`, but AttributeRequest objects
+    # are also callable so that `some_req.map(...)` Just Works™.
     def one(self, default=ARGUMENT_NOT_GIVEN):
         if default is ARGUMENT_NOT_GIVEN:
             default = None
@@ -137,6 +199,10 @@ class Request(object):
 
     def map(self, new_value):
         return MapRequest(self, as_request(new_value))
+
+    def execute(self):
+        ap = WithRealAttributes(as_chain(self)[0]).storage
+        return ap.execute(self)
 
     def sort(self, *sort_keys):
         if not sort_keys:
@@ -187,7 +253,6 @@ class StoredItemsRequest(Request):
     @self_with_attrs
     def __init__(self, storage):
         self.storage = storage
-
 
 class LiteralRequest(Request):
     arg_spec = ('value',)
@@ -265,7 +330,6 @@ class OperationRequest(Request):
         newargs = []
         for arg_name in self.arg_spec:
             arg = getattr(self, arg_name)
-            
             wrapper = WithRealAttributes(arg)
             if arg is replace:
                 newargs.append(replacement)
