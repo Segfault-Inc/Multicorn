@@ -5,7 +5,6 @@
 import sys
 from . import requests
 from .types import Type, Dict, List
-from operator import eq
 
 
 class RequestWrapper(object):
@@ -191,8 +190,7 @@ class BooleanOperationWrapper(BinaryOperationWrapper):
         return Type(type=bool)
 
 # Only the binary ones, exclude invert.
-BOOL_OPERATORS = ('and', 'or', 'xor', 'contains', 'eq', 'ne',
-                  'lt', 'gt', 'le', 'ge')
+BOOL_OPERATORS = ('and', 'or', 'contains', 'eq', 'ne', 'lt', 'gt', 'le', 'ge')
 
 
 def defclass(operator, base_class):

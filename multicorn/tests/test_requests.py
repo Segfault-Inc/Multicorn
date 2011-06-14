@@ -63,6 +63,31 @@ def test_logical_simplifications():
 
 
 @suite.test
+def test_boolean_logic():
+    # Not literals so that simplification does not happen.
+    true = literal(1) == 1
+    false = literal(1) == 0
+
+    assert_value(~true, False)
+    assert_value(~false, True)
+
+    assert_value(true & true, True)
+    assert_value(true & false, False)
+    assert_value(false & true, False)
+    assert_value(false & false, False)
+
+    assert_value(true | true, True)
+    assert_value(true | false, True)
+    assert_value(false | true, True)
+    assert_value(false | false, False)
+
+    assert_value(true ^ true, False)
+    assert_value(true ^ false, True)
+    assert_value(false ^ true, True)
+    assert_value(false ^ false, False)
+
+
+@suite.test
 def test_map():
     assert_list(
         SOURCE.map(c.price),
