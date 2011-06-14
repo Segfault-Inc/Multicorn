@@ -111,7 +111,7 @@ def execute_getattribute(self, subject):
 
 
 @simple_executor(requests.SliceRequest, include_self=True)
-def execute_slice(subject):
+def execute_slice(self, subject):
     try:
         return subject[self.slice]
     except TypeError:
@@ -120,7 +120,7 @@ def execute_slice(subject):
         raise
 
 @simple_executor(requests.IndexRequest, include_self=True)
-def execute_index(subject):
+def execute_index(self, subject):
     try:
         return subject[self.index]
     except TypeError:
@@ -225,10 +225,10 @@ def execute_one(self, contexts, sequence):
         raise ValueError('More than one element in .one()')
 
 
-@simple_executor(requests.AddRequest, include_self=True)
-def execute_add(self, subject):
+@simple_executor(requests.AddRequest, include_contexts=True, include_self=True)
+def execute_add(self, contexts, subject):
     left = subject
-    right = self.other
+    right = self.other.execute(contexts)
     if isinstance(left, Mapping) and isinstance(right, Mapping):
         result = dict(left)
         result.update(right)
@@ -237,6 +237,21 @@ def execute_add(self, subject):
         return left + right
 
 
+@simple_executor(requests.AndRequest, include_contexts=True, include_self=True)
+def execute_and(self, contexts, subject):
+    left = subject
+    right = self.other.execute(contexts)
+    return bool(left and right)
+
+
+@simple_executor(requests.OrRequest, include_contexts=True, include_self=True)
+def execute_or(self, contexts, subject):
+    left = subject
+    right = self.other.execute(contexts)
+    return bool(left or right)
+
+
+simple_executor(requests.NotRequest)(operator.not_)
 simple_executor(requests.SumRequest)(sum)
 simple_executor(requests.MinRequest)(min)
 simple_executor(requests.MaxRequest)(max)

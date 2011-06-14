@@ -120,7 +120,7 @@ class Request(object):
         elif isinstance(key, int):
             return IndexRequest(self, key)
         raise TypeError('getitem notation ("[]") is only supported for slice and integers')
-    
+
     # XXX do we need this?
     def __pos__(self):
         """+some_req is some_req, a no-op."""
@@ -162,9 +162,13 @@ class Request(object):
                     return b
         return OrRequest(self, other)
 
-    # `&` and `|` are commutative
+    def __xor__(self, other):
+        return (self & ~other) | (other & ~self)
+
+    # `&`, `|` and `^` are commutative
     __rand__ = __and__
     __ror__ = __or__
+    __rxor__ = __xor__
 
     @self_with_attrs
     def __repr__(self):
@@ -221,7 +225,7 @@ class Request(object):
                        == 'neg')
             if reverse:
                 sort_key = wrapped_sort_key.subject
-            
+
             decorated_sort_keys.append((sort_key, reverse))
         return SortRequest(self, decorated_sort_keys)
 
@@ -249,18 +253,18 @@ class StoredItemsRequest(Request):
     Represents the sequence of all items stored in a Storage
     """
     arg_spec = ('storage',)
-    
+
     @self_with_attrs
     def __init__(self, storage):
         self.storage = storage
 
 class LiteralRequest(Request):
     arg_spec = ('value',)
-    
+
     @self_with_attrs
     def __init__(self, value):
         self.value = value
-    
+
     @self_with_attrs
     def __repr__(self):
         return repr(self.value)
@@ -268,7 +272,7 @@ class LiteralRequest(Request):
 
 class ListRequest(Request):
     arg_spec = ('value',)
-    
+
     @self_with_attrs
     def __init__(self, obj):
         self.value = [as_request(element) for element in obj]
@@ -276,7 +280,7 @@ class ListRequest(Request):
 
 class TupleRequest(Request):
     arg_spec = ('value',)
-    
+
     @self_with_attrs
     def __init__(self, obj):
         self.value = tuple(as_request(element) for element in obj)
@@ -284,7 +288,7 @@ class TupleRequest(Request):
 
 class DictRequest(Request):
     arg_spec = ('value',)
-    
+
     @self_with_attrs
     def __init__(self, obj):
         self.value = dict(
@@ -295,7 +299,7 @@ class DictRequest(Request):
 
 class ContextRequest(Request):
     arg_spec = ('scope_depth',)
-    
+
     @self_with_attrs
     def __init__(self, scope_depth=0):
         scope_depth = int(scope_depth)
@@ -344,12 +348,12 @@ class UnaryOperationRequest(Request):
     """
     Abstract base class for request objects constructed with only one argument,
     another request object.
-    
+
     Eg.  ~some_req is NotRequest(some_req)
     """
-    
+
     arg_spec = ('subject',)
-    
+
     @self_with_attrs
     def __init__(self, subject):
         self.subject = subject
@@ -375,12 +379,12 @@ class BinaryOperationRequest(Request):
     """
     Abstract base class for request objects constructed with two arguments,
     both request objects.
-    
+
     Eg.  some_req + other_req is AddRequest(some_req, other_req)
     """
-    
+
     arg_spec = ('subject', 'other')
-    
+
     @self_with_attrs
     def __init__(self, subject, other):
         self.subject = subject
@@ -396,23 +400,21 @@ class BinaryOperationRequest(Request):
 BINARY_OPERATORS = frozenset('''
     eq ne lt gt le ge
     add sub mul floordiv div truediv pow mod
-    lshift rshift
-    and or xor
+    and or
     contains concat
 '''.split())
 
 # eg. `1 + a` is `a.__radd__(1)`
 REVERSED_OPERATORS = frozenset('''
     add sub mul floordiv div truediv mod pow
-    lshift rshift
-    and or xor
+    and or
 '''.split())
 
 assert REVERSED_OPERATORS < BINARY_OPERATORS # strict inclusion
 
 
 def _add_magic_method(operator_name):
-    class_name = name.title() + 'Request'
+    class_name = operator_name.title() + 'Request'
     operation_class = type(class_name, (BinaryOperationRequest,), {
         'operator_name': operator_name})
     # Add the new class in the scope of the current module, as if we had
@@ -429,7 +431,7 @@ def _add_magic_method(operator_name):
 
     magic_name = '__r%s__' % operator_name
     # Only generate a magic method if it is not there already.
-    if magic_name not in vars(Request) and name in REVERSED_OPERATORS:
+    if magic_name not in vars(Request) and operator_name in REVERSED_OPERATORS:
         def magic_method(self, other):
             # Swap arguments
             return operation_class(as_request(other), self)
@@ -449,7 +451,7 @@ class SliceRequest(OperationRequest):
     """
 
     arg_spec = ('subject', 'slice')
-    
+
     @self_with_attrs
     def __init__(self, subject, slice_):
         self.subject = subject
@@ -463,7 +465,7 @@ class IndexRequest(OperationRequest):
     """
 
     arg_spec = ('subject', 'index')
-    
+
     @self_with_attrs
     def __init__(self, subject, index):
         self.subject = subject
@@ -500,7 +502,7 @@ class AttributeRequest(OperationRequest):
 
 class OneRequest(OperationRequest):
     arg_spec = ('subject', 'default')
-    
+
     @self_with_attrs
     def __init__(self, subject, default):
         self.subject = subject
@@ -509,7 +511,7 @@ class OneRequest(OperationRequest):
 
 class FilterRequest(OperationRequest):
     arg_spec = ('subject', 'predicate')
-    
+
     @self_with_attrs
     def __init__(self, subject, predicate):
         self.subject = subject
@@ -518,7 +520,7 @@ class FilterRequest(OperationRequest):
 
 class MapRequest(OperationRequest):
     arg_spec = ('subject', 'new_value')
-    
+
     @self_with_attrs
     def __init__(self, subject, new_value):
         self.subject = subject
@@ -527,7 +529,7 @@ class MapRequest(OperationRequest):
 
 class SortRequest(OperationRequest):
     arg_spec = ('subject', 'sort_keys')
-    
+
     @self_with_attrs
     def __init__(self, subject, sort_keys):
         self.subject = subject
@@ -536,7 +538,7 @@ class SortRequest(OperationRequest):
 
 class GroupbyRequest(OperationRequest):
     arg_spec = ('subject', 'key')
-    
+
     @self_with_attrs
     def __init__(self, subject, key):
         self.subject = subject
@@ -561,4 +563,3 @@ class LenRequest(UnaryOperationRequest):
 
 class DistinctRequest(UnaryOperationRequest):
     pass
-
