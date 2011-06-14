@@ -1,0 +1,217 @@
+/*
+  -------------
+  - Font Face -
+  -------------
+*/
+@font-face {
+  font-family: "arual";
+  src: url(Arual.ttf);
+}
+
+@font-face {
+  font-family: "text";
+  src: url(CaviarDreams.ttf);
+}
+
+
+/*
+  ---------------
+  - HTML / Body -
+  ---------------
+*/
+html {
+  background: url(img/background.jpg) repeat top left;
+  border-bottom: 15px solid black;
+  border-top: 15px solid black;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  border-radius: 0;
+  box-shadow:0px 0px 5px #8f8f8f;
+  margin: auto;
+  padding-top: 40px;
+  opacity: 1;
+  width: 850px;
+}
+
+
+/*
+  ----------
+  - Common -
+  ----------
+*/
+h2, h3, h4, h5, h6 {
+  color: #d0272b;
+  font-family: "arual";
+  font-weight: normal;
+  letter-spacing: 0.2em;
+  text-shadow: none;
+}
+
+h2 a, h3 a, h4 a, h5 a, h6 a {
+  color: #d0272b;
+  font-family: "arual";
+  letter-spacing: 0.1em;
+  text-shadow: none;
+}
+
+a {
+  color: black;
+  transition-duration: 0.25s;
+  transition-property: color;
+}
+
+a:hover,
+a:focus {
+  background: none;
+  color: #dd292e;
+}
+
+a:visited {
+  color: #901b1e;
+}
+
+pre {
+  border-radius: 0;
+  box-shadow:0px 0px 5px #8f8f8f;
+}
+
+
+/*
+  ----------
+  - Header -
+  ----------
+*/
+h1 a {
+  color: #D0272B !important;
+  font-family: "arual";
+  font-size: 3.5em;
+  font-weight: lighter;
+  padding-left: 135px;
+  text-transform: uppercase;
+}
+
+h1 a:hover,
+h1 a:visited {
+  background: none;
+  box-shadow: none;
+  color: #D0272B;
+}
+
+header {
+  background: url(img/multicorn.png) no-repeat 105px -15px;
+  height: 137px;
+  padding-left: 100px;
+  width: 850px;
+}
+
+
+/*
+  --------------
+  - Navigation -
+  --------------
+*/
+nav {
+  background: none;
+  display: block;
+  font-family: "arual";
+  font-size: 1.3em;
+  margin: -160px auto 0 auto;
+  text-align: center;
+}
+
+nav ul {
+  background: url(img/break.jpg) no-repeat top center;
+  border-bottom: 1px solid #dadada;
+  border-radius: 0;
+  box-shadow: none;
+  margin-top: 160px;
+  padding: 23px 0 0 0;
+  text-transform: uppercase;
+}
+
+nav li {
+  color: #b62226;
+  margin: 0;
+}
+
+nav li a {
+  border-radius: 0;
+  color: #b62226;
+  display: inline-block;
+  font-family: "arual";
+  margin: 0;
+  padding: 0.5em 0.5em 0.25em 0.5em;
+}
+
+nav li a:hover,
+nav li a:focus {
+  background: url(img/square.jpg) no-repeat 50% 0;
+  color: black !important;
+}
+
+nav ul li a:visited {
+  color: #b62226;
+}
+
+
+/*
+  -----------
+  - Section -
+  -----------
+*/
+body > section {
+  background-color: white;
+  border: none;
+  margin-bottom: 30px;
+}
+
+article {
+  border-bottom: 1px solid #dadada;
+  color: #a7a7a7;
+  font-family: "text";
+}
+
+article section {
+  border-bottom: 1px solid #dadada;
+}
+
+article h2 {
+  background: url(img/multicorn.jpg) no-repeat,
+              url(img/break2.jpg) no-repeat bottom center;
+  color: #d0272b;
+  font-family: "arual";
+  padding: 5px 0 23px 25px;
+  text-transform: upper-case;
+}
+
+
+/*
+  ----------
+  - Footer -
+  ----------
+*/
+footer {
+  background: url(img/horse.jpg) no-repeat center right;      
+  margin-top: 50px;
+  padding-top: 35px;
+}
+
+footer ul {
+  background: url(img/footer.png) no-repeat top center;
+  margin-top: 0;
+  padding-top: 20px;
+}
+
+footer li a {
+  color: #d0272b !important;
+}
+
+footer li a:hover {
+  background: none;
+  border-radius: 0;
+  box-shadow: none !important;
+  color: black !important;
+}
