@@ -88,6 +88,54 @@ def test_boolean_logic():
 
 
 @suite.test
+def test_comparaisons():
+    four = literal(3) + 1
+    assert_value(four == 4, True)
+    assert_value(four == 3, False)
+
+    assert_value(four != 3, True)
+    assert_value(four != 4, False)
+
+    assert_value(four > 3, True)
+    assert_value(four > 4, False)
+    assert_value(four > 5, False)
+
+    assert_value(four < 3, False)
+    assert_value(four < 4, False)
+    assert_value(four < 5, True)
+
+    assert_value(four >= 3, True)
+    assert_value(four >= 4, True)
+    assert_value(four >= 5, False)
+
+    assert_value(four <= 3, False)
+    assert_value(four <= 4, True)
+    assert_value(four <= 5, True)
+
+    assert_value(4 == four, True)
+    assert_value(3 == four, False)
+
+    assert_value(3 != four, True)
+    assert_value(4 != four, False)
+
+    assert_value(3 < four, True)
+    assert_value(4 < four, False)
+    assert_value(5 < four, False)
+
+    assert_value(3 > four, False)
+    assert_value(4 > four, False)
+    assert_value(5 > four, True)
+
+    assert_value(3 <= four, True)
+    assert_value(4 <= four, True)
+    assert_value(5 <= four, False)
+
+    assert_value(3 >= four, False)
+    assert_value(4 >= four, True)
+    assert_value(5 >= four, True)
+
+
+@suite.test
 def test_map():
     assert_list(
         SOURCE.map(c.price),
