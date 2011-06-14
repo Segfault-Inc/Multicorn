@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from ..item import BaseItem
 from .. import queries
 from ..requests.types import Type, List, Dict
@@ -72,7 +73,11 @@ class AbstractCorn(object):
     # Minimal API for concrete access points
 
     def save(self, item):
-        """Return an iterable of all items in this access points."""
+        """Save an item"""
+        raise NotImplementedError
+
+    def delete(self, item):
+        """Delete an item"""
         raise NotImplementedError
 
     def _all(self):
