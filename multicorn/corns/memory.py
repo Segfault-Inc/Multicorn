@@ -5,6 +5,8 @@
 from .abstract import AbstractCorn
 from ..queries import isolate
 from ..requests.types import Type
+from ..requests import wrappers
+from ..requests.requests import as_chain, cut_request
 from .. import queries
 
 
@@ -28,21 +30,15 @@ class Memory(AbstractCorn):
     def _all(self):
         return self._storage.itervalues()
 
-    def search(self, request):
-        # If all identity properties have a fixed value in the query, we can
-        # build the storage key.
-        values, query_remainder = isolate.isolate_values_from_query(
-            request, self.identity_properties)
-        try:
-            key = tuple(values[name] for name in self.identity_properties)
-        except KeyError:
-            # Fall back on normal handling
-            return super(Memory, self).search(request)
-        else:
-            # If possible, use a fast dict lookup instead of iterating
-            # through the whole storage.
-            item = self._storage[key]
-            return queries.execute([item], query_remainder)
+    def execute(self, request):
+        wrapped_request = self.RequestWrapper.from_request(request)
+        chain = as_chain(wrapped_request)
+        # If we filter straight away on id properties, cut the chain in
+        # half and work only on the matching item
+        if len(chain) > 1 and isinstance(chain[1], wrappers.FilterWrapper):
+            filter, other = cut_request(wrapped_request, chain[0])
+            types = chain[0].used_types
+        return wrapped_request.execute((self._all(),))
 
     def register(self, name, type=object, **kwargs):
         self.properties[name] = Type(corn=self, name=name, type=type)

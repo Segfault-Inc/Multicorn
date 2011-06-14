@@ -26,6 +26,7 @@ def return_type(request):
     return RequestWrapper.from_request(request).return_type()
 
 
+
 @suite.test
 def test_simple_types():
     Corn = make_corn()
@@ -119,3 +120,20 @@ def test_nimp():
     assert mapping['tuple'] == Type(tuple)
     assert mapping['onedefaulthomogeneous'] == Corn.type
     assert mapping['onedefault'] == Type(object)
+
+@suite.test
+def test_used_types():
+    Corn = make_corn()
+    req = RequestWrapper.from_request(Corn.all)
+    types = req.used_types()
+    assert len(types) == 1
+    assert types.keys()[0] == Corn.type
+    assert types.values()[0] == req
+    req = RequestWrapper.from_request(Corn.all.filter(c.id))
+    types = req.used_types()
+    assert len(types) == 2
+    id_type = Corn.properties['id']
+    found = any((type == id_type for type in types))
+    assert found
+    found = any((type == Corn.type for type in types))
+    assert found

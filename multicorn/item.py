@@ -21,7 +21,7 @@ class BaseItem(MutableMapping):
         self._lazy_values = dict(lazy_values or {})
         self.corn.properties
 
-        corn_properties = set(prop.name for prop in self.corn.properties)
+        corn_properties = set(self.corn.properties.keys())
         given_keys = set(values.keys()) | set(lazy_values.keys())
         extra_keys = given_keys - corn_properties
         if extra_keys:
@@ -36,13 +36,12 @@ class BaseItem(MutableMapping):
         return len(self.corn.properties)
 
     def __iter__(self):
-        for prop in self.corn.properties:
-            yield prop.name
+        return iter(self.corn.properties.keys())
 
     def __contains__(self, key):
         # MutableMapping.__contains__ would work but is based on __getitem__
         # which may load a lazy value needlessly.
-        return any(prop.name == key for prop in self.corn.properties)
+        return key in self.corn.properties
 
     def __getitem__(self, key):
         if key not in self._values and key in self._lazy_values:
@@ -54,6 +53,9 @@ class BaseItem(MutableMapping):
             raise KeyError(key, 'Can not add properties to items.')
         self._values[key] = value
         self._lazy_values.pop(key, None)
+
+    def save(self):
+        self.corn.save(self)
 
     def __delitem__(self, key):
         raise TypeError('Can not delete properties from an item.')

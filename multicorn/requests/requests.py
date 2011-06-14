@@ -6,7 +6,6 @@
 import sys
 import functools
 
-
 # Marker to distinguish "Nothing was given" and "`None` was explicitly given".
 ARGUMENT_NOT_GIVEN = object()
 
@@ -25,6 +24,29 @@ def as_request(obj):
         return DictRequest(obj)
     else:
         return LiteralRequest(obj)
+
+def as_chain(request):
+    """Return a (wrapped) request as a chain of successive operations"""
+    chain = [request]
+    request = WithRealAttributes(request)
+    if issubclass(request.obj_type(), OperationRequest):
+        chain = as_chain(request.subject) + chain
+    return chain
+
+def cut_request(request, after):
+    """Cut the request in two equivalent requests such as "after" is the
+    last request in the left hand side."""
+    chain = as_chain(request)
+    if chain[-1] is after:
+        return chain, []
+    for idx, request_part in enumerate(chain):
+        if request_part is after:
+            empty_context = ContextRequest()
+            tail = WithRealAttributes(chain[-1]).copy_replace(after, empty_context)
+            return after, tail
+    raise ValueError("The given delimitor request is not in the request")
+
+
 
 
 class WithRealAttributes(object):
@@ -138,6 +160,10 @@ class Request(object):
     def map(self, new_value):
         return MapRequest(self, as_request(new_value))
 
+    def execute(self):
+        ap = WithRealAttributes(as_chain(self)[0]).storage
+        return ap.execute(self)
+
     def sort(self, *sort_keys):
         if not sort_keys:
             # Default to comparing the element themselves, ie req.sort()
@@ -187,7 +213,6 @@ class StoredItemsRequest(Request):
     @self_with_attrs
     def __init__(self, storage):
         self.storage = storage
-
 
 class LiteralRequest(Request):
     arg_spec = ('value',)
@@ -265,7 +290,6 @@ class OperationRequest(Request):
         newargs = []
         for arg_name in self.arg_spec:
             arg = getattr(self, arg_name)
-            
             wrapper = WithRealAttributes(arg)
             if arg is replace:
                 newargs.append(replacement)

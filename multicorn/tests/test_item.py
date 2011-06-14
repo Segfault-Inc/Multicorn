@@ -17,9 +17,9 @@ def test_item():
     class Dummy:
         pass
     corn = Dummy()
-    corn.properties = [BaseProperty(name, int)
+    corn.properties = {name: int
                        for name in (
-                           'foo', 'bar', 'baz', 'fuu')]
+                           'foo', 'bar', 'baz', 'fuu')}
 
     def baz_loader(item):
         baz_loader.calls += 1
