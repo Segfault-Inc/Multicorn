@@ -108,15 +108,55 @@ class Request(object):
         return NegRequest(self)
 
     def __invert__(self):
-        return NotRequest(self)
+        # Simplify logic when possible
+        if isinstance(self, LiteralRequest):
+            return LiteralRequest(not WithRealAttributes(self).value)
+        else:
+            return NotRequest(self)
+
+    def __and__(self, other):
+        other = as_request(other)
+        # Simplify logic when possible
+        for a, b in ((self, other), (other, self)):
+            if isinstance(a, LiteralRequest):
+                if WithRealAttributes(a).value:
+                    # True is the neutral element of and
+                    return b
+                else:
+                    # False is the absorbing element
+                    return LiteralRequest(False)
+        return AndRequest(self, other)
+
+    def __or__(self, other):
+        other = as_request(other)
+        # Simplify logic when possible
+        for a, b in ((self, other), (other, self)):
+            if isinstance(a, LiteralRequest):
+                if WithRealAttributes(a).value:
+                    # True is the absorbing element of or
+                    return LiteralRequest(True)
+                else:
+                    # False is the neutral element
+                    return b
+        return OrRequest(self, other)
+
+    # `&` and `|` are commutative
+    __rand__ = __and__
+    __ror__ = __or__
 
     @self_with_attrs
     def __repr__(self):
-        return '%s(%s)' % (self.obj_type().__name__, ', '.join(
+        name = self.obj_type().__name__
+        assert name.endswith('Request')
+        name = name[:-len('Request')]
+        return '%s[%s]' % (name, ', '.join(
             repr(getattr(self, attr_name)) for attr_name in self.arg_spec))
 
     # Other magic methods are added later, at the bottom of this module.
 
+    # Just like attributes, these methods can be accessed with eg.
+    # `object.__getattribute__(some_req).map`, but AttributeRequest objects
+    # are also callable so that `some_req.map(...)` Just Works™.
     def one(self, default=ARGUMENT_NOT_GIVEN):
         if default is ARGUMENT_NOT_GIVEN:
             default = None
