@@ -170,6 +170,32 @@ class Request(object):
     __ror__ = __or__
     __rxor__ = __xor__
 
+    def __eq__(self, other): return EqRequest(self, as_request(other))
+    def __ne__(self, other): return NeRequest(self, as_request(other))
+    def __lt__(self, other): return LtRequest(self, as_request(other))
+    def __gt__(self, other): return GtRequest(self, as_request(other))
+    def __le__(self, other): return LeRequest(self, as_request(other))
+    def __ge__(self, other): return GeRequest(self, as_request(other))
+
+    # Both __div__ and __truediv__ return a DivRequest, so that the meaning
+    # of `some_req / other_req` does not depend on whether the module using
+    # it has `from __future__ import division`
+    def __add__(self, other): return AddRequest(self, as_request(other))
+    def __sub__(self, other): return SubRequest(self, as_request(other))
+    def __mul__(self, other): return MulRequest(self, as_request(other))
+    def __div__(self, other): return DivRequest(self, as_request(other))
+    def __truediv__(self, other): return DivRequest(self, as_request(other))
+
+    # Reflected methods: swap the arguments.
+    def __radd__(self, other): return AddRequest(as_request(other), self)
+    def __rsub__(self, other): return SubRequest(as_request(other), self)
+    def __rmul__(self, other): return MulRequest(as_request(other), self)
+    def __rdiv__(self, other): return DivRequest(as_request(other), self)
+    def __rtruediv__(self, other): return DivRequest(as_request(other), self)
+
+    def __contains__(self, other):
+        return ContainsRequest(self, as_request(other))
+
     @self_with_attrs
     def __repr__(self):
         name = self.obj_type().__name__
@@ -177,8 +203,6 @@ class Request(object):
         name = name[:-len('Request')]
         return '%s[%s]' % (name, ', '.join(
             repr(getattr(self, attr_name)) for attr_name in self.arg_spec))
-
-    # Other magic methods are added later, at the bottom of this module.
 
     # Just like attributes, these methods can be accessed with eg.
     # `object.__getattribute__(some_req).map`, but AttributeRequest objects
@@ -371,6 +395,9 @@ class NotRequest(UnaryOperationRequest):
 class NegRequest(UnaryOperationRequest):
     """
     Arithmetic negation:  -some_req is NegRequest(some_req)
+
+    Although the bitwise inversion operator is used to construct it, this
+    represents a boolean (logical) negation.
     """
     operator_name = 'neg'
 
@@ -391,57 +418,105 @@ class BinaryOperationRequest(OperationRequest):
         self.other = other
 
 
-# XXX when is __concat__ used instead of __add__?
-# http://docs.python.org/library/operator.html?#operator.__concat__ says for
-# sequences. Is that collection.Sequence?
-
-# eg. `a + 1` is `a.__add__(1)`
-# include these? abs, divmod
-BINARY_OPERATORS = frozenset('''
-    eq ne lt gt le ge
-    add sub mul floordiv div truediv pow mod
-    and or
-    contains concat
-'''.split())
-
-# eg. `1 + a` is `a.__radd__(1)`
-REVERSED_OPERATORS = frozenset('''
-    add sub mul floordiv div truediv mod pow
-    and or
-'''.split())
-
-assert REVERSED_OPERATORS < BINARY_OPERATORS # strict inclusion
+class EqRequest(BinaryOperationRequest):
+    """
+    some_req == other_req is EqRequest(some_req, other_req)
+    """
+    operator_name = 'eq'
 
 
-def _add_magic_method(operator_name):
-    class_name = operator_name.title() + 'Request'
-    operation_class = type(class_name, (BinaryOperationRequest,), {
-        'operator_name': operator_name})
-    # Add the new class in the scope of the current module, as if we had
-    # written eg. a `class AddOperation(OperationRequest):` statement.
-    setattr(sys.modules[__name__], class_name, operation_class)
+class NeRequest(BinaryOperationRequest):
+    """
+    some_req != other_req is NeRequest(some_req, other_req)
+    """
+    operator_name = 'ne'
 
-    magic_name = '__%s__' % operator_name
-    # Only generate a magic method if it is not there already.
-    if magic_name not in vars(Request):
-        def magic_method(self, other):
-            return operation_class(self, as_request(other))
-        magic_method.__name__ = magic_name
-        setattr(Request, magic_name, magic_method)
 
-    magic_name = '__r%s__' % operator_name
-    # Only generate a magic method if it is not there already.
-    if magic_name not in vars(Request) and operator_name in REVERSED_OPERATORS:
-        def magic_method(self, other):
-            # Swap arguments
-            return operation_class(as_request(other), self)
-        magic_method.__name__ = magic_name
-        setattr(Request, magic_name, magic_method)
+class LtRequest(BinaryOperationRequest):
+    """
+    some_req < other_req is LtRequest(some_req, other_req)
+    """
+    operator_name = 'lt'
 
-for name in BINARY_OPERATORS:
-    _add_magic_method(name)
 
-del name, _add_magic_method
+class GtRequest(BinaryOperationRequest):
+    """
+    some_req > other_req is GtRequest(some_req, other_req)
+    """
+    operator_name = 'gt'
+
+
+class GeRequest(BinaryOperationRequest):
+    """
+    some_req >= other_req is GeRequest(some_req, other_req)
+    """
+    operator_name = 'ge'
+
+
+class LeRequest(BinaryOperationRequest):
+    """
+    some_req <= other_req is LeRequest(some_req, other_req)
+    """
+    operator_name = 'le'
+
+
+class AddRequest(BinaryOperationRequest):
+    """
+    some_req + other_req is AddRequest(some_req, other_req)
+    """
+    operator_name = 'add'
+
+
+class SubRequest(BinaryOperationRequest):
+    """
+    some_req - other_req is SubRequest(some_req, other_req)
+    """
+    operator_name = 'sub'
+
+
+class MulRequest(BinaryOperationRequest):
+    """
+    some_req * other_req is MulRequest(some_req, other_req)
+    """
+    operator_name = 'mul'
+
+
+class DivRequest(BinaryOperationRequest):
+    """
+    some_req / other_req is DivRequest(some_req, other_req)
+
+    Represents the true division, whether or not
+    `from __future__ import divison` is present.
+    """
+    operator_name = 'truediv'
+
+
+class ContainsRequest(BinaryOperationRequest):
+    """
+    some_req in other_req is ContainsRequest(other_req, some_req)
+    (Notice the parameter order.)
+    """
+    operator_name = 'contains'
+
+
+class AndRequest(BinaryOperationRequest):
+    """
+    some_req & other_req is AndRequest(some_req, other_req)
+
+    Although the bitwise AND operator is used to construct it, this
+    represents a boolean (logical) AND.
+    """
+    operator_name = 'and'
+
+
+class OrRequest(BinaryOperationRequest):
+    """
+    some_req | other_req is OrRequest(some_req, other_req)
+
+    Although the bitwise OR operator is used to construct it, this
+    represents a boolean (logical) OR.
+    """
+    operator_name = 'or'
 
 
 class SliceRequest(OperationRequest):

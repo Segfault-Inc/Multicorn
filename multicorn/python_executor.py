@@ -19,6 +19,7 @@ def register_executor(request_class):
         name = request_class.__name__
         assert name.endswith('Request')
         name = name[:-len('Request')]  # remove the Request suffix
+        assert name
         class_name = name + 'Executor'
         base_wrapper = wrappers.RequestWrapper.class_from_request_class(
             request_class)

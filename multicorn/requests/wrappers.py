@@ -210,8 +210,7 @@ class NotOperationWrapper(OperationWrapper):
         return Type(type=bool)
 
 
-ARITHMETIC_OPERATORS = ('add', 'sub', 'mul', 'floordiv',
-                        'div', 'truediv', 'pow', 'mod')
+ARITHMETIC_OPERATORS = ('add', 'sub', 'mul', 'div')
 
 
 class ArithmeticOperationWrapper(BinaryOperationWrapper):
