@@ -224,7 +224,7 @@ def execute_groupby(self, contexts):
 
 
 @register_executor(requests.DistinctRequest)
-def distinct(self, contexts):
+def execute_distinct(self, contexts):
     sequence = self.subject.execute(contexts)
     seen = set()
     for element in sequence:

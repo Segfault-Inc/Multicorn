@@ -116,7 +116,8 @@ class Request(object):
             return SliceRequest(self, key)
         elif isinstance(key, int):
             return IndexRequest(self, key)
-        raise TypeError('getitem notation ("[]") is only supported for slice and integers')
+        raise TypeError('Request objects only support indexing and slicing, '
+                        'not dict-like lookup.')
 
     def __invert__(self):
         # Simplify logic when possible
@@ -220,10 +221,6 @@ class Request(object):
     def map(self, new_value):
         return MapRequest(self, as_request(new_value))
 
-    def execute(self):
-        ap = WithRealAttributes(as_chain(self)[0]).storage
-        return ap.execute(self)
-
     def sort(self, *sort_keys):
         if not sort_keys:
             # Default to comparing the element themselves, ie req.sort()
@@ -262,6 +259,10 @@ class Request(object):
 
     def distinct(self):
         return DistinctRequest(self)
+
+    def execute(self):
+        ap = WithRealAttributes(as_chain(self)[0]).storage
+        return ap.execute(self)
 
 
 class StoredItemsRequest(Request):
