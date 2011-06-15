@@ -224,12 +224,33 @@ def execute_groupby(self, contexts):
 
 
 @register_executor(requests.DistinctRequest)
-def distinct(self, contexts):
+def execute_distinct(self, contexts):
     sequence = self.subject.execute(contexts)
+    iterator = iter(sequence)
+
     seen = set()
-    for element in sequence:
-        if element not in seen:
+    for element in iterator:
+        try:
+            new = element not in seen
+        except TypeError:
+            # element is not hashable
+            break
+        if new:
             seen.add(element)
+            yield element
+    else:
+        # We got to the end of the iterator without breaking
+        return
+
+    # At least one element was not hashable, fall back on a list
+    # instead of a set. `in` is slower, but the results should be the same
+    seen = list(seen)
+    seen.append(element)
+    yield element
+    # Continue with the non hashable lemenent same iterator
+    for element in iterator:
+        if element not in seen:
+            seen.append(element)
             yield element
 
 

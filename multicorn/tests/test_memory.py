@@ -34,3 +34,24 @@ def test_all():
     assert item['id'] == 1
     assert item['name'] == u'foo'
     assert item['lastname'] == u'bar'
+
+@suite.test
+def test_optimization():
+    Corn = make_corn()
+    class NotOptimizedError(Exception):
+        pass
+    def new_all():
+        raise NotOptimizedError
+    Corn._all = new_all
+    item = (Corn.all.filter(c.id == 1).one().execute())
+    assert item['id'] == 1
+    assert item['name'] == u'foo'
+    assert item['lastname'] == u'bar'
+    try:
+        item = Corn.all.filter((c.id == 1) | (c.name == 'foo')).one().execute()
+        assert False, "An exception should have been raised"
+    except NotOptimizedError:
+        pass
+    item = list(Corn.all.filter((c.id == 1) & (c.name == 'baz')).execute())
+    assert len(item) == 0
+

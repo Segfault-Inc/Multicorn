@@ -36,6 +36,16 @@ def assert_value(request, expected):
 
 
 @suite.test
+def test_attributes():
+    assert repr(c.foo) == "Attribute[Context[0], 'foo']"
+    with attest.raises(AttributeError):
+        c.foo = 4
+    assert_value(literal({'foo': 12}).foo, 12)
+    with attest.raises(KeyError):
+        execute(literal({'foo': 12}).bar)
+
+
+@suite.test
 def test_logical_simplifications():
     for true, false in ((True, False), (1, 0), ('a', '')):
         assert repr(c.foo & true) == "Attribute[Context[0], 'foo']"
@@ -289,6 +299,12 @@ def test_indexing_slicing():
     with attest.raises(ValueError):
         execute(SOURCE.map(c.price)[::0])
 
+    with attest.raises(TypeError):
+        execute(SOURCE.map(c.price)[1:, 4])
+
+    with attest.raises(TypeError):
+        execute(SOURCE.map(c.price)['a'])
+
 
 @suite.test
 def test_aggregates():
@@ -298,3 +314,35 @@ def test_aggregates():
     assert_value(SOURCE.map(c.price).sum(), 27)
     assert_value(SOURCE.map(c.price).min(), 5)
     assert_value(SOURCE.map(c.price).max(), 12)
+
+
+@suite.test
+def test_distinct():
+    assert_list(SOURCE.sort(c.price).map(c.toto), ['bar', 'foo', 'bar'])
+    assert_list(SOURCE.sort(c.price).map(c.toto).distinct(), ['bar', 'foo'])
+
+    # Non-hashable values: XXX not supported yet.
+    assert_list(
+        literal([
+            {'foo': 4, 'bar': 5},
+            {'foo': 4, 'bar': 143},
+            {'foo': 4, 'bar': 5},
+        ]).distinct(),
+        [
+            {'foo': 4, 'bar': 5},
+            {'foo': 4, 'bar': 143},
+        ]
+    )
+
+
+@suite.test
+def test_one():
+    assert_value(SOURCE.filter(c.toto == 'foo').map(c.price).one(), 10)
+
+    with attest.raises(IndexError) as error:
+        execute(SOURCE.filter(c.toto == 'fizzbuzz').one())
+    assert error.message == '.one() on an empty sequence'
+
+    with attest.raises(ValueError) as error:
+        execute(SOURCE.filter(c.toto == 'bar').one())
+    assert error.message == 'More than one element in .one()'
