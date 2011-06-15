@@ -322,17 +322,17 @@ def test_distinct():
     assert_list(SOURCE.sort(c.price).map(c.toto).distinct(), ['bar', 'foo'])
 
     # Non-hashable values: XXX not supported yet.
-#    assert_list(
-#        literal([
-#            {'foo': 4, 'bar': 5},
-#            {'foo': 4, 'bar': 143},
-#            {'foo': 4, 'bar': 5},
-#        ]).distinct(),
-#        [
-#            {'foo': 4, 'bar': 5},
-#            {'foo': 4, 'bar': 143},
-#        ]
-#    )
+    assert_list(
+        literal([
+            {'foo': 4, 'bar': 5},
+            {'foo': 4, 'bar': 143},
+            {'foo': 4, 'bar': 5},
+        ]).distinct(),
+        [
+            {'foo': 4, 'bar': 5},
+            {'foo': 4, 'bar': 143},
+        ]
+    )
 
 
 @suite.test
