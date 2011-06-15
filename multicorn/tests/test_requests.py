@@ -392,3 +392,16 @@ def test_groupby():
             (6, 6),
         ]
     )
+
+    # group by non-hashables
+    assert_list(
+        literal([
+            {'foo': 4, 'bar': 5},
+            {'foo': 4, 'bar': 143},
+            {'foo': 4, 'bar': 5},
+        ]).groupby(c).map((c.grouper, c.elements.len())),
+        [
+            ({'foo': 4, 'bar': 5}, 2),
+            ({'foo': 4, 'bar': 143}, 1),
+        ]
+    )

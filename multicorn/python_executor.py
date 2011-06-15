@@ -214,12 +214,40 @@ def execute_filter(self, contexts):
 @register_executor(requests.GroupbyRequest)
 def execute_groupby(self, contexts):
     sequence = self.subject.execute(contexts)
+    iterator = iter(sequence)
     groups = {}
-    for element in sequence:
+    for element in iterator:
         key = self.key.execute(contexts + (element,))
-        groups.setdefault(key, []).append(element)
+        try:
+            elements = groups.setdefault(key, [])
+        except TypeError:
+            # key is not hashable
+            break
+        elements.append(element)
+    else:
+        for grouper, elements in groups.iteritems():
+            yield {'grouper': grouper, 'elements': elements}
+        return
 
-    for grouper, elements in groups.iteritems():
+    # We have at least one non-hashable key/grouper, we can not use a dict
+    # anymore.
+    groups = groups.items() # as a list.
+    # We got here on a non-hashable key, so it can not be in groups yet.
+    groups.append((key, [element]))
+
+    # Continue the same iterator
+    for element in iterator:
+        key = self.key.execute(contexts + (element,))
+        # Search the list for this key/grouper.
+        for grouper, elements in groups:
+            if grouper == key:
+                break
+        else:
+            elements = []
+            groups.append((key, elements))
+        elements.append(element)
+
+    for grouper, elements in groups:
         yield {'grouper': grouper, 'elements': elements}
 
 
