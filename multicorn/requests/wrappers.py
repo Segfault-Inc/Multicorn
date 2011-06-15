@@ -47,12 +47,13 @@ class RequestWrapper(object):
         return '%s(%r)' % (self.__class__.__name__, self.wrapped_request)
 
     def used_types(self, contexts=()):
-        return {self.return_type(contexts): self}
+        return {self.return_type(contexts): set((self,))}
 
     def merge_dict(self, left, right):
         for type, expr in right.iteritems():
-            exprs = left.setdefault(type, [])
-            exprs.append(expr)
+            exprs = left.setdefault(type, set())
+            exprs.add(self)
+            left[type] = exprs | expr
 
 
 @RequestWrapper.register_wrapper(requests.StoredItemsRequest)
@@ -182,12 +183,13 @@ class AttributeWrapper(OperationWrapper):
             return Type(type=object)
 
     def used_types(self, contexts=()):
-        return {self.return_type(contexts): self}
+        return {self.return_type(contexts): set((self,))}
 
-
+@RequestWrapper.register_wrapper(requests.BinaryOperationRequest)
 class BooleanOperationWrapper(BinaryOperationWrapper):
     def return_type(self, contexts=()):
         return Type(type=bool)
+
 
 # Only the binary ones, exclude invert.
 BOOL_OPERATORS = ('and', 'or', 'eq', 'ne', 'lt', 'gt', 'le', 'ge')

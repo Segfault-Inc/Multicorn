@@ -1,9 +1,16 @@
 from attest import Tests, assert_hook
 import attest
 
+from multicorn import Multicorn
+
+from multicorn.corns.memory import Memory
 from multicorn.requests import CONTEXT as c
-from multicorn.requests.requests import as_request, WithRealAttributes
-from multicorn.requests.requests import as_chain, cut_request
+from multicorn.declarative import declare, Property
+from multicorn.requests.wrappers import RequestWrapper, LiteralWrapper,\
+        EqWrapper, OrWrapper
+from multicorn.requests.requests import as_chain, cut_request, LiteralRequest,\
+        LtRequest, WithRealAttributes, as_request
+from multicorn.requests.helpers import split_predicate, isolate_values
 from multicorn.python_executor import PythonExecutor
 
 
@@ -33,3 +40,74 @@ def test_simple_helpers():
     second_part_result = list(
         PythonExecutor.from_request(request).execute((first_part_result,)))
     assert full_result == second_part_result
+
+def make_corn():
+    mc = Multicorn()
+
+    @mc.register
+    @declare(Memory, identity_properties=("id",))
+    class Corn(object):
+        id = Property(type=int)
+        name = Property(type=unicode)
+        lastname = Property(type=unicode)
+    return Corn
+
+
+@suite.test
+def test_split_predicate():
+    Corn = make_corn()
+    filter = RequestWrapper.from_request(Corn.all.filter(c.name == 'foo'))
+    # Test splitting a predicate on no property
+    selfpred, other = split_predicate(filter, [])
+    assert isinstance(selfpred, LiteralWrapper)
+    assert selfpred.value == True
+    assert other == filter.predicate
+    # Test splitting a predicate on the only property
+    selfpred, other = split_predicate(filter, [Corn.properties['name']])
+    assert isinstance(other, LiteralWrapper)
+    assert other.value == True
+    assert selfpred == filter.predicate
+    # Test that 'And' request are properly separated
+    filter = RequestWrapper.from_request(Corn.all.filter((c.name == 'foo') & (c.lastname == 'bar')))
+    selfpred, other = split_predicate(filter, [Corn.properties['name']])
+    assert isinstance(selfpred, EqWrapper)
+    assert isinstance(other, EqWrapper)
+    assert selfpred.subject.attr_name == 'name'
+    assert selfpred.other.value == 'foo'
+    assert other.subject.attr_name == 'lastname'
+    assert other.other.value == 'bar'
+    # Test that 'Or' request are kept unchanged
+    filter = RequestWrapper.from_request(Corn.all.filter((c.name == 'foo') | (c.lastname == 'bar')))
+    selfpred, other = split_predicate(filter, [])
+    assert isinstance(selfpred, LiteralWrapper)
+    assert selfpred.value == True
+    assert other == filter.predicate
+    # Test that Combinations of Or and And are properly managed
+    filter = RequestWrapper.from_request(Corn.all.filter(((c.lastname == 'bar') | (c.id < 4)) & (c.name == 'foo')))
+    selfpred, other = split_predicate(filter, [Corn.properties['id'], Corn.properties['name']])
+    assert isinstance(selfpred, EqWrapper)
+    assert isinstance(other, OrWrapper)
+    assert selfpred.subject.attr_name == 'name'
+    assert selfpred.other.value == 'foo'
+
+
+@suite.test
+def test_isolate_values():
+    Corn = make_corn()
+    filter = RequestWrapper.from_request(Corn.all.filter(c.lastname == 'foo'))
+    context = (filter.subject.return_type().inner_type,)
+    values, remainder = isolate_values(filter.predicate.wrapped_request, context)
+    assert values == {'lastname': 'foo'}
+    assert isinstance(remainder, LiteralRequest)
+    assert RequestWrapper.from_request(remainder).value == True
+    filter = RequestWrapper.from_request(Corn.all.filter((c.lastname == 'foo') & (c.id < 3)))
+    context = (filter.subject.return_type().inner_type,)
+    values, remainder = isolate_values(filter.predicate.wrapped_request, context)
+    assert values == {'lastname': 'foo'}
+    print remainder
+    assert isinstance(remainder, LtRequest)
+    assert RequestWrapper.from_request(remainder).subject.attr_name== 'id'
+    assert RequestWrapper.from_request(remainder).other.value == 3
+
+
+

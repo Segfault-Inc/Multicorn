@@ -38,7 +38,7 @@ def cut_request(request, after):
     last request in the left hand side."""
     chain = as_chain(request)
     if chain[-1] is after:
-        return chain, []
+        return chain[-1], ContextRequest()
     for idx, request_part in enumerate(chain):
         if request_part is after:
             empty_context = ContextRequest()
