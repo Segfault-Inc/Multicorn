@@ -278,6 +278,17 @@ def execute_or(self, contexts):
     return bool(left or right)
 
 
+@register_executor(requests.LenRequest)
+def execute_len(self, contexts):
+    subject = self.subject.execute(contexts)
+    try:
+        return len(subject)
+    except TypeError:
+        # XXX this consumes the iterable. This may be unexpected if a
+        # generator is used more than once.
+        return sum(1 for element in subject)
+
+
 def simple_executor(class_, function):
     @register_executor(class_)
     def execute(self, contexts):
@@ -288,7 +299,6 @@ simple_executor(requests.NotRequest, operator.not_)
 simple_executor(requests.SumRequest, sum)
 simple_executor(requests.MinRequest, min)
 simple_executor(requests.MaxRequest, max)
-simple_executor(requests.LenRequest, len)  # TODO: handle generators
 
 del register_executor, simple_executor
 

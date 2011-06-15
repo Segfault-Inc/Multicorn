@@ -294,6 +294,7 @@ def test_indexing_slicing():
 def test_aggregates():
     assert_list([SOURCE.len()], [3])
     assert_value(SOURCE.len(), 3)
+    assert_value(SOURCE.filter(c.toto == 'bar').len(), 2)
     assert_value(SOURCE.map(c.price).sum(), 27)
     assert_value(SOURCE.map(c.price).min(), 5)
     assert_value(SOURCE.map(c.price).max(), 12)
