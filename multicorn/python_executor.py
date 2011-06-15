@@ -4,8 +4,8 @@
 
 import sys
 import operator
-from itertools import islice
-from collections import Mapping, deque
+from itertools import islice, chain
+from collections import Mapping, Iterable, deque
 
 from .requests import requests
 from .requests import wrappers
@@ -281,6 +281,10 @@ def execute_add(self, contexts):
         result = dict(left)
         result.update(right)
         return result
+    if (isinstance(left, Iterable) and isinstance(right, Iterable)
+            and not isinstance(left, (basestring, Mapping))
+            and not isinstance(right, (basestring, Mapping))):
+        return chain(left, right)
     else:
         return left + right
 

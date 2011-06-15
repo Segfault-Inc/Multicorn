@@ -163,6 +163,16 @@ def test_arithmetic():
 
 
 @suite.test
+def test_fancy_add():
+    assert_list(literal([1, 3]) + [42, 9], [1, 3, 42, 9])
+    assert_value(
+        literal({'foo': 3, 'bar': 5}) + {'bar': 8, 'buzz': 13},
+        {'foo': 3, 'bar': 8, 'buzz': 13}
+    )
+    assert_list(SOURCE.map(c.price) + ['lipsum'], [10, 12, 5, 'lipsum'])
+
+
+@suite.test
 def test_map():
     assert_list(
         SOURCE.map(c.price),
