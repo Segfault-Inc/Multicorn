@@ -4,8 +4,8 @@
 
 from .abstract import AbstractCorn
 from ..requests.types import Type
-from ..requests.requests import as_chain, cut_request, FilterRequest, ContextRequest
-from ..requests.helpers import split_predicate, isolate_identity_values
+from ..requests.requests import as_chain, cut_request, FilterRequest
+from ..requests.helpers import isolate_identity_values
 from ..requests.wrappers import RequestWrapper
 
 

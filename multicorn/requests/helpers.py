@@ -76,8 +76,3 @@ def isolate_identity_values(filter, id_types, contexts=()):
         return values, remainder_query
     else:
         return {}, filter
-
-
-
-
-
