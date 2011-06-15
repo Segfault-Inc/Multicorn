@@ -5,7 +5,7 @@
 from .abstract import AbstractCorn
 from ..requests.types import Type
 from ..requests.requests import as_chain, cut_request, FilterRequest, ContextRequest
-from ..requests.helpers import split_predicate, isolate_values
+from ..requests.helpers import split_predicate, isolate_identity_values
 from ..requests.wrappers import RequestWrapper
 
 
@@ -36,24 +36,10 @@ class Memory(AbstractCorn):
         # half and work only on the matching item
         if len(chain) > 1 and isinstance(chain[1], FilterRequest):
             filter, other = cut_request(request, chain[1])
-            # Wrapped filter is the actual filter
-            wrapped_filter = RequestWrapper.from_request(filter)
-            # Split the predicate: what concerns exclusively our
-            # identity properties, and what concern something else
-            context = (wrapped_filter.subject.return_type().inner_type,)
             id_types = [self.properties[name] for name in self.identity_properties]
-            self_filter, other_filter = split_predicate(wrapped_filter,
-                    id_types)
-            # Isolate the values defined in a "Eq" comparison
-            # Remainder is a query containing nor "Eq" comparison used
-            # in the filter
-            values, remainder = isolate_values(self_filter.wrapped_request, context)
-            # If the provided values are not sufficient to extract an
-            # item, get out of here.
+            values, remainder_query = isolate_identity_values(filter, id_types)
             if all(idprop  in values for idprop in self.identity_properties):
                 # Rebuild what is not processed in the values
-                remainder_query = ContextRequest().filter(remainder).filter(
-                        other_filter.wrapped_request)
                 if len(as_chain(other)) == 1:
                     # No need to copy replace, just substitute the value
                     # because we had nothing after the filter
