@@ -97,5 +97,5 @@ class AbstractCorn(object):
     # Can be overridden to optimize
     def execute(self, request):
         """Execute the given query and return an iterable of items."""
-        wrapped_query = self.RequestWrapper.wrap(request)
-        return wrapped_query.execute(self._all())
+        wrapped_query = self.RequestWrapper.from_request(request)
+        return wrapped_query.execute((self._all(),))

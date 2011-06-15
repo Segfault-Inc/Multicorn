@@ -4,7 +4,8 @@
 
 
 from __future__ import print_function
-from ..abstract import AbstractCorn
+from multicorn.requests.types import Type, Dict, List
+from .abstract import AbstractCorn
 
 try:
     import pymongo
@@ -25,35 +26,27 @@ class MongoCorn(AbstractCorn):
         self.hostname = hostname
         self.port = port
         self.database = database
-        connection = pymongo.Connection(hostname, port)
-        db = connection[database]
-        self.collection = db[collection]
+        self.connection = pymongo.Connection(hostname, port)
+        self.db = self.connection[database]
+        self.collection = self.db[collection]
+
+    def register(self, name, type=object, **kwargs):
+        self.properties[name] = Type(
+            corn=self, name=name, type=type)
 
     def _all(self):
         """Return an iterable of all items in this access points."""
         for mongo_item in self.collection.find():
             item = {}
-            for prop in self.properties.values():
-                if prop.relation != "one-to-many":
-                    item[prop.name] = mongo_item[prop.name]
+            for name in self.properties.keys():
+                item[name] = mongo_item[name]
             item = self.create(item)
             yield item
 
     def delete(self, item):
-        nosql_dict = {}
-        for key, value in item.items():
-            nosql_key = self.properties[key].nosql_name
-            nosql_dict[nosql_key] = value
-        self.collection.remove(nosql_dict)
+        self.collection.remove({key: value for key, value in item.items()})
 
     def save(self, item):
-        nosql_dict = {}
-        for key, value in item.items():
-            if self.properties[key].relation != "one-to-many":
-                nosql_key = self.properties[key].nosql_name
-                if self.properties[key].type == Item and value is not None:
-                    nosql_dict[nosql_key] = value.reference_repr()
-                else:
-                    nosql_dict[nosql_key] = value
-        self.collection.save(nosql_dict)
+        # TODO: Don't always save lazv values -> ?
+        self.collection.save({key: value for key, value in item.items()})
         item.saved = True
