@@ -68,6 +68,7 @@ def test_boolean_logic():
     true = literal(1) == 1
     false = literal(1) == 0
 
+    print true, ~true
     assert_value(~true, False)
     assert_value(~false, True)
 
@@ -133,6 +134,22 @@ def test_comparaisons():
     assert_value(3 >= four, False)
     assert_value(4 >= four, True)
     assert_value(5 >= four, True)
+
+
+@suite.test
+def test_arithmetic():
+    four = literal(3) + 1
+    assert_value(four, 4)
+    assert_value(-four, -4)
+    assert_value(four + 3, 7)
+    assert_value(3 + four, 7)
+    assert_value(four - 12, -8)
+    assert_value(12 - four, 8)
+    assert_value(four * 4, 16)
+    assert_value(4 * four, 16)
+    # TODO: test with and without from __future__ import division
+    assert_value(four / 8, .5)
+    assert_value(12 / four, 3)
 
 
 @suite.test

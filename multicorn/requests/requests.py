@@ -47,8 +47,6 @@ def cut_request(request, after):
     raise ValueError("The given delimitor request is not in the request")
 
 
-
-
 class WithRealAttributes(object):
     """
     Wrap a Request object to allow access to its attributes without going
@@ -67,7 +65,6 @@ class WithRealAttributes(object):
 
     def obj_type(self):
         return type(self._wrapped_obj)
-
 
 
 def self_with_attrs(method):
@@ -120,14 +117,6 @@ class Request(object):
         elif isinstance(key, int):
             return IndexRequest(self, key)
         raise TypeError('getitem notation ("[]") is only supported for slice and integers')
-
-    # XXX do we need this?
-    def __pos__(self):
-        """+some_req is some_req, a no-op."""
-        return self
-
-    def __neg__(self):
-        return NegRequest(self)
 
     def __invert__(self):
         # Simplify logic when possible
@@ -193,8 +182,11 @@ class Request(object):
     def __rdiv__(self, other): return DivRequest(as_request(other), self)
     def __rtruediv__(self, other): return DivRequest(as_request(other), self)
 
-    def __contains__(self, other):
-        return ContainsRequest(self, as_request(other))
+    def __neg__(self):
+        return NegRequest(self)
+
+    # __contains__ can be overriden, but it is useless here as its result is
+    # converted to a bool: `some_req in other_req` can not be a Request.
 
     @self_with_attrs
     def __repr__(self):
@@ -489,14 +481,6 @@ class DivRequest(BinaryOperationRequest):
     `from __future__ import divison` is present.
     """
     operator_name = 'truediv'
-
-
-class ContainsRequest(BinaryOperationRequest):
-    """
-    some_req in other_req is ContainsRequest(other_req, some_req)
-    (Notice the parameter order.)
-    """
-    operator_name = 'contains'
 
 
 class AndRequest(BinaryOperationRequest):

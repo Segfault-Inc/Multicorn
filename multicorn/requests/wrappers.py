@@ -190,7 +190,7 @@ class BooleanOperationWrapper(BinaryOperationWrapper):
         return Type(type=bool)
 
 # Only the binary ones, exclude invert.
-BOOL_OPERATORS = ('and', 'or', 'contains', 'eq', 'ne', 'lt', 'gt', 'le', 'ge')
+BOOL_OPERATORS = ('and', 'or', 'eq', 'ne', 'lt', 'gt', 'le', 'ge')
 
 
 def defclass(operator, base_class):
