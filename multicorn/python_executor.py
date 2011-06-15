@@ -4,8 +4,8 @@
 
 import sys
 import operator
-from itertools import islice
-from collections import Mapping, deque
+from itertools import islice, chain
+from collections import Mapping, Iterable, deque
 
 from .requests import requests
 from .requests import wrappers
@@ -226,10 +226,31 @@ def execute_groupby(self, contexts):
 @register_executor(requests.DistinctRequest)
 def execute_distinct(self, contexts):
     sequence = self.subject.execute(contexts)
+    iterator = iter(sequence)
+
     seen = set()
-    for element in sequence:
-        if element not in seen:
+    for element in iterator:
+        try:
+            new = element not in seen
+        except TypeError:
+            # element is not hashable
+            break
+        if new:
             seen.add(element)
+            yield element
+    else:
+        # We got to the end of the iterator without breaking
+        return
+
+    # At least one element was not hashable, fall back on a list
+    # instead of a set. `in` is slower, but the results should be the same
+    seen = list(seen)
+    seen.append(element)
+    yield element
+    # Continue with the non hashable lemenent same iterator
+    for element in iterator:
+        if element not in seen:
+            seen.append(element)
             yield element
 
 
@@ -260,6 +281,10 @@ def execute_add(self, contexts):
         result = dict(left)
         result.update(right)
         return result
+    if (isinstance(left, Iterable) and isinstance(right, Iterable)
+            and not isinstance(left, (basestring, Mapping))
+            and not isinstance(right, (basestring, Mapping))):
+        return chain(left, right)
     else:
         return left + right
 
