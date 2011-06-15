@@ -7,7 +7,6 @@ from multicorn.requests.requests import as_chain, cut_request
 from multicorn.python_executor import PythonExecutor
 
 
-
 suite = Tests()
 
 

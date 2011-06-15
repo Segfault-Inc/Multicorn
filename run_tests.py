@@ -1,3 +1,4 @@
 #!/usr/bin/env python
-from multicorn.tests import all
-all.main()
+from attest import Tests
+
+Tests("multicorn.tests").main()
