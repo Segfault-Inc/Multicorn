@@ -246,24 +246,54 @@ def test_sort():
 
 
 @suite.test
+def test_indexing_slicing():
+    # Repeated for context.
+    assert_list(SOURCE.map(c.price), [10, 12, 5])
+
+    assert_value(SOURCE.map(c.price)[0], 10)
+    assert_value(SOURCE.map(c.price)[2], 5)
+    assert_value(SOURCE.map(c.price)[-3], 10)
+    assert_value(SOURCE.map(c.price)[-1], 5)
+    with attest.raises(IndexError):
+        execute(SOURCE.map(c.price)[9])
+    with attest.raises(IndexError):
+        execute(SOURCE.map(c.price)[-12])
+
+    assert_list(SOURCE.map(c.price)[1:], [12, 5])
+    assert_list(SOURCE.map(c.price)[1:7], [12, 5])
+    assert_list(SOURCE.map(c.price)[1:2], [12])
+
+    assert_list(SOURCE.map(c.price)[-2:], [12, 5])
+    assert_list(SOURCE.map(c.price)[-2:7], [12, 5])
+    assert_list(SOURCE.map(c.price)[-11:], [10, 12, 5])
+    assert_list(SOURCE.map(c.price)[-11:7], [10, 12, 5])
+    assert_list(SOURCE.map(c.price)[-11:2], [10, 12])
+    assert_list(SOURCE.map(c.price)[-2:2], [12])
+    assert_list(SOURCE.map(c.price)[1:-1], [12])
+    assert_list(SOURCE.map(c.price)[-2:-1], [12])
+
+    assert_list(SOURCE.map(c.price)[::2], [10, 5])
+    assert_list(SOURCE.map(c.price)[1::14], [12])
+    # TODO: triple check these, I’m not sure what’s the expected behavior.
+    assert_list(SOURCE.map(c.price)[::-1], [5, 12, 10])
+    assert_list(SOURCE.map(c.price)[1::-1], [5, 12])
+    assert_list(SOURCE.map(c.price)[:2:-1], [12, 10])
+
+    # I thought this would be [5, 12] but meh
+    assert [10, 12, 5][-2::-1] == [12, 10]
+    assert_list(SOURCE.map(c.price)[-2::-1], [12, 10])
+
+    assert [10, 12, 5][:-1:-1] == [] # XXX WTF?
+    assert_list(SOURCE.map(c.price)[:-1:-1], [])
+
+    with attest.raises(ValueError):
+        execute(SOURCE.map(c.price)[::0])
+
+
+@suite.test
 def test_aggregates():
-    assert_list(
-        [SOURCE.len()],
-        [3]
-    )
-    assert_value(
-        SOURCE.len(),
-        3
-    )
-    assert_value(
-        SOURCE.map(c.price).sum(),
-        27
-    )
-    assert_value(
-        SOURCE.map(c.price).min(),
-        5
-    )
-    assert_value(
-        SOURCE.map(c.price).max(),
-        12
-    )
+    assert_list([SOURCE.len()], [3])
+    assert_value(SOURCE.len(), 3)
+    assert_value(SOURCE.map(c.price).sum(), 27)
+    assert_value(SOURCE.map(c.price).min(), 5)
+    assert_value(SOURCE.map(c.price).max(), 12)

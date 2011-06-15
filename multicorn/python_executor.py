@@ -4,7 +4,8 @@
 
 import sys
 import operator
-from collections import Mapping
+from itertools import islice
+from collections import Mapping, deque
 
 from .requests import requests
 from .requests import wrappers
@@ -101,9 +102,29 @@ def execute_slice(self, contexts):
     try:
         return subject[self.slice]
     except TypeError:
-        # subject could be an iterable without a __getitem__ like a generator
-        # TODO: implement indexing and slicing
-        raise
+        # subject could be an iterable but not a sequence, eg. a generator
+        # XXX this consumes the iterable. This may be unexpected if a
+        # generator is used more than once.
+        start = self.slice.start
+        stop = self.slice.stop
+        step = self.slice.step
+
+        if start is None:
+            start = 0
+        if step is None:
+            step = 1
+        if step == 0:
+            raise ValueError('Step can not be zero for slicing.')
+
+        if start >= 0 and (stop is None or stop >= 0) and step > 0:
+            return islice(subject, start, stop, step)
+        elif start >= 0 and (stop is None or stop >= 0):
+            # step < 0  =>  step > 0
+            step = -step
+            return reversed(list(islice(subject, start, stop, step)))
+        else:
+            return list(subject)[self.slice]
+
 
 @register_executor(requests.IndexRequest)
 def execute_index(self, contexts):
@@ -111,9 +132,25 @@ def execute_index(self, contexts):
     try:
         return subject[self.index]
     except TypeError:
-        # subject could be an iterable without a __getitem__ like a generator
-        # TODO: implement indexing and slicing
-        raise
+        # subject could be an iterable but not a sequence, eg. a generator
+        # XXX this consumes the iterable. This may be unexpected if a
+        # generator is used more than once.
+        if self.index >= 0:
+            iterator = iter(subject)
+            try:
+                for i in xrange(self.index):
+                    # Conusme previous elements.
+                    next(iterator)
+                return next(iterator)
+            except StopIteration:
+                raise IndexError('Index %i is out of range.' % self.index)
+        else:
+            # self.index < 0
+            index_from_end = -self.index
+            queue = deque(subject, maxlen=index_from_end)
+            if len(queue) < index_from_end:
+                raise IndexError('Index %i is out of range.' % self.index)
+            return queue[0]
 
 
 @register_executor(requests.SortRequest)
