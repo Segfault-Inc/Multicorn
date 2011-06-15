@@ -30,7 +30,7 @@ def make_corn():
 
 def unmake_corn(Corn):
     Corn.db.drop_collection(Corn.collection)
-    assert Corn.all.len.execute() == 0
+    assert Corn.all.len().execute() == 0
 
 
 @suite.test
