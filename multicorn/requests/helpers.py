@@ -1,12 +1,11 @@
-from .requests import LiteralRequest
-from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper
+from .requests import LiteralRequest, ContextRequest
+from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper, LiteralWrapper
 from ..python_executor import execute
 
 def split_predicate(filter, types, contexts=()):
     """Takes a FilterWrapper object, and returns two predicates wrappers objects"""
     contexts = contexts + (filter.subject.return_type(contexts).inner_type,)
-    self_filter, other_filter = inner_split(filter.predicate, types, contexts)
-    return self_filter, other_filter
+    return inner_split(filter.predicate, types, contexts)
 
 def inner_split(wrapped_request, types, contexts):
     named_types = [type for type in wrapped_request.used_types(contexts).keys() if type.name]
@@ -58,3 +57,27 @@ def isolate_values(expression, contexts=()):
                 remainder &= subject_remainder
             return values, remainder
     return {}, expression.wrapped_request
+
+def isolate_identity_values(filter, id_types, contexts=()):
+    """Return values, filter such that filter contains everything
+    not concerned by the id_types in eq equality and values is a dict
+    of filtered values
+    """
+    wrapped_filter = RequestWrapper.from_request(filter)
+    contexts = contexts  + (wrapped_filter.subject.return_type().inner_type,)
+    self_filter, other_filter = inner_split(wrapped_filter.predicate, id_types, contexts)
+    # Isolate the values defined in a "Eq" comparison
+    # Remainder is a query containing nor "Eq" comparison used
+    # in the filter
+    if not isinstance(self_filter, LiteralWrapper):
+        values, remainder = isolate_values(self_filter.wrapped_request, contexts)
+        remainder_query = ContextRequest().filter(remainder).filter(
+            other_filter.wrapped_request)
+        return values, remainder_query
+    else:
+        return {}, filter
+
+
+
+
+

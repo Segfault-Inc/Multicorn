@@ -163,6 +163,16 @@ def test_arithmetic():
 
 
 @suite.test
+def test_fancy_add():
+    assert_list(literal([1, 3]) + [42, 9], [1, 3, 42, 9])
+    assert_value(
+        literal({'foo': 3, 'bar': 5}) + {'bar': 8, 'buzz': 13},
+        {'foo': 3, 'bar': 8, 'buzz': 13}
+    )
+    assert_list(SOURCE.map(c.price) + ['lipsum'], [10, 12, 5, 'lipsum'])
+
+
+@suite.test
 def test_map():
     assert_list(
         SOURCE.map(c.price),
@@ -346,3 +356,52 @@ def test_one():
     with attest.raises(ValueError) as error:
         execute(SOURCE.filter(c.toto == 'bar').one())
     assert error.message == 'More than one element in .one()'
+
+
+@suite.test
+def test_groupby():
+    assert_list(
+        SOURCE.groupby(c.tata).sort(-c.grouper),
+        [
+            {'grouper': 42, 'elements': [
+                dict(toto='foo', tata=42, price=10, tax=D('1.196')),
+                dict(toto='bar', tata=42, price=5, tax=D('1.196')),
+             ]},
+            {'grouper': 6, 'elements': [
+                dict(toto='bar', tata=6, price=12, tax=1),
+             ]},
+        ]
+    )
+    result = list(execute(
+        SOURCE.groupby(c.tata).sort(-c.grouper).map(
+            c + {'elements': c.elements.map(-c.price * c.tax + c(-1).grouper)}
+        )
+    ))
+    for line in result:
+        line['elements'] = list(line['elements'])
+    assert result == [
+        {'grouper': 42, 'elements': [D('30.04'), D('36.02')]},
+        {'grouper': 6, 'elements': [-6]},
+    ]
+    assert_list(
+        SOURCE.groupby(c.tata).sort(-c.grouper).map(
+            (c.grouper, c.elements.map(c.price).sum() - c.grouper)
+        ),
+        [
+            (42, -27),
+            (6, 6),
+        ]
+    )
+
+    # group by non-hashables
+    assert_list(
+        literal([
+            {'foo': 4, 'bar': 5},
+            {'foo': 4, 'bar': 143},
+            {'foo': 4, 'bar': 5},
+        ]).groupby(c).map((c.grouper, c.elements.len())),
+        [
+            ({'foo': 4, 'bar': 5}, 2),
+            ({'foo': 4, 'bar': 143}, 1),
+        ]
+    )
