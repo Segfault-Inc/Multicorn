@@ -1,0 +1,131 @@
+Requests
+========
+
+Introduction
+~~~~~~~~~~~~
+
+Access to Multicorn data works with Request objects. Each request *represents*
+a value, but building requests does not do any work. The represented value
+is only computed and returned when the request is *executed* with the
+`execute()` method. With some care, the same request object can be executed
+more than once.
+
+Basic requests
+--------------
+
+There are three kinds of basic requests. See the reference for each of them
+for details.
+
+* The `multicorn.requests.literal` function takes any Python object and
+  returns a request object that represents it, without any.
+* Every `Storage` instance has a `all` attribute, a request that represents
+  the sequence of all its items. The order of this sequence is generally
+  undefined. When executing this request more than once, the results will
+  change if items were added, removed or modified between executions.
+* `multicorn.requests.CONTEXT` is a special request that can not be used by
+  itself, but represents the current element in methods such as `filter` and
+  `map`.
+
+TODO: links to relevant reference
+
+Composite requests
+------------------
+
+Requests can be transformed and combined with operators and methods.
+Assuming that `some_req` and `other_req` are request objects, one can use
+methods as in `some_req.map(other_req)` and operators as in
+`some_req == other_req` or `some_req.clients[:5]`.
+All of these return a new request object that represent a value based on
+the values represented by their operands or arguments.
+
+See the reference below to see what operators and methods are available
+and their meanings.
+
+TODO: links to relevant reference
+
+Implicit literal requests
+-------------------------
+
+Non-request objects are converted into requests when a request is expected.
+Eg. `some_req == 4` is equivalent to `some_req == literal(4)`. This process
+goes into lists, tuples and dicts and convert their content:
+`some_req + [other_req, 4]` is equivalent to
+`some_req + [other_req, literal(4)]`.
+
+Sequences and iterables
+-----------------------
+
+When this document says that a request represents a sequence, the only
+guarantee about the result when that request is executed is that the result
+is iterable (ie. can be used in a `for` loop). This iterable may not be a
+Python sequence that can be indexed (as in `result[3]`) or iterated more
+than once.
+
+Multicorn will actually try to use generators instead of lists where possible
+so that the end user can iterate over the results of a large sequence-request
+without first having a list of all results built in memory.
+
+It is the end user’s responsibility to build a list (eg.
+`results = list(some_req.execute())` if they want to use indexing or iterate
+more than once.
+
+Reference
+~~~~~~~~~
+
+Basic requests
+--------------
+
+Function `multicorn.requests.literal(obj)`
+    Return a request that represents literally the given object.
+
+        >>> literal(42).execute()
+        42
+
+Function `multicorn.requests.as_request(obj)`
+    Convert the given object into a request. Request objects are returned
+    unchanged. For lists, tuples and dicts, the values are converted
+    recursively and a new list, tuple or dict is returned. Other objects
+    are converted to a literal request.
+
+Attribute `all` of `Storage` objects
+    A request object that represents the sequence of all items in this
+    storage. The result of executing this request will change when items
+    are added, removed, or modified in the storage.
+
+The CONTEXT object.
+    For brevity, users can give this object a shorter name::
+
+        >>> from multicorn.requests import CONTEXT as c
+
+    This request represent the current *context*. It can not be used by itself
+    but only in situations that define a context. For example, in the `filter`
+    and `map` methods (see below) the context is the current element of
+    filtered or mapped sequence.
+
+        >>> literal([3, 5, 8]).map(c * 2).execute()
+        [6, 10, 16]
+
+    In nested contexts (eg. a `map` in a `map`), the CONTEXT object can
+    be called with a negative integer as the single argument to access outer
+    contexts. The integer tells how many levels of nesting to traverse.
+
+        >>> companies = [{'name': 'c1', 'employees': ['a', 'b']},
+        ...              {'name': 'c2', 'employees': ['d']}]
+        >>> req = literal(companies).map(c.employees.map(c + '@' + c(-1).name))
+        >>> req.execute()
+        [['a@c1', 'b@c1'], ['d@c2']]
+
+    In the first map, `c` represents a *company* (a dict). In the inner map
+    it represents an *employee* (a string), while `c(-1)` is the outer context
+    and represents the company.
+
+
+Operators
+---------
+
+TODO
+
+Methods
+-------
+
+TODO
