@@ -14,7 +14,6 @@ from multicorn.requests.helpers import split_predicate, isolate_values
 from multicorn.python_executor import PythonExecutor
 
 
-
 suite = Tests()
 
 

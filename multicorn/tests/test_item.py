@@ -52,12 +52,10 @@ def test_item():
     assert baz_loader.calls == 0
     # With assert_hooks, this is evaluated twice
     # Storing in a variable
-    baz = item['baz']
-    assert baz == 8
+    assert item['baz'] == 8
     # Get a second time.
     assert item['foo'] == 3
-    baz = item['baz']
-    assert baz == 8
+    assert item['baz'] == 8
     # The loader was called twice.
     assert baz_loader.calls == 2
 

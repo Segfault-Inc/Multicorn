@@ -1,6 +1,6 @@
 from __future__ import print_function
 from ..abstract import AbstractCorn
-from . import dialect
+from . import dialects
 
 try:
     import sqlalchemy

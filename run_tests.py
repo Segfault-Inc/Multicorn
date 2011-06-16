@@ -1,3 +1,6 @@
 #!/usr/bin/env python
-from multicorn.tests import all
-all.main()
+from attest import Tests
+from attest.hook import AssertImportHook
+
+with AssertImportHook():
+    Tests("multicorn.tests").main()
