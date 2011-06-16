@@ -123,9 +123,133 @@ The CONTEXT object.
 Operators
 ---------
 
-TODO
+On every binary operator such as `a + b`, if only one of a or b is a request
+the other is converted to a request [TODO link to Implicit literal requests].
+
+Arithmetic
+..........
+
+The four arithmetic operators can be used on requests that represent numbers:
+`a + b`, `a - b`, `a * b`, `a / b`. The arithmetic negation `-a` is also
+available. The result is a request that represent that operation.
+The division is always a true (non truncating) division whether or not you
+have `from __future__ import division`.
+
+The addition `a + b` works not only on numbers but also on strings, sequences
+(list-likes) and mappings (dict-likes). Like in Python, adding strings or
+sequences does a concatenation. Unlike Python, the addition also works with
+mappings and returns a dict with key/value pairs from both operands. If the
+same key appears in both operands, the value from the right operand is used.
+In other words, `a + b` on mappings is the same as
+`c = dict(a); c.update(b); return c`.
+
+Comparisons
+...........
+
+Requests can also be compared: `a == b`, `a != b`, `a > b`, `a < b`, `a >= b`,
+`a <= b`. These return a request that represents the boolean result of the
+comparison.
+
+Boolean logic
+.............
+
+One can use boolean logic on requests that represent boolean values:
+`a & b`, `a | b` and `~a` are requests the respectively represent
+the logical *and*, *or* and *not*. In Python these operators are used for
+bit-wise logic but on requests their meaning is changed to boolean logic.
+
+Attribute syntax / Mapping access
+.................................
+
+On a request that represent a mapping (dict-like), *attributes* represent
+a lookup in that mapping, using the attribute name as a key:
+
+    >>> req = literal({'firstname': 'Anna'})
+    >>> req2 = req.firstname
+    >>> req2.execute()
+    'Anna'
+
+There is no syntax with requests to access non-string keys or string keys
+that are not a valid Python identifier.
+
+These attributes can not be assigned to. `req.firstname = 'Alfred'` will raise
+an error.
+
+Indexing and slicing
+....................
+
+Requests that represent a sequence [TODO link to Sequences and iterables] can
+be indexed and sliced like Python lists, returning a request that represent
+the designated element or sub-sequence respectively:
+
+    >>> req = literal([3, 5, 8, 13, 21])
+    >>> req[1].execute()
+    5
+    >>> req[-2].execute()
+    8
+    >>> req[:3].execute()
+    [3, 5, 8]
+    >>> req[::-1].execute()
+    [21, 13, 8, 5, 3]
+
+Negative indexes, slice boundary and slice step are supported, with the same
+meaning as with Python lists.
 
 Methods
 -------
 
-TODO
+Request objects have methods like `some_req.filter(...)`. However, one can
+still use the attribute syntax to access mappings
+[TODO: link to Attribute syntax / Mapping access] with the same names:
+
+    >>> req = literal({'filter': 42})
+    >>> req2 = req.filter
+    >>> req2.execute()
+    42
+
+These attributes only behave as methods when they are called.
+
+Methods on sequences
+....................
+
+On a `some_req` request that represents a sequence
+[TODO link to Sequences and iterables], one can use the following methods:
+
+On a request that represents a sequence of numbers, `some_req.sum()` is a
+request that represent the sum of these numbers.
+TODO: allow other types for sum? (strings or sequence concatenation, mapping
+merging, ...)
+
+`some_req.min()` and `some_req.max()` respectively represent the smallest
+and biggest element of the sequence, according to the same ordering as
+comparisons [TODO link to Comparisons]. Elements of the sequence must be
+comparable to each other.
+
+`some_req.len()` represents the number of elements in the sequence.
+
+`some_req.distinct()` represents the sub-sequence built by keeping only
+elements the first occurrence of any element. Elements are considered the same
+with the same semantics as `a == b` [TODO link to Comparisons].
+
+`some_req.one()` is the same as `some_req[0]` in that it represents the first
+element of the sequence, and raises IndexError when it is executed on an empty
+sequence, but it also raise ValueError when executed on a sequence with one
+or more element.
+
+`.one()` is useful on a sequence filtered with a predicate that identifies
+an element uniquely. There really should not be more than one element.
+If there is, it’s an error and you don’t want it to pass silently.
+
+Speaking of filtering, `some_req.filter(predicate)` represents the
+sub-sequence of elements for which `predicate` is true. The predicate is
+converted to a request [TODO link to Implicit literal requests] which should
+represent a boolean. The predicate can contain a CONTEXT request
+[TODO link to The CONTEXT object]
+
+
+TODO:
+    map
+    sort
+    groupby
+
+    execute

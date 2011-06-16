@@ -3,6 +3,8 @@ Meta documentation
 
 The website should *be* the doc.
 
+TODO: decide whether or not we should use “we” and “you” in the doc.
+
 
 Introduction (front page)
 =========================
@@ -36,7 +38,7 @@ API reference
 =============
 
 Cover every module, function, class, attribute, method and such. Mostly from
-docstrings but not only. Include every built-in “corn”. Detail what is 
+docstrings but not only. Include every built-in “corn”. Detail what is
 “optimized” (eg. translated into SQL) and what is not.
 
 Changelog
