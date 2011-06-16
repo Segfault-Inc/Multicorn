@@ -1,13 +1,17 @@
 from attest import Tests
 
 from . import tests
+from multicorn import Multicorn
 
 
 
 def make_test_suite(make_corn):
     testinstance = Tests()
     def context():
-        yield make_corn()
+        mc = Multicorn()
+        corn = make_corn()
+        mc.register(corn)
+        yield corn
     testinstance.context(context)
     for test_prototype in dir(tests):
         test_prototype = getattr(tests, test_prototype)
