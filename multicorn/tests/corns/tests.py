@@ -24,6 +24,5 @@ def test_save(Corn):
     Corn.create({'id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
     Corn.create({'id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
     Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
-
     items = list(Corn.all.execute())
     assert len(items) == 3

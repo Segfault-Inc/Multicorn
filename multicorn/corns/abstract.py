@@ -57,11 +57,9 @@ class AbstractCorn(object):
         """
         self.properties[name] = Type(corn=self, name=name)
 
-    def create(self, values=None, lazy_values=None, save=True):
+    def create(self, values=None, lazy_values=None):
         """Create and return a new item."""
         item = self.Item(self, values or {}, lazy_values or {})
-        if save:
-            self.save(item)
         return item
 
     def open(self, request=None):

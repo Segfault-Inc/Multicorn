@@ -11,6 +11,7 @@ except ImportError:
     print("WARNING: The SQLAlchemy AP is not available.", file=sys.stderr)
 else:
     from sqlalchemy import create_engine, Table, Column, MetaData
+    from sqlalchemy import sql as sqlexpr
 
 
 class Alchemy(AbstractCorn):
@@ -66,3 +67,39 @@ class Alchemy(AbstractCorn):
 
     def _all(self):
         return self.table.select().execute()
+
+    def _to_pk_where_clause(self, item):
+        conditions = []
+        for key in self.identity_properties:
+             conditions.append(self.table.columns[key] == item[key])
+        return sqlexpr.and_(*conditions)
+
+
+    def save(self, item):
+        connection = self.table.bind.connect()
+        transaction = connection.begin()
+        # Try to open the item
+        where_clause = self._to_pk_where_clause(item)
+        statement = self.table.select().where(where_clause)
+        results = statement.execute()
+        try:
+            iter(results).next()
+            # The item exists, it's an UPDATTE
+            rows = self.table.update().where(where_clause).values(dict(item)).execute()
+            if rows.rowcount > 1:
+                transaction.rollback()
+                raise ValueError("There is more than one item to update!")
+            transaction.commit()
+        except StopIteration:
+            # The item does not exist, it's an INSERT
+            statement = self.table.insert().values(dict(item)).execute()
+            transaction.commit()
+
+    def delete(self, item):
+        connection = self.table.bind.connect()
+        transaction = connection.begin()
+        result = self._table.delete().where(
+                self._to_pk_where_clause(item)).execute()
+        if result.rowcount > 1:
+            transaction.rollback()
+            raise ValueError("There is more than one item to delete!")
