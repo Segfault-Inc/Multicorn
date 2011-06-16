@@ -108,5 +108,3 @@ def test_isolate_values():
     assert RequestWrapper.from_request(remainder).subject.attr_name== 'id'
     assert RequestWrapper.from_request(remainder).other.value == 3
 
-
-

@@ -4,8 +4,6 @@ from multicorn.corns.memory import Memory
 from multicorn import Multicorn
 from multicorn.declarative import declare, Property
 from multicorn.requests import CONTEXT as c
-from multicorn.requests.types import Type, Dict, List
-from multicorn.requests.wrappers import RequestWrapper
 
 suite = Tests()
 
