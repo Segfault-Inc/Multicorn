@@ -1,5 +1,5 @@
 from . import requests
-from .requests import as_request
+from .requests import as_request # To be imported form here
 
 
 CONTEXT = requests.ContextRequest()
