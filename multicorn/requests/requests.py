@@ -152,13 +152,9 @@ class Request(object):
                     return b
         return OrRequest(self, other)
 
-    def __xor__(self, other):
-        return (self & ~other) | (other & ~self)
-
-    # `&`, `|` and `^` are commutative
+    # `&` and `|` are commutative
     __rand__ = __and__
     __ror__ = __or__
-    __rxor__ = __xor__
 
     def __eq__(self, other): return EqRequest(self, as_request(other))
     def __ne__(self, other): return NeRequest(self, as_request(other))
