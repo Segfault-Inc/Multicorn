@@ -62,7 +62,7 @@ class StoredItemsWrapper(RequestWrapper):
         return List(self.storage.type)
 
     def used_types(self, contexts=()):
-        return {self.return_type(contexts).inner_type: self}
+        return {self.return_type(contexts).inner_type: set((self,))}
 
 
 

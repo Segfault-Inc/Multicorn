@@ -128,7 +128,7 @@ def test_used_types():
     types = req.used_types()
     assert len(types) == 1
     assert types.keys()[0] == Corn.type
-    assert types.values()[0] == req
+    assert list(types.values()[0]) == [req]
     req = RequestWrapper.from_request(Corn.all.filter(c.id))
     types = req.used_types()
     assert len(types) == 2
