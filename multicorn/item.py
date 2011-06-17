@@ -29,8 +29,11 @@ class BaseItem(MutableMapping):
                 "Unexpected properties: %r" % (tuple(extra_keys),))
         missing_keys = corn_properties - given_keys
         if missing_keys:
-            raise ValueError(
-                "Missing properties: %r" % (tuple(missing_keys),))
+            # log.debug("Creating a %s with missing properties: %r" %
+            # (corn, tuple(missing_keys),))
+            corn_properties = given_keys
+            for key in missing_keys:
+                self._values[key] = None
 
     def __len__(self):
         return len(self.corn.properties)
