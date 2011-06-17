@@ -212,6 +212,10 @@ These attributes only behave as methods when they are called.
 Methods on sequences
 ....................
 
+Every request has a `.execute()` method that will ... execute the request,
+compute and return the value it represents. This is when Multicorn will
+hit the data storages and actually do its work.
+
 On a `some_req` request that represents a sequence
 [TODO link to Sequences and iterables], one can use the following methods:
 
@@ -251,5 +255,3 @@ TODO:
     map
     sort
     groupby
-
-    execute
