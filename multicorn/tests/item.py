@@ -17,9 +17,8 @@ def test_item():
     class Dummy:
         pass
     corn = Dummy()
-    corn.properties = {name: int
-                       for name in (
-                           'foo', 'bar', 'baz', 'fuu')}
+    corn.properties = dict(
+        (name, int) for name in ('foo', 'bar', 'baz', 'fuu'))
 
     def baz_loader(item):
         baz_loader.calls += 1
