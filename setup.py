@@ -9,13 +9,14 @@ Multicorn is a data access library.
 
 """
 
+import sys
 from setuptools import setup, find_packages
 
 
 VERSION = "git"
 
 
-setup(
+options = dict(
     name="Multicorn",
     version=VERSION,
     description="Data access library",
@@ -29,12 +30,9 @@ setup(
     platforms="Any",
     packages=find_packages(),
     install_requires=['SQLAlchemy', 'pymongo'],
-    keywords=["web", "framework", "database"],
     classifiers=[
         "Development Status :: 4 - Beta",
-        "Environment :: Console",
-        "Environment :: Web Environment",
-        "Intended Audience :: Information Technology",
+        "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 2",
@@ -45,3 +43,12 @@ setup(
         "Programming Language :: Python :: 3.2",
         "Topic :: Database :: Front-Ends",
         "Topic :: Software Development :: Libraries :: Python Modules"])
+
+
+if sys.version_info >= (3,):
+    options['use_2to3'] = True
+    # pymongo is not (yet) ported to Python 3.
+    options['install_requires'].remove('pymongo')
+
+
+setup(**options)
