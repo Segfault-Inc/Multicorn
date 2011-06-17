@@ -45,12 +45,12 @@ class MongoCorn(AbstractCorn):
             yield item
 
     def delete(self, item):
-        self.collection.remove({key: value for key, value in item.items()})
+        self.collection.remove(
+            dict((key, value) for key, value in item.items()))
 
     def save(self, item):
         # TODO: Don't always save lazv values -> ?
-        self.collection.save({
-            key: value for key, value in item.items() \
-              if not (key == "_id" and value is None)
-            })
+        self.collection.save(dict(
+            (key, value) for key, value in item.items()
+            if not (key == "_id" and value is None)))
         item.saved = True
