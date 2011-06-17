@@ -48,4 +48,11 @@ class MongoTest(TestBase):
         assert item['name'] == u'foo'
         assert item['lastname'] == u'bar'
 
-suite = Tests([MongoTest()])
+try:
+    import pymongo
+except ImportError:
+    import sys
+    print("WARNING: The Mongo DB AP is not tested.", file=sys.stderr)
+    suite = Tests()
+else:
+    suite = Tests([MongoTest()])
