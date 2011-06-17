@@ -1,7 +1,7 @@
 from attest import assert_hook, Tests
 from attest.collectors import TestBase, test
 
-from multicorn.corns.mongo import MongoCorn
+from multicorn.corns.mongo import Mongo
 from multicorn import Multicorn
 from multicorn.declarative import declare, Property
 from multicorn.requests import CONTEXT as c
@@ -9,13 +9,13 @@ from multicorn.requests.types import Type, Dict, List
 from multicorn.requests.wrappers import RequestWrapper
 
 
-class Mongo(TestBase):
+class MongoTest(TestBase):
 
     def __context__(self):
         mc = Multicorn()
 
         @mc.register
-        @declare(MongoCorn, identity_properties=("_id",),
+        @declare(Mongo, identity_properties=("_id",),
                  hostname="localhost", port=27017,
                  database="dbtst", collection="mctest")
         class Corn(object):
@@ -48,4 +48,4 @@ class Mongo(TestBase):
         assert item['name'] == u'foo'
         assert item['lastname'] == u'bar'
 
-suite = Tests([Mongo()])
+suite = Tests([MongoTest()])

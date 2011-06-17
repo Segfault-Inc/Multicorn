@@ -1,10 +1,10 @@
-from multicorn.corns.mongo import MongoCorn
+from multicorn.corns.mongo import Mongo
 from multicorn.declarative import declare, Property
 from . import make_test_suite
 
 
 def make_corn():
-    @declare(MongoCorn, identity_properties=("id",),
+    @declare(Mongo, identity_properties=("id",),
                  hostname="localhost", port=27017,
                  database="dbtst", collection="mctest")
     class Corn(object):

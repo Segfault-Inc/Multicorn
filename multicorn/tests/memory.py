@@ -33,11 +33,14 @@ def test_all():
     assert item['name'] == u'foo'
     assert item['lastname'] == u'bar'
 
+
 @suite.test
 def test_optimization():
     Corn = make_corn()
+
     class NotOptimizedError(Exception):
         pass
+
     def new_all():
         raise NotOptimizedError
     Corn._all = new_all
@@ -52,4 +55,3 @@ def test_optimization():
         pass
     item = list(Corn.all.filter((c.id == 1) & (c.name == 'baz')).execute())
     assert len(item) == 0
-
