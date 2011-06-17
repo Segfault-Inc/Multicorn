@@ -3,6 +3,8 @@ from sqlalchemy import Unicode, Integer, DateTime, Date, Boolean, Numeric
 from datetime import date, datetime
 from decimal import Decimal
 
+from ..wrappers import AlchemyWrapper
+
 
 def get_dialect(engine):
     # Todo: manage ACTUAL dialects!
@@ -24,6 +26,8 @@ BASE_TYPES_MAPPING = {
 
 class BaseDialect(object):
 
+    RequestWrapper = AlchemyWrapper
+
     def alchemy_type(self, proptype):
         """Override this for specific types (example: Array of strings in PGSQL
         """
@@ -33,3 +37,6 @@ class BaseDialect(object):
                     "Dialect %s does not support the type %s" %
                     (type(self), proptype.type))
         return alchemy_type
+
+    def wrap_request(self, request):
+        return self.RequestWrapper.from_request(request)

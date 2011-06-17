@@ -1,8 +1,8 @@
 from __future__ import print_function
 from ..abstract import AbstractCorn
-from ...requests.types import Type
+from ...requests.types import Type, List, Dict
+from ... import python_executor
 
-from . import dialects
 
 try:
     import sqlalchemy
@@ -38,7 +38,7 @@ class Alchemy(AbstractCorn):
             self.multicorn._alchemy_metadatas[self.url] = metadata
         self.metadata = metadata
         # TODO: manage dialect creation here
-        self.dialect = dialects.get_dialect(engine)
+        self.dialect = get_dialect(engine)
 
     def register(self, name, type):
         self.properties[name] = Type(corn=self, name=name, type=type)
@@ -74,7 +74,6 @@ class Alchemy(AbstractCorn):
              conditions.append(self.table.columns[key] == item[key])
         return sqlexpr.and_(*conditions)
 
-
     def save(self, item):
         connection = self.table.bind.connect()
         transaction = connection.begin()
@@ -103,3 +102,42 @@ class Alchemy(AbstractCorn):
         if result.rowcount > 1:
             transaction.rollback()
             raise ValueError("There is more than one item to delete!")
+
+    def _is_same_db(self, other_type):
+        return other_type.corn is None or (isinstance(other_type.corn, Alchemy)\
+                and other_type.corn.url == self.url)
+
+    def is_all_alchemy(self, request, contexts=()):
+        used_types = request.used_types()
+        all_requests = reduce(lambda x, y: list(x) + list(y), used_types.values(), set())
+        return all(isinstance(x, self.dialect.RequestWrapper) for x in all_requests) and\
+                all(self._is_same_db(x) for x in used_types.keys())
+
+    def _transform_result(self, result, return_type):
+        def process_list(result):
+            for item in result:
+                yield self._transform_result(item, return_type.inner_type)
+        if isinstance(return_type, List):
+            return process_list(result)
+        elif isinstance(return_type, Dict):
+            if return_type.type == self.type:
+                return self.create(result)
+            else:
+                return result
+        elif isinstance(return_type, Dict):
+            return result
+
+
+    def execute(self, request, contexts=()):
+        wrapped_request = self.dialect.wrap_request(request)
+        if self.is_all_alchemy(wrapped_request, contexts):
+            sql_query = wrapped_request.to_alchemy(None, contexts)
+            return_type = wrapped_request.return_type()
+            return self._transform_result(sql_query.execute(), return_type)
+        else:
+            return python_executor.execute(request)
+
+
+from .dialects import get_dialect
+
+
