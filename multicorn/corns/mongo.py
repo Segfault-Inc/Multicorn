@@ -4,6 +4,7 @@
 
 
 from __future__ import print_function
+from multicorn import colorize
 from multicorn.requests.types import Type, Dict, List
 from .abstract import AbstractCorn
 
@@ -11,7 +12,9 @@ try:
     import pymongo
 except ImportError:
     import sys
-    print("WARNING: The Mongo DB AP is not available.", file=sys.stderr)
+    print(colorize(
+        'yellow',
+        "WARNING: The Mongo DB AP is not available."), file=sys.stderr)
 
 
 class MongoCorn(AbstractCorn):

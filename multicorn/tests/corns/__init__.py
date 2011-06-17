@@ -2,10 +2,7 @@ from attest import Tests
 from functools import wraps
 from . import tests
 from multicorn import Multicorn
-try:
-    from pygments.console import colorize
-except:
-    colorize = lambda x, y: y
+from multicorn import colorize
 
 
 def module_name_docstring(fun, module_name):
