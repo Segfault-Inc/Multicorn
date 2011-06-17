@@ -19,6 +19,7 @@ def teardown(Corn):
 #suite = make_test_suite(make_corn, teardown=teardown)
 suite = make_test_suite(make_corn)
 
+
 @suite.test
 def test_optimization(Corn):
     class NotOptimizedError(Exception):
@@ -36,11 +37,11 @@ def test_optimization(Corn):
     items = list(Corn.all.filter(c.name == 'foo').execute())
     assert len(items) == 2
     assert all(item['name'] == 'foo' for item in items)
-    items = list(Corn.all.filter((c.name == 'foo' ) &
+    items = list(Corn.all.filter((c.name == 'foo') &
         (c.lastname == 'bar')).execute())
     assert len(items) == 1
     assert items[0]['id'] == 1
-    items = list(Corn.all.filter((c.name == 'baz' ) |
+    items = list(Corn.all.filter((c.name == 'baz') |
         (c.lastname == 'baz')).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
