@@ -3,7 +3,6 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from ..item import BaseItem
-from .. import queries
 from ..requests.types import Type, List, Dict
 from ..python_executor import PythonExecutor
 from ..requests.requests import StoredItemsRequest
