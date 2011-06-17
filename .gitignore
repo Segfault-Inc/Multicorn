@@ -9,3 +9,4 @@
 /Multicorn.egg-info
 /profile_results
 *.swp
+/.tox
