@@ -119,21 +119,4 @@ def test_item():
     assert "Unexpected properties:" in extra.message
 
     # Raise on missing properties
-    with attest.raises(ValueError) as extra:
-        BaseItem(
-            corn,
-            {'foo': 3},
-            {'baz': baz_loader, 'fuu': fuu_loader})
-    assert extra.message == "Missing properties: ('bar',)"
-    with attest.raises(ValueError) as extra:
-        BaseItem(
-            corn,
-            {'foo': 3, 'bar': 5},
-            {'baz': baz_loader})
-    assert extra.message == "Missing properties: ('fuu',)"
-    with attest.raises(ValueError) as extra:
-        BaseItem(
-            corn,
-            {'foo': 3},
-            {'baz': baz_loader})
-    assert "Missing properties:" in extra.message
+    # TODO test presence of missing properties

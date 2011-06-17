@@ -29,6 +29,7 @@ class MongoCorn(AbstractCorn):
         self.connection = pymongo.Connection(hostname, port)
         self.db = self.connection[database]
         self.collection = self.db[collection]
+        self.register("_id", int)
 
     def register(self, name, type=object, **kwargs):
         self.properties[name] = Type(
@@ -48,5 +49,8 @@ class MongoCorn(AbstractCorn):
 
     def save(self, item):
         # TODO: Don't always save lazv values -> ?
-        self.collection.save({key: value for key, value in item.items()})
+        self.collection.save({
+            key: value for key, value in item.items() \
+              if not (key == "_id" and value is None)
+            })
         item.saved = True
