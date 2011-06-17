@@ -92,10 +92,6 @@ def test_boolean_logic():
     assert_value(false | true, True)
     assert_value(false | false, False)
 
-    assert_value(true ^ true, False)
-    assert_value(true ^ false, True)
-    assert_value(false ^ true, True)
-    assert_value(false ^ false, False)
 
 
 @suite.test
