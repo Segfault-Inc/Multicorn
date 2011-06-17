@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Multicorn Setup File
-====================
+Multicorn
+=========
 
-Multicorn packager and installer.
+Multicorn is a data access library.
 
 """
 
@@ -18,22 +18,17 @@ VERSION = "git"
 setup(
     name="Multicorn",
     version=VERSION,
-    description="Content Management Library",
+    description="Data access library",
     long_description=__doc__,
     author="Kozea",
     author_email="guillaume.ayoub@kozea.fr",
     url="http://www.multicorn.org/",
-    download_url=\
-        "http://multicorn.org/src/multicorn/Multicorn-%s.tar.gz" % VERSION,
+#    download_url=\
+#        "http://multicorn.org/src/multicorn/Multicorn-%s.tar.gz" % VERSION,
     license="BSD",
     platforms="Any",
-    packages=find_packages(exclude=["*._test", "*._test.*", "test.*", "test"]),
-    provides=["multicorn"],
-    package_data={"multicorn": ["access_point/xml/xml2rst.xsl"]},
-    extras_require={
-        "docutils": ["docutils>=0.6"],
-        "lxml": ["lxml>=2.0"],
-        "SQLAlchemy": ["sqlalchemy>=0.6"]},
+    packages=find_packages(),
+    install_requires=['SQLAlchemy', 'pymongo'],
     keywords=["web", "framework", "database"],
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -46,7 +41,7 @@ setup(
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.1",
+        "Programming Language :: Python :: 3.1", # TODO: test it?
         "Programming Language :: Python :: 3.2",
         "Topic :: Database :: Front-Ends",
         "Topic :: Software Development :: Libraries :: Python Modules"])
