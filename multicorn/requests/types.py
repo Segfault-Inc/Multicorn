@@ -12,6 +12,9 @@ class Type(object):
                     self.type == other.type
         return False
 
+    def __hash__(self):
+        return hash((self.corn, self.name, self.type))
+
     def common_type(self, other):
         if self == other:
             return self
@@ -29,6 +32,11 @@ class Dict(Type):
         return super(Dict, self).__eq__(other) and\
                 self.mapping == other.mapping
 
+    def __hash__(self):
+        return hash((self.corn, self.name, self.type,
+                     frozenset(self.mapping.items())))
+
+
 
 class List(Type):
 
@@ -39,6 +47,9 @@ class List(Type):
     def __eq__(self, other):
         return super(List, self).__eq__(other) and\
                 self.inner_type == other.inner_type
+
+    def __hash__(self):
+        return hash((self.corn, self.name, self.type, self.inner_type))
 
     def common_type(self, other):
         if self == other:

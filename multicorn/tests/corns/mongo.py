@@ -1,3 +1,4 @@
+from attest import Tests
 from multicorn.corns.mongo import Mongo
 from multicorn.declarative import declare, Property
 from . import make_test_suite
@@ -18,4 +19,11 @@ def teardown(corn):
     #Deleting all objects the hardcore way
     corn.db.drop_collection(corn.collection)
 
-suite = make_test_suite(make_corn, teardown)
+try:
+    import pymongo
+except ImportError:
+    import sys
+    print >>sys.stderr, "WARNING: The Mongo DB AP is not tested."
+    suite = Tests()
+else:
+    suite = make_test_suite(make_corn, teardown)

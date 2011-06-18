@@ -347,11 +347,11 @@ def test_one():
 
     with attest.raises(IndexError) as error:
         execute(SOURCE.filter(c.toto == 'fizzbuzz').one())
-    assert error.message == '.one() on an empty sequence'
+    assert error.args == ('.one() on an empty sequence',)
 
     with attest.raises(ValueError) as error:
         execute(SOURCE.filter(c.toto == 'bar').one())
-    assert error.message == 'More than one element in .one()'
+    assert error.args == ('More than one element in .one()',)
 
 
 @suite.test

@@ -23,9 +23,9 @@ class MongoTest(TestBase):
             name = Property(type=unicode)
             lastname = Property(type=unicode)
 
-        Corn.create({'_id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
-        Corn.create({'_id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
-        Corn.create({'_id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
+        Corn.create({'_id': 1, 'name': 'foo', 'lastname': 'bar'}).save()
+        Corn.create({'_id': 2, 'name': 'baz', 'lastname': 'bar'}).save()
+        Corn.create({'_id': 3, 'name': 'foo', 'lastname': 'baz'}).save()
         self.corn = Corn
         yield
         Corn.db.drop_collection(Corn.collection)
@@ -36,8 +36,8 @@ class MongoTest(TestBase):
         assert len(items) == 3
         item = self.corn.all.filter(c._id == 1).one().execute()
         assert item['_id'] == 1
-        assert item['name'] == u'foo'
-        assert item['lastname'] == u'bar'
+        assert item['name'] == 'foo'
+        assert item['lastname'] == 'bar'
 
     @test
     def add(self):
@@ -45,14 +45,14 @@ class MongoTest(TestBase):
         assert len(items) == 3
         item = self.corn.all.filter(c._id == 1).one().execute()
         assert item['_id'] == 1
-        assert item['name'] == u'foo'
-        assert item['lastname'] == u'bar'
+        assert item['name'] == 'foo'
+        assert item['lastname'] == 'bar'
 
 try:
     import pymongo
 except ImportError:
     import sys
-    print("WARNING: The Mongo DB AP is not tested.", file=sys.stderr)
+    print >>sys.stderr, "WARNING: The Mongo DB AP is not tested."
     suite = Tests()
 else:
     suite = Tests([MongoTest()])
