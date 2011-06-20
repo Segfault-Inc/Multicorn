@@ -99,7 +99,8 @@ def test_nimp():
         'groupby': Corn.all.groupby(c.name),
         'heterogeneous_list': Corn.all + ['toto', 3],
         'homogeneous_list': [u'toto', u'tata'],
-        'tuple': (1, 2, 3)
+        'tuple': (1, 2, 3),
+        'dict + dict': Corn.all.map(c + {'name': c.id})
         }))
 
     assert isinstance(type, List)
@@ -120,6 +121,12 @@ def test_nimp():
     assert mapping['tuple'] == Type(tuple)
     assert mapping['onedefaulthomogeneous'] == Corn.type
     assert mapping['onedefault'] == Type(object)
+    assert isinstance(mapping['dict + dict'], List)
+    assert isinstance(mapping['dict + dict'].inner_type, Dict)
+    type = return_type(Corn.all.map(c + {'name': c.id}))
+    assert isinstance(type, List)
+    assert isinstance(type.inner_type, Dict)
+
 
 @suite.test
 def test_used_types():

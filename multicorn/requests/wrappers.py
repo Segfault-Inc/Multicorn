@@ -212,7 +212,7 @@ class NotOperationWrapper(OperationWrapper):
         return Type(type=bool)
 
 
-ARITHMETIC_OPERATORS = ('add', 'sub', 'mul', 'div')
+ARITHMETIC_OPERATORS = ('sub', 'mul', 'div')
 
 
 class ArithmeticOperationWrapper(BinaryOperationWrapper):
@@ -223,6 +223,23 @@ class ArithmeticOperationWrapper(BinaryOperationWrapper):
 
 for operator in ARITHMETIC_OPERATORS:
     defclass(operator, ArithmeticOperationWrapper)
+
+@RequestWrapper.register_wrapper(requests.AddRequest)
+class AddWrapper(ArithmeticOperationWrapper):
+    def return_type(self, contexts=()):
+        """
+        Add is special, because it can work with Dict, and is not an addition
+        anymore.
+        """
+        left_type = self.subject.return_type(contexts)
+        right_type = self.other.return_type(contexts)
+        if isinstance(left_type, Dict) and isinstance(right_type, Dict):
+            mapping = left_type.mapping.copy()
+            mapping.update(right_type.mapping)
+            return Dict(mapping=mapping)
+        else:
+            return left_type.common_type(right_type)
+
 
 
 @RequestWrapper.register_wrapper(requests.DistinctRequest)
@@ -260,8 +277,8 @@ class MapWrapper(OperationWrapper):
             inner_type=self.new_value.return_type(contexts + (newcontext,)))
 
     def used_types(self, contexts=()):
-        newcontext = self.subject.return_type(contexts).inner_type
-        types = self.subject_type.used_types(contexts)
+        newcontext = contexts + (self.subject.return_type(contexts).inner_type,)
+        types = self.subject.used_types(contexts)
         self.merge_dict(types, self.new_value.used_types(newcontext))
         return types
 

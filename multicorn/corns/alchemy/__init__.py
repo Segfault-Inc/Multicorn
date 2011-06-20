@@ -119,19 +119,36 @@ class Alchemy(AbstractCorn):
                 yield self._transform_result(item, return_type.inner_type)
         if isinstance(return_type, List):
             return process_list(result)
-        elif isinstance(return_type, Dict):
-            if return_type.type == self.type:
+        elif return_type.type == dict:
+            if return_type == self.type:
+                result = dict(((key, value) for key, value in dict(result).iteritems()
+                    if key in self.properties))
                 return self.create(result)
+            elif return_type.corn:
+                return return_type.corn.create(result)
             else:
-                return result
-        elif isinstance(return_type, Dict):
-            return result
-
+                newdict = {}
+                for key, type in return_type.mapping.iteritems():
+                    # Even for dicts, sql returns results "inline"
+                    if isinstance(type, (List, Dict)):
+                        newdict[key] = self._transform_result(result, type)
+                    else:
+                        newdict[key] = result[key]
+                return newdict
+        else:
+            result = list(result)
+            if len(result) > 1:
+                raise ValueError('More than one element in .one()')
+            if len(result) == 0:
+                raise ValueError('.one() on an empty sequence')
+            return result[0]
 
     def execute(self, request, contexts=()):
         wrapped_request = self.dialect.wrap_request(request)
         if self.is_all_alchemy(wrapped_request, contexts):
-            sql_query = wrapped_request.to_alchemy(None, contexts)
+            tables = wrapped_request.extract_tables()
+            sql_query = sqlexpr.select(from_obj=tables)
+            sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
             return self._transform_result(sql_query.execute(), return_type)
         else:
