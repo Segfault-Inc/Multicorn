@@ -21,10 +21,18 @@ class Memory(AbstractCorn):
         super(Memory, self).__init__(*args, **kwargs)
         self._storage = {}
 
+    def _key(self, item):
+        return tuple(item[name] for name in self.identity_properties)
+
     def save(self, item):
-        key = tuple(item[name] for name in self.identity_properties)
+        key = self._key(item)
         self._storage[key] = item
         item.saved = True
+
+    def delete(self, item):
+        key = self._key(item)
+        del self._storage[key]
+        item.saved = False # XXX ?
 
     def _all(self):
         return self._storage.itervalues()
