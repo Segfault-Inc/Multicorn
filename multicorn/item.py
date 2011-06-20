@@ -22,7 +22,7 @@ class BaseItem(MutableMapping):
         self.corn.properties
 
         corn_properties = set(self.corn.properties.keys())
-        given_keys = set(values.keys()) | set(lazy_values.keys())
+        given_keys = set(self._values) | set(self._lazy_values)
         extra_keys = given_keys - corn_properties
         if extra_keys:
             raise ValueError(
@@ -31,7 +31,6 @@ class BaseItem(MutableMapping):
         if missing_keys:
             # log.debug("Creating a %s with missing properties: %r" %
             # (corn, tuple(missing_keys),))
-            corn_properties = given_keys
             for key in missing_keys:
                 self._values[key] = None
 

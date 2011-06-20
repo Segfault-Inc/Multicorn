@@ -9,15 +9,16 @@ def module_name_docstring(fun, module_name):
     @wraps(fun)
     def wrapper(arg):
         return fun(arg)
-    wrapper.__doc__ = "%s]%s" % (
+    wrapper.__doc__ = "[%s]%s" % (
         colorize('yellow', module_name),
         colorize('green', fun.__doc__))
     return wrapper
 
 
-def make_test_suite(make_corn, teardown=None):
-    testinstance = Tests()
+def make_test_suite(make_corn, module_name, teardown=None):
+    suite = Tests()
 
+    @suite.context
     def context():
         mc = Multicorn()
         corn = make_corn()
@@ -28,12 +29,6 @@ def make_test_suite(make_corn, teardown=None):
             if teardown:
                 teardown(corn)
 
-    testinstance.context(context)
-    for test_prototype in dir(tests):
-        test_prototype = getattr(tests, test_prototype)
-        if hasattr(test_prototype, '_is_corn_test'):
-            testinstance.test(
-                module_name_docstring(
-                    test_prototype,
-                    make_corn.__module__.split(".")[-1]))
-    return testinstance
+    for test_prototype in tests.TESTS:
+        suite.test(module_name_docstring(test_prototype, module_name))
+    return suite
