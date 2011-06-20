@@ -103,7 +103,6 @@ def test_isolate_values():
     context = (filter.subject.return_type().inner_type,)
     values, remainder = isolate_values(filter.predicate.wrapped_request, context)
     assert values == {'lastname': 'foo'}
-    print remainder
     assert isinstance(remainder, LtRequest)
     assert RequestWrapper.from_request(remainder).subject.attr_name== 'id'
     assert RequestWrapper.from_request(remainder).other.value == 3

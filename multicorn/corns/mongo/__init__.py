@@ -6,7 +6,9 @@
 from __future__ import print_function
 from multicorn import colorize
 from multicorn.requests.types import Type, Dict, List
-from .abstract import AbstractCorn
+from ... import python_executor
+from ..abstract import AbstractCorn
+from .wrapper import MongoWrapper
 
 try:
     import pymongo
@@ -51,11 +53,7 @@ class Mongo(AbstractCorn):
     def _all(self):
         """Return an iterable of all items in the mongo collection."""
         for mongo_item in self.collection.find():
-            item = {}
-            for name in self.properties.keys():
-                item[name] = mongo_item[name]
-            item = self.create(item)
-            yield item
+            yield self._mongo_to_item(mongo_item)
 
     def delete(self, item):
         self.collection.remove(
@@ -66,3 +64,35 @@ class Mongo(AbstractCorn):
             (key, value) for key, value in item.items()
             if not (key == "_id" and value is None)))
         item.saved = True
+
+    def is_all_mongo(self, request, contexts=()):
+        used_types = request.used_types()
+        all_requests = reduce(
+            lambda x, y: list(x) + list(y), used_types.values(), set())
+        return all(
+            isinstance(x, MongoWrapper) for x in all_requests)
+
+    def _mongo_to_item(self, mongo_item):
+        item = {}
+        for name in self.properties.keys():
+            item[name] = mongo_item[name]
+        return self.create(item)
+
+    def _execute(self, expression):
+        print(expression)
+        if expression.one:
+            return self._mongo_to_item(
+                self.collection.find_one(expression.spec))
+        result = self.collection.find(expression.spec)
+        if expression.count:
+            return result.count()
+        return [self._mongo_to_item(mongo_item) for mongo_item in result]
+
+    def execute(self, request, contexts=()):
+        wrapped_request = MongoWrapper.from_request(request)
+        if True or self.is_all_mongo(wrapped_request, contexts):
+            return self._execute(
+                wrapped_request.to_mongo(contexts))
+        else:
+            print("Not Optimized")
+            return python_executor.execute(request)
