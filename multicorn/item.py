@@ -60,5 +60,8 @@ class BaseItem(MutableMapping):
     def save(self):
         self.corn.save(self)
 
+    def delete(self):
+        self.corn.delete(self)
+
     def __delitem__(self, key):
         raise TypeError('Can not delete properties from an item.')
