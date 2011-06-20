@@ -40,18 +40,29 @@ def existence(Corn):
     make_data(Corn)
     items = list(Corn.all.execute())
     assert len(items) == 3
+
     item = Corn.all.filter(c.id == 1).one().execute()
     assert item['id'] == 1
     assert item['name'] == 'foo'
     assert item['lastname'] == 'bar'
+    assert item.corn is Corn # This is an actual Item, not a dict.
+
     item = Corn.all.filter(c.id == 2).one().execute()
     assert item['id'] == 2
     assert item['name'] == 'baz'
     assert item['lastname'] == 'bar'
+    assert item.corn is Corn
+
     item = Corn.all.filter(c.id == 3).one().execute()
     assert item['id'] == 3
     assert item['name'] == 'foo'
     assert item['lastname'] == 'baz'
+    assert item.corn is Corn
+
+    same_item = Corn.all.filter(c.id == 3).one().execute()
+    assert same_item == item
+    # The Corn always return new Item instance
+    assert same_item is not item
 
 
 @corntest

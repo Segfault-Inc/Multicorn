@@ -26,7 +26,7 @@ class Memory(AbstractCorn):
 
     def save(self, item):
         key = self._key(item)
-        self._storage[key] = item
+        self._storage[key] = dict(item)
         item.saved = True
 
     def delete(self, item):
@@ -35,7 +35,8 @@ class Memory(AbstractCorn):
         item.saved = False # XXX ?
 
     def _all(self):
-        return self._storage.itervalues()
+        for values in self._storage.itervalues():
+            yield self.create(values)
 
     def execute(self, request):
         wrapped_request = self.RequestWrapper.from_request(request)
@@ -44,7 +45,8 @@ class Memory(AbstractCorn):
         # half and work only on the matching item
         if len(chain) > 1 and isinstance(chain[1], FilterRequest):
             filter, other = cut_request(request, chain[1])
-            id_types = [self.properties[name] for name in self.identity_properties]
+            id_types = [
+                self.properties[name] for name in self.identity_properties]
             values, remainder_query = isolate_identity_values(filter, id_types)
             if all(idprop  in values for idprop in self.identity_properties):
                 # Rebuild what is not processed in the values
@@ -53,7 +55,9 @@ class Memory(AbstractCorn):
                     # because we had nothing after the filter
                     request = remainder_query
                 else:
-                    request = RequestWrapper.from_request(other).copy_replace(as_chain(other)[0], remainder_query)
+                    wrapped = RequestWrapper.from_request(other)
+                    request = wrapped.copy_replace(
+                        as_chain(other)[0], remainder_query)
                 # Finally fetch the item, and execute the remainding query
                 # against it.
                 key = tuple(values[key] for key in self.identity_properties)
@@ -61,8 +65,9 @@ class Memory(AbstractCorn):
                 if item is None:
                     items = []
                 else:
-                    items = [item]
-                return self.RequestWrapper.from_request(request).execute((items,))
+                    items = [self.create(item)]
+                wrapped = self.RequestWrapper.from_request(request)
+                return wrapped.execute((items,))
         return wrapped_request.execute((self._all(),))
 
     def register(self, name, type=object, **kwargs):
