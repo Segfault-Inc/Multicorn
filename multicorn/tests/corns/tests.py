@@ -1,8 +1,10 @@
 from attest import Tests, assert_hook
 
 
+TESTS = []
+
 def corntest(fun):
-    fun._is_corn_test = True
+    TESTS.append(fun)
     return fun
 
 

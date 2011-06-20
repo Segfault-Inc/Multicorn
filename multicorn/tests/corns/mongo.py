@@ -26,4 +26,4 @@ except ImportError:
     print >>sys.stderr, "WARNING: The Mongo DB AP is not tested."
     suite = Tests()
 else:
-    suite = make_test_suite(make_corn, teardown)
+    suite = make_test_suite(make_corn, 'mongo', teardown)

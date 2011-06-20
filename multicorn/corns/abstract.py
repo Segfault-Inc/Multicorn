@@ -58,8 +58,7 @@ class AbstractCorn(object):
 
     def create(self, values=None, lazy_values=None):
         """Create and return a new item."""
-        item = self.Item(self, values or {}, lazy_values or {})
-        return item
+        return self.Item(self, values, lazy_values)
 
     def open(self, request=None):
         """

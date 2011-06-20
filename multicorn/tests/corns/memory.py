@@ -11,4 +11,4 @@ def make_corn():
         lastname = Property(type=unicode)
     return Corn
 
-suite = make_test_suite(make_corn)
+suite = make_test_suite(make_corn, 'memory')
