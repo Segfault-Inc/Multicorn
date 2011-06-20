@@ -57,7 +57,11 @@ class Memory(AbstractCorn):
                 # Finally fetch the item, and execute the remainding query
                 # against it.
                 key = tuple(values[key] for key in self.identity_properties)
-                items = (self._storage.get(key, None),)
+                item = self._storage.get(key, None)
+                if item is None:
+                    items = []
+                else:
+                    items = [item]
                 return self.RequestWrapper.from_request(request).execute((items,))
         return wrapped_request.execute((self._all(),))
 
