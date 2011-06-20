@@ -40,16 +40,16 @@ def existence(Corn):
     make_data(Corn)
     items = list(Corn.all.execute())
     assert len(items) == 3
-    item = Corn.all.filter(c._id == 1).one().execute()
-    assert item['_id'] == 1
+    item = Corn.all.filter(c.id == 1).one().execute()
+    assert item['id'] == 1
     assert item['name'] == 'foo'
     assert item['lastname'] == 'bar'
-    item = Corn.all.filter(c._id == 2).one().execute()
-    assert item['_id'] == 2
+    item = Corn.all.filter(c.id == 2).one().execute()
+    assert item['id'] == 2
     assert item['name'] == 'baz'
     assert item['lastname'] == 'bar'
-    item = Corn.all.filter(c._id == 3).one().execute()
-    assert item['_id'] == 3
+    item = Corn.all.filter(c.id == 3).one().execute()
+    assert item['id'] == 3
     assert item['name'] == 'foo'
     assert item['lastname'] == 'baz'
 
@@ -57,13 +57,14 @@ def existence(Corn):
 @corntest
 def add(Corn):
     """ Tests adding an element """
+    make_data(Corn)
     items = list(Corn.all.execute())
     assert len(items) == 3
-    Corn.create({'_id': 10, 'name': 'ban', 'lastname': 'bal'}).save()
-    items = Corn.all.filter(c._id == 10).execute()
+    Corn.create({'id': 10, 'name': 'ban', 'lastname': 'bal'}).save()
+    items = list(Corn.all.filter(c.id == 10).execute())
     assert len(items) == 1
     item = items[0]
-    assert item['_id'] == 10
+    assert item['id'] == 10
     assert item['name'] == 'ban'
     assert item['lastname'] == 'bal'
 
@@ -71,15 +72,16 @@ def add(Corn):
 @corntest
 def delete(Corn):
     """ Tests deleting an element """
+    make_data(Corn)
     items = list(Corn.all.execute())
     assert len(items) == 3
-    item = Corn.all.filter(c._id == 2).one().execute()
-    assert item['_id'] == 2
+    item = Corn.all.filter(c.id == 2).one().execute()
+    assert item['id'] == 2
     assert item['name'] == 'baz'
     assert item['lastname'] == 'bar'
     item.delete()
     items = list(Corn.all.execute())
     assert len(items) == 2
-    assert Corn.all.filter(c._id == 1).len().execute() == 1
-    assert Corn.all.filter(c._id == 2).len().execute() == 0
-    assert Corn.all.filter(c._id == 3).len().execute() == 1
+    assert Corn.all.filter(c.id == 1).len().execute() == 1
+    assert Corn.all.filter(c.id == 2).len().execute() == 0
+    assert Corn.all.filter(c.id == 3).len().execute() == 1
