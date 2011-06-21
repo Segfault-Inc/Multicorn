@@ -79,9 +79,10 @@ class Mongo(AbstractCorn):
         return self.create(item)
 
     def _execute(self, expression, return_type):
+        print(expression)
         if isinstance(return_type, List):
             result = self.collection.find(
-                expression.spec, expression.fields \
+                expression.spec(), expression.fields \
                 if expression.fields else None)
             if isinstance(return_type.inner_type, Dict):
                 return [
@@ -91,8 +92,8 @@ class Mongo(AbstractCorn):
         else:
             if expression.one:
                 return self._mongo_to_item(
-                    self.collection.find_one(expression.spec))
-            result = self.collection.find(expression.spec)
+                    self.collection.find_one(expression.spec()))
+            result = self.collection.find(expression.spec())
             if expression.count:
                 return result.count()
             raise

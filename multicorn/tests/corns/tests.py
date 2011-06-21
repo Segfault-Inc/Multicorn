@@ -96,3 +96,17 @@ def delete(Corn):
     assert Corn.all.filter(c.id == 1).len().execute() == 1
     assert Corn.all.filter(c.id == 2).len().execute() == 0
     assert Corn.all.filter(c.id == 3).len().execute() == 1
+
+
+@corntest
+def basic_query(Corn):
+    """ Tests basic querying """
+    make_data(Corn)
+    items = list(Corn.all.execute())
+    assert len(items) == 3
+    items = list(Corn.all.filter(c.id == c.id).execute())
+    assert len(items) == 3
+
+    item = Corn.all.filter(c.id == 2).one().execute()
+    item2 = Corn.all.filter(2 == c.id).one().execute()
+    assert item == item2
