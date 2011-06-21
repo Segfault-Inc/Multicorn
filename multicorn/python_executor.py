@@ -45,18 +45,18 @@ def execute_literal(self, contexts):
 
 @register_executor(requests.ListRequest)
 def execute_list(self, contexts):
-    return [element.execute(contexts) for element in self.value]
+    return [execute(element, contexts) for element in self.value]
 
 
 @register_executor(requests.TupleRequest)
 def execute_tuple(self, contexts):
-    return tuple(element.execute(contexts) for element in self.value)
+    return tuple(execute(element, contexts) for element in self.value)
 
 
 @register_executor(requests.DictRequest)
 def execute_dict(self, contexts):
     return dict(
-        (key, value.execute(contexts))
+        (key, execute(value, contexts))
         for key, value in self.value.iteritems())
 
 
@@ -73,8 +73,8 @@ def execute_context(self, contexts):
 def execute_binary_operation(self, contexts):
     # TODO: message for this error
     assert self.operator_name
-    left = self.subject.execute(contexts)
-    right = self.other.execute(contexts)
+    left = execute(self.subject, contexts)
+    right = execute(self.other, contexts)
     operator_function = getattr(operator, '__%s__' % self.operator_name)
     return operator_function(left, right)
 
@@ -83,14 +83,14 @@ def execute_binary_operation(self, contexts):
 def execute_unary_operation(self, contexts):
     # TODO: message for this error
     assert self.operator_name
-    subject = self.subject.execute(contexts)
+    subject = execute(self.subject, contexts)
     operator_function = getattr(operator, '__%s__' % self.operator_name)
     return operator_function(subject)
 
 
 @register_executor(requests.AttributeRequest)
 def execute_attribute(self, contexts):
-    subject = self.subject.execute(contexts)
+    subject = execute(self.subject, contexts)
     # XXX The execution of __getattr__ is actually __getitem__ !!
     # eg. if r represents item, r.firstname represents item['firstname']
     return subject[self.attr_name]
@@ -98,7 +98,7 @@ def execute_attribute(self, contexts):
 
 @register_executor(requests.SliceRequest)
 def execute_slice(self, contexts):
-    subject = self.subject.execute(contexts)
+    subject = execute(self.subject, contexts)
     try:
         return subject[self.slice]
     except TypeError:
@@ -128,7 +128,7 @@ def execute_slice(self, contexts):
 
 @register_executor(requests.IndexRequest)
 def execute_index(self, contexts):
-    subject = self.subject.execute(contexts)
+    subject = execute(self.subject, contexts)
     try:
         return subject[self.index]
     except TypeError:
@@ -155,7 +155,7 @@ def execute_index(self, contexts):
 
 @register_executor(requests.SortRequest)
 def execute_sort(self, contexts):
-    sequence = self.subject.execute(contexts)
+    sequence = execute(self.subject, contexts)
     sort_keys = self.sort_keys
     assert sort_keys, 'Got a sort request with no sort key.'
 
@@ -165,7 +165,7 @@ def execute_sort(self, contexts):
         # The sort direction is the same for all keys: we can use a single
         # key function and a single `reverse` argument.
         def key_function(element):
-            return tuple(key.execute(contexts + (element,))
+            return tuple(execute(key, contexts + (element,))
                          for key, reverse in sort_keys)
         return sorted(sequence, key=key_function, reverse=all_reverse)
     else:
@@ -185,7 +185,7 @@ def execute_sort(self, contexts):
             # key_request is referenced in the outer scope, and will change
             # for each iteration of the for-loop below.
             # No need to re-define the same function for each iteration.
-            return key_request.execute(contexts + (element,))
+            return execute(key_request, contexts + (element,))
 
         sequence = list(sequence)
         # sort_keys is in most-significant key fist, we want to do successive
@@ -198,26 +198,26 @@ def execute_sort(self, contexts):
 
 @register_executor(requests.MapRequest)
 def execute_map(self, contexts):
-    sequence = self.subject.execute(contexts)
+    sequence = execute(self.subject, contexts)
     for element in sequence:
-        yield self.new_value.execute(contexts + (element,))
+        yield execute(self.new_value, contexts + (element,))
 
 
 @register_executor(requests.FilterRequest)
 def execute_filter(self, contexts):
-    sequence = self.subject.execute(contexts)
+    sequence = execute(self.subject, contexts)
     for element in sequence:
-        if self.predicate.execute(contexts + (element,)):
+        if execute(self.predicate, contexts + (element,)):
             yield element
 
 
 @register_executor(requests.GroupbyRequest)
 def execute_groupby(self, contexts):
-    sequence = self.subject.execute(contexts)
+    sequence = execute(self.subject, contexts)
     iterator = iter(sequence)
     groups = {}
     for element in iterator:
-        key = self.key.execute(contexts + (element,))
+        key = execute(self.key, contexts + (element,))
         try:
             elements = groups.setdefault(key, [])
         except TypeError:
@@ -237,7 +237,7 @@ def execute_groupby(self, contexts):
 
     # Continue the same iterator
     for element in iterator:
-        key = self.key.execute(contexts + (element,))
+        key = execute(self.key, contexts + (element,))
         # Search the list for this key/grouper.
         for grouper, elements in groups:
             if grouper == key:
@@ -253,7 +253,7 @@ def execute_groupby(self, contexts):
 
 @register_executor(requests.DistinctRequest)
 def execute_distinct(self, contexts):
-    sequence = self.subject.execute(contexts)
+    sequence = execute(self.subject, contexts)
     iterator = iter(sequence)
 
     seen = set()
@@ -284,7 +284,7 @@ def execute_distinct(self, contexts):
 
 @register_executor(requests.OneRequest)
 def execute_one(self, contexts):
-    sequence = self.subject.execute(contexts)
+    sequence = execute(self.subject, contexts)
     iterator = iter(sequence)
     stop_iteration_marker = object()
     element = next(iterator, stop_iteration_marker)
@@ -293,7 +293,7 @@ def execute_one(self, contexts):
             # TODO specific exception
             raise IndexError('.one() on an empty sequence')
         else:
-            element = self.default.execute(contexts)
+            element = execute(self.default, contexts)
     if next(iterator, stop_iteration_marker) is stop_iteration_marker:
         return element
     else:
@@ -303,8 +303,8 @@ def execute_one(self, contexts):
 
 @register_executor(requests.AddRequest)
 def execute_add(self, contexts):
-    left = self.subject.execute(contexts)
-    right = self.other.execute(contexts)
+    left = execute(self.subject, contexts)
+    right = execute(self.other, contexts)
     if isinstance(left, Mapping) and isinstance(right, Mapping):
         result = dict(left)
         result.update(right)
@@ -319,21 +319,21 @@ def execute_add(self, contexts):
 
 @register_executor(requests.AndRequest)
 def execute_and(self, contexts):
-    left = self.subject.execute(contexts)
-    right = self.other.execute(contexts)
+    left = execute(self.subject, contexts)
+    right = execute(self.other, contexts)
     return bool(left and right)
 
 
 @register_executor(requests.OrRequest)
 def execute_or(self, contexts):
-    left = self.subject.execute(contexts)
-    right = self.other.execute(contexts)
+    left = execute(self.subject, contexts)
+    right = execute(self.other, contexts)
     return bool(left or right)
 
 
 @register_executor(requests.LenRequest)
 def execute_len(self, contexts):
-    subject = self.subject.execute(contexts)
+    subject = execute(self.subject, contexts)
     try:
         return len(subject)
     except TypeError:
@@ -345,7 +345,7 @@ def execute_len(self, contexts):
 def simple_executor(class_, function):
     @register_executor(class_)
     def execute(self, contexts):
-        subject = self.subject.execute(contexts)
+        subject = execute(self.subject, contexts)
         return function(subject)
 
 simple_executor(requests.NotRequest, operator.not_)
@@ -356,5 +356,5 @@ simple_executor(requests.MaxRequest, max)
 del register_executor, simple_executor
 
 
-def execute(request, context=()):
-    return PythonExecutor.from_request(request).execute(context)
+def execute(request, contexts=()):
+    return PythonExecutor.from_request(request).execute(contexts)

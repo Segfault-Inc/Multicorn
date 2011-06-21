@@ -27,6 +27,9 @@ class RequestWrapper(object):
 
     @classmethod
     def from_request(cls, request):
+        if isinstance(request, cls):
+            # Already wrapped
+            return request
         request = requests.as_request(request)
         return cls.class_from_request_class(type(request))(request)
 
