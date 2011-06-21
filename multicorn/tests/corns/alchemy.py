@@ -17,7 +17,7 @@ def teardown(Corn):
     Corn.table.drop()
 
 #suite = make_test_suite(make_corn, teardown=teardown)
-suite = make_test_suite(make_corn)
+suite = make_test_suite(make_corn, 'alchemy')
 
 
 @suite.test

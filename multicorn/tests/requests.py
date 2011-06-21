@@ -78,7 +78,6 @@ def test_boolean_logic():
     true = literal(1) == 1
     false = literal(1) == 0
 
-    print true, ~true
     assert_value(~true, False)
     assert_value(~false, True)
 

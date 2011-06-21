@@ -104,7 +104,7 @@ class Alchemy(AbstractCorn):
     def delete(self, item):
         connection = self.table.bind.connect()
         transaction = connection.begin()
-        result = self._table.delete().where(
+        result = self.table.delete().where(
                 self._to_pk_where_clause(item)).execute()
         if result.rowcount > 1:
             transaction.rollback()
@@ -171,11 +171,12 @@ class Alchemy(AbstractCorn):
             sql_query = sqlexpr.select(from_obj=tables)
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
-            return self._transform_result(sql_query.execute(), return_type)
+            sql_result = sql_query.execute()
+            if return_type.type != list:
+                sql_result = next(iter(sql_result), None)
+            return self._transform_result(sql_result, return_type)
         else:
             return python_executor.execute(request)
 
 
 from .dialects import get_dialect
-
-
