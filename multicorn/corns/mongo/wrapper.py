@@ -59,7 +59,6 @@ class LtWrapper(wrappers.LtWrapper, MongoWrapper):
         return "(%s < %s)" % (self.subject.to_mongo(), self.other.to_mongo())
 
 
-
 @MongoWrapper.register_wrapper(requests.GtRequest)
 class GtWrapper(wrappers.GtWrapper, MongoWrapper):
 
@@ -111,3 +110,39 @@ class OneWrapper(wrappers.OneWrapper, MongoWrapper):
         expression = self.subject.to_mongo()
         expression.one = True
         return expression
+
+
+@MongoWrapper.register_wrapper(requests.AddRequest)
+class AddWrapper(wrappers.AddWrapper, MongoWrapper):
+
+    def to_mongo(self):
+        return "(%s + %s)" % (self.subject.to_mongo(), self.other.to_mongo())
+
+
+@MongoWrapper.register_wrapper(requests.SubRequest)
+class SubWrapper(wrappers.SubWrapper, MongoWrapper):
+
+    def to_mongo(self):
+        return "(%s - %s)" % (self.subject.to_mongo(), self.other.to_mongo())
+
+
+@MongoWrapper.register_wrapper(requests.MulRequest)
+class MulWrapper(wrappers.MulWrapper, MongoWrapper):
+
+    def to_mongo(self):
+        return "(%s * %s)" % (self.subject.to_mongo(), self.other.to_mongo())
+
+
+@MongoWrapper.register_wrapper(requests.DivRequest)
+class DivWrapper(wrappers.DivWrapper, MongoWrapper):
+
+    def to_mongo(self):
+        return "(%s / %s)" % (self.subject.to_mongo(), self.other.to_mongo())
+
+
+@MongoWrapper.register_wrapper(requests.PowRequest)
+class PowWrapper(wrappers.PowWrapper, MongoWrapper):
+
+    def to_mongo(self):
+        return "(Math.pow(%s, %s))" % (
+            self.subject.to_mongo(), self.other.to_mongo())

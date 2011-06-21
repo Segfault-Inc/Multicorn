@@ -158,12 +158,14 @@ class Request(object):
     def __sub__(self, other): return SubRequest(self, as_request(other))
     def __mul__(self, other): return MulRequest(self, as_request(other))
     def __div__(self, other): return DivRequest(self, as_request(other))
+    def __pow__(self, other): return PowRequest(self, as_request(other))
     def __truediv__(self, other): return DivRequest(self, as_request(other))
 
     # Reflected methods: swap the arguments.
     def __radd__(self, other): return AddRequest(as_request(other), self)
     def __rsub__(self, other): return SubRequest(as_request(other), self)
     def __rmul__(self, other): return MulRequest(as_request(other), self)
+    def __rpow__(self, other): return PowRequest(as_request(other), self)
     def __rdiv__(self, other): return DivRequest(as_request(other), self)
     def __rtruediv__(self, other): return DivRequest(as_request(other), self)
 
@@ -482,6 +484,12 @@ class DivRequest(BinaryOperationRequest):
     """
     operator_name = 'truediv'
 
+
+class PowRequest(BinaryOperationRequest):
+    """
+    some_req ** other_req is PowRequest(some_req, other_req)
+    """
+    operator_name = 'pow'
 
 class AndRequest(BinaryOperationRequest):
     """
