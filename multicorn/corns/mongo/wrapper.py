@@ -166,3 +166,20 @@ class OneWrapper(wrappers.OneWrapper, MongoWrapper):
             return expression
         else:
             raise NotImplementedError("Non final one()")
+
+
+@MongoWrapper.register_wrapper(requests.MapRequest)
+class MapWrapper(wrappers.MapWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        expression = self.subject.to_mongo()
+        expression.fields.update(
+            {self.new_value.to_mongo(contexts): 1})
+        return expression
+
+
+@MongoWrapper.register_wrapper(requests.DictRequest)
+class DictWrapper(wrappers.DictWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        pass

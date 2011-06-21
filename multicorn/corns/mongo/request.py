@@ -4,7 +4,7 @@ class MongoRequest():
         self.spec = {}
         self.count = False
         self.one = False
-        #    fields = {}
+        self.fields = {}
 
     def __repr__(self):
         return "MongoRequest(spec=%r)" % self.spec

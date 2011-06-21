@@ -78,21 +78,32 @@ class Mongo(AbstractCorn):
             item[name] = mongo_item[name]
         return self.create(item)
 
-    def _execute(self, expression):
-        print(expression)
-        if expression.one:
-            return self._mongo_to_item(
-                self.collection.find_one(expression.spec))
-        result = self.collection.find(expression.spec)
-        if expression.count:
-            return result.count()
-        return [self._mongo_to_item(mongo_item) for mongo_item in result]
+    def _execute(self, expression, return_type):
+        if isinstance(return_type, List):
+            result = self.collection.find(
+                expression.spec, expression.fields \
+                if expression.fields else None)
+            if isinstance(return_type.inner_type, Dict):
+                return [
+                    self._mongo_to_item(mongo_item) for mongo_item in result]
+            else:
+                return [mongo_item[expression.fields.keys()[0]] for mongo_item in result]
+        else:
+            if expression.one:
+                return self._mongo_to_item(
+                    self.collection.find_one(expression.spec))
+            result = self.collection.find(expression.spec)
+            if expression.count:
+                return result.count()
+            raise
+            return [self._mongo_to_item(mongo_item) for mongo_item in result]
 
     def execute(self, request, contexts=()):
         wrapped_request = MongoWrapper.from_request(request)
         if True or self.is_all_mongo(wrapped_request, contexts):
             return self._execute(
-                wrapped_request.to_mongo(contexts))
+                wrapped_request.to_mongo(contexts),
+                wrapped_request.return_type())
         else:
             print("Not Optimized")
             return python_executor.execute(request)
