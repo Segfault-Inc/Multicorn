@@ -1,4 +1,4 @@
-from .requests import LiteralRequest, ContextRequest
+from .requests import LiteralRequest, ContextRequest, as_chain, WithRealAttributes
 from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper, LiteralWrapper
 from ..python_executor import execute
 
@@ -6,6 +6,7 @@ def split_predicate(filter, types, contexts=()):
     """Takes a FilterWrapper object, and returns two predicates wrappers objects"""
     contexts = contexts + (filter.subject.return_type(contexts).inner_type,)
     return inner_split(filter.predicate, types, contexts)
+
 
 def inner_split(wrapped_request, types, contexts):
     named_types = [type for type in wrapped_request.used_types(contexts).keys() if type.name]
@@ -22,6 +23,44 @@ def inner_split(wrapped_request, types, contexts):
         return  self_filter, other_filter
     else:
         return (RequestWrapper.from_request(LiteralRequest(True)), wrapped_request)
+
+def collect(request, predicate):
+    matches = []
+    def visitor(chain_item):
+        if predicate(chain_item):
+            matches.append(chain_item)
+    object.__getattribute__(request, 'visit')(visitor)
+    return matches
+
+def cut_on_predicate(request, predicate, recursive=False, position=-1):
+    """Cut a request as soon as a request matching the predicate is found.
+    When a request_part matches the predicate, the chain is cut at the relative position
+    `position`.
+    [:index(matching_part) + position], [index(matching_part) + position:]
+    If no chain item matches the predicate,  (None, request) is returned.
+    Else, (before, matching_request +rest) is returned.
+    """
+    if recursive:
+        def matcher(req):
+            return collect(req, predicate)
+    else:
+        matcher = predicate
+    chain = as_chain(request)
+    for idx, request_part in enumerate(chain):
+        if matcher(request_part):
+            empty_context = ContextRequest()
+            tail = WithRealAttributes(chain[-1]).copy_replace({chain[idx + position]:
+                empty_context})
+            return chain[idx + position], tail
+    return None, request
+
+def cut_on_index(request, index):
+    chain = as_chain(request)
+    empty_context = ContextRequest()
+    tail = WithRealAttributes(chain[-1]).copy_replace(chain[index],
+                empty_context)
+    return chain[index], tail
+
 
 
 def isolate_values(expression, contexts=()):
@@ -57,6 +96,17 @@ def isolate_values(expression, contexts=()):
                 remainder &= subject_remainder
             return values, remainder
     return {}, expression.wrapped_request
+
+def inject_context(request, context_values=()):
+    replacements = {}
+    def visitor(request):
+        if isinstance(request, ContextRequest):
+            wra = WithRealAttributes(request)
+            replacements[request] = LiteralRequest(context_values[wra.scope_depth - 1])
+    request.visit(visitor)
+    for request, replacement in request:
+        pass
+
 
 def isolate_identity_values(filter, id_types, contexts=()):
     """Return values, filter such that filter contains everything

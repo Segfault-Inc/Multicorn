@@ -5,12 +5,13 @@ from multicorn import Multicorn
 
 from multicorn.corns.memory import Memory
 from multicorn.requests import CONTEXT as c
+from multicorn.requests.requests import FilterRequest
 from multicorn.declarative import declare, Property
 from multicorn.requests.wrappers import RequestWrapper, LiteralWrapper,\
         EqWrapper, OrWrapper
-from multicorn.requests.requests import as_chain, cut_request, LiteralRequest,\
+from multicorn.requests.requests import as_chain, LiteralRequest,\
         LtRequest, WithRealAttributes, as_request
-from multicorn.requests.helpers import split_predicate, isolate_values
+from multicorn.requests.helpers import split_predicate, isolate_values, cut_on_predicate
 from multicorn.python_executor import PythonExecutor
 
 
@@ -24,7 +25,9 @@ def test_simple_helpers():
     request = filter.map(c)
     chain = as_chain(request)
     assert len(chain) == 3
-    left, right = cut_request(request, filter)
+    left, right = cut_on_predicate(request,
+            lambda x: isinstance(x, FilterRequest),
+            position=0)
     assert len(as_chain(left)) == 2
     # The right part as a len of totallen - len(left) + 1,
     # because we append a dummy context

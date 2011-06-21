@@ -115,3 +115,8 @@ def test_optimization(Corn):
     assert len(items) == 3
     assert all(hasattr(item['foreign'], 'corn') for item in items)
     assert all(item['foreign']['id'] == item['id'] for item in items)
+#    items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
+#    assert len(items) == 3
+#    assert all(all(subitem['name'] == item['name']
+#        for subitem in item['homonymes'])
+#            for item in items)

@@ -26,25 +26,13 @@ def as_request(obj):
         return LiteralRequest(obj)
 
 def as_chain(request):
-    """Return a (wrapped) request as a chain of successive operations"""
+    """Return a  request as a chain of successive operations"""
     chain = [request]
     request = WithRealAttributes(request)
     if issubclass(request.obj_type(), OperationRequest):
         chain = as_chain(request.subject) + chain
     return chain
 
-def cut_request(request, after):
-    """Cut the request in two equivalent requests such as "after" is the
-    last request in the left hand side."""
-    chain = as_chain(request)
-    if chain[-1] is after:
-        return chain[-1], ContextRequest()
-    for idx, request_part in enumerate(chain):
-        if request_part is after:
-            empty_context = ContextRequest()
-            tail = WithRealAttributes(chain[-1]).copy_replace(after, empty_context)
-            return after, tail
-    raise ValueError("The given delimitor request is not in the request")
 
 
 class WithRealAttributes(object):
@@ -260,6 +248,33 @@ class Request(object):
         ap = WithRealAttributes(as_chain(self)[0]).storage
         return ap.execute(self)
 
+    @self_with_attrs
+    def visit(self, func):
+        func(self._wrapped_obj)
+        for arg_name in self.arg_spec:
+            arg = getattr(self, arg_name)
+            if isinstance(arg, Request):
+                object.__getattribute__(arg, 'visit')(func)
+
+    @self_with_attrs
+    def copy_replace(self, replacements):
+        newargs = []
+        for arg_name in self.arg_spec:
+            arg = getattr(self, arg_name)
+            wrapper = WithRealAttributes(arg)
+            found = False
+            for key, replacement in replacements.iteritems():
+                if arg is key:
+                    newargs.append(replacement)
+                    found = True
+                    break
+            if hasattr(wrapper, 'copy_replace'):
+                arg = (wrapper.copy_replace(replacements))
+            if not found:
+                newargs.append(arg)
+        return self.obj_type()(*newargs)
+
+
 
 class StoredItemsRequest(Request):
     """
@@ -342,19 +357,7 @@ class OperationRequest(Request):
     # r2 respectively represent v1 and v2.
     operator_name = None
 
-    @self_with_attrs
-    def copy_replace(self, replace, replacement):
-        newargs = []
-        for arg_name in self.arg_spec:
-            arg = getattr(self, arg_name)
-            wrapper = WithRealAttributes(arg)
-            if arg is replace:
-                newargs.append(replacement)
-            elif hasattr(wrapper, 'copy_replace'):
-                newargs.append(wrapper.copy_replace(replace, replacement))
-            else:
-                newargs.append(arg)
-        return self.obj_type()(*newargs)
+
 
 
 class UnaryOperationRequest(OperationRequest):
