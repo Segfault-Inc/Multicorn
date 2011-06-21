@@ -96,10 +96,10 @@ def test_optimization(Corn):
     items = list(Corn.all.map(c.name).execute())
     assert len(items) == 3
     assert all(type(item) == unicode for item in items)
-    items = list(Corn.all.map({'foo': c.name}).execute())
-    assert len(items) == 3
-    assert all(type(item) == dict for item in items)
-    assert all('foo' in item for item in items)
+    # items = list(Corn.all.map({'foo': c.name}).execute())
+    # assert len(items) == 3
+    # assert all(type(item) == dict for item in items)
+    # assert all('foo' in item for item in items)
     # items = list(Corn.all.map({'foo': c.name}).filter(c.foo == 'baz').execute())
     # assert len(items) == 1
     # assert all(type(item) == dict for item in items)
