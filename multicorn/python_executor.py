@@ -356,5 +356,5 @@ simple_executor(requests.MaxRequest, max)
 del register_executor, simple_executor
 
 
-def execute(request):
-    return PythonExecutor.from_request(request).execute(())
+def execute(request, context=()):
+    return PythonExecutor.from_request(request).execute(context)

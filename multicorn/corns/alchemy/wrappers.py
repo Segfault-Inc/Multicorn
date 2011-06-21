@@ -1,5 +1,5 @@
 from ...requests import requests, wrappers, types
-from . import Alchemy
+from . import Alchemy, InvalidRequestException
 
 from sqlalchemy import sql as sqlexpr
 from sqlalchemy.sql.expression import Selectable
@@ -11,6 +11,7 @@ class Context(object):
         self.type = type
         self.query = query
 
+
 def type_context(context):
     return tuple([c.type for c in context])
 
@@ -21,6 +22,9 @@ class AlchemyWrapper(wrappers.RequestWrapper):
         raise NotImplementedError()
 
     def extract_tables(self):
+        raise NotImplementedError()
+
+    def is_valid(self, contexts=()):
         raise NotImplementedError()
 
 
@@ -36,6 +40,11 @@ class FilterWrapper(wrappers.FilterWrapper, AlchemyWrapper):
 
     def extract_tables(self):
         return self.subject.extract_tables() + self.predicate.extract_tables()
+
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+        self.predicate.is_valid(contexts +
+                (self.subject.return_type(contexts).inner_type,))
 
 
 
@@ -53,6 +62,9 @@ class StoredItemsWrapper(wrappers.StoredItemsWrapper, AlchemyWrapper):
         self.aliased_table = self.storage.table.alias()
         return (self.aliased_table,)
 
+    def is_valid(self, contexts=()):
+        pass
+
 @AlchemyWrapper.register_wrapper(requests.ContextRequest)
 class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
 
@@ -63,6 +75,11 @@ class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
         # A context switch does not introduce new tables
         return tuple()
 
+    def is_valid(self, contexts=()):
+        if len(contexts) <= self.scope_depth:
+            raise InvalidRequestException(self, "Invalid Context Request:\
+                    no %sth parent scope" % self.scope_depth)
+
 @AlchemyWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(wrappers.LiteralWrapper, AlchemyWrapper):
 
@@ -71,6 +88,10 @@ class LiteralWrapper(wrappers.LiteralWrapper, AlchemyWrapper):
 
     def extract_tables(self):
         return tuple()
+
+    def is_valid(self, contexts=()):
+       # TODO: raise on invalid Types
+       pass
 
 
 @AlchemyWrapper.register_wrapper(requests.AttributeRequest)
@@ -83,11 +104,23 @@ class AttributeWrapper(wrappers.AttributeWrapper, AlchemyWrapper):
     def extract_tables(self):
         return self.subject.extract_tables()
 
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+        return_type = self.subject.return_type(contexts)
+        # TODO: manage attr getters on date objects, maybe
+        if not isinstance(return_type, types.Dict):
+            raise InvalidRequestException(self, "Cannot access attribute in a \
+                    non-dict context")
+
+
 class BinaryOperationWrapper(AlchemyWrapper):
 
     def extract_tables(self):
         return self.subject.extract_tables() + self.other.extract_tables()
 
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+        self.other.is_valid(contexts)
 
 
 @AlchemyWrapper.register_wrapper(requests.AndRequest)
@@ -98,8 +131,6 @@ class AndWrapper(wrappers.AndWrapper, BinaryOperationWrapper):
                     self.other.to_alchemy(query, contexts))
 
 
-
-
 @AlchemyWrapper.register_wrapper(requests.OrRequest)
 class OrWrapper(wrappers.OrWrapper, BinaryOperationWrapper):
 
@@ -107,12 +138,14 @@ class OrWrapper(wrappers.OrWrapper, BinaryOperationWrapper):
         return sqlexpr.or_(self.subject.to_alchemy(query, contexts),
                     self.other.to_alchemy(query, contexts))
 
+
 @AlchemyWrapper.register_wrapper(requests.EqRequest)
 class EqWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
         return self.subject.to_alchemy(query, contexts) ==\
                 self.other.to_alchemy(query, contexts)
+
 
 @AlchemyWrapper.register_wrapper(requests.NeRequest)
 class NeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
@@ -207,6 +240,15 @@ class MapWrapper(wrappers.MapWrapper, AlchemyWrapper):
     def extract_tables(self):
         return self.subject.extract_tables() + self.new_value.extract_tables()
 
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+        return_type = self.subject.return_type(contexts)
+        if not isinstance(return_type, types.List):
+            raise InvalidRequestException(self, "Cannot apply map to the type\
+                                                %s" % return_type.type)
+        contexts = contexts + (return_type.inner_type,)
+        self.new_value.is_valid(contexts)
+
 @AlchemyWrapper.register_wrapper(requests.DictRequest)
 class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
 
@@ -227,6 +269,14 @@ class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
                 selects.append(req.label(key))
         return query.with_only_columns(selects)
 
+    def is_valid(self, contexts):
+        for req in self.value.values():
+            req.is_valid(contexts)
+            return_type = req.return_type(contexts)
+            if return_type.type == list:
+                raise InvalidRequestException(self, "Cannot fetch a list\
+                        as a mapping value")
+
     def extract_tables(self):
         return reduce(lambda x, y: x + y, (request.extract_tables()
                         for request in self.value.values()))
@@ -243,4 +293,7 @@ class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
 
     def extract_tables(self):
         return self.subject.extract_tables()
+
+    def is_valid(self, contexts):
+        pass
 

@@ -4,8 +4,8 @@
 
 from .abstract import AbstractCorn
 from ..requests.types import Type
-from ..requests.requests import as_chain, cut_request, FilterRequest
-from ..requests.helpers import isolate_identity_values
+from ..requests.requests import as_chain, FilterRequest
+from ..requests.helpers import isolate_identity_values, cut_on_predicate
 from ..requests.wrappers import RequestWrapper
 
 
@@ -31,11 +31,12 @@ class Memory(AbstractCorn):
 
     def execute(self, request):
         wrapped_request = self.RequestWrapper.from_request(request)
-        chain = as_chain(request)
         # If we filter straight away on id properties, cut the chain in
         # half and work only on the matching item
-        if len(chain) > 1 and isinstance(chain[1], FilterRequest):
-            filter, other = cut_request(request, chain[1])
+        filter, other = cut_on_predicate(request,
+                lambda x : isinstance(x, FilterRequest),
+                position=0)
+        if filter:
             id_types = [self.properties[name] for name in self.identity_properties]
             values, remainder_query = isolate_identity_values(filter, id_types)
             if all(idprop  in values for idprop in self.identity_properties):
@@ -45,7 +46,7 @@ class Memory(AbstractCorn):
                     # because we had nothing after the filter
                     request = remainder_query
                 else:
-                    request = RequestWrapper.from_request(other).copy_replace(as_chain(other)[0], remainder_query)
+                    request = RequestWrapper.from_request(other).copy_replace({as_chain(other)[0]: remainder_query})
                 # Finally fetch the item, and execute the remainding query
                 # against it.
                 key = tuple(values[key] for key in self.identity_properties)

@@ -1,7 +1,14 @@
 from __future__ import print_function
 from ..abstract import AbstractCorn
 from ...requests.types import Type, List, Dict
+from ...requests.helpers import cut_on_predicate
 from ... import python_executor
+
+class InvalidRequestException(Exception):
+
+    def __init__(self, request, message=""):
+        self.request = request
+        self.message = message
 
 
 try:
@@ -145,7 +152,21 @@ class Alchemy(AbstractCorn):
 
     def execute(self, request, contexts=()):
         wrapped_request = self.dialect.wrap_request(request)
+        # TODO: try to split the request if something is not managed
         if self.is_all_alchemy(wrapped_request, contexts):
+            try:
+                wrapped_request.is_valid(contexts)
+            except InvalidRequestException as e:
+                invalid_request = e.request.wrapped_request
+                def predicate(req):
+                    return req is invalid_request
+                managed, not_managed = cut_on_predicate(request, predicate,
+                        recursive=True)
+                if managed:
+                    result = self.execute(managed)
+                else:
+                    result = self._all()
+                return python_executor.execute(not_managed, (result,))
             tables = wrapped_request.extract_tables()
             sql_query = sqlexpr.select(from_obj=tables)
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
