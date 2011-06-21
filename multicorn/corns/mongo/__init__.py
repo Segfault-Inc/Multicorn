@@ -65,7 +65,7 @@ class Mongo(AbstractCorn):
             if not (key == "_id" and value is None)))
         item.saved = True
 
-    def is_all_mongo(self, request, contexts=()):
+    def is_all_mongo(self, request):
         used_types = request.used_types()
         all_requests = reduce(
             lambda x, y: list(x) + list(y), used_types.values(), set())
@@ -98,12 +98,11 @@ class Mongo(AbstractCorn):
             raise
             return [self._mongo_to_item(mongo_item) for mongo_item in result]
 
-    def execute(self, request, contexts=()):
+    def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
-        if True or self.is_all_mongo(wrapped_request, contexts):
+        if self.is_all_mongo(wrapped_request):
             return self._execute(
-                wrapped_request.to_mongo(contexts),
+                wrapped_request.to_mongo(),
                 wrapped_request.return_type())
         else:
-            print("Not Optimized")
             return python_executor.execute(request)
