@@ -344,7 +344,7 @@ def execute_len(self, contexts):
 
 def simple_executor(class_, function):
     @register_executor(class_)
-    def execute(self, contexts):
+    def execute_simple(self, contexts):
         subject = execute(self.subject, contexts)
         return function(subject)
 
