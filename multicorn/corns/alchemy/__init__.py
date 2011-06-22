@@ -179,6 +179,7 @@ class Alchemy(AbstractCorn):
                         return python_executor.execute(request.default_value,
                                 (List(return_type)))
                     raise ValueError('.one() on an empty sequence')
+            print(unicode(sql_query))
             return self._transform_result(sql_result, return_type)
         else:
             return python_executor.execute(request)

@@ -305,8 +305,8 @@ class GroupbyWrapper(OperationWrapper):
     def used_types(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
         types = self.subject.used_types(contexts)
-        self.merge_dict(types, self.key.used_types(contexts + (subject_type.inner_type)))
-        self.merge_dict(types, self.aggregate.used_types(contexts + subject_type))
+        self.merge_dict(types, self.key.used_types(contexts + (subject_type.inner_type,)))
+        self.merge_dict(types, self.aggregate.used_types(contexts + (subject_type,)))
         return types
 
 

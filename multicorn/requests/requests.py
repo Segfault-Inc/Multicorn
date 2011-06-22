@@ -240,13 +240,19 @@ class Request(object):
             aggregate = ContextRequest()
         return GroupbyRequest(self, as_request(key), as_request(aggregate))
 
-    def sum(self):
+    def sum(self, subject=None):
+        if subject is not None:
+            return self.map(subject).sum()
         return SumRequest(self)
 
-    def min(self):
+    def min(self, subject=None):
+        if subject is not None:
+            return self.map(subject).min()
         return MinRequest(self)
 
-    def max(self):
+    def max(self, subject=None):
+        if subject is not None:
+            return self.map(subject).max()
         return MaxRequest(self)
 
     def len(self):
