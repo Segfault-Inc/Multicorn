@@ -1,5 +1,10 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from ...requests import requests, wrappers
 from .request import MongoRequest
+
 
 class MongoWrapper(wrappers.RequestWrapper):
     class_map = wrappers.RequestWrapper.class_map.copy()
@@ -20,7 +25,7 @@ class FilterWrapper(wrappers.FilterWrapper, MongoWrapper):
 
     def to_mongo(self):
         expression = self.subject.to_mongo()
-        expression.where = self.predicate.to_mongo()
+        expression.set_current_where(self.predicate.to_mongo())
         return expression
 
 
