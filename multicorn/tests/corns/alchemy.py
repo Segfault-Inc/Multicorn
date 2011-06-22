@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from multicorn.corns.alchemy import Alchemy
 from multicorn.declarative import declare, Property
 from . import make_test_suite

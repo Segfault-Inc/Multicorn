@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 import decimal
 import datetime
 from collections import namedtuple
@@ -264,5 +267,3 @@ class TypeExtenser(AbstractCornExtenser):
     def execute(self, query):
         #TODO: convert query so that every type is casted appropriately
         pass
-
-

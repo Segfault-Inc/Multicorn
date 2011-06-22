@@ -78,26 +78,29 @@ class Mongo(AbstractCorn):
             item[name] = mongo_item[name]
         return self.create(item)
 
-    def _execute(self, expression, return_type):
-        print(expression)
+    def _execute(self, mrq, return_type):
+        result = mrq.execute(self.collection)
         if isinstance(return_type, List):
-            result = self.collection.find(
-                expression.spec(), expression.fields \
-                if expression.fields else None)
             if isinstance(return_type.inner_type, Dict):
-                return [
-                    self._mongo_to_item(mongo_item) for mongo_item in result]
+                if return_type.inner_type.corn:
+                    def to_items(results):
+                        for result in results:
+                            yield self._mongo_to_item(result)
+                    return to_items(result)
+                else:
+                    return result
             else:
-                return [mongo_item[expression.fields.keys()[0]] for mongo_item in result]
+                def to_list(results):
+                    for mongo_item in result:
+                        values = mongo_item.values()
+                        values = values[0] if len(values) == 1 else values
+                        yield values
+                return to_list(result)
+        elif isinstance(return_type, Dict):
+            if return_type.corn:
+                return self._mongo_to_item(result)
         else:
-            if expression.one:
-                return self._mongo_to_item(
-                    self.collection.find_one(expression.spec()))
-            result = self.collection.find(expression.spec())
-            if expression.count:
-                return result.count()
-            raise
-            return [self._mongo_to_item(mongo_item) for mongo_item in result]
+            return result
 
     def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
