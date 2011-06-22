@@ -133,7 +133,7 @@ def basic_query(Corn):
     assert item['name'] == 'baz'
     assert item['lastname'] == 'bar'
 
-    item = Corn.all.filter(c.id * c.id == 9).one().execute()
+    item = Corn.all.filter((c.id * c.id )== 9).one().execute()
     assert item['id'] == 3
     assert item['name'] == 'foo'
     assert item['lastname'] == 'baz'

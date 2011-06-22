@@ -187,7 +187,6 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
         subject = self.subject.to_alchemy(query, contexts)
-        subject.apply_labels()
         other_base = query.with_only_columns([])
         other = self.other.to_alchemy(other_base, contexts)
         subject_type = self.subject.return_type(type_context(contexts))

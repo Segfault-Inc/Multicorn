@@ -1,5 +1,5 @@
 from .requests import LiteralRequest, ContextRequest, as_chain, WithRealAttributes
-from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper, LiteralWrapper
+from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper, LiteralWrapper, MulWrapper
 from . import wrappers
 
 def split_predicate(filter, types, contexts=()):
@@ -74,10 +74,13 @@ def isolate_values(expression, contexts=()):
         if isinstance(expression, EqWrapper):
             a, b = expression.subject, expression.other
             typea, typeb = a.return_type(contexts), b.return_type(contexts)
-            if not typea.name:
+            if isinstance(a, LiteralWrapper):
                 # In case we have `4 == r.foo`
                 b, a = a, b
                 typeb, typea = typea, typeb
+            elif not isinstance(b, LiteralWrapper):
+                # Neither is a Literal, we should GTFO
+                return {}, expression
             # If b is equal to newb, then we do not have any other
             # variables and the value is assumed to be a literal
             newb, remainder = inner_split(b, [], contexts)

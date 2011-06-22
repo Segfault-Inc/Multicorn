@@ -222,6 +222,8 @@ class ArithmeticOperationWrapper(BinaryOperationWrapper):
     def return_type(self, contexts=()):
         left_type = self.subject.return_type(contexts)
         right_type = self.other.return_type(contexts)
+        if left_type == right_type and left_type.corn:
+            return Type(type=left_type.type)
         return left_type.common_type(right_type)
 
 for operator in ARITHMETIC_OPERATORS:
@@ -241,7 +243,7 @@ class AddWrapper(ArithmeticOperationWrapper):
             mapping.update(right_type.mapping)
             return Dict(mapping=mapping)
         else:
-            return left_type.common_type(right_type)
+            return super(AddWrapper, self).return_type(contexts)
 
 
 
