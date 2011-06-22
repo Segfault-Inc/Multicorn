@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from ...requests import requests, wrappers, types
 from . import Alchemy, InvalidRequestException
 
@@ -295,4 +299,3 @@ class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
 
     def is_valid(self, contexts):
         pass
-

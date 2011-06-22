@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from __future__ import print_function
 from ..abstract import AbstractCorn
 from ...requests.types import Type, List, Dict

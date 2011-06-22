@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 class Type(object):
 
     def __init__(self,type=object, corn=None, name=None,):
@@ -58,5 +62,3 @@ class List(Type):
             return List(inner_type=self.inner_type.common_type(other.inner_type))
         else:
             return Type(type=object)
-
-
