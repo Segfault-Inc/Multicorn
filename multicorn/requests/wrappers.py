@@ -215,7 +215,7 @@ class NotOperationWrapper(OperationWrapper):
         return Type(type=bool)
 
 
-ARITHMETIC_OPERATORS = ('sub', 'mul', 'div')
+ARITHMETIC_OPERATORS = ('sub', 'mul', 'div', 'pow')
 
 
 class ArithmeticOperationWrapper(BinaryOperationWrapper):

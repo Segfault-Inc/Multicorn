@@ -11,7 +11,7 @@ def module_name_docstring(fun, module_name):
         return fun(arg)
     wrapper.__doc__ = "[%s]%s" % (
         colorize('yellow', module_name),
-        colorize('green', fun.__doc__))
+        colorize('green', fun.__doc__ or "Untitled test"))
     return wrapper
 
 

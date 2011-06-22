@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from attest import Tests, assert_hook
 from multicorn.requests import CONTEXT as c
 
@@ -96,3 +100,45 @@ def delete(Corn):
     assert Corn.all.filter(c.id == 1).len().execute() == 1
     assert Corn.all.filter(c.id == 2).len().execute() == 0
     assert Corn.all.filter(c.id == 3).len().execute() == 1
+
+
+@corntest
+def basic_query(Corn):
+    """ Tests basic querying """
+    make_data(Corn)
+    items = list(Corn.all.execute())
+    assert len(items) == 3
+    items = list(Corn.all.filter(c.id == c.id).execute())
+    assert len(items) == 3
+
+    item = Corn.all.filter(c.id == 2).one().execute()
+    item2 = Corn.all.filter(2 == c.id).one().execute()
+    assert item == item2
+
+    items = list(Corn.all.filter(
+        c.name + "<" + c.lastname + ">" == "foo<bar>").execute())
+    assert len(items) == 1
+    item = items[0]
+    assert item['id'] == 1
+    assert item['name'] == 'foo'
+    assert item['lastname'] == 'bar'
+
+    item = Corn.all.filter(c.id - 1 == 2).one().execute()
+    assert item['id'] == 3
+    assert item['name'] == 'foo'
+    assert item['lastname'] == 'baz'
+
+    item = Corn.all.filter(1 == c.id / 2).one().execute()
+    assert item['id'] == 2
+    assert item['name'] == 'baz'
+    assert item['lastname'] == 'bar'
+
+    item = Corn.all.filter(c.id * c.id == 9).one().execute()
+    assert item['id'] == 3
+    assert item['name'] == 'foo'
+    assert item['lastname'] == 'baz'
+
+    item = Corn.all.filter(c.id ** c.id == c.id).one().execute()
+    assert item['id'] == 1
+    assert item['name'] == 'foo'
+    assert item['lastname'] == 'bar'
