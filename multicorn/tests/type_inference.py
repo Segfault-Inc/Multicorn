@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from attest import Tests, assert_hook
 
 from multicorn.corns.memory import Memory
@@ -56,7 +60,7 @@ def test_map():
 def test_groupby():
     Corn = make_corn()
     type = return_type(
-        Corn.all.groupby(c.name).map(c.elements.map(c(-1).grouper)))
+        Corn.all.groupby(c.name).map(c.group.map(c(-1).key)))
     assert type == List(inner_type=List(inner_type=Corn.properties['name']))
 
 
@@ -114,8 +118,8 @@ def test_nimp():
     for key in ('distinct', 'slice', 'sort'):
         assert mapping[key] == List(Corn.type)
     assert mapping['groupby'] == List(Dict(mapping={
-        'grouper': Corn.properties['name'],
-        'elements': List(Corn.type)}))
+        'key': Corn.properties['name'],
+        'group': List(Corn.type)}))
     assert mapping['heterogeneous_list'] == List(Type(object))
     assert mapping['homogeneous_list'] == List(Type(unicode))
     assert mapping['tuple'] == Type(tuple)

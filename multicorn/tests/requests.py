@@ -356,31 +356,38 @@ def test_one():
 @suite.test
 def test_groupby():
     assert_list(
-        SOURCE.groupby(c.tata).sort(-c.grouper),
+        SOURCE.groupby(c.tata).sort(-c.key),
         [
-            {'grouper': 42, 'elements': [
+            {'key': 42, 'group': [
                 dict(toto='foo', tata=42, price=10, tax=D('1.196')),
                 dict(toto='bar', tata=42, price=5, tax=D('1.196')),
              ]},
-            {'grouper': 6, 'elements': [
+            {'key': 6, 'group': [
                 dict(toto='bar', tata=6, price=12, tax=1),
              ]},
         ]
     )
+    assert_list(
+        SOURCE.groupby(c.tata, c.len()).sort(-c.key),
+        [
+            {'key': 42, 'group': 2},
+            {'key': 6, 'group': 1},
+        ]
+    )
     result = list(execute(
-        SOURCE.groupby(c.tata).sort(-c.grouper).map(
-            c + {'elements': c.elements.map(-c.price * c.tax + c(-1).grouper)}
+        SOURCE.groupby(c.tata).sort(-c.key).map(
+            c + {'group': c.group.map(-c.price * c.tax + c(-1).key)}
         )
     ))
     for line in result:
-        line['elements'] = list(line['elements'])
+        line['group'] = list(line['group'])
     assert result == [
-        {'grouper': 42, 'elements': [D('30.04'), D('36.02')]},
-        {'grouper': 6, 'elements': [-6]},
+        {'key': 42, 'group': [D('30.04'), D('36.02')]},
+        {'key': 6, 'group': [-6]},
     ]
     assert_list(
-        SOURCE.groupby(c.tata).sort(-c.grouper).map(
-            (c.grouper, c.elements.map(c.price).sum() - c.grouper)
+        SOURCE.groupby(c.tata).sort(-c.key).map(
+            (c.key, c.group.map(c.price).sum() - c.key)
         ),
         [
             (42, -27),
@@ -394,7 +401,7 @@ def test_groupby():
             {'foo': 4, 'bar': 5},
             {'foo': 4, 'bar': 143},
             {'foo': 4, 'bar': 5},
-        ]).groupby(c).map((c.grouper, c.elements.len())),
+        ]).groupby(c).map((c.key, c.group.len())),
         [
             ({'foo': 4, 'bar': 5}, 2),
             ({'foo': 4, 'bar': 143}, 1),

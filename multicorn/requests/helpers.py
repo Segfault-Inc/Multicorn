@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from .requests import LiteralRequest, ContextRequest, as_chain, WithRealAttributes
-from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper, LiteralWrapper, MulWrapper
-from . import wrappers
+from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper, LiteralWrapper
 
 def split_predicate(filter, types, contexts=()):
     """Takes a FilterWrapper object, and returns two predicates wrappers objects"""
@@ -26,7 +29,7 @@ def inner_split(wrapped_request, types, contexts):
 
 def collect(request, predicate):
     matches = []
-    def visitor(chain_item):
+    def visitor(chain_item, scope_depth):
         if predicate(chain_item):
             matches.append(chain_item)
     object.__getattribute__(request, '_visit')(visitor)
@@ -106,12 +109,12 @@ def inject_context(request, context_values=()):
         def func(request):
             return WithRealAttributes(request).subject == context
         return func
-    def visitor(req):
+    def visitor(req, scope_depth):
         chain = as_chain(req)
         if isinstance(chain[0], ContextRequest):
             wrareq = WithRealAttributes(req)
             wracontext = WithRealAttributes(chain[0])
-            if wracontext.scope_depth < 0 and req is not chain[0]:
+            if wracontext.scope_depth <= -scope_depth and req is not chain[0]:
                 newreq = wrareq._copy_replace({chain[0]: LiteralRequest(context_values[wracontext.scope_depth])})
                 newvalue = LiteralRequest(newreq.execute())
                 replacements[req] = newvalue

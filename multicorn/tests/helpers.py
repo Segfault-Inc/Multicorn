@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
 from attest import Tests, assert_hook
 import attest
 
@@ -109,4 +113,3 @@ def test_isolate_values():
     assert isinstance(remainder, LtRequest)
     assert RequestWrapper.from_request(remainder).subject.attr_name== 'id'
     assert RequestWrapper.from_request(remainder).other.value == 3
-
