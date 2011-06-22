@@ -82,6 +82,10 @@ class Request(object):
     To access the actual attributes of Request objects, one needs to use
     `object.__getattribute__` and `object.__setattr__`.
     """
+
+
+    context_switching_args = ()
+
     # TODO: test `del some_request.fistname`. It should raise.
     def __getattribute__(self, name):
         if name.startswith('__') and name.endswith('__'):
@@ -231,8 +235,10 @@ class Request(object):
             decorated_sort_keys.append((sort_key, reverse))
         return SortRequest(self, decorated_sort_keys)
 
-    def groupby(self, key):
-        return GroupbyRequest(self, as_request(key))
+    def groupby(self, key, aggregate=None):
+        if aggregate is None:
+            aggregate = ContextRequest()
+        return GroupbyRequest(self, as_request(key), as_request(aggregate))
 
     def sum(self):
         return SumRequest(self)
@@ -258,12 +264,14 @@ class Request(object):
             return execute(self)
 
     @self_with_attrs
-    def _visit(self, func):
-        func(self._wrapped_obj)
+    def _visit(self, func, scope_depth=0):
+        func(self._wrapped_obj, scope_depth)
         for arg_name in self.arg_spec:
             arg = getattr(self, arg_name)
             if isinstance(arg, Request):
-                object.__getattribute__(arg, '_visit')(func)
+                if arg_name in self.context_switching_args:
+                    scope_depth += 1
+                object.__getattribute__(arg, '_visit')(func, scope_depth)
 
     @self_with_attrs
     def _copy_replace(self, replacements):
@@ -585,6 +593,7 @@ class OneRequest(OperationRequest):
 
 class FilterRequest(OperationRequest):
     arg_spec = ('subject', 'predicate')
+    context_switching_args = ('predicate',)
 
     @self_with_attrs
     def __init__(self, subject, predicate):
@@ -594,6 +603,7 @@ class FilterRequest(OperationRequest):
 
 class MapRequest(OperationRequest):
     arg_spec = ('subject', 'new_value')
+    context_switching_args = ('new_value',)
 
     @self_with_attrs
     def __init__(self, subject, new_value):
@@ -603,6 +613,7 @@ class MapRequest(OperationRequest):
 
 class SortRequest(OperationRequest):
     arg_spec = ('subject', 'sort_keys')
+    context_switching_args = ('sort_keys',)
 
     @self_with_attrs
     def __init__(self, subject, sort_keys):
@@ -611,12 +622,14 @@ class SortRequest(OperationRequest):
 
 
 class GroupbyRequest(OperationRequest):
-    arg_spec = ('subject', 'key')
+    arg_spec = ('subject', 'key', 'aggregate')
+    context_switching_args = ('key',)
 
     @self_with_attrs
-    def __init__(self, subject, key):
+    def __init__(self, subject, key, aggregate):
         self.subject = subject
         self.key = key
+        self.aggregate = aggregate
 
 
 class SumRequest(UnaryOperationRequest):

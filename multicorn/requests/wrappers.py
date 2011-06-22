@@ -294,17 +294,19 @@ class GroupbyWrapper(OperationWrapper):
     def __init__(self, *args, **kwargs):
         super(GroupbyWrapper, self).__init__(*args, **kwargs)
         self.key = self.from_request(self.key)
+        self.aggregate = self.from_request(self.aggregate)
 
     def return_type(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
         key_type = self.key.return_type(contexts + (subject_type.inner_type,))
-        return List(inner_type=Dict(mapping={'grouper': key_type,
-            'elements': subject_type}))
+        return List(inner_type=Dict(mapping={'key': key_type,
+            'group': self.aggregate.return_type(contexts + (subject_type,))}))
 
     def used_types(self, contexts=()):
-        newcontexts = contexts + (self.subject.return_type(contexts))
+        subject_type = self.subject.return_type(contexts)
         types = self.subject.used_types(contexts)
-        self.merge_dict(types, self.key.used_types(newcontexts))
+        self.merge_dict(types, self.key.used_types(contexts + (subject_type.inner_type)))
+        self.merge_dict(types, self.aggregate.used_types(contexts + subject_type))
         return types
 
 

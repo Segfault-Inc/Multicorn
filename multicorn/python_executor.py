@@ -226,8 +226,9 @@ def execute_groupby(self, contexts):
             break
         elements.append(element)
     else:
-        for grouper, elements in groups.iteritems():
-            yield {'grouper': grouper, 'elements': elements}
+        for key, group in groups.iteritems():
+            yield {'key': key,
+                   'group': execute(self.aggregate, contexts + (group,))}
         return
 
     # We have at least one non-hashable key/grouper, we can not use a dict
@@ -248,8 +249,9 @@ def execute_groupby(self, contexts):
             groups.append((key, elements))
         elements.append(element)
 
-    for grouper, elements in groups:
-        yield {'grouper': grouper, 'elements': elements}
+    for key, group in groups:
+        yield {'key': key,
+              'group': execute(self.aggregate, contexts + (group,))}
 
 
 @register_executor(requests.DistinctRequest)
