@@ -32,14 +32,25 @@ class MapReduce(object):
             self.where)
 
 
-def aliases_mr(aliases, where=None):
-    aliases_str = "{"
-    for alias, origin in aliases.items():
-        aliases_str = "%s%s: %s, " % (aliases_str, alias, origin)
-    aliases_str += "}"
+def make_mr_map(fields, where=None):
+    with_all = False
+    if '*' in fields:
+        with_all = True
+        del fields["*"]
+    fields_str = "fields = {"
+    for field, origin in fields.items():
+        fields_str = "%s%s: %s, " % (fields_str, field, origin)
+    fields_str += "};"
+    if with_all:
+        fields_str += (
+            "for (attr in this) {"
+            "if (attr != '_id') {"
+            "  fields[attr] = this[attr];"
+            "}};")
     map = ("function () {"
-               "emit(this._id, %s);"
-               "}") % aliases_str
+           "%s"
+           "emit(this._id, fields);"
+           "}") % fields_str
     reduce = ("function (k, v) {"
               "return v[0];"
               "}")
