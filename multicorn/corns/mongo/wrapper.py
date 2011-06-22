@@ -4,6 +4,7 @@
 
 from ...requests import requests, wrappers
 from .request import MongoRequest
+from .mapreduce import aliases_mr
 
 
 class MongoWrapper(wrappers.RequestWrapper):
@@ -24,9 +25,9 @@ class StoredItemsWrapper(wrappers.StoredItemsWrapper, MongoWrapper):
 class FilterWrapper(wrappers.FilterWrapper, MongoWrapper):
 
     def to_mongo(self):
-        expression = self.subject.to_mongo()
-        expression.set_current_where(self.predicate.to_mongo())
-        return expression
+        mrq = self.subject.to_mongo()
+        mrq.set_current_where(self.predicate.to_mongo())
+        return mrq
 
 
 @MongoWrapper.register_wrapper(requests.AndRequest)
@@ -103,18 +104,18 @@ class AttributeWrapper(wrappers.AttributeWrapper, MongoWrapper):
 class LenWrapper(wrappers.LenWrapper, MongoWrapper):
 
     def to_mongo(self):
-        expression = self.subject.to_mongo()
-        expression.count = True
-        return expression
+        mrq = self.subject.to_mongo()
+        mrq.count = True
+        return mrq
 
 
 @MongoWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(wrappers.OneWrapper, MongoWrapper):
 
     def to_mongo(self):
-        expression = self.subject.to_mongo()
-        expression.one = True
-        return expression
+        mrq = self.subject.to_mongo()
+        mrq.one = True
+        return mrq
 
 
 @MongoWrapper.register_wrapper(requests.AddRequest)
@@ -151,3 +152,24 @@ class PowWrapper(wrappers.PowWrapper, MongoWrapper):
     def to_mongo(self):
         return "(Math.pow(%s, %s))" % (
             self.subject.to_mongo(), self.other.to_mongo())
+
+
+@MongoWrapper.register_wrapper(requests.MapRequest)
+class MapWrapper(wrappers.MapWrapper, MongoWrapper):
+
+    def to_mongo(self):
+        mrq = self.subject.to_mongo()
+        mapped = self.new_value.to_mongo()
+        if isinstance(mapped, basestring):
+            mrq.current_fields.show(mapped)
+        else:
+            mrq.mapreduces.append(aliases_mr(mapped, mrq.pop_where()))
+        return mrq
+
+
+@MongoWrapper.register_wrapper(requests.DictRequest)
+class DictWrapper(wrappers.DictWrapper, MongoWrapper):
+
+    def to_mongo(self):
+        return {key: val.to_mongo() for key, val in self.value.items()}
+

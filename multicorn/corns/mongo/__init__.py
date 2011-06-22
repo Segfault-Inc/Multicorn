@@ -78,23 +78,23 @@ class Mongo(AbstractCorn):
             item[name] = mongo_item[name]
         return self.create(item)
 
-    def _execute(self, expression, return_type):
-        result = expression.execute(self.collection)
+    def _execute(self, mrq, return_type):
+        result = mrq.execute(self.collection)
         if isinstance(return_type, List):
             if isinstance(return_type.inner_type, Dict):
                 if return_type.inner_type.corn:
                     def to_items(results):
                         for result in results:
                             yield self._mongo_to_item(result)
-                    print("To item")
                     return to_items(result)
                 else:
-                    print("To dict")
                     return result
             else:
                 def to_list(results):
                     for mongo_item in result:
-                        yield mongo_item[expression.fields.keys()[0]]
+                        values = mongo_item.values()
+                        values = values[0] if len(values) == 1 else values
+                        yield values
                 return to_list(result)
         elif isinstance(return_type, Dict):
             if return_type.corn:
