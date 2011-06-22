@@ -107,6 +107,9 @@ class Request(object):
         raise TypeError('Request objects only support indexing and slicing, '
                         'not dict-like lookup.')
 
+    def __iter__(self):
+        raise TypeError('Request are not iterable. Did you mean to execute it?')
+
     def __invert__(self):
         # Simplify logic when possible
         if isinstance(self, LiteralRequest):
@@ -245,19 +248,23 @@ class Request(object):
         return DistinctRequest(self)
 
     def execute(self):
-        ap = WithRealAttributes(as_chain(self)[0]).storage
-        return ap.execute(self)
+        ap = WithRealAttributes(as_chain(self)[0])
+        if hasattr(ap, 'storage'):
+            return ap.storage.execute(self)
+        else:
+            from ..python_executor import execute
+            return execute(self)
 
     @self_with_attrs
-    def visit(self, func):
+    def _visit(self, func):
         func(self._wrapped_obj)
         for arg_name in self.arg_spec:
             arg = getattr(self, arg_name)
             if isinstance(arg, Request):
-                object.__getattribute__(arg, 'visit')(func)
+                object.__getattribute__(arg, '_visit')(func)
 
     @self_with_attrs
-    def copy_replace(self, replacements):
+    def _copy_replace(self, replacements):
         newargs = []
         for arg_name in self.arg_spec:
             arg = getattr(self, arg_name)
@@ -268,8 +275,8 @@ class Request(object):
                     newargs.append(replacement)
                     found = True
                     break
-            if hasattr(wrapper, 'copy_replace'):
-                arg = (wrapper.copy_replace(replacements))
+            if hasattr(wrapper, '_copy_replace'):
+                arg = (wrapper._copy_replace(replacements))
             if not found:
                 newargs.append(arg)
         return self.obj_type()(*newargs)
@@ -622,3 +629,4 @@ class LenRequest(UnaryOperationRequest):
 
 class DistinctRequest(UnaryOperationRequest):
     pass
+

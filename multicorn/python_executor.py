@@ -9,6 +9,7 @@ from collections import Mapping, Iterable, deque
 
 from .requests import requests
 from .requests import wrappers
+from .requests.helpers import inject_context
 
 
 class PythonExecutor(wrappers.RequestWrapper):
@@ -357,4 +358,11 @@ del register_executor, simple_executor
 
 
 def execute(request, contexts=()):
-    return PythonExecutor.from_request(request).execute(contexts)
+    request = PythonExecutor.from_request(request)
+    if contexts:
+        chain = requests.as_chain(request.wrapped_request)
+        if isinstance(chain[0], requests.StoredItemsRequest):
+            #We have a real chain!
+            request = inject_context(request.wrapped_request, contexts)
+            return requests.WithRealAttributes(chain[0]).storage.execute(request)
+    return request.execute(contexts)

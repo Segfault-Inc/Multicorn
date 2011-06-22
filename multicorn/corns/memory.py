@@ -57,7 +57,7 @@ class Memory(AbstractCorn):
                     request = remainder_query
                 else:
                     wrapped = RequestWrapper.from_request(other)
-                    request = wrapped.copy_replace({
+                    request = wrapped._copy_replace({
                         as_chain(other)[0]: remainder_query})
                 # Finally fetch the item, and execute the remainding query
                 # against it.

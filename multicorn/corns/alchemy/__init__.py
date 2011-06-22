@@ -174,9 +174,15 @@ class Alchemy(AbstractCorn):
             sql_result = sql_query.execute()
             if return_type.type != list:
                 sql_result = next(iter(sql_result), None)
+                if isinstance(wrapped_request, OneWrapper) and sql_result is None:
+                    if request.default_value:
+                        return python_executor.execute(request.default_value,
+                                (List(return_type)))
+                    raise ValueError('.one() on an empty sequence')
             return self._transform_result(sql_result, return_type)
         else:
             return python_executor.execute(request)
 
 
 from .dialects import get_dialect
+from .wrappers import OneWrapper

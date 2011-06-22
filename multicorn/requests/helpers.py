@@ -1,6 +1,6 @@
 from .requests import LiteralRequest, ContextRequest, as_chain, WithRealAttributes
 from .wrappers import RequestWrapper, EqWrapper, BinaryOperationWrapper, AndWrapper, LiteralWrapper
-from ..python_executor import execute
+from . import wrappers
 
 def split_predicate(filter, types, contexts=()):
     """Takes a FilterWrapper object, and returns two predicates wrappers objects"""
@@ -29,7 +29,7 @@ def collect(request, predicate):
     def visitor(chain_item):
         if predicate(chain_item):
             matches.append(chain_item)
-    object.__getattribute__(request, 'visit')(visitor)
+    object.__getattribute__(request, '_visit')(visitor)
     return matches
 
 def cut_on_predicate(request, predicate, recursive=False, position=-1):
@@ -49,7 +49,7 @@ def cut_on_predicate(request, predicate, recursive=False, position=-1):
     for idx, request_part in enumerate(chain):
         if matcher(request_part):
             empty_context = ContextRequest()
-            tail = WithRealAttributes(chain[-1]).copy_replace({chain[idx + position]:
+            tail = WithRealAttributes(chain[-1])._copy_replace({chain[idx + position]:
                 empty_context})
             return chain[idx + position], tail
     return None, request
@@ -57,7 +57,7 @@ def cut_on_predicate(request, predicate, recursive=False, position=-1):
 def cut_on_index(request, index):
     chain = as_chain(request)
     empty_context = ContextRequest()
-    tail = WithRealAttributes(chain[-1]).copy_replace(chain[index],
+    tail = WithRealAttributes(chain[-1])._copy_replace(chain[index],
                 empty_context)
     return chain[index], tail
 
@@ -81,7 +81,7 @@ def isolate_values(expression, contexts=()):
             # If b is equal to newb, then we do not have any other
             # variables and the value is assumed to be a literal
             newb, remainder = inner_split(b, [], contexts)
-            value = execute(newb.wrapped_request)
+            value = (newb.wrapped_request.execute())
             return {typea.name: value}, LiteralRequest(True)
         elif isinstance(expression, AndWrapper):
             values = {}
@@ -99,13 +99,21 @@ def isolate_values(expression, contexts=()):
 
 def inject_context(request, context_values=()):
     replacements = {}
-    def visitor(request):
-        if isinstance(request, ContextRequest):
-            wra = WithRealAttributes(request)
-            replacements[request] = LiteralRequest(context_values[wra.scope_depth - 1])
-    request.visit(visitor)
-    for request, replacement in request:
-        pass
+    def find_matching(context):
+        def func(request):
+            return WithRealAttributes(request).subject == context
+        return func
+    def visitor(req):
+        chain = as_chain(req)
+        if isinstance(chain[0], ContextRequest):
+            wrareq = WithRealAttributes(req)
+            wracontext = WithRealAttributes(chain[0])
+            if wracontext.scope_depth < 0 and req is not chain[0]:
+                newreq = wrareq._copy_replace({chain[0]: LiteralRequest(context_values[wracontext.scope_depth])})
+                newvalue = LiteralRequest(newreq.execute())
+                replacements[req] = newvalue
+    request._visit(visitor)
+    return request._copy_replace(replacements)
 
 
 def isolate_identity_values(filter, id_types, contexts=()):
