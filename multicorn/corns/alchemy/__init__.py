@@ -141,7 +141,12 @@ class Alchemy(AbstractCorn):
                 newdict = {}
                 for key, type in return_type.mapping.iteritems():
                     # Even for dicts, sql returns results "inline"
-                    if isinstance(type, (List, Dict)):
+                    if isinstance(type, Dict):
+                        subresult = {}
+                        for subkey in result.keys():
+                            subresult[subkey.replace('__%s_' % key,'').strip('__')] = result[subkey]
+                        newdict[key] = self._transform_result(subresult, type)
+                    elif isinstance(type, List):
                         newdict[key] = self._transform_result(result, type)
                     else:
                         newdict[key] = result[key]
@@ -183,6 +188,7 @@ class Alchemy(AbstractCorn):
                         return python_executor.execute(request.default_value,
                                 (List(return_type)))
                     raise ValueError('.one() on an empty sequence')
+            print(unicode(sql_query))
             return self._transform_result(sql_result, return_type)
         else:
             return python_executor.execute(request)

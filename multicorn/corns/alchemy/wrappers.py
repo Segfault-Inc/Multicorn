@@ -6,7 +6,7 @@ from ...requests import requests, wrappers, types
 from . import Alchemy, InvalidRequestException
 
 from sqlalchemy import sql as sqlexpr
-from sqlalchemy.sql.expression import Selectable
+from sqlalchemy.sql import expression
 
 
 class Context(object):
@@ -49,7 +49,6 @@ class FilterWrapper(wrappers.FilterWrapper, AlchemyWrapper):
         self.subject.is_valid(contexts)
         self.predicate.is_valid(contexts +
                 (self.subject.return_type(contexts).inner_type,))
-
 
 
 @AlchemyWrapper.register_wrapper(requests.StoredItemsRequest)
@@ -234,7 +233,7 @@ class MapWrapper(wrappers.MapWrapper, AlchemyWrapper):
         type = self.subject.return_type(type_context(contexts))
         contexts = contexts + (Context(query, type.inner_type),)
         select = self.new_value.to_alchemy(query, contexts)
-        if not isinstance(select, Selectable):
+        if not isinstance(select, expression.Selectable):
             if not hasattr(select, '__iter__'):
                 select = [select]
             return query.with_only_columns(select)
@@ -263,10 +262,13 @@ class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
             if return_type.type == list:
                 raise ValueError("SQLAlchemy cannot return\
                         lists as part of a dict")
-            elif return_type.type == dict:
+            elif isinstance(req, sqlexpr.Selectable):
                 # If it is a dict, ensure that names dont collide
-                for c in req.c:
-                    selects.append(c.proxies[-1].label("__%s_%s__" % (key, c.name)))
+                if len(req.c) == 1:
+                    selects.append(list(req.c)[0].proxies[-1].label(key))
+                else:
+                    for c in req.c:
+                        selects.append(c.proxies[-1].label("__%s_%s__" % (key, c.name)))
                 query = req.correlate(query)
             else:
                 selects.append(req.label(key))
@@ -284,6 +286,70 @@ class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
         return reduce(lambda x, y: x + y, (request.extract_tables()
                         for request in self.value.values()))
 
+
+@AlchemyWrapper.register_wrapper(requests.GroupbyRequest)
+class GroupbyWrapper(wrappers.GroupbyWrapper, AlchemyWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        type = self.subject.return_type(type_context(contexts))
+        key = self.key.to_alchemy(query, contexts +
+                (Context(query, type.inner_type),))
+        group = self.aggregate.to_alchemy(query, contexts + (Context(query, type),))
+        if isinstance(group, expression.Selectable):
+            # We have multiple return columns
+            if len(group.c) == 1:
+                column = list(group.c)[0].proxies[-1].label('group')
+                group = group.with_only_columns([column])
+            else:
+                columns = []
+                for c in group.c:
+                    columns.append(c.proxies[-1].label('__group_%s__' % c.name))
+                group = group.with_only_columns(columns)
+        else:
+            group = query.column(group.label('group'))
+        group = group.group_by(key)
+        group = group.column(key.label('key'))
+        return group
+
+    def extract_tables(self):
+        return self.subject.extract_tables() +\
+               self.key.extract_tables() +\
+               self.aggregate.extract_tables()
+
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+        type = self.subject.return_type(contexts)
+        self.key.is_valid(contexts + (type.inner_type,))
+        self.aggregate.is_valid(contexts + (type,))
+
+
+@AlchemyWrapper.register_wrapper(requests.SortRequest)
+class SortWrapper(wrappers.SortWrapper, AlchemyWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        type = self.subject.return_type(type_context(contexts))
+        contexts = contexts + (Context(query, type.inner_type,),)
+        keys = []
+        for key, reverse in self.sort_keys:
+            sqlkey = key.to_alchemy(query, contexts)
+            if reverse:
+                keys.append(sqlexpr.desc(sqlkey))
+            else:
+                keys.append(sqlexpr.asc(sqlkey))
+        return query.order_by(*keys)
+
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+        contexts = contexts + (self.subject.return_type(contexts).inner_type,)
+        for key, _ in self.sort_keys:
+            key.is_valid(contexts)
+
+    def extract_tables(self):
+        return reduce(lambda x, y: x+y, [key.extract_tables()
+            for key, _ in self.sort_keys], self.subject.extract_tables())
+
 @AlchemyWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
 
@@ -299,3 +365,64 @@ class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
 
     def is_valid(self, contexts):
         pass
+
+class AggregateWrapper(AlchemyWrapper):
+
+
+    def extract_tables(self):
+        return self.subject.extract_tables()
+
+    def is_valid(self, contexts):
+        self.subject.is_valid(contexts)
+        type = self.subject.return_type(contexts)
+        if not isinstance(type, types.List):
+            raise InvalidRequestException("Cannot perform a sum on something\
+                    which isn't a list")
+
+
+@AlchemyWrapper.register_wrapper(requests.LenRequest)
+class LenWrapper(wrappers.LenWrapper, AggregateWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        return query.with_only_columns([expression.func.count(1)])
+
+
+@AlchemyWrapper.register_wrapper(requests.SumRequest)
+class SumWrapper(wrappers.AggregateWrapper, AggregateWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        column = list(query.c)[0]
+        return query.with_only_columns([expression.func.sum(column)])
+
+@AlchemyWrapper.register_wrapper(requests.MaxRequest)
+class MaxWrapper(wrappers.AggregateWrapper, AggregateWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        column = list(query.c)[0]
+        return query.with_only_columns([expression.func.max(column)])
+
+@AlchemyWrapper.register_wrapper(requests.MinRequest)
+class MinWrapper(wrappers.AggregateWrapper, AggregateWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        column = list(query.c)[0]
+        return query.with_only_columns([expression.func.min(column)])
+
+
+@AlchemyWrapper.register_wrapper(requests.DistinctRequest)
+class DistinctWrapper(wrappers.AggregateWrapper, AggregateWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        return query.distinct()
+
+@AlchemyWrapper.register_wrapper(requests.SliceRequest)
+class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        pass
+
