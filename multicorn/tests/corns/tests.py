@@ -123,6 +123,14 @@ def basic_query(Corn):
     assert item['name'] == 'foo'
     assert item['lastname'] == 'bar'
 
+    items = list(Corn.all.filter(
+        c.name + u"«" + c.lastname + u"»" == u"foo«bar»").execute())
+    assert len(items) == 1
+    item = items[0]
+    assert item['id'] == 1
+    assert item['name'] == 'foo'
+    assert item['lastname'] == 'bar'
+
     item = Corn.all.filter(c.id - 1 == 2).one().execute()
     assert item['id'] == 3
     assert item['name'] == 'foo'
@@ -158,5 +166,9 @@ def maps(Corn):
     assert len(items) == 3
     test = all(x in items for x in ['foo bar', 'baz bar', 'foo baz'])
     assert test
-    item = Corn.all.map(c.name + ' ' + c.lastname).filter(c == 'foo bar').one().execute()
+    item = Corn.all.map(
+        c.name + ' ' + c.lastname).filter(c == 'foo bar').one().execute()
     assert item == 'foo bar'
+    item = Corn.all.map(
+        c.name + u'ùþß' + c.lastname).filter(c == u'fooùþßbar').one().execute()
+    assert item == u'fooùþßbar'
