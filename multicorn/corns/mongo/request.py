@@ -44,11 +44,14 @@ class MongoRequest(object):
             if results.count() != 1:
                 # TODO
                 raise ValueError()
-            else:
-                return next(results)
         if self.mapreduces:
-            def mr_transform(results):
-                for result in results:
-                    yield result["value"]
-            return mr_transform(results)
+            if self.one:
+                return next(results)["value"]
+            else:
+                def mr_transform(results):
+                    for result in results:
+                        yield result["value"]
+                return mr_transform(results)
+        if self.one:
+            return next(results)
         return results

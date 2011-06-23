@@ -196,4 +196,6 @@ class DictWrapper(wrappers.DictWrapper, MongoWrapper):
 class ContextWrapper(wrappers.ContextWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
+        if not isinstance(contexts[-1], types.Dict):
+            return "this.____"
         return "this"

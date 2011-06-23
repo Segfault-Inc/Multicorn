@@ -92,13 +92,20 @@ class Mongo(AbstractCorn):
             else:
                 def to_list(results):
                     for mongo_item in result:
-                        yield mongo_item["____"]
+                        if "____" in mongo_item:
+                            yield mongo_item["____"]
+                        else:
+                            yield mongo_item
                 return to_list(result)
         elif isinstance(return_type, Dict):
             if return_type.corn:
                 return self._mongo_to_item(result)
-        else:
+        elif return_type.type == int:
             return result
+        else:
+            if "____" in result:
+                return result["____"]
+        return result
 
     def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
