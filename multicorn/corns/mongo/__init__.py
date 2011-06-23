@@ -8,7 +8,7 @@ from multicorn import colorize
 from multicorn.requests.types import Type, Dict, List
 from ... import python_executor
 from ..abstract import AbstractCorn
-from .wrapper import MongoWrapper
+from .wrappers import MongoWrapper
 
 try:
     import pymongo

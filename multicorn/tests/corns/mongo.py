@@ -136,3 +136,57 @@ def test_optimization(Corn):
     assert all(item['square'] == item['id'] ** 2 for item in items)
     items = list(Corn.all.map(c + c).execute())
     assert len(items) == 3
+    # items = list(Corn.all.map(c + Corn.all.filter(c.id == c(-1).id).map({
+    #         'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
+    # assert all(item['id'] == item['otherid'] for item in items)
+    # items = list(Corn.all.map(c + Corn.all.filter(c.name == c(-1).name).map({
+    #         'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
+    # assert len(items) == 5
+    # assert all(item['name'] == item['othername'] for item in items)
+    # items = list(Corn.all.map(c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()}).execute())
+    # assert len(items) == 3
+    # assert all(hasattr(item['foreign'], 'corn') for item in items)
+    # assert all(item['foreign']['id'] == item['id'] for item in items)
+    # items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
+    # assert len(items) == 3
+    # assert all(all(subitem['name'] == item['name']
+    #     for subitem in item['homonymes'])
+    #         for item in items)
+    # items = list(Corn.all.sort(c.name).execute())
+    # assert [item['name'] for item in items] == ['baz', 'foo', 'foo']
+    # items = list(Corn.all.sort(-c.name).execute())
+    # assert [item['name'] for item in items] == ['foo', 'foo', 'baz']
+    # items = list(Corn.all.sort(-c.name, -c.id).execute())
+    # assert items[0]['name'] == 'foo' and items[0]['id'] == 3
+    # assert items[1]['name'] == 'foo' and items[1]['id'] == 1
+    # assert items[2]['name'] == 'baz' and items[2]['id'] == 2
+    # length = Corn.all.len().execute()
+    # assert length == 3
+    # items = list(Corn.all.groupby(c.name, c.len()).sort(c.group).execute())
+    # assert len(items) == 2
+    # assert items[0]['group'] == 1
+    # assert items[1]['group'] == 2
+    # item = Corn.all.map(c.id).sum().execute()
+    # assert item == 6
+    # item = Corn.all.map(c.id).max().execute()
+    # assert item == 3
+    # item = Corn.all.map(c.id).min().execute()
+    # assert item == 1
+    # item = Corn.all.sum(c.id).execute()
+    # assert item == 6
+    # item = Corn.all.max(c.id).execute()
+    # assert item == 3
+    # item = Corn.all.min(c.id).execute()
+    # assert item == 1
+    # items = list(Corn.all.groupby(c.name, c.sum(c.id)).sort(c.group).execute())
+    # assert len(items) == 2
+    # assert items[0]['key'] == 'baz' and items[0]['group'] == 2
+    # assert items[1]['key'] == 'foo' and items[1]['group'] == 4
+    # items = list(Corn.all.groupby(c.name, {
+    #     'max': c.max(c.id),
+    #     'min': c.min(c.id),
+    #     'sum': c.sum(c.id)}).execute())
+    # assert len(items) == 2
+    # assert len(items) == 2
+    # assert items[0]['key'] == 'baz' and items[0]['group'] == {'max': 2, 'min': 2, 'sum': 2}
+    # assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}
