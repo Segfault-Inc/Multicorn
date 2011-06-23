@@ -142,17 +142,12 @@ class Filesystem(AbstractCorn):
     def register(self, name, **kwargs):
         raise TypeError('Filesystem does not take extra properties.')
 
-    def _values_from_filename(self, filename):
-        values = {}
-        parts = filename.split('/')
-        if len(parts) != len(self._path_parts_re):
-            return None
-        for path_part, regex in zip(parts, self._path_parts_re):
-            match = re.match(regex, path_part)
-            if match is None:
-                return None
-            values.update(match.groupdict())
-        return values
+    def _open_file(self, filename, mode='r'):
+        if self.encoding is None:
+            mode += 'b'
+        else:
+            mode += 't'
+        return io.open(filename, mode, encoding=self.encoding)
 
     def save(self, item):
         assert item.corn is self
@@ -163,11 +158,7 @@ class Filesystem(AbstractCorn):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        if self.encoding is None:
-            mode = 'wb'
-        else:
-            mode = 'wt'
-        with io.open(filename, mode, encoding=self.encoding) as stream:
+        with self._open_file(filename, 'w') as stream:
             stream.write(item[self.content_property])
 
     def delete(self, item):
@@ -187,3 +178,38 @@ class Filesystem(AbstractCorn):
             else:
                 os.rmdir(directory)
             path_parts.pop()  # Go to the parent directory
+
+    def _values_from_filename(self, path_parts):
+        values = {}
+        if len(path_parts) != len(self._path_parts_re):
+            return None
+        for path_part, regex in zip(path_parts, self._path_parts_re):
+            match = re.match(regex, path_part)
+            if match is None:
+                return None
+            values.update(match.groupdict())
+        return values
+
+    def _all(self):
+        path_parts = []
+        listdir_stack = [iter(os.listdir(self.root_dir))]
+        while True:
+            name = next(listdir_stack[-1], None)
+            if name is not None:
+                path_parts.append(name)
+                filename = os.path.join(self.root_dir, *path_parts)
+                if os.path.isfile(filename):
+                    values = self._values_from_filename(path_parts)
+                    if values is not None:
+                        with self._open_file(filename) as stream:
+                            values[self.content_property] = stream.read()
+                        yield self.create(values)
+                if os.path.isdir(filename):
+                    listdir_stack.append(iter(os.listdir(filename)))
+                else:
+                    path_parts.pop()
+            else:
+                listdir_stack.pop()
+                if not listdir_stack:
+                    break
+                path_parts.pop()

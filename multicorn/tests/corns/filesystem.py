@@ -100,18 +100,18 @@ def test_init(tempdir):
     assert binary.create(item).filename == 'lipsum/4_foo.bin'
     assert text.create(item).filename == 'lipsum/4_foo.txt'
 
-    assert binary._values_from_filename('lipsum/4_foo.bin') == item
-    assert text._values_from_filename('lipsum/4_foo.txt') == item
+    assert binary._values_from_filename(['lipsum', '4_foo.bin']) == item
+    assert text._values_from_filename(['lipsum', '4_foo.txt']) == item
 
     # Not matching the pattern
-    assert binary._values_from_filename('lipsum/4_foo.txt') is None
-    assert text._values_from_filename('lipsum/4_foo.bin') is None
-    assert text._values_from_filename('lipsum/4_foo') is None
-    assert text._values_from_filename('lipsum/4-foo.txt') is None
-    assert text._values_from_filename('lipsum/4_foo.txt/baz') is None
-    assert text._values_from_filename('lipsum/4') is None
-    assert text._values_from_filename('lipsum/') is None
-    assert text._values_from_filename('lipsum') is None
+    assert binary._values_from_filename(['lipsum', '4_foo.txt']) is None
+    assert text._values_from_filename(['lipsum', '4_foo.bin']) is None
+    assert text._values_from_filename(['lipsum', '4_foo']) is None
+    assert text._values_from_filename(['lipsum', '4-foo.txt']) is None
+    assert text._values_from_filename(['lipsum', '4_foo.txt', 'baz']) is None
+    assert text._values_from_filename(['lipsum', '4']) is None
+    assert text._values_from_filename(['lipsum', '']) is None
+    assert text._values_from_filename(['lipsum']) is None
 
 
 @suite.test
@@ -137,19 +137,34 @@ def test_delete(tempdir):
     binary, text = make_raw_fs(tempdir)
 
     content = u'Héllö World!'
-    item2 = text.create(dict(
+    item = text.create(dict(
         category='lipsum', num='4', name='foo', content=content))
-    item2.save()
+    item.save()
 
     filename = os.path.join(text.root_dir, 'lipsum', '4_foo.txt')
     dirname = os.path.join(text.root_dir, 'lipsum')
     assert os.path.isfile(filename)
     assert os.path.isdir(dirname)
 
-    item2.delete()
+    item.delete()
 
     assert not os.path.exists(filename)
     # Directories are also removed.
     assert not os.path.exists(dirname)
     # But the corn’s root is kept.
     assert os.path.isdir(text.root_dir)
+
+
+@suite.test
+def test_delete(tempdir):
+    binary, text = make_raw_fs(tempdir)
+
+    content = u'Héllö World!'
+    item = text.create(dict(
+        category='lipsum', num='4', name='foo', content=content))
+    item.save()
+
+    re_item = text.all.one().execute()
+    # Same values, but not the same object.
+    assert dict(re_item) == dict(item)
+    assert re_item is not item
