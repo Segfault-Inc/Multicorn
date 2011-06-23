@@ -111,6 +111,23 @@ class FilesystemItem(BaseItem):
         return os.path.join(self.corn.root_dir, *self.filename.split('/'))
 
 
+class LazyFileReader(object):
+    def __init__(self, filename, encoding):
+        self.filename = filename
+        self.encoding = encoding
+        self.content = None
+    
+    def __call__(self, item):
+        if self.content is None:
+            if self.encoding is None:
+                mode = 'rb'
+            else:
+                mode = 'rt'
+            with io.open(self.filename, mode, encoding=self.encoding) as file:
+                self.content = file.read()
+        return self.content
+
+
 class Filesystem(AbstractCorn):
     """
     A simple access point that keep Python Item objects in memory.
@@ -142,13 +159,6 @@ class Filesystem(AbstractCorn):
     def register(self, name, **kwargs):
         raise TypeError('Filesystem does not take extra properties.')
 
-    def _open_file(self, filename, mode='r'):
-        if self.encoding is None:
-            mode += 'b'
-        else:
-            mode += 't'
-        return io.open(filename, mode, encoding=self.encoding)
-
     def save(self, item):
         assert item.corn is self
         filename = item.full_filename
@@ -158,7 +168,11 @@ class Filesystem(AbstractCorn):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        with self._open_file(filename, 'w') as stream:
+        if self.encoding is None:
+            mode = 'wb'
+        else:
+            mode = 'wt'
+        with io.open(filename, mode, encoding=self.encoding) as stream:
             stream.write(item[self.content_property])
 
     def delete(self, item):
@@ -204,6 +218,6 @@ class Filesystem(AbstractCorn):
             elif os.path.isfile(filename):
                 values = self._values_from_filename(new_path_parts)
                 if values is not None:
-                    with self._open_file(filename) as stream:
-                        values[self.content_property] = stream.read()
-                    yield self.create(values)
+                    lazy_values = {self.content_property:
+                        LazyFileReader(filename, self.encoding)}
+                    yield self.create(values, lazy_values)

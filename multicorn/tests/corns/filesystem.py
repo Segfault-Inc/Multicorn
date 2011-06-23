@@ -2,6 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
+import io
 import os.path
 import functools
 from contextlib import contextmanager
@@ -66,29 +67,34 @@ def test_parser(tempdir):
     assert bin._path_parts_re == ('^(?P<category>.*)$',
                                   r'^\{num\}\_(?P<name>.*)\.bin$')
 
-def make_raw_fs(root):
-    mc = Multicorn()
-
-    binary = Filesystem(
+def make_binary_corn(root):
+    return Filesystem(
         'binary',
         root_dir=root,
         pattern='{category}/{num}_{name}.bin',
         content_property='data')
-    text = Filesystem(
+
+
+def make_text_corn(root):
+    return Filesystem(
         'text',
         root_dir=root,
         pattern='{category}/{num}_{name}.txt',
         encoding='utf8')
 
-    mc.register(binary)
-    mc.register(text)
 
-    return binary, text
+def make_populated_text_corn(root):
+    text = make_text_corn(root)
+    item = text.create(dict(
+        category='lipsum', num='4', name='foo', content=u'Héllö World!'))
+    item.save()
+    return text, item
 
 
 @suite.test
 def test_init(tempdir):
-    binary, text = make_raw_fs(tempdir)
+    binary = make_binary_corn(tempdir)
+    text = make_text_corn(tempdir)
     assert set(binary.properties) == set(['category', 'num', 'name', 'data'])
     assert set(text.properties) == set(['category', 'num', 'name', 'content'])
 
@@ -116,7 +122,8 @@ def test_init(tempdir):
 
 @suite.test
 def test_save(tempdir):
-    binary, text = make_raw_fs(tempdir)
+    binary = make_binary_corn(tempdir)
+    text = make_text_corn(tempdir)
 
     data = b'\x01\x02\x03'
     item1 = binary.create(dict(
@@ -134,12 +141,7 @@ def test_save(tempdir):
 
 @suite.test
 def test_delete(tempdir):
-    binary, text = make_raw_fs(tempdir)
-
-    content = u'Héllö World!'
-    item = text.create(dict(
-        category='lipsum', num='4', name='foo', content=content))
-    item.save()
+    text, item = make_populated_text_corn(tempdir)
 
     filename = os.path.join(text.root_dir, 'lipsum', '4_foo.txt')
     dirname = os.path.join(text.root_dir, 'lipsum')
@@ -156,15 +158,36 @@ def test_delete(tempdir):
 
 
 @suite.test
-def test_delete(tempdir):
-    binary, text = make_raw_fs(tempdir)
-
-    content = u'Héllö World!'
-    item = text.create(dict(
-        category='lipsum', num='4', name='foo', content=content))
-    item.save()
+def test_request(tempdir):
+    text, item = make_populated_text_corn(tempdir)
 
     re_item = text.all.one().execute()
     # Same values, but not the same object.
     assert dict(re_item) == dict(item)
     assert re_item is not item
+
+
+@suite.test
+def test_laziness(tempdir):
+    text, item = make_populated_text_corn(tempdir)
+
+
+    def io_open_mock(filename, *args, **kwargs):
+        files_opened.append(filename)
+        return real_io_open(filename, *args, **kwargs)
+
+    files_opened = []
+    real_io_open = io.open
+    io.open = io_open_mock
+    
+    try:
+        re_item = text.all.one().execute()
+        assert re_item['category'] == 'lipsum'
+        
+        # The file was not read yet
+        assert files_opened == []
+        # Reading lazily
+        assert re_item['content'] == u'Héllö World!'
+        assert files_opened == [item.full_filename]
+    finally:
+        io.open = real_io_open
