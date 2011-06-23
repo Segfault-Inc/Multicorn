@@ -191,25 +191,19 @@ class Filesystem(AbstractCorn):
         return values
 
     def _all(self):
-        path_parts = []
-        listdir_stack = [iter(os.listdir(self.root_dir))]
-        while True:
-            name = next(listdir_stack[-1], None)
-            if name is not None:
-                path_parts.append(name)
-                filename = os.path.join(self.root_dir, *path_parts)
-                if os.path.isfile(filename):
-                    values = self._values_from_filename(path_parts)
-                    if values is not None:
-                        with self._open_file(filename) as stream:
-                            values[self.content_property] = stream.read()
-                        yield self.create(values)
-                if os.path.isdir(filename):
-                    listdir_stack.append(iter(os.listdir(filename)))
-                else:
-                    path_parts.pop()
-            else:
-                listdir_stack.pop()
-                if not listdir_stack:
-                    break
-                path_parts.pop()
+        return self._walk([])
+
+    def _walk(self, path_parts):
+        for name in os.listdir(os.path.join(self.root_dir, *path_parts)):
+            new_path_parts = path_parts + [name]
+            filename = os.path.join(self.root_dir, *new_path_parts)
+
+            if os.path.isdir(filename):
+                for item in self._walk(new_path_parts):
+                    yield item
+            elif os.path.isfile(filename):
+                values = self._values_from_filename(new_path_parts)
+                if values is not None:
+                    with self._open_file(filename) as stream:
+                        values[self.content_property] = stream.read()
+                    yield self.create(values)
