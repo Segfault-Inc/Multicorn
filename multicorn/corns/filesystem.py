@@ -4,9 +4,12 @@
 
 
 import re
+import io
 import string
+import os.path
 import itertools
 
+from ..item import BaseItem
 from ..utils import isidentifier
 from ..requests.types import Type
 from .abstract import AbstractCorn
@@ -83,6 +86,31 @@ def _parse_pattern(pattern):
     return tuple(path_parts_re), tuple(path_properties)
 
 
+def strict_unicode(value):
+    if not isinstance(value, basestring):
+        raise TypeError('Filename property values must be of type '
+                        'unicode, got %r.' % value)
+    return unicode(value)
+
+
+class FilesystemItem(BaseItem):
+    @property
+    def filename(self):
+        # TODO: check for ambiguities.
+        values = {}
+        for name in self.corn.identity_properties:
+            value = strict_unicode(self[name])
+            if '/' in value:
+                raise ValueError('Filename property values can not contain '
+                                 'a slash in Filesystem.')
+            values[name] = value
+        return self.corn.pattern.format(**values)
+
+    @property
+    def full_filename(self):
+        return os.path.join(self.corn.root_dir, *self.filename.split('/'))
+
+
 class Filesystem(AbstractCorn):
     """
     A simple access point that keep Python Item objects in memory.
@@ -91,12 +119,14 @@ class Filesystem(AbstractCorn):
     dictionary key.)
     """
 
+    Item = FilesystemItem
+
     def __init__(self, name, root_dir, pattern, encoding=None,
-                 content_property_name='content'):
+                 content_property='content'):
         self.root_dir = unicode(root_dir)
         self.pattern = unicode(pattern)
         self.encoding = encoding
-        self.content_property_name = content_property_name
+        self.content_property = content_property
         self._path_parts_re, path_properties = _parse_pattern(self.pattern)
 
         super(Filesystem, self).__init__(name, path_properties)
@@ -105,27 +135,12 @@ class Filesystem(AbstractCorn):
             self.properties[property_name] = Type(
                 type=unicode, corn=self, name=name)
 
-        self.properties[content_property_name] = Type(
+        self.properties[content_property] = Type(
             type=(bytes if encoding is None else unicode),
-            corn=self, name=content_property_name)
+            corn=self, name=content_property)
 
     def register(self, name, **kwargs):
         raise TypeError('Filesystem does not take extra properties.')
-
-    def _filename_from_item(self, item):
-        # TODO: check for ambiguities.
-        values = {}
-        for name in self.identity_properties:
-            value = item[name]
-            if not isinstance(value, basestring):
-                raise TypeError('Filename property values must be of type '
-                                'unicode, got %r.' % value)
-            value = unicode(value)
-            if '/' in value:
-                raise ValueError('Filename property values can not contain '
-                                 'a slash in Filesystem.')
-            values[name] = value
-        return self.pattern.format(**values)
 
     def _values_from_filename(self, filename):
         values = {}
@@ -138,3 +153,19 @@ class Filesystem(AbstractCorn):
                 return None
             values.update(match.groupdict())
         return values
+
+    def save(self, item):
+        assert item.corn is self
+        filename = item.full_filename
+        assert filename.startswith(self.root_dir)
+
+        directory = os.path.dirname(filename)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        if self.encoding is None:
+            mode = 'wb'
+        else:
+            mode = 'wt'
+        with io.open(filename, mode, encoding=self.encoding) as stream:
+            stream.write(item[self.content_property])

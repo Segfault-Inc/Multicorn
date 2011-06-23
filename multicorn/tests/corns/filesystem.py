@@ -72,7 +72,7 @@ def make_raw_fs(root):
         'binary',
         root_dir=root,
         pattern='{category}/{num}_{name}.bin',
-        content_property_name='data')
+        content_property='data')
     text = Filesystem(
         'text',
         root_dir=root,
@@ -93,15 +93,16 @@ def test_init(tempdir):
 
     item = dict(category='lipsum', num=4, name='foo')
     with assert_raises(TypeError, 'must be of type unicode'):
-        binary._filename_from_item(item)
+        binary.create(item).filename
 
     item['num'] = '4'
-    assert binary._filename_from_item(item) == 'lipsum/4_foo.bin'
-    assert text._filename_from_item(item) == 'lipsum/4_foo.txt'
+    assert binary.create(item).filename == 'lipsum/4_foo.bin'
+    assert text.create(item).filename == 'lipsum/4_foo.txt'
 
     assert binary._values_from_filename('lipsum/4_foo.bin') == item
     assert text._values_from_filename('lipsum/4_foo.txt') == item
 
+    # Not matching the pattern
     assert binary._values_from_filename('lipsum/4_foo.txt') is None
     assert text._values_from_filename('lipsum/4_foo.bin') is None
     assert text._values_from_filename('lipsum/4_foo') is None
@@ -110,3 +111,22 @@ def test_init(tempdir):
     assert text._values_from_filename('lipsum/4') is None
     assert text._values_from_filename('lipsum/') is None
     assert text._values_from_filename('lipsum') is None
+
+
+@suite.test
+def test_save(tempdir):
+    binary, text = make_raw_fs(tempdir)
+
+    data = b'\x01\x02\x03'
+    item1 = binary.create(dict(
+        category='lipsum', num='4', name='foo', data=data))
+    item1.save()
+    with open(item1.full_filename, 'rb') as fd:
+        assert fd.read() == data
+
+    content = u'Héllö World!'
+    item2 = text.create(dict(
+        category='lipsum', num='4', name='foo', content=content))
+    item2.save()
+    with open(item2.full_filename, 'rb') as fd:
+        assert fd.read() == content.encode('utf8')
