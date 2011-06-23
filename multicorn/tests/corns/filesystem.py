@@ -64,8 +64,8 @@ def test_parser(tempdir):
         == ('category', 'num', 'name')
     bin = make_corn('{category}/{{num}}_{name}.bin')
     assert bin.identity_properties == ('category', 'name')
-    assert bin._path_parts_re == ('^(?P<category>.*)$',
-                                  r'^\{num\}\_(?P<name>.*)\.bin$')
+    assert [regex.pattern for regex in bin._path_parts_re] \
+        == ['^(?P<category>.*)$', r'^\{num\}\_(?P<name>.*)\.bin$']
 
 def make_binary_corn(root):
     return Filesystem(
@@ -98,26 +98,45 @@ def test_init(tempdir):
     assert set(binary.properties) == set(['category', 'num', 'name', 'data'])
     assert set(text.properties) == set(['category', 'num', 'name', 'content'])
 
-    item = dict(category='lipsum', num=4, name='foo')
+
+@suite.test
+def test_filenames(tempdir):
+    binary = make_binary_corn(tempdir)
+    text = make_text_corn(tempdir)
+    
+    values = dict(category='lipsum', num=4, name='foo')
     with assert_raises(TypeError, 'must be of type unicode'):
-        binary.create(item).filename
+        binary.create(values).filename
 
-    item['num'] = '4'
-    assert binary.create(item).filename == 'lipsum/4_foo.bin'
-    assert text.create(item).filename == 'lipsum/4_foo.txt'
+    values['num'] = '4'
+    assert binary.create(values).filename == 'lipsum/4_foo.bin'
+    assert text.create(values).filename == 'lipsum/4_foo.txt'
+    
+    # No file created yet
+    assert os.listdir(tempdir) == []
+    
+    # Create some files
+    for path_parts in [
+            # Matching the pattern
+            ['lipsum', '4_foo.bin'],
+            ['lipsum', '4_foo.txt'],
 
-    assert binary._values_from_filename(['lipsum', '4_foo.bin']) == item
-    assert text._values_from_filename(['lipsum', '4_foo.txt']) == item
-
-    # Not matching the pattern
-    assert binary._values_from_filename(['lipsum', '4_foo.txt']) is None
-    assert text._values_from_filename(['lipsum', '4_foo.bin']) is None
-    assert text._values_from_filename(['lipsum', '4_foo']) is None
-    assert text._values_from_filename(['lipsum', '4-foo.txt']) is None
-    assert text._values_from_filename(['lipsum', '4_foo.txt', 'baz']) is None
-    assert text._values_from_filename(['lipsum', '4']) is None
-    assert text._values_from_filename(['lipsum', '']) is None
-    assert text._values_from_filename(['lipsum']) is None
+            # Not matching the pattern
+            ['lipsum', '4_foo'],
+            ['lipsum', '4-foo.txt'],
+            ['lipsum', '4_bar.txt', 'baz'],
+            ['lipsum', '4'],
+            ['dolor']]:
+        filename = os.path.join(tempdir, *path_parts)
+        dirname = os.path.dirname(filename)
+        # Create parent directories as needed
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        # Create an empty file
+        open(filename, 'wb').close()
+    
+    assert [i.filename for i in text.all.execute()] == ['lipsum/4_foo.txt']
+    assert [i.filename for i in binary.all.execute()] == ['lipsum/4_foo.bin']
 
 
 @suite.test
