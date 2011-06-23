@@ -142,3 +142,21 @@ def basic_query(Corn):
     assert item['id'] == 1
     assert item['name'] == 'foo'
     assert item['lastname'] == 'bar'
+
+@corntest
+def maps(Corn):
+    make_data(Corn)
+    items = list(Corn.all.map(c.id).execute())
+    assert len(items) == 3
+    test = all(x in items for x in [1, 2, 3])
+    assert test
+    items = list(Corn.all.map(c.id * c.id).execute())
+    assert len(items) == 3
+    test = all(x in items for x in [1, 4, 9])
+    assert test
+    items = list(Corn.all.map(c.name + ' ' + c.lastname).execute())
+    assert len(items) == 3
+    test = all(x in items for x in ['foo bar', 'baz bar', 'foo baz'])
+    assert test
+    item = Corn.all.map(c.name + ' ' + c.lastname).filter(c == 'foo bar').one().execute()
+    assert item == 'foo bar'

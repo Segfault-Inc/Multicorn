@@ -153,8 +153,9 @@ def test_optimization(Corn):
     items = list(Corn.all.groupby(c.name, {
         'max': c.max(c.id),
         'min': c.min(c.id),
-        'sum': c.sum(c.id)}).execute())
-    assert len(items) == 2
+        'sum': c.sum(c.id)}).sort(c.key).execute())
     assert len(items) == 2
     assert items[0]['key'] == 'baz' and items[0]['group'] == {'max': 2, 'min': 2, 'sum': 2}
     assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}
+    items = list(Corn.all.map(c.name + ' ' + c.lastname).execute())
+    assert len(items) == 3
