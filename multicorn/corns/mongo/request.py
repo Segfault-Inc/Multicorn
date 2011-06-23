@@ -11,15 +11,18 @@ class MongoRequest(object):
         self.mapreduces = []
         self.count = False
         self.one = False
+        self.sort = []
 
     def __repr__(self):
         return ("MongoRequest("
                 "current_where=%r, "
                 "mapreduces=%r, "
+                "sort=%r, "
                 "count=%r, "
                 "one=%r)") % (
             self.current_where(),
             self.mapreduces,
+            self.sort,
             self.count,
             self.one)
 
@@ -38,6 +41,8 @@ class MongoRequest(object):
                                     len(self.mapreduces) > 1)
         results = collection.find(
             self.current_where(self.mapreduces))
+        if self.sort:
+            results = results.sort(self.sort)
         if self.count:
             return results.count()
         if self.one:

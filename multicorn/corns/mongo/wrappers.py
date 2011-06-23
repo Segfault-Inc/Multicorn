@@ -196,6 +196,20 @@ class PowWrapper(wrappers.PowWrapper, BinaryMongoWrapper):
             self.subject.to_mongo(contexts), self.other.to_mongo(contexts))
 
 
+@MongoWrapper.register_wrapper(requests.SortRequest)
+class SortWrapper(wrappers.SortWrapper, ContextDefinerMongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        mrq = self.subject.to_mongo(contexts)
+
+        for key, reverse in self.sort_keys:
+            key = key.to_mongo(
+                self.sub(contexts)).replace(
+                "this.", "value." if mrq.mapreduces else "")
+            mrq.sort.append((key, -1 if reverse else 1))
+        return mrq
+
+
 @MongoWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(wrappers.MapWrapper, ContextDefinerMongoWrapper):
 

@@ -151,6 +151,7 @@ def basic_query(Corn):
     assert item['name'] == 'foo'
     assert item['lastname'] == 'bar'
 
+
 @corntest
 def maps(Corn):
     make_data(Corn)
@@ -172,3 +173,9 @@ def maps(Corn):
     item = Corn.all.map(
         c.name + u'ùþß' + c.lastname).filter(c == u'fooùþßbar').one().execute()
     assert item == u'fooùþßbar'
+    items = list(Corn.all.map(
+        {'foo': c.name}).filter(c.foo == 'baz').execute())
+    assert len(items) == 1
+    assert all(type(item) == dict for item in items)
+    assert all(
+        item['foo'] == 'baz' for item in items)

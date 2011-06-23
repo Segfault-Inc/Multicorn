@@ -148,16 +148,16 @@ def test_optimization(Corn):
     assert all(all(subitem['name'] == item['name']
         for subitem in item['homonymes'])
             for item in items)
-    # items = list(Corn.all.sort(c.name).execute())
-    # assert [item['name'] for item in items] == ['baz', 'foo', 'foo']
-    # items = list(Corn.all.sort(-c.name).execute())
-    # assert [item['name'] for item in items] == ['foo', 'foo', 'baz']
-    # items = list(Corn.all.sort(-c.name, -c.id).execute())
-    # assert items[0]['name'] == 'foo' and items[0]['id'] == 3
-    # assert items[1]['name'] == 'foo' and items[1]['id'] == 1
-    # assert items[2]['name'] == 'baz' and items[2]['id'] == 2
-    # length = Corn.all.len().execute()
-    # assert length == 3
+    items = list(Corn.all.sort(c.name).execute())
+    assert [item['name'] for item in items] == ['baz', 'foo', 'foo']
+    items = list(Corn.all.sort(-c.name).execute())
+    assert [item['name'] for item in items] == ['foo', 'foo', 'baz']
+    items = list(Corn.all.sort(-c.name, -c.id).execute())
+    assert items[0]['name'] == 'foo' and items[0]['id'] == 3
+    assert items[1]['name'] == 'foo' and items[1]['id'] == 1
+    assert items[2]['name'] == 'baz' and items[2]['id'] == 2
+    length = Corn.all.len().execute()
+    assert length == 3
     # items = list(Corn.all.groupby(c.name, c.len()).sort(c.group).execute())
     # assert len(items) == 2
     # assert items[0]['group'] == 1
