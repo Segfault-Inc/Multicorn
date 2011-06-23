@@ -44,10 +44,13 @@ def _tokenize_pattern(pattern):
                 in_field = True
                 field_name = ''
             else:
-                # Includes normal chars but also a bracket after the same one.
+                # Includes normal chars but also an escaped bracket.
                 yield 'literal', char
     if in_field:
         raise ValueError("Unmatched '{' in format string")
+    
+    # Artificially add this token to simplify the parser below
+    yield 'path separator', '/'
 
 
 def _parse_pattern(pattern):
@@ -78,15 +81,18 @@ def _parse_pattern(pattern):
         else:
             assert False, 'Unexpected token type: ' + token_type
 
-    if not next_re:
-        raise ValueError('A slash-separated part is empty in %r' %
-                         pattern)
-    path_parts_re.append(re.compile('^%s$' % next_re))
-
+    # Always end with an artificial '/' token so that the last regex is
+    # in path_parts_re.
+    assert token_type == 'path separator'
+    
     return tuple(path_parts_re), tuple(path_properties)
 
 
 def strict_unicode(value):
+    """
+    Make sure that value is either unicode or (on Py 2.x) an ASCII string,
+    and return it in unicode. Raise otherwise.
+    """
     if not isinstance(value, basestring):
         raise TypeError('Filename property values must be of type '
                         'unicode, got %r.' % value)
@@ -112,11 +118,14 @@ class FilesystemItem(BaseItem):
 
 
 class LazyFileReader(object):
+    """
+    Callable that returns the content of a file, but do the reading only once.
+    """
     def __init__(self, filename, encoding):
         self.filename = filename
         self.encoding = encoding
         self.content = None
-    
+
     def __call__(self, item):
         if self.content is None:
             if self.encoding is None:
@@ -202,6 +211,7 @@ class Filesystem(AbstractCorn):
         # If the pattern has N path parts, "leaf" files are at depth = N-1
         is_leaf = (depth == len(self._path_parts_re) - 1)
 
+        # os.listdir()’s argument is unicode, so should be its results.
         for name in os.listdir(self._join(path_parts)):
             new_values = self._match_part(depth, name)
             if new_values is None:
@@ -217,19 +227,23 @@ class Filesystem(AbstractCorn):
             elif (not is_leaf) and os.path.isdir(filename):
                 for item in self._walk(new_path_parts, values):
                     yield item
-    
-    def _create_item(self, filename, values):
-        reader = LazyFileReader(filename, self.encoding)
-        lazy_values = {self.content_property: reader}
-        return self.create(values, lazy_values)
 
     def _join(self, path_parts):
+        # root_dir is unicode, so the join result should be unicode
         return os.path.join(self.root_dir, *path_parts)
-    
+
     def _match_part(self, depth, name):
         match = self._path_parts_re[depth].match(name)
         if match is None:
             return None
         else:
+            # Use .items() to return a list of pairs instead of a dict.
+            # This is also a valid contructor for a dict, and lists are
+            # easier to concatenate without mutation.
             return match.groupdict().items()
+
+    def _create_item(self, filename, values):
+        reader = LazyFileReader(filename, self.encoding)
+        lazy_values = {self.content_property: reader}
+        return self.create(values, lazy_values)
 
