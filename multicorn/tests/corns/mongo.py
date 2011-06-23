@@ -136,22 +136,18 @@ def test_optimization(Corn):
     assert all(item['square'] == item['id'] ** 2 for item in items)
     items = list(Corn.all.map(c + c).execute())
     assert len(items) == 3
-    # items = list(Corn.all.map(c + Corn.all.filter(c.id == c(-1).id).map({
-    #         'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
-    # assert all(item['id'] == item['otherid'] for item in items)
-    # items = list(Corn.all.map(c + Corn.all.filter(c.name == c(-1).name).map({
-    #         'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
-    # assert len(items) == 5
-    # assert all(item['name'] == item['othername'] for item in items)
-    # items = list(Corn.all.map(c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()}).execute())
-    # assert len(items) == 3
-    # assert all(hasattr(item['foreign'], 'corn') for item in items)
-    # assert all(item['foreign']['id'] == item['id'] for item in items)
-    # items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
-    # assert len(items) == 3
-    # assert all(all(subitem['name'] == item['name']
-    #     for subitem in item['homonymes'])
-    #         for item in items)
+    items = list(Corn.all.map(c + Corn.all.filter(c.id == c(-1).id).map({
+            'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
+    assert all(item['id'] == item['otherid'] for item in items)
+    items = list(Corn.all.map(c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()}).execute())
+    assert len(items) == 3
+    assert all(hasattr(item['foreign'], 'corn') for item in items)
+    assert all(item['foreign']['id'] == item['id'] for item in items)
+    items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
+    assert len(items) == 3
+    assert all(all(subitem['name'] == item['name']
+        for subitem in item['homonymes'])
+            for item in items)
     # items = list(Corn.all.sort(c.name).execute())
     # assert [item['name'] for item in items] == ['baz', 'foo', 'foo']
     # items = list(Corn.all.sort(-c.name).execute())

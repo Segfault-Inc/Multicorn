@@ -2,13 +2,14 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-
 from __future__ import print_function
 from multicorn import colorize
 from multicorn.requests.types import Type, Dict, List
+from ...requests.helpers import cut_on_predicate
 from ... import python_executor
 from ..abstract import AbstractCorn
 from .wrappers import MongoWrapper
+from .ragequit import RageQuit
 
 try:
     import pymongo
@@ -110,8 +111,20 @@ class Mongo(AbstractCorn):
     def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
         if self.is_all_mongo(wrapped_request):
-            return self._execute(
-                wrapped_request.to_mongo(),
-                wrapped_request.return_type())
-        else:
-            return python_executor.execute(request)
+            try:
+                return self._execute(
+                    wrapped_request.to_mongo(),
+                    wrapped_request.return_type())
+            except RageQuit as rq:
+                quited_on = rq.request.wrapped_request
+
+                def predicate(req):
+                    return req is quited_on
+                managed, not_managed = cut_on_predicate(request, predicate,
+                                                        recursive=True)
+                if managed:
+                    result = self.execute(managed)
+                else:
+                    result = self._all()
+                return python_executor.execute(not_managed, (result,))
+        return python_executor.execute(request)
