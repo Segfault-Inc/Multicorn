@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright © 2008-2011 Kozea
-# This file is part of Multicorn, licensed under a 3-clause BSD license.
-
 from multicorn.corns.alchemy import Alchemy
 from multicorn.declarative import declare, Property
 from . import make_test_suite
@@ -154,3 +150,11 @@ def test_optimization(Corn):
     assert len(items) == 2
     assert items[0]['key'] == 'baz' and items[0]['group'] == 2
     assert items[1]['key'] == 'foo' and items[1]['group'] == 4
+    items = list(Corn.all.groupby(c.name, {
+        'max': c.max(c.id),
+        'min': c.min(c.id),
+        'sum': c.sum(c.id)}).execute())
+    assert len(items) == 2
+    assert len(items) == 2
+    assert items[0]['key'] == 'baz' and items[0]['group'] == {'max': 2, 'min': 2, 'sum': 2}
+    assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}

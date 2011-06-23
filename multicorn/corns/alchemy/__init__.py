@@ -141,7 +141,12 @@ class Alchemy(AbstractCorn):
                 newdict = {}
                 for key, type in return_type.mapping.iteritems():
                     # Even for dicts, sql returns results "inline"
-                    if isinstance(type, (List, Dict)):
+                    if isinstance(type, Dict):
+                        subresult = {}
+                        for subkey in result.keys():
+                            subresult[subkey.replace('__%s_' % key,'').strip('__')] = result[subkey]
+                        newdict[key] = self._transform_result(subresult, type)
+                    elif isinstance(type, List):
                         newdict[key] = self._transform_result(result, type)
                     else:
                         newdict[key] = result[key]

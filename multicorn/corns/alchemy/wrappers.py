@@ -262,10 +262,13 @@ class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
             if return_type.type == list:
                 raise ValueError("SQLAlchemy cannot return\
                         lists as part of a dict")
-            elif return_type.type == dict:
+            elif isinstance(req, sqlexpr.Selectable):
                 # If it is a dict, ensure that names dont collide
-                for c in req.c:
-                    selects.append(c.proxies[-1].label("__%s_%s__" % (key, c.name)))
+                if len(req.c) == 1:
+                    selects.append(list(req.c)[0].proxies[-1].label(key))
+                else:
+                    for c in req.c:
+                        selects.append(c.proxies[-1].label("__%s_%s__" % (key, c.name)))
                 query = req.correlate(query)
             else:
                 selects.append(req.label(key))
@@ -298,6 +301,11 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, AlchemyWrapper):
             if len(group.c) == 1:
                 column = list(group.c)[0].proxies[-1].label('group')
                 group = group.with_only_columns([column])
+            else:
+                columns = []
+                for c in group.c:
+                    columns.append(c.proxies[-1].label('__group_%s__' % c.name))
+                group = group.with_only_columns(columns)
         else:
             group = query.column(group.label('group'))
         group = group.group_by(key)
