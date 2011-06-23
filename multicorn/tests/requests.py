@@ -356,26 +356,26 @@ def test_one():
 @suite.test
 def test_groupby():
     assert_list(
-        SOURCE.groupby(c.tata).sort(-c.key),
+        SOURCE.groupby(c.tata, elements=c).sort(-c.key),
         [
-            {'key': 42, 'group': [
+            {'key': 42, 'elements': [
                 dict(toto='foo', tata=42, price=10, tax=D('1.196')),
                 dict(toto='bar', tata=42, price=5, tax=D('1.196')),
              ]},
-            {'key': 6, 'group': [
+            {'key': 6, 'elements': [
                 dict(toto='bar', tata=6, price=12, tax=1),
              ]},
         ]
     )
     assert_list(
-        SOURCE.groupby(c.tata, c.len()).sort(-c.key),
+        SOURCE.groupby(c.tata, len=c.len()).sort(-c.key),
         [
-            {'key': 42, 'group': 2},
-            {'key': 6, 'group': 1},
+            {'key': 42, 'len': 2},
+            {'key': 6, 'len': 1},
         ]
     )
     result = list(execute(
-        SOURCE.groupby(c.tata).sort(-c.key).map(
+        SOURCE.groupby(c.tata, group=c).sort(-c.key).map(
             c + {'group': c.group.map(-c.price * c.tax + c(-1).key)}
         )
     ))
@@ -386,7 +386,7 @@ def test_groupby():
         {'key': 6, 'group': [-6]},
     ]
     assert_list(
-        SOURCE.groupby(c.tata).sort(-c.key).map(
+        SOURCE.groupby(c.tata, group=c).sort(-c.key).map(
             (c.key, c.group.map(c.price).sum() - c.key)
         ),
         [
@@ -401,7 +401,7 @@ def test_groupby():
             {'foo': 4, 'bar': 5},
             {'foo': 4, 'bar': 143},
             {'foo': 4, 'bar': 5},
-        ]).groupby(c).map((c.key, c.group.len())),
+        ]).groupby(c, group=c).map((c.key, c.group.len())),
         [
             ({'foo': 4, 'bar': 5}, 2),
             ({'foo': 4, 'bar': 143}, 1),

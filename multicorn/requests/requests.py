@@ -25,6 +25,7 @@ def as_request(obj):
     else:
         return LiteralRequest(obj)
 
+
 def as_chain(request):
     """Return a  request as a chain of successive operations"""
     chain = [request]
@@ -235,10 +236,8 @@ class Request(object):
             decorated_sort_keys.append((sort_key, reverse))
         return SortRequest(self, decorated_sort_keys)
 
-    def groupby(self, key, aggregate=None):
-        if aggregate is None:
-            aggregate = ContextRequest()
-        return GroupbyRequest(self, as_request(key), as_request(aggregate))
+    def groupby(self, key, **aggregates):
+        return GroupbyRequest(self, as_request(key), as_request(aggregates))
 
     def sum(self, subject=None):
         if subject is not None:
@@ -628,14 +627,14 @@ class SortRequest(OperationRequest):
 
 
 class GroupbyRequest(OperationRequest):
-    arg_spec = ('subject', 'key', 'aggregate')
+    arg_spec = ('subject', 'key', 'aggregates')
     context_switching_args = ('key',)
 
     @self_with_attrs
-    def __init__(self, subject, key, aggregate):
+    def __init__(self, subject, key, aggregates):
         self.subject = subject
         self.key = key
-        self.aggregate = aggregate
+        self.aggregates = aggregates
 
 
 class SumRequest(UnaryOperationRequest):
@@ -656,4 +655,3 @@ class LenRequest(UnaryOperationRequest):
 
 class DistinctRequest(UnaryOperationRequest):
     pass
-
