@@ -4,7 +4,7 @@
 
 
 from __future__ import print_function
-from multicorn import colorize
+from multicorn.utils import colorize
 from multicorn.requests.types import Type, Dict, List
 from ... import python_executor
 from ..abstract import AbstractCorn

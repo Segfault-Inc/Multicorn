@@ -2,12 +2,6 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-# If pygment installed use colorize
-try:
-    from pygments.console import colorize
-except ImportError:
-    colorize = lambda x, y: y
-
 
 class Multicorn(object):
     def __init__(self):

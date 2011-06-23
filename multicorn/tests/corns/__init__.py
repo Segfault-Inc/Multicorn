@@ -6,7 +6,7 @@ from attest import Tests
 from functools import wraps
 from . import tests
 from multicorn import Multicorn
-from multicorn import colorize
+from multicorn.utils import colorize
 
 
 def module_name_docstring(fun, module_name):
