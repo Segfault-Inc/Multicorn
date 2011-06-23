@@ -3,7 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from __future__ import print_function
-from multicorn import colorize
+from multicorn.utils import colorize
 from multicorn.requests.types import Type, Dict, List
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
