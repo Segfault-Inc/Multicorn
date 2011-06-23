@@ -99,7 +99,7 @@ class LiteralWrapper(wrappers.LiteralWrapper, MongoWrapper):
 class AttributeWrapper(wrappers.AttributeWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
-        return "this.%s" % self.attr_name
+        return "%s.%s" % (self.subject.to_mongo(contexts), self.attr_name)
 
 
 @MongoWrapper.register_wrapper(requests.LenRequest)
@@ -130,6 +130,11 @@ class AddWrapper(wrappers.AddWrapper, MongoWrapper):
         if all(isinstance(x, types.Dict) for x in (
             self.subject.return_type(contexts),
             self.other.return_type(contexts))):
+            if subject == "this":
+                subject = {"this": True}
+            if other == "this":
+                other = {"this": True}
+
             merged_dict = dict(subject)
             merged_dict.update(other.items())
             return merged_dict
@@ -190,4 +195,4 @@ class DictWrapper(wrappers.DictWrapper, MongoWrapper):
 class ContextWrapper(wrappers.ContextWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
-        return {"*": True}
+        return "this"

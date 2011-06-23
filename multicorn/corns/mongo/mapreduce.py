@@ -34,9 +34,9 @@ class MapReduce(object):
 
 def make_mr_map(fields, where=None):
     with_all = False
-    if '*' in fields:
+    if 'this' in fields:
         with_all = True
-        del fields["*"]
+        del fields["this"]
     fields_str = "fields = {"
     for field, origin in fields.items():
         fields_str = "%s%s: %s, " % (fields_str, field, origin)
