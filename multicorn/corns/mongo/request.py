@@ -2,15 +2,12 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 from .where import Where
-from .fields import Fields
-from bson.code import Code
 
 
 class MongoRequest(object):
 
     def __init__(self):
         self.current_where = Where()
-        self.current_fields = Fields()
         self.mapreduces = []
         self.count = False
         self.one = False
@@ -18,12 +15,10 @@ class MongoRequest(object):
     def __repr__(self):
         return ("MongoRequest("
                 "current_where=%r, "
-                "current_fields=%r, "
                 "mapreduces=%r, "
                 "count=%r, "
                 "one=%r)") % (
             self.current_where(),
-            self.current_fields(),
             self.mapreduces,
             self.count,
             self.one)
@@ -42,8 +37,7 @@ class MongoRequest(object):
             collection = mr.execute(collection,
                                     len(self.mapreduces) > 1)
         results = collection.find(
-            self.current_where(self.mapreduces),
-            self.current_fields())
+            self.current_where(self.mapreduces))
         if self.count:
             return results.count()
         if self.one:

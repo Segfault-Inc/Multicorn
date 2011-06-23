@@ -134,10 +134,12 @@ class AddWrapper(wrappers.AddWrapper, MongoWrapper):
                 subject = {"this": True}
             if other == "this":
                 other = {"this": True}
-
-            merged_dict = dict(subject)
-            merged_dict.update(other.items())
-            return merged_dict
+            if isinstance(other, MongoRequest):
+                return subject
+            else:
+                merged_dict = dict(subject)
+                merged_dict.update(other.items())
+                return merged_dict
         return "(%s + %s)" % (subject, other)
 
 
@@ -178,9 +180,8 @@ class MapWrapper(wrappers.MapWrapper, MongoWrapper):
         mapped = self.new_value.to_mongo(
             contexts + (self.subject.return_type(contexts).inner_type,))
         if isinstance(mapped, basestring):
-            mrq.current_fields.show(mapped)
-        else:
-            mrq.mapreduces.append(make_mr_map(mapped, mrq.pop_where()))
+            mapped = {"____": mapped}
+        mrq.mapreduces.append(make_mr_map(mapped, mrq.pop_where()))
         return mrq
 
 

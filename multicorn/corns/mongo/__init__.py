@@ -92,9 +92,7 @@ class Mongo(AbstractCorn):
             else:
                 def to_list(results):
                     for mongo_item in result:
-                        values = mongo_item.values()
-                        values = values[0] if len(values) == 1 else values
-                        yield values
+                        yield mongo_item["____"]
                 return to_list(result)
         elif isinstance(return_type, Dict):
             if return_type.corn:
