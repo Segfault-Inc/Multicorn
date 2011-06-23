@@ -2,6 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
+import os.path
 import functools
 from contextlib import contextmanager
 
@@ -130,3 +131,25 @@ def test_save(tempdir):
     item2.save()
     with open(item2.full_filename, 'rb') as fd:
         assert fd.read() == content.encode('utf8')
+
+@suite.test
+def test_delete(tempdir):
+    binary, text = make_raw_fs(tempdir)
+
+    content = u'Héllö World!'
+    item2 = text.create(dict(
+        category='lipsum', num='4', name='foo', content=content))
+    item2.save()
+
+    filename = os.path.join(text.root_dir, 'lipsum', '4_foo.txt')
+    dirname = os.path.join(text.root_dir, 'lipsum')
+    assert os.path.isfile(filename)
+    assert os.path.isdir(dirname)
+
+    item2.delete()
+
+    assert not os.path.exists(filename)
+    # Directories are also removed.
+    assert not os.path.exists(dirname)
+    # But the corn’s root is kept.
+    assert os.path.isdir(text.root_dir)

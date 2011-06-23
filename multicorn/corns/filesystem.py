@@ -169,3 +169,21 @@ class Filesystem(AbstractCorn):
             mode = 'wt'
         with io.open(filename, mode, encoding=self.encoding) as stream:
             stream.write(item[self.content_property])
+
+    def delete(self, item):
+        assert item.corn is self
+        filename = item.full_filename
+        assert filename.startswith(self.root_dir)
+
+        os.remove(filename)
+
+        # Remove empty directories up to (but not including) root_dir
+        path_parts = item.filename.split('/')
+        path_parts.pop() # Last part is the file name, only keep directories.
+        while path_parts:
+            directory = os.path.join(self.root_dir, *path_parts)
+            if os.listdir(directory):
+                break
+            else:
+                os.rmdir(directory)
+            path_parts.pop()  # Go to the parent directory
