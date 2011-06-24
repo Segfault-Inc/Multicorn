@@ -2,7 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-from attest import Tests
+from attest import Tests, assert_hook
 from multicorn.corns.mongo import Mongo
 from multicorn.declarative import declare, Property
 from . import make_test_suite
