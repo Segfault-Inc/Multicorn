@@ -364,18 +364,6 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, AlchemyWrapper):
         key = self.key.to_alchemy(query, contexts +
                 (Context(query, type.inner_type),))
         group = self.aggregates.to_alchemy(query, contexts + (Context(query, type),))
-        if isinstance(group, expression.Selectable):
-            # We have multiple return columns
-            if len(group.c) == 1:
-                column = list(group.c)[0].proxies[-1].label('group')
-                group = group.with_only_columns([column])
-            else:
-                columns = []
-                for c in group.c:
-                    columns.append(c.proxies[-1].label('__group_%s__' % c.name))
-                group = group.with_only_columns(columns)
-        else:
-            group = query.column(group.label('group'))
         group = group.group_by(key)
         group = group.column(key.label('key'))
         return group
