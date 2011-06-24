@@ -110,6 +110,7 @@ class Mongo(AbstractCorn):
 
     def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
+        print(wrapped_request)
         if self.is_all_mongo(wrapped_request):
             try:
                 return self._execute(

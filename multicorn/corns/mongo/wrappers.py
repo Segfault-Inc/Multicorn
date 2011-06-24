@@ -4,7 +4,7 @@
 
 from ...requests import requests, wrappers, types
 from .request import MongoRequest
-from .mapreduce import make_mr_map
+from .mapreduce import make_mr_map, make_mr_groupby, make_mr
 from .ragequit import RageQuit
 from .jsoner import to_json
 
@@ -126,8 +126,18 @@ class AttributeWrapper(wrappers.AttributeWrapper, MongoWrapper):
 class LenWrapper(wrappers.LenWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
+        if contexts:
+            return "len"
         mrq = self.subject.to_mongo(contexts)
         mrq.count = True
+        return mrq
+
+
+@MongoWrapper.register_wrapper(requests.SumRequest)
+class AggregateWrapper(wrappers.AggregateWrapper, ContextDefinerMongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        mrq = self.subject.to_mongo(self.sub(contexts), 'sum')
         return mrq
 
 
@@ -213,13 +223,13 @@ class SortWrapper(wrappers.SortWrapper, ContextDefinerMongoWrapper):
 @MongoWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(wrappers.MapWrapper, ContextDefinerMongoWrapper):
 
-    def to_mongo(self, contexts=()):
+    def to_mongo(self, contexts=(), aggregate=None):
         mrq = self.subject.to_mongo(contexts)
         mapped = self.new_value.to_mongo(self.sub(contexts))
         if isinstance(mapped, basestring):
             # Anonymous map reduce
             mapped = {"____": mapped}
-        mrq.mapreduces.append(make_mr_map(mapped, mrq.pop_where()))
+        mrq.mapreduces.append(make_mr(mapped, aggregate, mrq.pop_where()))
         return mrq
 
 
@@ -235,6 +245,19 @@ class DictWrapper(wrappers.DictWrapper, MongoWrapper):
                     self, "I don't know what to do with a sub request")
             new_dict[key] = new_val
         return new_dict
+
+
+@MongoWrapper.register_wrapper(requests.GroupbyRequest)
+class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        mrq = self.subject.to_mongo(contexts)
+        mrq.mapreduces.append(
+            make_mr_groupby(
+                self.key.to_mongo(self.sub(contexts)),
+                self.aggregate.to_mongo(self.sub(contexts)),
+                mrq.pop_where()))
+        return mrq
 
 
 @MongoWrapper.register_wrapper(requests.ContextRequest)

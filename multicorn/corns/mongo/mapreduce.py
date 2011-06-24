@@ -32,6 +32,12 @@ class MapReduce(object):
             self.where)
 
 
+def make_mr(fields, aggregate=None, where=None):
+    if not aggregate:
+        return make_mr_map(fields, where)
+    return make_mr_groupby("____", aggregate, where)
+
+
 def make_mr_map(fields, where=None):
     with_all = False
     if 'this' in fields:
@@ -44,14 +50,46 @@ def make_mr_map(fields, where=None):
     if with_all:
         fields_str += (
             "for (attr in this) {"
-            "if (attr != '_id') {"
-            "  fields[attr] = this[attr];"
-            "}};")
+            "  if (attr != '_id') {"
+            "    fields[attr] = this[attr];"
+            "  }"
+            "};")
     map = ("function () {"
-           "%s"
-           "emit(this._id, fields);"
+           "  %s"
+           "  emit(this._id, fields);"
            "}") % fields_str
     reduce = ("function (k, v) {"
-              "return v[0];"
+              "  return v[0];"
               "}")
+    return MapReduce(map, reduce, where)
+
+
+def make_mr_groupby(key, aggregate, where=None):
+    if aggregate == 'len':
+        map = (
+            "function () {"
+            "  var k = %s;"
+            "  emit(k, {key: k, <group>: 1});"
+            "}").replace("<group>", "group") % key
+        reduce = ("function (k, v) {"
+                  "  var total = 0;"
+                  "  for ( var i = 0; i < v.length; i++)"
+                  "    total += v[i].<group>;"
+                  "  return { key: k, <group> : total };"
+                  "}").replace("<group>", "group")
+    elif aggregate == 'sum':
+        map = (
+            "function () {"
+            "  var k = %s;"
+            "  emit(k, {key: k, <group>: 1});"
+            "}").replace("<group>", "group") % key
+        reduce = ("function (k, v) {"
+                  "  var total = 0;"
+                  "  for ( var i = 0; i < v.length; i++)"
+                  "    total += v[i].<group>;"
+                  "  return { key: k, <group> : total };"
+                  "}").replace("<group>", "group")
+    else:
+        import pdb
+        pdb.set_trace()
     return MapReduce(map, reduce, where)
