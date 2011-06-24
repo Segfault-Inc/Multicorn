@@ -5,7 +5,7 @@
 from ...requests import requests, wrappers, types
 from . import Alchemy, InvalidRequestException
 
-from sqlalchemy import sql as sqlexpr
+from sqlalchemy import sql as sqlexpr, Unicode
 from sqlalchemy.sql import expression
 
 
@@ -76,7 +76,7 @@ class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
         if not isinstance(self.return_type(type_context(contexts)),
                 (types.List, types.Dict)):
            # Context is a scalar, we should have only one column
-           return list(query.c)[0].proxies[-1]
+           return list(query.c)[0]
         return query
 
     def extract_tables(self):
@@ -87,6 +87,69 @@ class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
         if len(contexts) <= self.scope_depth:
             raise InvalidRequestException(self, "Invalid Context Request:\
                     no %sth parent scope" % self.scope_depth)
+
+@AlchemyWrapper.register_wrapper(requests.StrRequest)
+class StrWrapper(wrappers.StrWrapper, AlchemyWrapper):
+
+    def extract_tables(self):
+        return self.subject.extract_tables()
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def to_alchemy(self, query, contexts=()):
+        subject = self.subject.to_alchemy(query, contexts)
+        return expression.cast(subject, Unicode)
+
+
+@AlchemyWrapper.register_wrapper(requests.UpperRequest)
+class UpperWrapper(wrappers.UpperWrapper, AlchemyWrapper):
+
+    def extract_tables(self):
+        return self.subject.extract_tables()
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def to_alchemy(self, query, contexts=()):
+        subject = self.subject.to_alchemy(query, contexts)
+        return query.with_only_columns([expression.func.upper(subject)])
+
+@AlchemyWrapper.register_wrapper(requests.LowerRequest)
+class LowerWrapper(wrappers.LowerWrapper, AlchemyWrapper):
+
+    def extract_tables(self):
+        return self.subject.extract_tables()
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def to_alchemy(self, query, contexts=()):
+        subject = self.subject.to_alchemy(query, contexts)
+        return query.with_only_columns([expression.func.lower(subject)])
+
+
+@AlchemyWrapper.register_wrapper(requests.RegexRequest)
+class RegexRequest(wrappers.RegexWrapper, AlchemyWrapper):
+
+    def extract_tables(self):
+        return self.subject.extract_tables()
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def to_alchemy(self, query, contexts=()):
+        subject = self.subject.to_alchemy(query, contexts)
+        if isinstance(self.other, requests.LiteralRequest):
+            value = self.other.value
+            value = value.replace('_', '\_')
+            value = value.replace('%', '\%')
+            value = value.replace('.*', '%')
+            value = value.replace('.', '_')
+            return subject.like(value)
+
+
+
 
 @AlchemyWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(wrappers.LiteralWrapper, AlchemyWrapper):
@@ -429,4 +492,11 @@ class DistinctWrapper(wrappers.AggregateWrapper, AggregateWrapper):
 class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        pass
+        type = self.subject.return_type(contexts)
+        if isinstance(type, types.List):
+            return query.limit(self.slice)
+
+    def is_valid(self, contexts=()):
+        if not isinstance(self.subject.return_type(contexts), types.List):
+            raise InvalidRequestException(self,
+                    "Slice is not managed on not list objects")

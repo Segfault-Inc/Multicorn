@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
-
-from attest import Tests, assert_hook
+from attest import assert_hook
 from multicorn.requests import CONTEXT as c
 
 
@@ -154,18 +153,19 @@ def basic_query(Corn):
 
 @corntest
 def maps(Corn):
+    """Test various map operations"""
     make_data(Corn)
     items = list(Corn.all.map(c.id).execute())
     assert len(items) == 3
-    test = all(x in items for x in [1, 2, 3])
+    test = all([x in items for x in [1, 2, 3]])
     assert test
     items = list(Corn.all.map(c.id * c.id).execute())
     assert len(items) == 3
-    test = all(x in items for x in [1, 4, 9])
+    test = all([x in items for x in [1, 4, 9]])
     assert test
     items = list(Corn.all.map(c.name + ' ' + c.lastname).execute())
     assert len(items) == 3
-    test = all(x in items for x in ['foo bar', 'baz bar', 'foo baz'])
+    test = all([x in items for x in ['foo bar', 'baz bar', 'foo baz']])
     assert test
     item = Corn.all.map(
         c.name + ' ' + c.lastname).filter(c == 'foo bar').one().execute()
@@ -179,3 +179,101 @@ def maps(Corn):
     assert all(type(item) == dict for item in items)
     assert all(
         item['foo'] == 'baz' for item in items)
+    fullname = c.name + ' ' + c.lastname
+    item = Corn.all.map(fullname).filter(c == 'foo bar').one().execute()
+    assert item == 'foo bar'
+    item = Corn.all.map({'fullname': fullname, 'id': c.id}).filter(
+            (c.id * c.id) == 1).one().execute()
+    assert item == {'fullname': 'foo bar', 'id': 1}
+
+@corntest
+def aggregates(Corn):
+    """Test aggregates"""
+    make_data(Corn)
+    max = Corn.all.max(c.id).execute()
+    assert max == 3
+    min = Corn.all.min(c.id).execute()
+    assert min == 1
+    len = Corn.all.len().execute()
+    assert len == 3
+
+@corntest
+def filter(Corn):
+    """Test various filters"""
+    make_data(Corn)
+    items = list(Corn.all.execute())
+    assert len(items) == 3
+    items = list(Corn.all.filter(c.name == 'foo' ).execute())
+    assert len(items) == 2
+    assert all([item['name'] == 'foo' for item in items])
+    items = list(Corn.all.filter((c.name == 'foo' ) &
+        (c.lastname == 'bar')).execute())
+    assert len(items) == 1
+    assert items[0]['id'] == 1
+    items = list(Corn.all.filter((c.name == 'baz' ) |
+        (c.lastname == 'baz')).execute())
+    assert len(items) == 2
+    assert 2 in (x['id'] for x in items)
+    assert 3 in (x['id'] for x in items)
+    items = list(Corn.all.filter(c.name == 'foo').execute())
+    assert len(items) == 2
+    assert all([item['name'] == 'foo' for item in items])
+    items = list(Corn.all.filter((c.name == 'foo' ) &
+        (c.lastname == 'bar')).execute())
+    assert len(items) == 1
+    assert items[0]['id'] == 1
+    assert all([item.corn == Corn for item in items])
+    items = list(Corn.all.filter((c.name == 'baz' ) |
+        (c.lastname == 'baz')).execute())
+    assert len(items) == 2
+    assert 2 in (x['id'] for x in items)
+    assert 3 in (x['id'] for x in items)
+    assert all([item.corn == Corn for item in items])
+    items = list(Corn.all.filter(c.id < 2).execute())
+    assert len(items) == 1
+    assert items[0]['id'] == 1
+    assert all([item.corn == Corn for item in items])
+    items = list(Corn.all.filter((c.id < 3) & (c.id > 1)).execute())
+    assert len(items) == 1
+    assert items[0]['id'] == 2
+    assert all([item.corn == Corn for item in items])
+    items = list(Corn.all.filter(c.id >= 2).execute())
+    assert len(items) == 2
+    assert 2 in (x['id'] for x in items)
+    assert 3 in (x['id'] for x in items)
+    assert all([item.corn == Corn for item in items])
+    items = list(Corn.all.filter(c.id <= 2).execute())
+    assert len(items) == 2
+    assert 1 in (x['id'] for x in items)
+    assert 2 in (x['id'] for x in items)
+    assert all([item.corn == Corn for item in items])
+    items = list(Corn.all.filter(c.id != 2).execute())
+    assert len(items) == 2
+    assert 1 in (x['id'] for x in items)
+    assert 3 in (x['id'] for x in items)
+    assert all([[item.corn == Corn for item in items]])
+
+@corntest
+def test_groupby(Corn):
+    """Test groupby requests"""
+    make_data(Corn)
+    items = list(Corn.all.groupby(c.name, {
+        'max': c.max(c.id),
+        'min': c.min(c.id),
+        'sum': c.sum(c.id)}).sort(c.key).execute())
+    assert len(items) == 2
+    assert items[0]['key'] == 'baz' and items[0]['group'] == {'max': 2, 'min': 2, 'sum': 2}
+    assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}
+    items = list(Corn.all.groupby(c.name, c.sum(c.id)).sort(c.group).execute())
+    assert len(items) == 2
+    assert items[0]['key'] == 'baz' and items[0]['group'] == 2
+    assert items[1]['key'] == 'foo' and items[1]['group'] == 4
+    items = list(Corn.all.groupby(c.name, c.len()).sort(c.group).execute())
+    assert len(items) == 2
+    assert items[0]['group'] == 1
+    assert items[1]['group'] == 2
+    items = list(Corn.all.groupby(c.name, c.len()).sort(c.group).map(
+        c.key + ' : ' + c.group.str() + ' items').execute())
+    assert len(items) == 2
+    assert items[0] == 'baz : 1 items'
+    assert items[1] == 'foo : 2 items'

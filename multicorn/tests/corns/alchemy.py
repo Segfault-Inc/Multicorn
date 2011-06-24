@@ -1,4 +1,4 @@
-from attest import assert_hook
+#from attest import assert_hook
 
 from multicorn.corns.alchemy import Alchemy
 from multicorn.declarative import declare, Property
@@ -162,3 +162,6 @@ def test_optimization(Corn):
     assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}
     items = list(Corn.all.map(c.name + ' ' + c.lastname).execute())
     assert len(items) == 3
+    items = list(Corn.all.map(c.name.upper()).sort(c).execute())
+    assert items == ['BAZ', 'FOO', 'FOO']
+
