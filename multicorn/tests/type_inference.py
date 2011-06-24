@@ -60,7 +60,7 @@ def test_map():
 def test_groupby():
     Corn = make_corn()
     type = return_type(
-        Corn.all.groupby(c.name).map(c.group.map(c(-1).key)))
+        Corn.all.groupby(c.name, group=c).map(c.group.map(c(-1).key)))
     assert type == List(inner_type=List(inner_type=Corn.properties['name']))
 
 
@@ -100,7 +100,7 @@ def test_nimp():
         'onedefault': Corn.all.one(None),
         'onedefaulthomogeneous': Corn.all.one(Corn.all.one()),
         'sort': Corn.all.sort(c.name, ~c.lastname),
-        'groupby': Corn.all.groupby(c.name),
+        'groupby': Corn.all.groupby(c.name, group=c),
         'heterogeneous_list': Corn.all + ['toto', 3],
         'homogeneous_list': [u'toto', u'tata'],
         'tuple': (1, 2, 3),

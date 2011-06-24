@@ -300,7 +300,7 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, AlchemyWrapper):
         type = self.subject.return_type(type_context(contexts))
         key = self.key.to_alchemy(query, contexts +
                 (Context(query, type.inner_type),))
-        group = self.aggregate.to_alchemy(query, contexts + (Context(query, type),))
+        group = self.aggregates.to_alchemy(query, contexts + (Context(query, type),))
         if isinstance(group, expression.Selectable):
             # We have multiple return columns
             if len(group.c) == 1:
@@ -320,13 +320,13 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, AlchemyWrapper):
     def extract_tables(self):
         return self.subject.extract_tables() +\
                self.key.extract_tables() +\
-               self.aggregate.extract_tables()
+               self.aggregates.extract_tables()
 
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)
         type = self.subject.return_type(contexts)
         self.key.is_valid(contexts + (type.inner_type,))
-        self.aggregate.is_valid(contexts + (type,))
+        self.aggregates.is_valid(contexts + (type,))
 
 
 @AlchemyWrapper.register_wrapper(requests.SortRequest)
@@ -430,4 +430,3 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
 
     def to_alchemy(self, query, contexts=()):
         pass
-
