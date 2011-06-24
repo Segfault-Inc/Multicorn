@@ -55,36 +55,36 @@ def test_optimization(Corn):
         (c.lastname == 'bar')).execute())
     assert len(items) == 1
     assert items[0]['id'] == 1
-    assert all(item.corn == Corn for item in items)
+    assert all([item.corn == Corn for item in items])
     items = list(Corn.all.filter((c.name == 'baz' ) |
         (c.lastname == 'baz')).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
     assert 3 in (x['id'] for x in items)
-    assert all(item.corn == Corn for item in items)
+    assert all([item.corn == Corn for item in items])
     items = list(Corn.all.filter(c.id < 2).execute())
     assert len(items) == 1
     assert items[0]['id'] == 1
-    assert all(item.corn == Corn for item in items)
+    assert all([item.corn == Corn for item in items])
     items = list(Corn.all.filter((c.id < 3) & (c.id > 1)).execute())
     assert len(items) == 1
     assert items[0]['id'] == 2
-    assert all(item.corn == Corn for item in items)
+    assert all([item.corn == Corn for item in items])
     items = list(Corn.all.filter(c.id >= 2).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
     assert 3 in (x['id'] for x in items)
-    assert all(item.corn == Corn for item in items)
+    assert all([item.corn == Corn for item in items])
     items = list(Corn.all.filter(c.id <= 2).execute())
     assert len(items) == 2
     assert 1 in (x['id'] for x in items)
     assert 2 in (x['id'] for x in items)
-    assert all(item.corn == Corn for item in items)
+    assert all([item.corn == Corn for item in items])
     items = list(Corn.all.filter(c.id != 2).execute())
     assert len(items) == 2
     assert 1 in (x['id'] for x in items)
     assert 3 in (x['id'] for x in items)
-    assert all(item.corn == Corn for item in items)
+    assert all([item.corn == Corn for item in items])
     items = list(Corn.all.map(c.name).execute())
     assert len(items) == 3
     assert all(type(item) == unicode for item in items)
@@ -162,3 +162,5 @@ def test_optimization(Corn):
     assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}
     items = list(Corn.all.map(c.name + ' ' + c.lastname).execute())
     assert len(items) == 3
+    items = list(Corn.all.map(c.name.upper()).sort(c).execute())
+    assert items == ['BAZ', 'FOO', 'FOO']

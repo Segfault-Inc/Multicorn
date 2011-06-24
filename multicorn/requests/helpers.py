@@ -60,8 +60,8 @@ def cut_on_predicate(request, predicate, recursive=False, position=-1):
 def cut_on_index(request, index):
     chain = as_chain(request)
     empty_context = ContextRequest()
-    tail = WithRealAttributes(chain[-1])._copy_replace(chain[index],
-                empty_context)
+    tail = WithRealAttributes(chain[-1])._copy_replace({chain[index]:
+                empty_context})
     return chain[index], tail
 
 

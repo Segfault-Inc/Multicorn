@@ -244,6 +244,18 @@ class Request(object):
             return self.map(subject).sum()
         return SumRequest(self)
 
+    def str(self):
+        return StrRequest(self)
+
+    def lower(self):
+        return LowerRequest(self)
+
+    def upper(self):
+        return UpperRequest(self)
+
+    def matches(self, other):
+        return RegexRequest(self, other)
+
     def min(self, subject=None):
         if subject is not None:
             return self.map(subject).min()
@@ -397,6 +409,27 @@ class UnaryOperationRequest(OperationRequest):
         self.subject = subject
 
 
+class StrRequest(UnaryOperationRequest):
+    """
+    Convert a number to a string (unicode in python 2.x).
+    """
+    pass
+
+
+class LowerRequest(UnaryOperationRequest):
+    """
+    Return the lowercased version of the subject
+    """
+    pass
+
+
+class UpperRequest(UnaryOperationRequest):
+    """
+    Return the uppercased version of the subject
+    """
+    pass
+
+
 class NotRequest(UnaryOperationRequest):
     """
     Logical negation:  ~some_req is NotRequest(some_req)
@@ -430,6 +463,10 @@ class BinaryOperationRequest(OperationRequest):
     def __init__(self, subject, other):
         self.subject = subject
         self.other = other
+
+
+class RegexRequest(BinaryOperationRequest):
+    arg_spec = ('subject', 'other')
 
 
 class EqRequest(BinaryOperationRequest):

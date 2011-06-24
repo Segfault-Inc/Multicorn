@@ -2,6 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
+import re
 import sys
 import operator
 from itertools import islice, chain
@@ -357,6 +358,24 @@ simple_executor(requests.NotRequest, operator.not_)
 simple_executor(requests.SumRequest, sum)
 simple_executor(requests.MinRequest, min)
 simple_executor(requests.MaxRequest, max)
+
+simple_executor(requests.StrRequest, unicode)
+
+@register_executor(requests.LowerRequest)
+def execute_lower(self, contexts):
+    subject = execute(self.subject, contexts)
+    return subject.lower()
+
+@register_executor(requests.UpperRequest)
+def execute_upper(self, contexts):
+    subject = execute(self.subject, contexts)
+    return subject.upper()
+
+@register_executor(requests.RegexRequest)
+def execute_regexp(self, contexts):
+    subject = execute(self.subject, contexts)
+    other = execute(self.other, contexts)
+    return bool(re.search(other, subject))
 
 del register_executor, simple_executor
 

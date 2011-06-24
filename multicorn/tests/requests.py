@@ -181,6 +181,14 @@ def test_map():
         SOURCE.map(c.price * c.tax),
         [D('11.96'), 12, D('5.98')]
     )
+    assert_list(
+            SOURCE.map(c.toto.upper()),
+            ['FOO', 'BAR', 'BAR']
+    )
+    assert_list(
+            SOURCE.map(c.toto.upper() + c.toto.lower()),
+            ['FOOfoo', 'BARbar', 'BARbar']
+    )
 
 
 @suite.test
@@ -209,6 +217,11 @@ def test_filter():
         SOURCE.filter(toto='bar').map(c.price),
         [12, 5]
     )
+    assert_list(
+            SOURCE.filter(c.toto.matches('^b.r$')).map(c.price),
+            [12, 5]
+    )
+
     assert_list(
         SOURCE.filter(c.price < 11).map(c.price),
         [10, 5]
