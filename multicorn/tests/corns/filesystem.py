@@ -60,10 +60,13 @@ def test_parser(tempdir):
     with assert_raises(ValueError, "single '}'"):
         assert make_corn('foo}bar')
 
-    assert make_corn('{category}/{num}_{name}.bin').identity_properties \
-        == ('category', 'num', 'name')
+    bin = make_corn('{category}/{num}_{name}.bin')
+    assert bin.identity_properties == ('category', 'num', 'name')
+    assert bin._path_parts_properties == (('category',), ('num', 'name'))
+
     bin = make_corn('{category}/{{num}}_{name}.bin')
     assert bin.identity_properties == ('category', 'name')
+    assert bin._path_parts_properties == (('category',), ('name',))
     assert [regex.pattern for regex in bin._path_parts_re] \
         == ['^(?P<category>.*)$', r'^\{num\}\_(?P<name>.*)\.bin$']
 
@@ -103,7 +106,7 @@ def test_init(tempdir):
 def test_filenames(tempdir):
     binary = make_binary_corn(tempdir)
     text = make_text_corn(tempdir)
-    
+
     values = dict(category='lipsum', num=4, name='foo')
     with assert_raises(TypeError, 'must be of type unicode'):
         binary.create(values).filename
@@ -111,10 +114,10 @@ def test_filenames(tempdir):
     values['num'] = '4'
     assert binary.create(values).filename == 'lipsum/4_foo.bin'
     assert text.create(values).filename == 'lipsum/4_foo.txt'
-    
+
     # No file created yet
     assert os.listdir(tempdir) == []
-    
+
     # Create some files
     for path_parts in [
             # Matching the pattern
@@ -134,7 +137,7 @@ def test_filenames(tempdir):
             os.makedirs(dirname)
         # Create an empty file
         open(filename, 'wb').close()
-    
+
     assert [i.filename for i in text.all.execute()] == ['lipsum/4_foo.txt']
     assert [i.filename for i in binary.all.execute()] == ['lipsum/4_foo.bin']
 
@@ -182,14 +185,16 @@ def test_request(tempdir):
 
     re_item = text.all.one().execute()
     # Same values, but not the same object.
-    assert dict(re_item) == dict(item)
+    values = dict(
+        category='lipsum', num='4', name='foo', content=u'Héllö World!')
+    assert dict(item) == values
+    assert dict(re_item) == values
     assert re_item is not item
 
 
 @suite.test
 def test_laziness(tempdir):
     text, item = make_populated_text_corn(tempdir)
-
 
     def io_open_mock(filename, *args, **kwargs):
         files_opened.append(filename)
@@ -198,11 +203,11 @@ def test_laziness(tempdir):
     files_opened = []
     real_io_open = io.open
     io.open = io_open_mock
-    
+
     try:
         re_item = text.all.one().execute()
         assert re_item['category'] == 'lipsum'
-        
+
         # The file was not read yet
         assert files_opened == []
         # Reading lazily
@@ -210,3 +215,46 @@ def test_laziness(tempdir):
         assert files_opened == [item.full_filename]
     finally:
         io.open = real_io_open
+
+
+@suite.test
+def test_optimizations(tempdir):
+    text, item = make_populated_text_corn(tempdir)
+
+    def get(request):
+        re_item = request.one().execute()
+        # Workaround a bug in Attest’s assert hook with closures
+        item_ = item
+        # We already tested in test_request() that dict(some_item) has
+        # all the values.
+        assert dict(re_item) == dict(item_)
+
+    def os_listdir_mock(dirname):
+        listed.append(dirname)
+        return real_os_listdir(dirname)
+
+    real_os_listdir = os.listdir
+    os.listdir = os_listdir_mock
+
+    try:
+        listed = []
+        get(text.all)
+        # No fixed values: all directories on the path are listed.
+        assert listed == [tempdir, os.path.join(tempdir, 'lipsum')]
+
+        listed = []
+        get(text.all.filter(category='lipsum'))
+        # The category was fixed, no need to listdir() the root.
+        assert listed == [os.path.join(tempdir, 'lipsum')]
+
+        listed = []
+        get(text.all.filter(num='4', name='foo'))
+        # The num and name were fixed, no need to listdir() the lipsum dir.
+        assert listed == [tempdir]
+
+        listed = []
+        get(text.all.filter(category='lipsum', num='4', name='foo'))
+        # All filename properties were fixed, no need to listdir() anything
+        assert listed == []
+    finally:
+        os.listdir = real_os_listdir

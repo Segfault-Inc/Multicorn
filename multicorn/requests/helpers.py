@@ -133,10 +133,7 @@ def isolate_identity_values(filter, id_types, contexts=()):
     # Isolate the values defined in a "Eq" comparison
     # Remainder is a query containing nor "Eq" comparison used
     # in the filter
-    if not isinstance(self_filter, LiteralWrapper):
-        values, remainder = isolate_values(self_filter.wrapped_request, contexts)
-        remainder_query = ContextRequest().filter(remainder).filter(
-            other_filter.wrapped_request)
-        return values, remainder_query
-    else:
-        return {}, filter
+    values, remainder = isolate_values(self_filter.wrapped_request, contexts)
+    remainder_query = ContextRequest().filter(remainder).filter(
+        other_filter.wrapped_request)
+    return values, remainder_query
