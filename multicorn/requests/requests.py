@@ -10,6 +10,13 @@ import functools
 ARGUMENT_NOT_GIVEN = object()
 
 
+def literal(obj):
+    """
+    Wrap any Python object into a request that represents that object.
+    """
+    return LiteralRequest(obj)
+
+
 def as_request(obj):
     """
     Return a Request object for `obj`.
@@ -210,7 +217,15 @@ class Request(object):
         for name, value in kwargs.iteritems():
             predicate &= (getattr(ContextRequest(), name) == value)
 
-        return FilterRequest(self, as_request(predicate))
+        if isinstance(predicate, LiteralRequest):
+            if WithRealAttributes(self).value:
+                # Skip the filter operation if the predicate is always true.
+                return self
+            # TODO: does the following this help? does it hurt?
+#            else:
+#                return LiteralRequest([])
+
+        return FilterRequest(self, predicate)
 
     def map(self, new_value):
         return MapRequest(self, as_request(new_value))
