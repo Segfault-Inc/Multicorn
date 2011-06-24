@@ -133,14 +133,6 @@ class LenWrapper(wrappers.LenWrapper, MongoWrapper):
         return mrq
 
 
-@MongoWrapper.register_wrapper(requests.SumRequest)
-class AggregateWrapper(wrappers.AggregateWrapper, ContextDefinerMongoWrapper):
-
-    def to_mongo(self, contexts=()):
-        mrq = self.subject.to_mongo(self.sub(contexts), 'sum')
-        return mrq
-
-
 @MongoWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(wrappers.OneWrapper, MongoWrapper):
 
@@ -223,14 +215,26 @@ class SortWrapper(wrappers.SortWrapper, ContextDefinerMongoWrapper):
 @MongoWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(wrappers.MapWrapper, ContextDefinerMongoWrapper):
 
-    def to_mongo(self, contexts=(), aggregate=None):
+    def to_mongo(self, contexts=()):
         mrq = self.subject.to_mongo(contexts)
         mapped = self.new_value.to_mongo(self.sub(contexts))
         if isinstance(mapped, basestring):
             # Anonymous map reduce
             mapped = {"____": mapped}
-        mrq.mapreduces.append(make_mr(mapped, aggregate, mrq.pop_where()))
+
+        mrq.mapreduces.append(make_mr_map(mapped, mrq.pop_where()))
         return mrq
+
+
+@MongoWrapper.register_wrapper(requests.SumRequest)
+class SumWrapper(wrappers.AggregateWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        if isinstance(self.subject, MapWrapper):
+            mapped = self.subject.new_value.to_mongo(contexts)
+            return {mapped: "sum"}
+        else:
+            raise "WTF"
 
 
 @MongoWrapper.register_wrapper(requests.DictRequest)
@@ -255,7 +259,7 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
         mrq.mapreduces.append(
             make_mr_groupby(
                 self.key.to_mongo(self.sub(contexts)),
-                self.aggregate.to_mongo(self.sub(contexts)),
+                self.aggregates.to_mongo(self.sub(contexts)),
                 mrq.pop_where()))
         return mrq
 

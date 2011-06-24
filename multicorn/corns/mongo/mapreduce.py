@@ -35,7 +35,7 @@ class MapReduce(object):
 def make_mr(fields, aggregate=None, where=None):
     if not aggregate:
         return make_mr_map(fields, where)
-    return make_mr_groupby("____", aggregate, where)
+    return make_mr_groupby(fields, aggregate, where)
 
 
 def make_mr_map(fields, where=None):
@@ -64,32 +64,45 @@ def make_mr_map(fields, where=None):
     return MapReduce(map, reduce, where)
 
 
-def make_mr_groupby(key, aggregate, where=None):
-    if aggregate == 'len':
-        map = (
-            "function () {"
-            "  var k = %s;"
-            "  emit(k, {key: k, <group>: 1});"
-            "}").replace("<group>", "group") % key
-        reduce = ("function (k, v) {"
-                  "  var total = 0;"
-                  "  for ( var i = 0; i < v.length; i++)"
-                  "    total += v[i].<group>;"
-                  "  return { key: k, <group> : total };"
-                  "}").replace("<group>", "group")
-    elif aggregate == 'sum':
-        map = (
-            "function () {"
-            "  var k = %s;"
-            "  emit(k, {key: k, <group>: 1});"
-            "}").replace("<group>", "group") % key
-        reduce = ("function (k, v) {"
-                  "  var total = 0;"
-                  "  for ( var i = 0; i < v.length; i++)"
-                  "    total += v[i].<group>;"
-                  "  return { key: k, <group> : total };"
-                  "}").replace("<group>", "group")
-    else:
-        import pdb
-        pdb.set_trace()
+def make_mr_len(key, aggregates, where=None):
+    tuples = aggregates.items()
+    if len(tuples) > 1:
+        raise "WTF"
+    keyname = tuples[0][0]
+    map = (
+        "function () {"
+        "  var k = %s;"
+        "  emit(k, {key: k, <group>: 1});"
+        "}").replace("<group>", keyname) % key
+    reduce = ("function (k, v) {"
+              "  var total = 0;"
+              "  for ( var i = 0; i < v.length; i++)"
+              "    total += v[i].<group>;"
+              "  return { key: k, <group>: total };"
+              "}").replace("<group>", keyname)
+    return MapReduce(map, reduce, where)
+
+
+def make_mr_groupby(key, aggregates, where=None):
+    names = {}
+    vals = {}
+    for k, v in aggregates.items():
+        if not isinstance(v, dict):
+            return make_mr_len(key, aggregates, where)
+        for sk, sv in v.items():
+            names[sv] = k
+            vals[sv] = sk
+
+    map = (
+        "function () {"
+        "  var k = %s, v = %s;"
+        "  emit(k, { key: k, <group>: v});"
+        "}").replace("<group>", names['sum']) % (key, vals["sum"])
+    reduce = ("function (k, v) {"
+              "  var total = 0;"
+              "  for ( var i = 0; i < v.length; i++)"
+              "    total += v[i].<group>;"
+              "  return {  key: k, <group>: total };"
+              "}").replace("<group>", names['sum'])
+
     return MapReduce(map, reduce, where)
