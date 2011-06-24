@@ -55,7 +55,9 @@ def test_all():
 @suite.test
 def test_optimization():
     Corn = make_corn()
-
+    item = Corn.all.map({'id': c.id, 'newname': c.name}).filter(c.id == 1).one().execute()
+    assert item['id'] == 1
+    assert item['newname'] == u'foo'
     class NotOptimizedError(Exception):
         pass
 

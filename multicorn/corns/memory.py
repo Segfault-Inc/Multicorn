@@ -5,7 +5,7 @@
 from .abstract import AbstractCorn
 from ..requests.types import Type
 from ..requests.requests import as_chain, FilterRequest
-from ..requests.helpers import isolate_identity_values, cut_on_predicate
+from ..requests.helpers import isolate_identity_values, cut_on_index
 from ..requests.wrappers import RequestWrapper
 
 
@@ -42,10 +42,9 @@ class Memory(AbstractCorn):
         wrapped_request = self.RequestWrapper.from_request(request)
         # If we filter straight away on id properties, cut the chain in
         # half and work only on the matching item
-        filter, other = cut_on_predicate(request,
-                lambda x : isinstance(x, FilterRequest),
-                position=0)
-        if filter:
+        chain = as_chain(request)
+        if len(chain) > 1 and isinstance(chain[1], FilterRequest):
+            filter, other = cut_on_index(request, 1)
             id_types = [
                 self.properties[name] for name in self.identity_properties]
             values, remainder_query = isolate_identity_values(filter, id_types)

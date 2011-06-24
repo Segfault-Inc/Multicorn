@@ -257,23 +257,21 @@ def filter(Corn):
 def test_groupby(Corn):
     """Test groupby requests"""
     make_data(Corn)
-    items = list(Corn.all.groupby(c.name, {
-        'max': c.max(c.id),
-        'min': c.min(c.id),
-        'sum': c.sum(c.id)}).sort(c.key).execute())
+    items = list(Corn.all.groupby(c.name, max=c.max(c.id), min=c.min(c.id),
+        sum=c.sum(c.id)).sort(c.key).execute())
     assert len(items) == 2
-    assert items[0]['key'] == 'baz' and items[0]['group'] == {'max': 2, 'min': 2, 'sum': 2}
-    assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}
-    items = list(Corn.all.groupby(c.name, c.sum(c.id)).sort(c.group).execute())
+    assert items[0] == {'max': 2, 'min': 2, 'sum': 2, 'key': 'baz'}
+    assert items[1] == {'max': 3, 'min': 1, 'sum': 4, 'key': 'foo'}
+    items = list(Corn.all.groupby(c.name,sum=c.sum(c.id)).sort(c.sum).execute())
     assert len(items) == 2
-    assert items[0]['key'] == 'baz' and items[0]['group'] == 2
-    assert items[1]['key'] == 'foo' and items[1]['group'] == 4
-    items = list(Corn.all.groupby(c.name, c.len()).sort(c.group).execute())
+    assert items[0]['key'] == 'baz' and items[0]['sum'] == 2
+    assert items[1]['key'] == 'foo' and items[1]['sum'] == 4
+    items = list(Corn.all.groupby(c.name,len=c.len()).sort(c.len).execute())
     assert len(items) == 2
-    assert items[0]['group'] == 1
-    assert items[1]['group'] == 2
-    items = list(Corn.all.groupby(c.name, c.len()).sort(c.group).map(
-        c.key + ' : ' + c.group.str() + ' items').execute())
+    assert items[0]['len'] == 1
+    assert items[1]['len'] == 2
+    items = list(Corn.all.groupby(c.name,len=c.len()).sort(c.len).map(
+        c.key + ' : ' + c.len.str() + ' items').execute())
     assert len(items) == 2
     assert items[0] == 'baz : 1 items'
     assert items[1] == 'foo : 2 items'
