@@ -342,9 +342,10 @@ class LiteralRequest(Request):
     def __init__(self, value):
         self.value = value
 
-    @self_with_attrs
-    def __repr__(self):
-        return repr(self.value)
+    # This gives shorter outputs, but is confusing when printed by itself.
+#    @self_with_attrs
+#    def __repr__(self):
+#        return repr(self.value)
 
 
 class ListRequest(Request):

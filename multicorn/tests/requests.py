@@ -50,17 +50,17 @@ def test_logical_simplifications():
     for true, false in ((True, False), (1, 0), ('a', '')):
         assert repr(c.foo & true) == "Attribute[Context[0], 'foo']"
         assert repr(c.foo | false) == "Attribute[Context[0], 'foo']"
-        assert repr(c.foo & false) == 'False'
-        assert repr(c.foo | true) == 'True'
+        assert repr(c.foo & false) == 'Literal[False]'
+        assert repr(c.foo | true) == 'Literal[True]'
 
         assert repr(true & c.foo) == "Attribute[Context[0], 'foo']"
         assert repr(false | c.foo) == "Attribute[Context[0], 'foo']"
-        assert repr(false & c.foo) == 'False'
-        assert repr(true | c.foo) == 'True'
+        assert repr(false & c.foo) == 'Literal[False]'
+        assert repr(true | c.foo) == 'Literal[True]'
 
     assert repr(~c.foo) == "Not[Attribute[Context[0], 'foo']]"
-    assert repr(~literal('hello')) == 'False'
-    assert repr(~literal('')) == 'True'
+    assert repr(~literal('hello')) == 'Literal[False]'
+    assert repr(~literal('')) == 'Literal[True]'
 
     # Augmented assignment doesn't need to be defined explicitly
     a = b = c.foo
