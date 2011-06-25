@@ -258,55 +258,82 @@ class Filesystem(AbstractCorn):
         return self._items_with()
 
     def _items_with(self, fixed_values=None, predicate=None):
-        return self._walk([], [], fixed_values or {}, predicate)
+        fixed_values = fixed_values or {}
+        # Eg. with pattern 'a_{foo}/b_{bar}' and a request
+        # .filter((c.foo == 'lorem') & (c.bar != 'ipsum'))
+        # fixed_values is {'foo': 'lorem'}
+        # predicate is the request (c.bar != 'ipsum')
 
-    def _walk(self, path_parts, previous_values, fixed_values, predicate):
+        # fixed_path_parts is a list of (path_part, values) tuples.
+        # In this example:
+        #     [('a_lispum', [('foo', 'lipsum)]), (None, None)]
+        fixed_path_parts = []
+        for pattern_part, part_properties in zip(
+                self.pattern.split('/'), self._path_parts_properties):
+            try:
+                values = dict((property_name, fixed_values[property_name])
+                              for property_name in part_properties)
+            except KeyError:
+                fixed_path_parts.append((None, None))
+            else:
+                name = pattern_part.format(**values)
+                # Use .items() to return a list of pairs instead of a dict.
+                # This is also a valid contructor for a dict but lists are
+                # easier to concatenate without mutation.
+                fixed_path_parts.append((name, values.items()))
+
+        return self._walk([], [], fixed_path_parts, predicate)
+
+    def _walk(self, previous_path_parts, previous_values, fixed_path_parts,
+              predicate):
         # Empty path_parts means look in root_dir, depth = 0
-        depth = len(path_parts)
+        depth = len(previous_path_parts)
         # If the pattern has N path parts, "leaf" files are at depth = N-1
         is_leaf = (depth == len(self._path_parts_re) - 1)
         # Names of properties that are in this path part
         properties = self._path_parts_properties[depth]
 
-        names = []
-        if all(prop in fixed_values for prop in properties):
-            new_values = dict((prop, fixed_values[prop])
-                              for prop in properties)
-            name = self.pattern.split('/')[depth].format(**new_values)
-            values = previous_values + new_values.items()
-            names.append((name, values))
-        else:
-            # os.listdir()’s argument is unicode, so should be its results.
-            for name in os.listdir(self._join(path_parts)):
-                new_values = self._match_part(depth, name, predicate)
-                if new_values is not None:
-                    # name matches the pattern.
-                    values = previous_values + new_values
-                    names.append((name, values))
-
-        for name, values in names:
-            new_path_parts = path_parts + [name]
-            filename = self._join(new_path_parts)
+        for name, new_values in self._find_matching_names(
+                previous_path_parts, previous_values, fixed_path_parts,
+                predicate):
+            values = previous_values + new_values
+            path_parts = previous_path_parts + [name]
+            filename = self._join(path_parts)
 
             if is_leaf and os.path.isfile(filename):
                 yield self._create_item(filename, values)
             elif (not is_leaf) and os.path.isdir(filename):
-                for item in self._walk(new_path_parts, values,
-                                       fixed_values, predicate):
+                for item in self._walk(path_parts, values,
+                                       fixed_path_parts, predicate):
                     yield item
+    
+    def _find_matching_names(self, previous_path_parts, previous_values,
+                             fixed_path_parts, predicate):
+        depth = len(previous_path_parts)
+
+        fixed_name, values = fixed_path_parts[depth]
+        if fixed_name is not None:
+            yield fixed_name, values
+        else:
+            # os.listdir()’s argument is unicode, so should be its results.
+            for name in os.listdir(self._join(previous_path_parts)):
+                values = self._match_part(depth, name, predicate)
+                if values is not None:
+                    # name matches the pattern.
+                    # TODO: filter out with predicate
+                    yield name, values
 
     def _join(self, path_parts):
         # root_dir is unicode, so the join result should be unicode
         return os.path.join(self.root_dir, *path_parts)
 
     def _match_part(self, depth, name, predicate):
-        # TODO: filter out with predicate
         match = self._path_parts_re[depth].match(name)
         if match is None:
             return None
         else:
             # Use .items() to return a list of pairs instead of a dict.
-            # This is also a valid contructor for a dict, and lists are
+            # This is also a valid contructor for a dict but lists are
             # easier to concatenate without mutation.
             return match.groupdict().items()
 
