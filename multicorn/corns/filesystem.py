@@ -229,7 +229,7 @@ class Filesystem(AbstractCorn):
     def execute(self, request):
         chain = requests.as_chain(request)
         assert isinstance(chain[0], requests.StoredItemsRequest)
-        assert requests.WithRealAttributes(chain[0]).storage is self
+        assert object.__getattribute__(chain[0], 'storage') is self
 
         if len(chain) > 1 and isinstance(chain[1], requests.FilterRequest):
             filter_req = chain[1]
@@ -237,7 +237,7 @@ class Filesystem(AbstractCorn):
             id_names = self.identity_properties
             id_types = [self.properties[name] for name in id_names]
 
-            contexts = (wrapped_filter.subject.return_type().inner_type,)
+            contexts = (self.sequence_type,)
             id_predicate, other_predicate = helpers.inner_split(
                 wrapped_filter.predicate, id_types, contexts)
             known_values, non_fixed_id_predicate = helpers.isolate_values(
