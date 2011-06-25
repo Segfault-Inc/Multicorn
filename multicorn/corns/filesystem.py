@@ -229,63 +229,86 @@ class Filesystem(AbstractCorn):
     def execute(self, request):
         chain = requests.as_chain(request)
         assert isinstance(chain[0], requests.StoredItemsRequest)
-        assert object.__getattribute__(chain[0], 'storage') is self
+        storeditems_req = chain[0]
+        assert object.__getattribute__(storeditems_req, 'storage') is self
 
         if len(chain) > 1 and isinstance(chain[1], requests.FilterRequest):
-            filter_req = chain[1]
-            wrapped_filter = self.RequestWrapper.from_request(filter_req)
-            id_names = self.identity_properties
-            id_types = [self.properties[name] for name in id_names]
+            replaced_req = filter_req = chain[1]
+            predicate = object.__getattribute__(filter_req, 'predicate')
+        else:
+            replaced_req = storeditems_req
+            predicate = requests.literal(True)
+            
+        parts_infos, remaining_predicate = self._split_predicate(predicate)
+        filtered_items = self._items_with(parts_infos)
+        replacement_req = requests.literal(filtered_items).filter(
+            remaining_predicate)
+        if replaced_req is request:
+            new_request = replacement_req
+        else:
+           new_request = request._copy_replace({replaced_req: replacement_req})
+        return new_request.execute()
 
-            contexts = (self.sequence_type,)
-            id_predicate, other_predicate = helpers.inner_split(
-                wrapped_filter.predicate, id_types, contexts)
-            known_values, non_fixed_id_predicate = helpers.isolate_values(
-                id_predicate.wrapped_request, contexts)
+    def _split_predicate(self, predicate):
+        """
+        Return a (parts_infos, remaining_predicate) tuple.
+        
+        parts_infos is a list of (fixed_name, values, predicate) or 
+        (None, None, predicate) tuples, one for each path part.
+        For each of these tuple:
+        * fixed_name and values are None unless all properties in that part
+          have a fixed value with a `==` predicate.
+        * fixed_name is the path part as would be returned by os.listdir()
+        * values is a list of (property name, value) pairs.
+        * predicate is what remains after removing the `==` predicate parts
+          encoded in values.
+          
+        remaining_predicate is the predicate part about non-path properties.
+        
+        Joining all predicate parts in this result with `&` would give
+        something equivalent to the given predicate.
 
-            if known_values:
-                filtered_items = self._items_with(
-                    known_values, non_fixed_id_predicate)
-                wrapped = self.RequestWrapper.from_request(request)
-                filtered_request = requests.literal(filtered_items) \
-                    .filter(non_fixed_id_predicate & other_predicate)
-                new_request = wrapped._copy_replace(
-                    {filter_req: filtered_request})
-                return new_request.execute()
-        return super(Filesystem, self).execute(request)
-
-    def _all(self):
-        return self._items_with()
-
-    def _items_with(self, fixed_values=None, predicate=None):
-        fixed_values = fixed_values or {}
-        # Eg. with pattern 'a_{foo}/b_{bar}' and a request
-        # .filter((c.foo == 'lorem') & (c.bar != 'ipsum'))
-        # fixed_values is {'foo': 'lorem'}
-        # predicate is the request (c.bar != 'ipsum')
-
-        # fixed_path_parts is a list of (path_part, values) tuples.
-        # In this example:
-        #     [('a_lispum', [('foo', 'lipsum)]), (None, None)]
-        fixed_path_parts = []
+        Example:
+            self.pattern == 'a_{foo}/b_{bar}
+            predicate == ((c.foo == 'lorem') & (c.bar != 'ipsum') & 
+                          (c.content == 'dolor'))
+        
+            Returns:
+                (
+                    [
+                        ('a_lorem', [('foo', 'lorem')], literal(True)),
+                        (None, None, c.bar != 'ipsum')
+                    ],
+                    (c.content == 'dolor')
+                )
+        """
+        contexts = (self.type,)
+        parts_infos = []
+        remaining_predicate = self.RequestWrapper.from_request(predicate)
         for pattern_part, part_properties in zip(
                 self.pattern.split('/'), self._path_parts_properties):
-            try:
-                values = dict((property_name, fixed_values[property_name])
-                              for property_name in part_properties)
-            except KeyError:
-                fixed_path_parts.append((None, None))
-            else:
+            part_types = [self.properties[name] for name in part_properties]
+            # Isolate the predicate only about this part’s properties.
+            part_predicate, remaining_predicate = helpers.inner_split(
+                remaining_predicate, part_types, contexts)
+            values, non_fixed_part_predicate = helpers.isolate_values(
+                part_predicate.wrapped_request, contexts)
+
+            if all(prop in values for prop in part_properties):
+                # TODO: check for ambiguities
                 name = pattern_part.format(**values)
-                # Use .items() to return a list of pairs instead of a dict.
-                # This is also a valid contructor for a dict but lists are
-                # easier to concatenate without mutation.
-                fixed_path_parts.append((name, values.items()))
+                # TODO: check non_fixed_part_predicate here?
+                parts_infos.append((name, values.items(),
+                                    non_fixed_part_predicate))
+            else:
+                parts_infos.append((None, None,
+                                    part_predicate.wrapped_request))
+        return parts_infos, remaining_predicate.wrapped_request
 
-        return self._walk([], [], fixed_path_parts, predicate)
+    def _items_with(self, parts_infos):
+        return self._walk([], [], parts_infos)
 
-    def _walk(self, previous_path_parts, previous_values, fixed_path_parts,
-              predicate):
+    def _walk(self, previous_path_parts, previous_values, parts_infos):
         # Empty path_parts means look in root_dir, depth = 0
         depth = len(previous_path_parts)
         # If the pattern has N path parts, "leaf" files are at depth = N-1
@@ -294,8 +317,7 @@ class Filesystem(AbstractCorn):
         properties = self._path_parts_properties[depth]
 
         for name, new_values in self._find_matching_names(
-                previous_path_parts, previous_values, fixed_path_parts,
-                predicate):
+                previous_path_parts, previous_values, parts_infos):
             values = previous_values + new_values
             path_parts = previous_path_parts + [name]
             filename = self._join(path_parts)
@@ -303,31 +325,30 @@ class Filesystem(AbstractCorn):
             if is_leaf and os.path.isfile(filename):
                 yield self._create_item(filename, values)
             elif (not is_leaf) and os.path.isdir(filename):
-                for item in self._walk(path_parts, values,
-                                       fixed_path_parts, predicate):
+                for item in self._walk(path_parts, values, parts_infos):
                     yield item
     
     def _find_matching_names(self, previous_path_parts, previous_values,
-                             fixed_path_parts, predicate):
+                             parts_infos):
         depth = len(previous_path_parts)
 
-        fixed_name, values = fixed_path_parts[depth]
+        fixed_name, values, predicate = parts_infos[depth]
         if fixed_name is not None:
-            yield fixed_name, values
+            if predicate.execute((values,)):
+                yield fixed_name, values
         else:
             # os.listdir()’s argument is unicode, so should be its results.
             for name in os.listdir(self._join(previous_path_parts)):
-                values = self._match_part(depth, name, predicate)
-                if values is not None:
-                    # name matches the pattern.
-                    # TODO: filter out with predicate
+                values = self._match_part(depth, name)
+                if values is not None and predicate.execute((values,)):
+                    # name matches the pattern and the predicate.
                     yield name, values
 
     def _join(self, path_parts):
         # root_dir is unicode, so the join result should be unicode
         return os.path.join(self.root_dir, *path_parts)
 
-    def _match_part(self, depth, name, predicate):
+    def _match_part(self, depth, name):
         match = self._path_parts_re[depth].match(name)
         if match is None:
             return None

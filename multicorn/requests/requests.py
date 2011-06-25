@@ -218,7 +218,7 @@ class Request(object):
             predicate &= (getattr(ContextRequest(), name) == value)
 
         if isinstance(predicate, LiteralRequest):
-            if WithRealAttributes(self).value:
+            if object.__getattribute__(predicate, 'value'):
                 # Skip the filter operation if the predicate is always true.
                 return self
             # TODO: does the following this help? does it hurt?
@@ -287,13 +287,14 @@ class Request(object):
     def distinct(self):
         return DistinctRequest(self)
 
-    def execute(self):
+    def execute(self, contexts=()):
         ap = WithRealAttributes(as_chain(self)[0])
         if hasattr(ap, 'storage'):
+            assert not contexts
             return ap.storage.execute(self)
         else:
             from ..python_executor import execute
-            return execute(self)
+            return execute(self, contexts)
 
     @self_with_attrs
     def _visit(self, func, scope_depth=0):
