@@ -256,5 +256,7 @@ def test_optimizations(tempdir):
         get(text.all.filter(category='lipsum', num='4', name='foo'))
         # All filename properties were fixed, no need to listdir() anything
         assert listed == []
+        
+        # TODO: More tests for non-fixed value predicates
     finally:
         os.listdir = real_os_listdir

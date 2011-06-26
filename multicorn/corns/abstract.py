@@ -90,6 +90,10 @@ class AbstractCorn(object):
     def type(self):
         return Dict(corn=self, mapping=self.properties)
 
+    @property
+    def sequence_type(self):
+        return List(Dict(corn=self, mapping=self.properties))
+
     # Can be overridden to optimize
     def execute(self, request):
         """Execute the given query and return an iterable of items."""
