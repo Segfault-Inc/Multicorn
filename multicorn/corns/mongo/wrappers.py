@@ -4,7 +4,8 @@
 
 from ...requests import requests, wrappers, types
 from .request import MongoRequest
-from .mapreduce import make_mr_map, make_mr_groupby, make_mr_sum
+from .mapreduce import make_mr_map, make_mr_groupby, \
+     make_mr_sum, make_mr_max, make_mr_min
 from .ragequit import RageQuit
 from .jsoner import to_json
 
@@ -122,17 +123,6 @@ class AttributeWrapper(wrappers.AttributeWrapper, MongoWrapper):
         return "%s.%s" % (self.subject.to_mongo(contexts), self.attr_name)
 
 
-@MongoWrapper.register_wrapper(requests.LenRequest)
-class LenWrapper(wrappers.LenWrapper, MongoWrapper):
-
-    def to_mongo(self, contexts=()):
-        if contexts:
-            return "len"
-        mrq = self.subject.to_mongo(contexts)
-        mrq.count = True
-        return mrq
-
-
 @MongoWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(wrappers.OneWrapper, MongoWrapper):
 
@@ -222,7 +212,18 @@ class MapWrapper(wrappers.MapWrapper, ContextDefinerMongoWrapper):
             # Anonymous map reduce
             mapped = {"____": mapped}
 
-        mrq.mapreduces.append(make_mr_map(mapped, mrq.pop_where()))
+        mrq.mapreduces.append(make_mr_map(self, mapped, mrq.pop_where()))
+        return mrq
+
+
+@MongoWrapper.register_wrapper(requests.LenRequest)
+class LenWrapper(wrappers.LenWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        if contexts:
+            return "len"
+        mrq = self.subject.to_mongo(contexts)
+        mrq.count = True
         return mrq
 
 
@@ -230,13 +231,54 @@ class MapWrapper(wrappers.MapWrapper, ContextDefinerMongoWrapper):
 class SumWrapper(wrappers.AggregateWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
-        mrq = self.subject.to_mongo(contexts)
-        mrq.mapreduces.append(
-            make_mr_sum(
-                "this._id",
-                "____",
-                "this.____"))
-        return mrq
+        if not contexts:
+            mrq = self.subject.to_mongo(contexts)
+            mrq.mapreduces.append(
+                make_mr_sum(self,
+                    "this._id",
+                    "____",
+                    "this.____"))
+            return mrq
+        # Bypass this map and return the aggregation
+        elif isinstance(self.subject, MapWrapper):
+            mapped = self.subject.new_value.to_mongo(contexts)
+            return {"sum": mapped}
+
+
+@MongoWrapper.register_wrapper(requests.MaxRequest)
+class MaxWrapper(wrappers.AggregateWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        if not contexts:
+            mrq = self.subject.to_mongo(contexts)
+            mrq.mapreduces.append(
+                make_mr_max(self,
+                    "this._id",
+                    "____",
+                    "this.____"))
+            return mrq
+        # Bypass this map and return the aggregation
+        elif isinstance(self.subject, MapWrapper):
+            mapped = self.subject.new_value.to_mongo(contexts)
+            return {"max": mapped}
+
+
+@MongoWrapper.register_wrapper(requests.MinRequest)
+class MinWrapper(wrappers.AggregateWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        if not contexts:
+            mrq = self.subject.to_mongo(contexts)
+            mrq.mapreduces.append(
+                make_mr_min(self,
+                    "this._id",
+                    "____",
+                    "this.____"))
+            return mrq
+        # Bypass this map and return the aggregation
+        elif isinstance(self.subject, MapWrapper):
+            mapped = self.subject.new_value.to_mongo(contexts)
+            return {"min": mapped}
 
 
 @MongoWrapper.register_wrapper(requests.DictRequest)
@@ -253,17 +295,17 @@ class DictWrapper(wrappers.DictWrapper, MongoWrapper):
         return new_dict
 
 
-# @MongoWrapper.register_wrapper(requests.GroupbyRequest)
-# class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
+@MongoWrapper.register_wrapper(requests.GroupbyRequest)
+class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
 
-#     def to_mongo(self, contexts=()):
-#         mrq = self.subject.to_mongo(contexts)
-#         mrq.mapreduces.append(
-#             make_mr_groupby(
-#                 self.key.to_mongo(self.sub(contexts)),
-#                 self.aggregates.to_mongo(self.sub(contexts)),
-#                 mrq.pop_where()))
-#         return mrq
+    def to_mongo(self, contexts=()):
+        mrq = self.subject.to_mongo(contexts)
+        mrq.mapreduces.append(
+            make_mr_groupby(self,
+                self.key.to_mongo(self.sub(contexts)),
+                self.aggregates.to_mongo(self.sub(contexts)),
+                mrq.pop_where()))
+        return mrq
 
 
 @MongoWrapper.register_wrapper(requests.ContextRequest)

@@ -7,6 +7,7 @@ from multicorn.requests import CONTEXT as c
 
 TESTS = []
 
+
 def corntest(fun):
     TESTS.append(fun)
     return fun
@@ -48,7 +49,7 @@ def existence(Corn):
     assert item['id'] == 1
     assert item['name'] == 'foo'
     assert item['lastname'] == 'bar'
-    assert item.corn is Corn # This is an actual Item, not a dict.
+    assert item.corn is Corn  # This is an actual Item, not a dict.
 
     item = Corn.all.filter(c.id == 2).one().execute()
     assert item['id'] == 2
@@ -186,6 +187,7 @@ def maps(Corn):
             (c.id * c.id) == 1).one().execute()
     assert item == {'fullname': 'foo bar', 'id': 1}
 
+
 @corntest
 def aggregates(Corn):
     """Test aggregates"""
@@ -197,20 +199,21 @@ def aggregates(Corn):
     len = Corn.all.len().execute()
     assert len == 3
 
+
 @corntest
 def filter(Corn):
     """Test various filters"""
     make_data(Corn)
     items = list(Corn.all.execute())
     assert len(items) == 3
-    items = list(Corn.all.filter(c.name == 'foo' ).execute())
+    items = list(Corn.all.filter(c.name == 'foo').execute())
     assert len(items) == 2
     assert all([item['name'] == 'foo' for item in items])
-    items = list(Corn.all.filter((c.name == 'foo' ) &
+    items = list(Corn.all.filter((c.name == 'foo') &
         (c.lastname == 'bar')).execute())
     assert len(items) == 1
     assert items[0]['id'] == 1
-    items = list(Corn.all.filter((c.name == 'baz' ) |
+    items = list(Corn.all.filter((c.name == 'baz') |
         (c.lastname == 'baz')).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
@@ -218,12 +221,12 @@ def filter(Corn):
     items = list(Corn.all.filter(c.name == 'foo').execute())
     assert len(items) == 2
     assert all([item['name'] == 'foo' for item in items])
-    items = list(Corn.all.filter((c.name == 'foo' ) &
+    items = list(Corn.all.filter((c.name == 'foo') &
         (c.lastname == 'bar')).execute())
     assert len(items) == 1
     assert items[0]['id'] == 1
     assert all([item.corn == Corn for item in items])
-    items = list(Corn.all.filter((c.name == 'baz' ) |
+    items = list(Corn.all.filter((c.name == 'baz') |
         (c.lastname == 'baz')).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
@@ -253,24 +256,28 @@ def filter(Corn):
     assert 3 in (x['id'] for x in items)
     assert all([[item.corn == Corn for item in items]])
 
+
 @corntest
 def test_groupby(Corn):
     """Test groupby requests"""
     make_data(Corn)
-    items = list(Corn.all.groupby(c.name, max=c.max(c.id), min=c.min(c.id),
-        sum=c.sum(c.id)).sort(c.key).execute())
+    items = list(Corn.all.groupby(c.name, max_=c.max(c.id), min_=c.min(c.id),
+        sum_=c.sum(c.id)).sort(c.key).execute())
     assert len(items) == 2
-    assert items[0] == {'max': 2, 'min': 2, 'sum': 2, 'key': 'baz'}
-    assert items[1] == {'max': 3, 'min': 1, 'sum': 4, 'key': 'foo'}
-    items = list(Corn.all.groupby(c.name,sum=c.sum(c.id)).sort(c.sum).execute())
+    assert items[0] == {'max_': 2, 'min_': 2, 'sum_': 2, 'key': 'baz'}
+    assert items[1] == {'max_': 3, 'min_': 1, 'sum_': 4, 'key': 'foo'}
+    items = list(Corn.all.groupby(
+        c.name, sum=c.sum(c.id)).sort(c.sum).execute())
     assert len(items) == 2
     assert items[0]['key'] == 'baz' and items[0]['sum'] == 2
     assert items[1]['key'] == 'foo' and items[1]['sum'] == 4
-    items = list(Corn.all.groupby(c.name,len=c.len()).sort(c.len).execute())
+    items = list(Corn.all.groupby(
+        c.name, len=c.len()).sort(c.len).execute())
     assert len(items) == 2
     assert items[0]['len'] == 1
     assert items[1]['len'] == 2
-    items = list(Corn.all.groupby(c.name,len=c.len()).sort(c.len).map(
+    items = list(Corn.all.groupby(
+        c.name, len=c.len()).sort(c.len).map(
         c.key + ' : ' + c.len.str() + ' items').execute())
     assert len(items) == 2
     assert items[0] == 'baz : 1 items'

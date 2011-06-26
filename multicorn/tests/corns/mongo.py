@@ -35,24 +35,6 @@ else:
 
 
 @suite.test
-def test_mapreduce(Corn):
-    """ Tests the mongo map reduce utility functions"""
-    Corn.create({'id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
-    Corn.create({'id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
-    Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
-
-    from multicorn.corns.mongo.mapreduce import MapReduce, make_mr_map
-    mr = make_mr_map({"surname": "this.lastname",
-                     "firstname": "this.name"})
-    mre = mr.execute(Corn.collection)
-    res = [a for a in mre.find()]
-    print(res)
-
-    assert len(res) == 3
-
-
-
-@suite.test
 def test_optimization(Corn):
     class NotOptimizedError(Exception):
         pass
@@ -158,33 +140,33 @@ def test_optimization(Corn):
     assert items[2]['name'] == 'baz' and items[2]['id'] == 2
     length = Corn.all.len().execute()
     assert length == 3
-    # items = list(Corn.all.groupby(c.name, group=c.len()).sort(c.group).execute())
-    # assert len(items) == 2
-    # print items
-    # assert items[0]['group'] == 1
-    # assert items[1]['group'] == 2
+    items = list(Corn.all.groupby(c.name, group=c.len()).sort(c.group).execute())
+    assert len(items) == 2
+    print items
+    assert items[0]['group'] == 1
+    assert items[1]['group'] == 2
     item = Corn.all.map(c.id).sum().execute()
     assert item == 6
-    # item = Corn.all.map(c.id).max().execute()
-    # assert item == 3
-    # item = Corn.all.map(c.id).min().execute()
-    # assert item == 1
-    # item = Corn.all.sum(c.id).execute()
-    # assert item == 6
-    # item = Corn.all.max(c.id).execute()
-    # assert item == 3
-    # item = Corn.all.min(c.id).execute()
-    # assert item == 1
-    # items = list(Corn.all.groupby(c.name, group=c.sum(c.id)).sort(c.group).execute())
-    # assert len(items) == 2
-    # assert items[0]['key'] == 'baz' and items[0]['group'] == 2
-    # assert items[1]['key'] == 'foo' and items[1]['group'] == 4
-    # items = list(Corn.all.groupby(c.name, group={
-    #     'max': c.max(c.id),
-    #     'min': c.min(c.id),
-    #     'sum': c.sum(c.id)}).sort(c.key).execute())
-    # assert len(items) == 2
-    # assert items[0]['key'] == 'baz' and items[0]['group'] == {'max': 2, 'min': 2, 'sum': 2}
-    # assert items[1]['key'] == 'foo' and items[1]['group'] == {'max': 3, 'min': 1, 'sum': 4}
-    # items = list(Corn.all.map(c.name + ' ' + c.lastname).execute())
-    # assert len(items) == 3
+    item = Corn.all.map(c.id).max().execute()
+    assert item == 3
+    item = Corn.all.map(c.id).min().execute()
+    assert item == 1
+    item = Corn.all.sum(c.id).execute()
+    assert item == 6
+    item = Corn.all.max(c.id).execute()
+    assert item == 3
+    item = Corn.all.min(c.id).execute()
+    assert item == 1
+    items = list(Corn.all.groupby(c.name, group=c.sum(c.id)).sort(c.group).execute())
+    assert len(items) == 2
+    assert items[0]['key'] == 'baz' and items[0]['group'] == 2
+    assert items[1]['key'] == 'foo' and items[1]['group'] == 4
+    items = list(Corn.all.groupby(c.name,
+        max__ =c.max(c.id),
+        min__=c.min(c.id),
+        sum__=c.sum(c.id)).sort(c.key).execute())
+    assert len(items) == 2
+    assert items[0] == {'max__': 2, 'min__': 2, 'sum__': 2, 'key': 'baz'}
+    assert items[1] == {'max__': 3, 'min__': 1, 'sum__': 4, 'key': 'foo'}
+    items = list(Corn.all.map(c.name + ' ' + c.lastname).execute())
+    assert len(items) == 3
