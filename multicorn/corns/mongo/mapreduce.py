@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
@@ -80,6 +81,21 @@ def make_mr_len(key, aggregates, where=None):
               "    total += v[i].<group>;"
               "  return { key: k, <group>: total };"
               "}").replace("<group>", keyname)
+    return MapReduce(map, reduce, where)
+
+def make_mr_sum(key, name, summed, where=None):
+    map = (
+        "function () {"
+        "  var k = %s, v = %s;"
+        "  emit(k, { key: k, <group>: v});"
+        "}").replace("<group>", name) % (key, summed)
+    reduce = ("function (k, v) {"
+              "  var total = 0;"
+              "  for ( var i = 0; i < v.length; i++)"
+              "    total += v[i].<group>;"
+              "  return {  key: k, <group>: total };"
+              "}").replace("<group>", name)
+
     return MapReduce(map, reduce, where)
 
 

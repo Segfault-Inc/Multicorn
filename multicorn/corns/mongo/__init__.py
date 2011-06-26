@@ -81,6 +81,8 @@ class Mongo(AbstractCorn):
 
     def _execute(self, mrq, return_type):
         result = mrq.execute(self.collection)
+
+        # Several results
         if isinstance(return_type, List):
             if isinstance(return_type.inner_type, Dict):
                 if return_type.inner_type.corn:
@@ -101,11 +103,20 @@ class Mongo(AbstractCorn):
         elif isinstance(return_type, Dict):
             if return_type.corn:
                 return self._mongo_to_item(result)
-        elif return_type.type == int:
-            return result
-        else:
+            else:
+                return result
+        elif isinstance(result, dict):
             if "____" in result:
                 return result["____"]
+            else:
+                return result
+        elif isinstance(result, int):
+            return result
+        result = next(result)
+        if "____" in result:
+            return result["____"]
+        else:
+            return result
         return result
 
     def execute(self, request):
@@ -117,6 +128,7 @@ class Mongo(AbstractCorn):
                     wrapped_request.to_mongo(),
                     wrapped_request.return_type())
             except RageQuit as rq:
+                print (colorize("red", "%r" % rq))
                 quited_on = rq.request.wrapped_request
 
                 def predicate(req):

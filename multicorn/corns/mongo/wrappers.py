@@ -4,7 +4,7 @@
 
 from ...requests import requests, wrappers, types
 from .request import MongoRequest
-from .mapreduce import make_mr_map, make_mr_groupby, make_mr
+from .mapreduce import make_mr_map, make_mr_groupby, make_mr_sum
 from .ragequit import RageQuit
 from .jsoner import to_json
 
@@ -230,11 +230,13 @@ class MapWrapper(wrappers.MapWrapper, ContextDefinerMongoWrapper):
 class SumWrapper(wrappers.AggregateWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
-        if isinstance(self.subject, MapWrapper):
-            mapped = self.subject.new_value.to_mongo(contexts)
-            return {mapped: "sum"}
-        else:
-            raise "WTF"
+        mrq = self.subject.to_mongo(contexts)
+        mrq.mapreduces.append(
+            make_mr_sum(
+                "this._id",
+                "____",
+                "this.____"))
+        return mrq
 
 
 @MongoWrapper.register_wrapper(requests.DictRequest)
@@ -251,17 +253,17 @@ class DictWrapper(wrappers.DictWrapper, MongoWrapper):
         return new_dict
 
 
-@MongoWrapper.register_wrapper(requests.GroupbyRequest)
-class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
+# @MongoWrapper.register_wrapper(requests.GroupbyRequest)
+# class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
 
-    def to_mongo(self, contexts=()):
-        mrq = self.subject.to_mongo(contexts)
-        mrq.mapreduces.append(
-            make_mr_groupby(
-                self.key.to_mongo(self.sub(contexts)),
-                self.aggregates.to_mongo(self.sub(contexts)),
-                mrq.pop_where()))
-        return mrq
+#     def to_mongo(self, contexts=()):
+#         mrq = self.subject.to_mongo(contexts)
+#         mrq.mapreduces.append(
+#             make_mr_groupby(
+#                 self.key.to_mongo(self.sub(contexts)),
+#                 self.aggregates.to_mongo(self.sub(contexts)),
+#                 mrq.pop_where()))
+#         return mrq
 
 
 @MongoWrapper.register_wrapper(requests.ContextRequest)

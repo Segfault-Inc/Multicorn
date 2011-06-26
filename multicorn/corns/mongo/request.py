@@ -36,9 +36,9 @@ class MongoRequest(object):
 
     def execute(self, collection):
         print(self)
-        for mr in self.mapreduces:
-            collection = mr.execute(collection,
-                                    len(self.mapreduces) > 1)
+        for i in range(len(self.mapreduces)):
+            collection = self.mapreduces[i].execute(collection,
+                                    not i == 0 and len(self.mapreduces) > 1)
         results = collection.find(
             self.current_where(self.mapreduces))
         if self.sort:

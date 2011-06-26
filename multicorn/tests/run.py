@@ -17,4 +17,5 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         suffix = sys.argv[1]
         run(suffix)
-    run()
+    else:
+        run()

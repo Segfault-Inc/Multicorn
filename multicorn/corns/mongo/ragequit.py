@@ -8,3 +8,6 @@ class RageQuit(Exception):
     def __init__(self, request, message=""):
         self.request = request
         self.message = message
+
+    def __repr__(self):
+        return "RageQuit(request=%r, message=%r)" % (self.request, self.message)
