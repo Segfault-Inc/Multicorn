@@ -198,6 +198,11 @@ class Request(object):
         return '%s[%s]' % (name, ', '.join(
             repr(getattr(self, attr_name)) for attr_name in self.arg_spec))
 
+    @self_with_attrs
+    def __hash__(self):
+        return hash(('this is a request hash',) + tuple(
+            getattr(self, attr_name) for attr_name in self.arg_spec))
+
     # Just like attributes, these methods can be accessed with eg.
     # `object.__getattribute__(some_req).map`, but AttributeRequest objects
     # are also callable so that `some_req.map(...)` Just Works™.
@@ -325,6 +330,30 @@ class Request(object):
         return self.obj_type()(*newargs)
 
 
+def method_repr(method_name):
+    @self_with_attrs
+    def __repr__(self):
+        assert self.arg_spec[0] == 'subject'
+        return '%r.%s(%s)' % (self.subject, method_name, ', '.join(
+            repr(getattr(self, attr_name)) for attr_name in self.arg_spec[1:]))
+    return __repr__
+
+
+def unary_repr(operator):
+    @self_with_attrs
+    def __repr__(self):
+        assert self.arg_spec == ('subject',)
+        return '%s%r' % (operator, self.subject)
+    return __repr__
+
+
+def binary_repr(operator):
+    @self_with_attrs
+    def __repr__(self):
+        assert self.arg_spec == ('subject', 'other')
+        return '(%r %s %r)' % (self.subject, operator, self.other)
+    return __repr__
+
 
 class StoredItemsRequest(Request):
     """
@@ -343,10 +372,11 @@ class LiteralRequest(Request):
     def __init__(self, value):
         self.value = value
 
-    # This gives shorter outputs, but is confusing when printed by itself.
-#    @self_with_attrs
-#    def __repr__(self):
-#        return repr(self.value)
+    @self_with_attrs
+    def __repr__(self):
+        return 'literal(%r)' % (self.value,)
+        # This gives shorter outputs, but is confusing when printed by itself.
+        #return repr(self.value)
 
 
 class ListRequest(Request):
@@ -395,6 +425,13 @@ class ContextRequest(Request):
             raise ValueError('Depth must be negative or zero.')
         return ContextRequest(self.scope_depth + more_depth)
 
+    @self_with_attrs
+    def __repr__(self):
+        if self.scope_depth == 0:
+            return 'c'
+        else:
+            return 'c(%i)' % self.scope_depth
+
 
 class OperationRequest(Request):
     """
@@ -407,8 +444,6 @@ class OperationRequest(Request):
     # `operator.__add__(v1, v2)` which is the same as `v1 + v2`, where r1 and
     # r2 respectively represent v1 and v2.
     operator_name = None
-
-
 
 
 class UnaryOperationRequest(OperationRequest):
@@ -430,21 +465,21 @@ class StrRequest(UnaryOperationRequest):
     """
     Convert a number to a string (unicode in python 2.x).
     """
-    pass
+    __repr__ = method_repr('str')
 
 
 class LowerRequest(UnaryOperationRequest):
     """
     Return the lowercased version of the subject
     """
-    pass
+    __repr__ = method_repr('lower')
 
 
 class UpperRequest(UnaryOperationRequest):
     """
     Return the uppercased version of the subject
     """
-    pass
+    __repr__ = method_repr('upper')
 
 
 class NotRequest(UnaryOperationRequest):
@@ -454,6 +489,7 @@ class NotRequest(UnaryOperationRequest):
     # Returned by Request.__invert__, but we really want it to be `not`, not
     # `invert`. There is no __not__ special method that we can override.
     operator_name = 'not'
+    __repr__ = unary_repr('~')
 
 
 class NegRequest(UnaryOperationRequest):
@@ -464,6 +500,7 @@ class NegRequest(UnaryOperationRequest):
     represents a boolean (logical) negation.
     """
     operator_name = 'neg'
+    __repr__ = unary_repr('-')
 
 
 class BinaryOperationRequest(OperationRequest):
@@ -484,6 +521,7 @@ class BinaryOperationRequest(OperationRequest):
 
 class RegexRequest(BinaryOperationRequest):
     arg_spec = ('subject', 'other')
+    __repr__ = method_repr('matches')
 
 
 class EqRequest(BinaryOperationRequest):
@@ -491,6 +529,7 @@ class EqRequest(BinaryOperationRequest):
     some_req == other_req is EqRequest(some_req, other_req)
     """
     operator_name = 'eq'
+    __repr__ = binary_repr('==')
 
 
 class NeRequest(BinaryOperationRequest):
@@ -498,6 +537,7 @@ class NeRequest(BinaryOperationRequest):
     some_req != other_req is NeRequest(some_req, other_req)
     """
     operator_name = 'ne'
+    __repr__ = binary_repr('!=')
 
 
 class LtRequest(BinaryOperationRequest):
@@ -505,6 +545,7 @@ class LtRequest(BinaryOperationRequest):
     some_req < other_req is LtRequest(some_req, other_req)
     """
     operator_name = 'lt'
+    __repr__ = binary_repr('<')
 
 
 class GtRequest(BinaryOperationRequest):
@@ -512,6 +553,7 @@ class GtRequest(BinaryOperationRequest):
     some_req > other_req is GtRequest(some_req, other_req)
     """
     operator_name = 'gt'
+    __repr__ = binary_repr('>')
 
 
 class GeRequest(BinaryOperationRequest):
@@ -519,6 +561,7 @@ class GeRequest(BinaryOperationRequest):
     some_req >= other_req is GeRequest(some_req, other_req)
     """
     operator_name = 'ge'
+    __repr__ = binary_repr('>=')
 
 
 class LeRequest(BinaryOperationRequest):
@@ -526,6 +569,7 @@ class LeRequest(BinaryOperationRequest):
     some_req <= other_req is LeRequest(some_req, other_req)
     """
     operator_name = 'le'
+    __repr__ = binary_repr('<=')
 
 
 class AddRequest(BinaryOperationRequest):
@@ -533,6 +577,7 @@ class AddRequest(BinaryOperationRequest):
     some_req + other_req is AddRequest(some_req, other_req)
     """
     operator_name = 'add'
+    __repr__ = binary_repr('+')
 
 
 class SubRequest(BinaryOperationRequest):
@@ -540,6 +585,7 @@ class SubRequest(BinaryOperationRequest):
     some_req - other_req is SubRequest(some_req, other_req)
     """
     operator_name = 'sub'
+    __repr__ = binary_repr('-')
 
 
 class MulRequest(BinaryOperationRequest):
@@ -547,6 +593,7 @@ class MulRequest(BinaryOperationRequest):
     some_req * other_req is MulRequest(some_req, other_req)
     """
     operator_name = 'mul'
+    __repr__ = binary_repr('*')
 
 
 class DivRequest(BinaryOperationRequest):
@@ -557,6 +604,7 @@ class DivRequest(BinaryOperationRequest):
     `from __future__ import divison` is present.
     """
     operator_name = 'truediv'
+    __repr__ = binary_repr('/')
 
 
 class PowRequest(BinaryOperationRequest):
@@ -564,6 +612,8 @@ class PowRequest(BinaryOperationRequest):
     some_req ** other_req is PowRequest(some_req, other_req)
     """
     operator_name = 'pow'
+    __repr__ = binary_repr('**')
+
 
 class AndRequest(BinaryOperationRequest):
     """
@@ -573,6 +623,7 @@ class AndRequest(BinaryOperationRequest):
     represents a boolean (logical) AND.
     """
     operator_name = 'and'
+    __repr__ = binary_repr('&')
 
 
 class OrRequest(BinaryOperationRequest):
@@ -583,6 +634,7 @@ class OrRequest(BinaryOperationRequest):
     represents a boolean (logical) OR.
     """
     operator_name = 'or'
+    __repr__ = binary_repr('|')
 
 
 class SliceRequest(OperationRequest):
@@ -598,6 +650,21 @@ class SliceRequest(OperationRequest):
         self.subject = subject
         self.slice = slice_
 
+    @self_with_attrs
+    def __repr__(self):
+        slice_args = []
+        if self.slice.start:
+            slice_args.append(str(self.slice.start))
+        else:
+            slice_args.append('')
+        if self.slice.stop is not None:
+            slice_args.append(str(self.slice.stop))
+        else:
+            slice_args.append('')
+        if self.slice.step is not None:
+            slice_args.append(str(self.slice.step))
+        return '%r[%s]' % (self.subject, ':'.join(slice_args))
+
 
 class IndexRequest(OperationRequest):
     """
@@ -611,6 +678,10 @@ class IndexRequest(OperationRequest):
     def __init__(self, subject, index):
         self.subject = subject
         self.index = index
+
+    @self_with_attrs
+    def __repr__(self):
+        return '%r[%i]' % (self.subject, self.index)
 
 
 class AttributeRequest(OperationRequest):
@@ -640,6 +711,12 @@ class AttributeRequest(OperationRequest):
                             % self.attr_name)
         return method(*args, **kwargs)
 
+    @self_with_attrs
+    def __repr__(self):
+        return '%r.%s' % (self.subject, self.attr_name)
+
+
+
 
 class OneRequest(OperationRequest):
     arg_spec = ('subject', 'default')
@@ -648,6 +725,8 @@ class OneRequest(OperationRequest):
     def __init__(self, subject, default):
         self.subject = subject
         self.default = default
+
+    __repr__ = method_repr('one')
 
 
 class FilterRequest(OperationRequest):
@@ -659,6 +738,8 @@ class FilterRequest(OperationRequest):
         self.subject = subject
         self.predicate = predicate
 
+    __repr__ = method_repr('filter')
+
 
 class MapRequest(OperationRequest):
     arg_spec = ('subject', 'new_value')
@@ -669,6 +750,8 @@ class MapRequest(OperationRequest):
         self.subject = subject
         self.new_value = new_value
 
+    __repr__ = method_repr('map')
+
 
 class SortRequest(OperationRequest):
     arg_spec = ('subject', 'sort_keys')
@@ -678,6 +761,8 @@ class SortRequest(OperationRequest):
     def __init__(self, subject, sort_keys):
         self.subject = subject
         self.sort_keys = tuple(sort_keys)
+
+    __repr__ = method_repr('sort')
 
 
 class GroupbyRequest(OperationRequest):
@@ -690,22 +775,24 @@ class GroupbyRequest(OperationRequest):
         self.key = key
         self.aggregates = aggregates
 
+    __repr__ = method_repr('groupby')
+
 
 class SumRequest(UnaryOperationRequest):
-    pass
+    __repr__ = method_repr('sum')
 
 
 class MinRequest(UnaryOperationRequest):
-    pass
+    __repr__ = method_repr('min')
 
 
 class MaxRequest(UnaryOperationRequest):
-    pass
+    __repr__ = method_repr('max')
 
 
 class LenRequest(UnaryOperationRequest):
-    pass
+    __repr__ = method_repr('len')
 
 
 class DistinctRequest(UnaryOperationRequest):
-    pass
+    __repr__ = method_repr('distinct')

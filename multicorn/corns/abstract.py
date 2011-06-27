@@ -39,6 +39,9 @@ class AbstractCorn(object):
         self.identity_properties = tuple(identity_properties)
         self.properties = {}
 
+    def __repr__(self):
+        return '<%s %s>' % (type(self).__name__, self.name)
+
     def bind(self, multicorn):
         """
         Bind this access point to a Metadata.
