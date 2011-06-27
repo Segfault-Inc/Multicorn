@@ -331,3 +331,29 @@ def test_aggregate_slice(Corn):
     assert min == 2
     sum = Corn.all.sort(c.id)[1:2].sum(c.id).execute()
     assert sum == 2
+
+
+@corntest
+def test_re(Corn):
+    """ Test various regexp"""
+    make_data(Corn)
+    items = list(Corn.all.map(c.id.str()).sort().execute())
+    assert items == [u'1', u'2', u'3']
+    item = Corn.all.map(c.id.str() + (c.id * c.id).str()).filter(
+        c.matches("1$")).one().execute()
+    assert item == '11'
+    items = list(Corn.all.filter(c.name.matches("b.*")).execute())
+    assert len(items) == 1
+    assert items[0]["id"] == 2
+    items = list(Corn.all.filter(c.lastname.matches("^ba\w+$")).execute())
+    items2 = list(Corn.all.filter(c.lastname.matches("ba[a-z]")).execute())
+    assert len(items) == 3
+    assert items == items2
+    items = list(Corn.all.filter(c.lastname.matches("a")).execute())
+    assert len(items) == 3
+    items = list(Corn.all.filter(c.lastname.matches(c.name)).execute())
+    assert len(items) == 0
+    items = list(Corn.all.filter(c.name.matches(c.name)).execute())
+    assert len(items) == 3
+    items = list(Corn.all.filter(c.lastname.matches("\d+")).execute())
+    assert len(items) == 0

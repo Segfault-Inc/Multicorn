@@ -212,3 +212,18 @@ def test_optimization(Corn):
     item = Corn.all.map(c.id.str() + (c.id * c.id).str()).filter(
         c.matches("1$")).one().execute()
     assert item == '11'
+    items = list(Corn.all.filter(c.name.matches("b.*")).execute())
+    assert len(items) == 1
+    assert items[0]["id"] == 2
+    items = list(Corn.all.filter(c.lastname.matches("^ba\w+$")).execute())
+    items2 = list(Corn.all.filter(c.lastname.matches("ba[a-z]")).execute())
+    assert len(items) == 3
+    assert items == items2
+    items = list(Corn.all.filter(c.lastname.matches("a")).execute())
+    assert len(items) == 3
+    items = list(Corn.all.filter(c.lastname.matches(c.name)).execute())
+    assert len(items) == 0
+    items = list(Corn.all.filter(c.name.matches(c.name)).execute())
+    assert len(items) == 3
+    items = list(Corn.all.filter(c.lastname.matches("\d+")).execute())
+    assert len(items) == 0
