@@ -37,7 +37,8 @@ def as_chain(request):
     """Return a  request as a chain of successive operations"""
     chain = [request]
     request = WithRealAttributes(request)
-    if issubclass(request.obj_type(), OperationRequest):
+    if issubclass(request.obj_type(), OperationRequest) and \
+            not issubclass(request.obj_type(), BinaryOperationRequest):
         chain = as_chain(request.subject) + chain
     return chain
 

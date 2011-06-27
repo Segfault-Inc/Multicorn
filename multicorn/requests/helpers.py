@@ -115,6 +115,7 @@ def inject_context(request, context_values=()):
             wrareq = WithRealAttributes(req)
             wracontext = WithRealAttributes(chain[0])
             if wracontext.scope_depth <= -scope_depth and req is not chain[0]:
+                #Evaluate the new value if nothing depends on whatever context
                 newreq = wrareq._copy_replace({chain[0]: LiteralRequest(context_values[wracontext.scope_depth])})
                 newvalue = LiteralRequest(newreq.execute())
                 replacements[req] = newvalue
