@@ -14,10 +14,18 @@ class MapReduce(object):
         self.reduce = reduce
 
     def execute(self, collection, where, in_value=False, **kwargs):
+        if "skip" in kwargs:
+            skip = kwargs.pop("skip")
+            kwargs["scope"] = {"skippy": 0}
+            self.map = self.map.replace(
+                "function () {",
+                "function () { if(++skippy > %d) {" % skip) + "}"
+
         mapjs = Code(self.map.replace("this.", "this.value.")) \
                      if in_value else Code(self.map)
         reducejs = Code(self.reduce.replace("this.", "this.value.")) \
                      if in_value else Code(self.reduce)
+
         results = collection.map_reduce(
             mapjs,
             reducejs,

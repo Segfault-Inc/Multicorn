@@ -323,9 +323,11 @@ def test_slice(Corn):
 
 @corntest
 def test_aggregate_slice(Corn):
-    make_data(Corn)
     """ Test aggregates with slices"""
+    make_data(Corn)
     max = Corn.all.sort(c.id)[:2].max(c.id).execute()
     assert max == 2
-    # min = Corn.all.sort(c.id)[1:].min(c.id).execute()
-    # assert min == 2
+    min = Corn.all.sort(c.id)[1:].min(c.id).execute()
+    assert min == 2
+    sum = Corn.all.sort(c.id)[1:2].sum(c.id).execute()
+    assert sum == 2

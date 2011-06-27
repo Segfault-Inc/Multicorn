@@ -2,6 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 from .where import Where
+from .ragequit import RageQuit
 
 
 class MongoRequests(object):
@@ -65,9 +66,8 @@ class MongoRequest(object):
             opts = {}
             if self.sort:
                 if len(self.sort) > 1:
-                    raise
-                collection.ensure_index(self.sort[0][0])
-                opts["sort"] = dict(self.sort)
+                    collection.ensure_index(self.sort[0][0])
+                    opts["sort"] = dict(self.sort)
             if self.start:
                 start = collection.count() + self.start \
                         if self.start < 0 else self.start
@@ -75,9 +75,7 @@ class MongoRequest(object):
             if self.stop:
                 stop = collection.count() + self.stop \
                         if self.stop < 0 else self.stop
-                start = collection.count() + self.start \
-                        if self.start < 0 else self.start
-                opts["limit"] = stop - start
+                opts["limit"] = stop
             results = self.mapreduce.execute(
                 collection, self.where, not self.first_mr, **opts)
         else:
@@ -99,9 +97,10 @@ class MongoRequest(object):
                 results = results.limit(stop - start)
 
             if self.count:
-                return results.count()
+                return results.count(True)
             if self.one:
-                if results.count() != 1:
+                if results.count(True) != 1:
+
                     # TODO
                     raise ValueError()
             if has_mr:

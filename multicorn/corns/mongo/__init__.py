@@ -129,15 +129,16 @@ class Mongo(AbstractCorn):
                     wrapped_request.return_type())
             except RageQuit as rq:
                 print (colorize("red", "%r" % rq))
-                quited_on = rq.request.wrapped_request
+                if rq.request:
+                    quited_on = rq.request.wrapped_request
 
-                def predicate(req):
-                    return req is quited_on
-                managed, not_managed = cut_on_predicate(request, predicate,
-                                                        recursive=True)
-                if managed:
-                    result = self.execute(managed)
-                else:
-                    result = self._all()
-                return python_executor.execute(not_managed, (result,))
+                    def predicate(req):
+                        return req is quited_on
+                    managed, not_managed = cut_on_predicate(request, predicate,
+                                                            recursive=True)
+                    if managed:
+                        result = self.execute(managed)
+                    else:
+                        result = self._all()
+                    return python_executor.execute(not_managed, (result,))
         return python_executor.execute(request)
