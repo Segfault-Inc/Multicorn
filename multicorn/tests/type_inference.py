@@ -130,6 +130,10 @@ def test_nimp():
     type = return_type(Corn.all.map(c + {'name': c.id}))
     assert isinstance(type, List)
     assert isinstance(type.inner_type, Dict)
+    # Not attached to the property anymore after transformation
+    type = return_type(Corn.all.map(c.lastname[:2]))
+    assert type == List(Type(unicode))
+    assert type != Corn.properties['lastname']
 
 
 @suite.test
