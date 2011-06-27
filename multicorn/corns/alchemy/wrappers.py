@@ -514,11 +514,23 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
 
     def to_alchemy(self, query, contexts=()):
         type = self.subject.return_type(contexts)
+        query = self.subject.to_alchemy(query, contexts)
         if isinstance(type, types.List):
-            return query.limit(self.slice)
+            if self.slice.stop:
+                stop = self.slice.stop - (self.slice.start or 0)
+                query = query.limit(stop)
+            if self.slice.start:
+                query = query.offset(self.slice.start)
+            return query
 
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)
+        if self.slice.step:
+            raise InvalidRequestException(self,
+                    "Can't manage slice requests with steps")
+        if any((x or 0) < 0 for x in (self.slice.start, self.slice.stop)):
+            raise InvalidRequestException(self,
+                    "Negative slice indexes not supported")
         if not isinstance(self.subject.return_type(contexts), types.List):
             raise InvalidRequestException(self,
                     "Slice is not managed on not list objects")

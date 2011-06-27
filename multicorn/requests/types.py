@@ -9,6 +9,10 @@ class Type(object):
         self.name = name
         self.type = type
 
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (type(self).__name__, self.type, self.corn,
+                                   self.name)
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.corn == other.corn and\
@@ -32,6 +36,9 @@ class Dict(Type):
         super(Dict, self).__init__(corn=corn, name=name, type=dict)
         self.mapping = mapping
 
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (type(self).__name__, self.mapping,
+                                   self.corn, self.name)
     def __eq__(self, other):
         return super(Dict, self).__eq__(other) and\
                 self.mapping == other.mapping
@@ -48,6 +55,9 @@ class List(Type):
         super(List, self).__init__(corn=corn, name=name, type=list)
         self.inner_type = inner_type
 
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (type(self).__name__, self.inner_type,
+                                   self.corn, self.name)
     def __eq__(self, other):
         return super(List, self).__eq__(other) and\
                 self.inner_type == other.inner_type

@@ -266,9 +266,19 @@ class AddWrapper(ArithmeticOperationWrapper):
             return super(AddWrapper, self).return_type(contexts)
 
 
+@RequestWrapper.register_wrapper(requests.SliceRequest)
+class SliceWrapper(OperationWrapper):
+    def return_type(self, contexts=()):
+        subject_type = self.subject.return_type(contexts)
+        if isinstance(subject_type, List):
+            return subject_type
+        else:
+            # Maybe slicing a string?
+            # Do not preserve corn origin
+            return Type(type=subject_type.type)
+
 
 @RequestWrapper.register_wrapper(requests.DistinctRequest)
-@RequestWrapper.register_wrapper(requests.SliceRequest)
 class PreservingWrapper(OperationWrapper):
     """
     Return type is the same as the operation’s subject.
