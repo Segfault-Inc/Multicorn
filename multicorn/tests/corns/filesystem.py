@@ -247,7 +247,13 @@ def test_laziness(tempdir):
 
 @specific_suite.test
 def test_optimizations(tempdir):
-    text, item = make_populated_text_corn(tempdir)
+    text = make_text_corn(tempdir)
+
+    item_values = {}
+    def create(**values):
+        values['content'] = u'%s !' % values['num']
+        item_values[values['num']] = values
+        text.create(values).save()
 
     listed = []
     real_listdir = text._listdir
@@ -258,26 +264,49 @@ def test_optimizations(tempdir):
 
     text._listdir = listdir_mock
 
-    def assert_listed(request, expected_listed, expected_nums=(4,)):
+    def assert_listed(request, expected_nums, expected_listed):
         del listed[:]
-        nums = request.map(c.num).execute()
-        # We already tested in test_request() that dict(some_item) has
-        # all the values.
-        assert list(nums) == [str(num) for num in expected_nums]
+        expected = sorted((item_values[num] for num in expected_nums),
+                          key=lambda values: values['num'])
+        nums = map(dict, request.sort(c.num).execute())
+        assert nums == expected
         # Workaround a bug in Attest’s assert hook with closures
         listed_ = listed
-        assert listed_ == expected_listed
+        assert set(listed_) == set(expected_listed)
+
+    create(category='lipsum', num='1', name='foo')
 
     # No fixed values: all directories on the path are listed.
-    assert_listed(text.all, ['', 'lipsum'])
+    assert_listed(text.all,
+        ['1'], ['', 'lipsum'])
 
     # The category was fixed, no need to listdir() the root.
-    assert_listed(text.all.filter(category='lipsum'), ['lipsum'])
+    assert_listed(text.all.filter(category='lipsum'),
+        ['1'], ['lipsum'])
 
     # The num and name were fixed, no need to listdir() the lipsum dir.
-    assert_listed(text.all.filter(num='4', name='foo'), [''])
+    assert_listed(text.all.filter(num='1', name='foo'),
+        ['1'], [''])
 
     # All filename properties were fixed, no need to listdir() anything
-    assert_listed(text.all.filter(category='lipsum', num='4', name='foo'), [])
+    assert_listed(text.all.filter(category='lipsum', num='1', name='foo'),
+        ['1'], [])
 
-    # TODO: More tests for non-fixed value predicates
+    create(category='lorem ipsum', num='2', name='foo')
+    create(category='lorem ipsum', num='3', name='foo')
+    create(category='lipsum dolor', num='4', name='foo')
+
+    assert_listed(text.all,
+        ['1', '2', '3', '4'], ['', 'lipsum', 'lorem ipsum', 'lipsum dolor'])
+
+    assert_listed(text.all.filter(c.category == 'lipsum'),
+        ['1'], ['lipsum'])
+
+    assert_listed(text.all.filter(c.category[:6] == 'lipsum'),
+        ['1', '4'], ['', 'lipsum', 'lipsum dolor'])
+
+    assert_listed(text.all.filter(c.category[:2] != 'li', category='lipsum'),
+        [], [])
+
+    assert_listed(text.all.filter(c.category[:2] == 'lo'),
+        ['2', '3'], ['', 'lorem ipsum'])

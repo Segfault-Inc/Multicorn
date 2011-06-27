@@ -147,6 +147,32 @@ class LazyFileReader(object):
         return self.content
 
 
+class FilteredFilesystem(requests.LiteralRequest):
+    arg_spec = ('corn', 'parts_infos')
+
+    @requests.self_with_attrs
+    def __init__(self, corn, parts_infos):
+        self.corn = corn
+        self.parts_infos = parts_infos
+
+    @requests.self_with_attrs
+    def __repr__(self):
+        pattern_parts = self.corn.pattern.split('/')
+        predicates = []
+        for depth, (fixed_name, values, part_predicate) in enumerate(
+                self.parts_infos):
+            predicates.append(part_predicate)
+            if fixed_name is not None:
+                pattern_parts[depth] = fixed_name
+        return '<%s %r, %r, %r>' % (
+            self.obj_type().__name__, self.corn, '/'.join(pattern_parts),
+            predicates)
+
+    @property
+    @requests.self_with_attrs
+    def value(self):
+        return self.corn._items_with(self.parts_infos)
+
 class Filesystem(AbstractCorn):
     """
     A simple access point that keep Python Item objects in memory.
@@ -227,6 +253,9 @@ class Filesystem(AbstractCorn):
             path_parts.pop()  # Go to the parent directory
 
     def execute(self, request):
+        return self.transform_request(request).execute()
+
+    def transform_request(self, request):
         chain = requests.as_chain(request)
         assert isinstance(chain[0], requests.StoredItemsRequest)
         storeditems_req = chain[0]
@@ -240,14 +269,12 @@ class Filesystem(AbstractCorn):
             predicate = requests.literal(True)
 
         parts_infos, remaining_predicate = self._split_predicate(predicate)
-        filtered_items = self._items_with(parts_infos)
-        replacement_req = requests.literal(filtered_items).filter(
-            remaining_predicate)
+        filtered_items = FilteredFilesystem(self, parts_infos)
+        replacement_req = filtered_items.filter(remaining_predicate)
         if replaced_req is request:
-            new_request = replacement_req
+            return replacement_req
         else:
-           new_request = request._copy_replace({replaced_req: replacement_req})
-        return new_request.execute()
+            return request._copy_replace({replaced_req: replacement_req})
 
     def _split_predicate(self, predicate):
         """
@@ -259,7 +286,7 @@ class Filesystem(AbstractCorn):
         * fixed_name and values are None unless all properties in that part
           have a fixed value with a `==` predicate.
         * fixed_name is the path part as would be returned by os.listdir()
-        * values is a list of (property name, value) pairs.
+        * values is a dict of {property name: value}.
         * predicate is what remains after removing the `==` predicate parts
           encoded in values.
 
@@ -276,7 +303,7 @@ class Filesystem(AbstractCorn):
             Returns:
                 (
                     [
-                        ('a_lorem', [('foo', 'lorem')], literal(True)),
+                        ('a_lorem', {'foo': 'lorem'}, literal(True)),
                         (None, None, c.bar != 'ipsum')
                     ],
                     (c.content == 'dolor')
@@ -298,8 +325,7 @@ class Filesystem(AbstractCorn):
                 # TODO: check for ambiguities
                 name = pattern_part.format(**values)
                 # TODO: check non_fixed_part_predicate here?
-                parts_infos.append((name, values.items(),
-                                    non_fixed_part_predicate))
+                parts_infos.append((name, values, non_fixed_part_predicate))
             else:
                 parts_infos.append((None, None,
                                     part_predicate.wrapped_request))
@@ -316,9 +342,8 @@ class Filesystem(AbstractCorn):
         # Names of properties that are in this path part
         properties = self._path_parts_properties[depth]
 
-        for name, new_values in self._find_matching_names(
+        for name, values in self._find_matching_names(
                 previous_path_parts, previous_values, parts_infos):
-            values = previous_values + new_values
             path_parts = previous_path_parts + [name]
             filename = self._join(path_parts)
 
@@ -332,16 +357,23 @@ class Filesystem(AbstractCorn):
                              parts_infos):
         depth = len(previous_path_parts)
 
-        fixed_name, values, predicate = parts_infos[depth]
+        fixed_name, fixed_values, predicate = parts_infos[depth]
         if fixed_name is not None:
+            values = dict(previous_values)
+            values.update(fixed_values)
             if predicate.execute((values,)):
                 yield fixed_name, values
         else:
             for name in self._listdir(previous_path_parts):
-                values = self._match_part(depth, name)
-                if values is not None and predicate.execute((values,)):
-                    # name matches the pattern and the predicate.
-                    yield name, values
+                new_values = self._match_part(depth, name)
+                if new_values is not None:
+                    # name matches the pattern
+                    # Make values a new copy on each iteration
+                    values = dict(previous_values)
+                    values.update(new_values)
+                    if predicate.execute((values,)):
+                        # name also matches the predicate.
+                        yield name, values
 
     def _listdir(self, path_parts):
         # Make this monkey-patchable for tests
@@ -357,10 +389,7 @@ class Filesystem(AbstractCorn):
         if match is None:
             return None
         else:
-            # Use .items() to return a list of pairs instead of a dict.
-            # This is also a valid contructor for a dict but lists are
-            # easier to concatenate without mutation.
-            return match.groupdict().items()
+            return match.groupdict()
 
     def _create_item(self, filename, values):
         reader = LazyFileReader(filename, self.encoding)

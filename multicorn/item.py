@@ -34,6 +34,11 @@ class BaseItem(MutableMapping):
             for key in missing_keys:
                 self._values[key] = None
 
+    def __repr__(self):
+        return '<%s %s>' % (type(self).__name__, ', '.join(
+            '%s=%r' % (key, self[key])
+            for key in self.corn.identity_properties))
+
     def __len__(self):
         return len(self.corn.properties)
 
