@@ -5,6 +5,7 @@
 
 from bson.code import Code
 from .ragequit import RageQuit
+from multicorn.utils import print_js
 
 
 class MapReduce(object):
@@ -21,10 +22,18 @@ class MapReduce(object):
                 "function () {",
                 "function () { if(++skippy > %d) {" % skip) + "}"
 
-        mapjs = Code(self.map.replace("this.", "this.value.")) \
-                     if in_value else Code(self.map)
-        reducejs = Code(self.reduce.replace("this.", "this.value.")) \
+        mapjs = Code(
+            self.map.replace(
+                "this.", "this.value.").replace(
+                "this.value._id", "this._id")) \
+                if in_value else Code(self.map)
+        reducejs = Code(
+            self.reduce.replace(
+                "this.", "this.value.").replace(
+                "this.value._id", "this._id")) \
                      if in_value else Code(self.reduce)
+        print_js(mapjs)
+        print_js(reducejs)
 
         results = collection.map_reduce(
             mapjs,

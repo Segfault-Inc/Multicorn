@@ -206,3 +206,9 @@ def test_optimization(Corn):
     assert min == 2
     sum = Corn.all.sort(c.id)[1:2].sum(c.id).execute()
     assert sum == 2
+
+    items = list(Corn.all.map(c.id.str()).sort().execute())
+    assert items == [u'1', u'2', u'3']
+    item = Corn.all.map(c.id.str() + (c.id * c.id).str()).filter(
+        c.matches("1$")).one().execute()
+    assert item == '11'

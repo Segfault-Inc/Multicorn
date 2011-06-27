@@ -181,6 +181,14 @@ class PowWrapper(wrappers.PowWrapper, BinaryMongoWrapper):
             self.subject.to_mongo(contexts), self.other.to_mongo(contexts))
 
 
+@MongoWrapper.register_wrapper(requests.RegexRequest)
+class RegexRequest(wrappers.RegexWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        return "(%s.match(%s))" % (self.subject.to_mongo(contexts),
+                                  self.other.to_mongo(contexts))
+
+
 @MongoWrapper.register_wrapper(requests.SortRequest)
 class SortWrapper(wrappers.SortWrapper, ContextDefinerMongoWrapper):
 
@@ -227,7 +235,7 @@ class SumWrapper(wrappers.AggregateWrapper, MongoWrapper):
         if not contexts:
             mrq = self.subject.to_mongo(contexts)
             mrq.last.mapreduce = make_mr_sum(self,
-                    "this._id",
+                    "'anon'",
                     "____",
                     "this.____")
             mrq.stack()
@@ -245,7 +253,7 @@ class MaxWrapper(wrappers.AggregateWrapper, MongoWrapper):
         if not contexts:
             mrq = self.subject.to_mongo(contexts)
             mrq.last.mapreduce = make_mr_max(self,
-                    "this._id",
+                    "'anon'",
                     "____",
                     "this.____")
             mrq.stack()
@@ -263,7 +271,7 @@ class MinWrapper(wrappers.AggregateWrapper, MongoWrapper):
         if not contexts:
             mrq = self.subject.to_mongo(contexts)
             mrq.last.mapreduce = make_mr_min(self,
-                    "this._id",
+                    "'anon'",
                     "____",
                     "this.____")
             mrq.stack()
@@ -312,6 +320,12 @@ class LowerWrapper(wrappers.LowerWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
         return "%s.toLowerCase()" % self.subject.to_mongo(contexts)
+
+
+@MongoWrapper.register_wrapper(requests.StrRequest)
+class StrWrapper(wrappers.StrWrapper, MongoWrapper):
+    def to_mongo(self, contexts=()):
+        return "String(%s)" % self.subject.to_mongo(contexts)
 
 
 @MongoWrapper.register_wrapper(requests.AttributeRequest)

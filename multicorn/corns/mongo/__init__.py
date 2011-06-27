@@ -3,7 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from __future__ import print_function
-from multicorn.utils import colorize
+from multicorn.utils import colorize, print_py
 from multicorn.requests.types import Type, Dict, List
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
@@ -80,6 +80,7 @@ class Mongo(AbstractCorn):
         return self.create(item)
 
     def _execute(self, mrq, return_type):
+        print_py(repr(mrq))
         result = mrq.execute(self.collection)
 
         # Several results
@@ -121,7 +122,7 @@ class Mongo(AbstractCorn):
 
     def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
-        # print(wrapped_request)
+        print_py(repr(wrapped_request))
         if self.is_all_mongo(wrapped_request):
             try:
                 return self._execute(
