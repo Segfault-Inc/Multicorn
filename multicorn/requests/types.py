@@ -26,6 +26,7 @@ class Type(object):
             return Type(type=self.type)
         return Type(type=object)
 
+
 class Dict(Type):
 
     def __init__(self, mapping=None,corn=None, name=None):
@@ -39,7 +40,6 @@ class Dict(Type):
     def __hash__(self):
         return hash((self.corn, self.name, self.type,
                      frozenset(self.mapping.items())))
-
 
 
 class List(Type):
