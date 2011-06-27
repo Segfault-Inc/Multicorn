@@ -51,6 +51,7 @@ class ComputedExtenser(AbstractCornExtenser):
         replacements = {}
         return_type = wrapped_request.return_type()
         chain = requests.as_chain(request)
+        # We cannot do this on the all method itself!
         if len(chain) > 1:
             dict_expr = dict((key, p.expression) for key, p in
                 self.computed_properties.iteritems())
