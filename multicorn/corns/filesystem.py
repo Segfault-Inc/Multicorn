@@ -238,7 +238,7 @@ class Filesystem(AbstractCorn):
         else:
             replaced_req = storeditems_req
             predicate = requests.literal(True)
-            
+
         parts_infos, remaining_predicate = self._split_predicate(predicate)
         filtered_items = self._items_with(parts_infos)
         replacement_req = requests.literal(filtered_items).filter(
@@ -252,8 +252,8 @@ class Filesystem(AbstractCorn):
     def _split_predicate(self, predicate):
         """
         Return a (parts_infos, remaining_predicate) tuple.
-        
-        parts_infos is a list of (fixed_name, values, predicate) or 
+
+        parts_infos is a list of (fixed_name, values, predicate) or
         (None, None, predicate) tuples, one for each path part.
         For each of these tuple:
         * fixed_name and values are None unless all properties in that part
@@ -262,17 +262,17 @@ class Filesystem(AbstractCorn):
         * values is a list of (property name, value) pairs.
         * predicate is what remains after removing the `==` predicate parts
           encoded in values.
-          
+
         remaining_predicate is the predicate part about non-path properties.
-        
+
         Joining all predicate parts in this result with `&` would give
         something equivalent to the given predicate.
 
         Example:
             self.pattern == 'a_{foo}/b_{bar}
-            predicate == ((c.foo == 'lorem') & (c.bar != 'ipsum') & 
+            predicate == ((c.foo == 'lorem') & (c.bar != 'ipsum') &
                           (c.content == 'dolor'))
-        
+
             Returns:
                 (
                     [
@@ -327,7 +327,7 @@ class Filesystem(AbstractCorn):
             elif (not is_leaf) and os.path.isdir(filename):
                 for item in self._walk(path_parts, values, parts_infos):
                     yield item
-    
+
     def _find_matching_names(self, previous_path_parts, previous_values,
                              parts_infos):
         depth = len(previous_path_parts)
@@ -337,12 +337,16 @@ class Filesystem(AbstractCorn):
             if predicate.execute((values,)):
                 yield fixed_name, values
         else:
-            # os.listdir()’s argument is unicode, so should be its results.
-            for name in os.listdir(self._join(previous_path_parts)):
+            for name in self._listdir(previous_path_parts):
                 values = self._match_part(depth, name)
                 if values is not None and predicate.execute((values,)):
                     # name matches the pattern and the predicate.
                     yield name, values
+
+    def _listdir(self, path_parts):
+        # Make this monkey-patchable for tests
+        # os.listdir()’s argument is unicode, so should be its results.
+        return os.listdir(self._join(path_parts))
 
     def _join(self, path_parts):
         # root_dir is unicode, so the join result should be unicode
