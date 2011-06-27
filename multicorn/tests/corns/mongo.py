@@ -183,3 +183,22 @@ def test_optimization(Corn):
     assert len(items) == 2
     assert items[0] == {'max__': 2, 'min__': 2, 'sum__': 2, 'key': 'BAZ'}
     assert items[1] == {'max__': 3, 'min__': 1, 'sum__': 4, 'key': 'FOO'}
+    items = list(Corn.all.map(c.id).sort(c)[1:].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[:2].execute())
+    assert items == [1, 2]
+    items = list(Corn.all.map(c.id).sort(c)[1:2].execute())
+    assert items == [2]
+    items = list(Corn.all.map(c.id).sort(c)[-2:].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[:-2].execute())
+    assert items == [1]
+    items = list(Corn.all.map(c.id).sort(c)[-2:3].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[-2:3].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[1:-1].execute())
+    assert items == [2]
+    items = list(Corn.all.map(c.id).sort(c)[-2:-1].execute())
+    assert items == [2]
+

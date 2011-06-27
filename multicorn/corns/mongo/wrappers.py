@@ -329,3 +329,17 @@ class ContextWrapper(wrappers.ContextWrapper, MongoWrapper):
         if not isinstance(contexts[-1], types.Dict):
             return "this.____"
         return "this"
+
+
+@MongoWrapper.register_wrapper(requests.SliceRequest)
+class SliceWrapper(wrappers.PreservingWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        mrq = self.subject.to_mongo(contexts)
+        if self.slice.step:
+            raise RageQuit(
+                self, "Step in slice are not supported "
+                "(who needs that anyway?)")
+        mrq.start = self.slice.start or 0
+        mrq.stop = self.slice.stop or 0
+        return mrq

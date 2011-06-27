@@ -283,6 +283,7 @@ def test_groupby(Corn):
     assert items[0] == 'baz : 1 items'
     assert items[1] == 'foo : 2 items'
 
+
 @corntest
 def test_str_funs(Corn):
     """Test various string functions"""
@@ -294,3 +295,25 @@ def test_str_funs(Corn):
     assert item == '11'
 
 
+@corntest
+def test_slice(Corn):
+    """Test various string functions"""
+    make_data(Corn)
+    items = list(Corn.all.map(c.id).sort(c)[1:].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[:2].execute())
+    assert items == [1, 2]
+    items = list(Corn.all.map(c.id).sort(c)[1:2].execute())
+    assert items == [2]
+    items = list(Corn.all.map(c.id).sort(c)[-2:].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[:-2].execute())
+    assert items == [1]
+    items = list(Corn.all.map(c.id).sort(c)[-2:3].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[-2:3].execute())
+    assert items == [2, 3]
+    items = list(Corn.all.map(c.id).sort(c)[1:-1].execute())
+    assert items == [2]
+    items = list(Corn.all.map(c.id).sort(c)[-2:-1].execute())
+    assert items == [2]

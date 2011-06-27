@@ -11,6 +11,8 @@ class MongoRequest(object):
         self.mapreduces = []
         self.count = False
         self.one = False
+        self.start = 0
+        self.stop = 0
         self.sort = []
 
     def __repr__(self):
@@ -19,12 +21,16 @@ class MongoRequest(object):
                 "mapreduces=%r, "
                 "sort=%r, "
                 "count=%r, "
-                "one=%r)") % (
+                "one=%r, "
+                "slice=(%r, %r))"
+                ) % (
             self.current_where(),
             self.mapreduces,
             self.sort,
             self.count,
-            self.one)
+            self.one,
+            self.start,
+            self.stop)
 
     def set_current_where(self, where_expr):
         self.current_where = Where(where_expr)
@@ -43,6 +49,18 @@ class MongoRequest(object):
             self.current_where(self.mapreduces))
         if self.sort:
             results = results.sort(self.sort)
+
+        if self.start:
+            start = results.count() + self.start \
+                    if self.start < 0 else self.start
+            results = results.skip(start)
+        if self.stop:
+            stop = results.count() + self.stop \
+                    if self.stop < 0 else self.stop
+            start = results.count() + self.start \
+                    if self.start < 0 else self.start
+            results = results.limit(stop - start)
+
         if self.count:
             return results.count()
         if self.one:
