@@ -116,13 +116,6 @@ class LiteralWrapper(wrappers.LiteralWrapper, MongoWrapper):
         return to_json(self.value)
 
 
-@MongoWrapper.register_wrapper(requests.AttributeRequest)
-class AttributeWrapper(wrappers.AttributeWrapper, MongoWrapper):
-
-    def to_mongo(self, contexts=()):
-        return "%s.%s" % (self.subject.to_mongo(contexts), self.attr_name)
-
-
 @MongoWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(wrappers.OneWrapper, MongoWrapper):
 
@@ -306,6 +299,27 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
                 self.aggregates.to_mongo(self.sub(contexts)),
                 mrq.pop_where()))
         return mrq
+
+
+@MongoWrapper.register_wrapper(requests.UpperRequest)
+class UpperWrapper(wrappers.UpperWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        return "%s.toUpperCase()" % self.subject.to_mongo(contexts)
+
+
+@MongoWrapper.register_wrapper(requests.LowerRequest)
+class LowerWrapper(wrappers.LowerWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        return "%s.toLowerCase()" % self.subject.to_mongo(contexts)
+
+
+@MongoWrapper.register_wrapper(requests.AttributeRequest)
+class AttributeWrapper(wrappers.AttributeWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        return "%s.%s" % (self.subject.to_mongo(contexts), self.attr_name)
 
 
 @MongoWrapper.register_wrapper(requests.ContextRequest)
