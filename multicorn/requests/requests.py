@@ -198,10 +198,10 @@ class Request(object):
         return '%s[%s]' % (name, ', '.join(
             repr(getattr(self, attr_name)) for attr_name in self.arg_spec))
 
-    @self_with_attrs
-    def __hash__(self):
-        return hash(('this is a request hash',) + tuple(
-            getattr(self, attr_name) for attr_name in self.arg_spec))
+#    @self_with_attrs
+#    def __hash__(self):
+#        return hash(('this is a request hash',) + tuple(
+#            getattr(self, attr_name) for attr_name in self.arg_spec))
 
     # Just like attributes, these methods can be accessed with eg.
     # `object.__getattribute__(some_req).map`, but AttributeRequest objects
