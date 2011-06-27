@@ -186,6 +186,25 @@ def maps(Corn):
     item = Corn.all.map({'fullname': fullname, 'id': c.id}).filter(
             (c.id * c.id) == 1).one().execute()
     assert item == {'fullname': 'foo bar', 'id': 1}
+    items = list(Corn.all.map(
+        {'ln': c.lastname,
+         'n': c.name,
+         'i': c.id}).map(
+        {'i': c.ln,
+         'ii': c.n,
+         'iii': c.i}).sort(c.iii).execute())
+    item = items[0]
+    assert item['iii'] == 1
+    assert item['ii'] == 'foo'
+    assert item['i'] == 'bar'
+    item = items[1]
+    assert item['iii'] == 2
+    assert item['ii'] == 'baz'
+    assert item['i'] == 'bar'
+    item = items[2]
+    assert item['iii'] == 3
+    assert item['ii'] == 'foo'
+    assert item['i'] == 'baz'
 
 
 @corntest
@@ -240,6 +259,8 @@ def filter(Corn):
     assert len(items) == 1
     assert items[0]['id'] == 2
     assert all([item.corn == Corn for item in items])
+    items2 = list(Corn.all.filter(c.id < 3).filter(c.id > 1).execute())
+    assert items == items2
     items = list(Corn.all.filter(c.id >= 2).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
@@ -254,7 +275,7 @@ def filter(Corn):
     assert len(items) == 2
     assert 1 in (x['id'] for x in items)
     assert 3 in (x['id'] for x in items)
-    assert all([[item.corn == Corn for item in items]])
+    assert all([item.corn == Corn for item in items])
 
 
 @corntest
@@ -297,7 +318,7 @@ def test_str_funs(Corn):
 
 @corntest
 def test_slice(Corn):
-    """Test various string functions"""
+    """Test various slices"""
     make_data(Corn)
     items = list(Corn.all.map(c.id).sort(c)[1:].execute())
     assert items == [2, 3]
