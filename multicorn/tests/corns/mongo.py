@@ -202,3 +202,7 @@ def test_optimization(Corn):
     items = list(Corn.all.map(c.id).sort(c)[-2:-1].execute())
     assert items == [2]
 
+    max = Corn.all.sort(c.id)[:2].max(c.id).execute()
+    assert max == 2
+
+

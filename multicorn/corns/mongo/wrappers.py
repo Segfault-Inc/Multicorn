@@ -3,11 +3,12 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from ...requests import requests, wrappers, types
-from .request import MongoRequest
+from .request import MongoRequests
 from .mapreduce import make_mr_map, make_mr_groupby, \
      make_mr_sum, make_mr_max, make_mr_min
 from .ragequit import RageQuit
 from .jsoner import to_json
+from .where import Where
 
 
 class MongoWrapper(wrappers.RequestWrapper):
@@ -32,7 +33,7 @@ class ContextDefinerMongoWrapper(MongoWrapper):
 class StoredItemsWrapper(wrappers.StoredItemsWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
-        return MongoRequest()
+        return MongoRequests()
 
 
 @MongoWrapper.register_wrapper(requests.FilterRequest)
@@ -40,8 +41,7 @@ class FilterWrapper(wrappers.FilterWrapper, ContextDefinerMongoWrapper):
 
     def to_mongo(self, contexts=()):
         mrq = self.subject.to_mongo(contexts)
-        mrq.set_current_where(
-            self.predicate.to_mongo(self.sub(contexts)))
+        mrq.last.where = Where(self.predicate.to_mongo(self.sub(contexts)))
         return mrq
 
 
@@ -121,7 +121,7 @@ class OneWrapper(wrappers.OneWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
         mrq = self.subject.to_mongo(contexts)
-        mrq.one = True
+        mrq.last.one = True
         return mrq
 
 
@@ -135,7 +135,7 @@ class AddWrapper(wrappers.AddWrapper, BinaryMongoWrapper):
         if all(isinstance(x, types.Dict) for x in (
             self.subject.return_type(contexts),
             self.other.return_type(contexts))):
-            if isinstance(other, MongoRequest):
+            if isinstance(other, MongoRequests):
                 raise RageQuit(
                     self, "I don't know what to do with a sub request")
 
@@ -190,8 +190,8 @@ class SortWrapper(wrappers.SortWrapper, ContextDefinerMongoWrapper):
         for key, reverse in self.sort_keys:
             key = key.to_mongo(
                 self.sub(contexts)).replace(
-                "this.", "value." if mrq.mapreduces else "")
-            mrq.sort.append((key, -1 if reverse else 1))
+                "this.", "value." if not mrq.first_mr else "")
+            mrq.last.sort.append((key, -1 if reverse else 1))
         return mrq
 
 
@@ -204,8 +204,8 @@ class MapWrapper(wrappers.MapWrapper, ContextDefinerMongoWrapper):
         if isinstance(mapped, basestring):
             # Anonymous map reduce
             mapped = {"____": mapped}
-
-        mrq.mapreduces.append(make_mr_map(self, mapped, mrq.pop_where()))
+        mrq.last.mapreduce = make_mr_map(self, mapped)
+        mrq.stack()
         return mrq
 
 
@@ -216,7 +216,7 @@ class LenWrapper(wrappers.LenWrapper, MongoWrapper):
         if contexts:
             return "len"
         mrq = self.subject.to_mongo(contexts)
-        mrq.count = True
+        mrq.last.count = True
         return mrq
 
 
@@ -226,11 +226,11 @@ class SumWrapper(wrappers.AggregateWrapper, MongoWrapper):
     def to_mongo(self, contexts=()):
         if not contexts:
             mrq = self.subject.to_mongo(contexts)
-            mrq.mapreduces.append(
-                make_mr_sum(self,
+            mrq.last.mapreduce = make_mr_sum(self,
                     "this._id",
                     "____",
-                    "this.____"))
+                    "this.____")
+            mrq.stack()
             return mrq
         # Bypass this map and return the aggregation
         elif isinstance(self.subject, MapWrapper):
@@ -244,11 +244,11 @@ class MaxWrapper(wrappers.AggregateWrapper, MongoWrapper):
     def to_mongo(self, contexts=()):
         if not contexts:
             mrq = self.subject.to_mongo(contexts)
-            mrq.mapreduces.append(
-                make_mr_max(self,
+            mrq.last.mapreduce = make_mr_max(self,
                     "this._id",
                     "____",
-                    "this.____"))
+                    "this.____")
+            mrq.stack()
             return mrq
         # Bypass this map and return the aggregation
         elif isinstance(self.subject, MapWrapper):
@@ -262,11 +262,11 @@ class MinWrapper(wrappers.AggregateWrapper, MongoWrapper):
     def to_mongo(self, contexts=()):
         if not contexts:
             mrq = self.subject.to_mongo(contexts)
-            mrq.mapreduces.append(
-                make_mr_min(self,
+            mrq.last.mapreduce = make_mr_min(self,
                     "this._id",
                     "____",
-                    "this.____"))
+                    "this.____")
+            mrq.stack()
             return mrq
         # Bypass this map and return the aggregation
         elif isinstance(self.subject, MapWrapper):
@@ -281,7 +281,7 @@ class DictWrapper(wrappers.DictWrapper, MongoWrapper):
         new_dict = {}
         for key, val in self.value.items():
             new_val = val.to_mongo(contexts)
-            if isinstance(new_val, MongoRequest):
+            if isinstance(new_val, MongoRequests):
                 raise RageQuit(
                     self, "I don't know what to do with a sub request")
             new_dict[key] = new_val
@@ -293,11 +293,10 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, ContextDefinerMongoWrapper):
 
     def to_mongo(self, contexts=()):
         mrq = self.subject.to_mongo(contexts)
-        mrq.mapreduces.append(
-            make_mr_groupby(self,
+        mrq.last.mapreduce = make_mr_groupby(self,
                 self.key.to_mongo(self.sub(contexts)),
-                self.aggregates.to_mongo(self.sub(contexts)),
-                mrq.pop_where()))
+                self.aggregates.to_mongo(self.sub(contexts)))
+        mrq.stack()
         return mrq
 
 
@@ -340,6 +339,6 @@ class SliceWrapper(wrappers.PreservingWrapper, MongoWrapper):
             raise RageQuit(
                 self, "Step in slice are not supported "
                 "(who needs that anyway?)")
-        mrq.start = self.slice.start or 0
-        mrq.stop = self.slice.stop or 0
+        mrq.last.start = self.slice.start or 0
+        mrq.last.stop = self.slice.stop or 0
         return mrq

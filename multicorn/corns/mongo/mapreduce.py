@@ -4,18 +4,16 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from bson.code import Code
-from .where import Where
 from .ragequit import RageQuit
 
 
 class MapReduce(object):
 
-    def __init__(self, map, reduce, where=None):
+    def __init__(self, map, reduce):
         self.map = map
         self.reduce = reduce
-        self.where = where if where else Where()
 
-    def execute(self, collection, in_value=False):
+    def execute(self, collection, where, in_value=False, **kwargs):
         mapjs = Code(self.map.replace("this.", "this.value.")) \
                      if in_value else Code(self.map)
         reducejs = Code(self.reduce.replace("this.", "this.value.")) \
@@ -24,17 +22,17 @@ class MapReduce(object):
             mapjs,
             reducejs,
             "mr",
-            query=self.where())
+            query=where(in_value),
+            **kwargs)
         return results
 
     def __repr__(self):
-        return ("MapReduce(map=%r, reduce=%r, where=%r)") % (
+        return ("MapReduce(map=%r, reduce=%r)") % (
             self.map,
-            self.reduce,
-            self.where)
+            self.reduce)
 
 
-def make_mr_map(wrapper, fields, where=None):
+def make_mr_map(wrapper, fields):
     with_all = False
     if 'this' in fields:
         with_all = True
@@ -57,10 +55,10 @@ def make_mr_map(wrapper, fields, where=None):
     reduce = ("function (k, v) {"
               "  return v[0];"
               "}")
-    return MapReduce(map, reduce, where)
+    return MapReduce(map, reduce)
 
 
-def make_mr_len(wrapper, key, aggregates, where=None):
+def make_mr_len(wrapper, key, aggregates):
     tuples = aggregates.items()
     if len(tuples) > 1:
         raise RageQuit(wrapper, "WTF")
@@ -76,10 +74,10 @@ def make_mr_len(wrapper, key, aggregates, where=None):
               "    total += v[i].<group>;"
               "  return { key: k, <group>: total };"
               "}").replace("<group>", keyname)
-    return MapReduce(map, reduce, where)
+    return MapReduce(map, reduce)
 
 
-def make_mr_sum(wrapper, key, name, summed, where=None):
+def make_mr_sum(wrapper, key, name, summed):
     map = (
         "function () {"
         "  var k = %s, v = %s;"
@@ -92,10 +90,10 @@ def make_mr_sum(wrapper, key, name, summed, where=None):
               "  return {  key: k, <group>: total };"
               "}").replace("<group>", name)
 
-    return MapReduce(map, reduce, where)
+    return MapReduce(map, reduce)
 
 
-def make_mr_max(wrapper, key, name, maxed, where=None):
+def make_mr_max(wrapper, key, name, maxed):
     map = (
         "function () {"
         "  var k = %s, v = %s;"
@@ -109,10 +107,10 @@ def make_mr_max(wrapper, key, name, maxed, where=None):
               "  return {  key: k, <group>: max };"
               "}").replace("<group>", name)
 
-    return MapReduce(map, reduce, where)
+    return MapReduce(map, reduce)
 
 
-def make_mr_min(wrapper, key, name, mined, where=None):
+def make_mr_min(wrapper, key, name, mined):
     map = (
         "function () {"
         "  var k = %s, v = %s;"
@@ -126,14 +124,14 @@ def make_mr_min(wrapper, key, name, mined, where=None):
               "  return {  key: k, <group>: min };"
               "}").replace("<group>", name)
 
-    return MapReduce(map, reduce, where)
+    return MapReduce(map, reduce)
 
 
-def make_mr_groupby(wrapper, grouper, aggregates, where=None):
+def make_mr_groupby(wrapper, grouper, aggregates):
     aggregations = {}
     level1 = aggregates.values()[0]
     if not isinstance(level1, dict):
-        return make_mr_len(wrapper, grouper, aggregates, where)
+        return make_mr_len(wrapper, grouper, aggregates)
     level2 = level1.values()[0]
     if isinstance(level2, dict):
         raise RageQuit(wrapper, "Too much level in groupy")
@@ -181,4 +179,4 @@ def make_mr_groupby(wrapper, grouper, aggregates, where=None):
     reduce += return_
     reduce += "}"
 
-    return MapReduce(map, reduce, where)
+    return MapReduce(map, reduce)
