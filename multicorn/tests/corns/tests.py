@@ -317,3 +317,6 @@ def test_slice(Corn):
     assert items == [2]
     items = list(Corn.all.map(c.id).sort(c)[-2:-1].execute())
     assert items == [2]
+    items = list(Corn.all.map(c.id).sort(c)[::2].execute())
+    assert items == [1, 3]
+
