@@ -16,6 +16,7 @@ from multicorn.corns.filesystem import Filesystem
 from multicorn import Multicorn
 from multicorn.declarative import declare, Property
 from multicorn.corns.extensers.typeextenser import TypeExtenser
+from multicorn.requests import CONTEXT as c
 
 from . import make_test_suite
 
@@ -248,42 +249,35 @@ def test_laziness(tempdir):
 def test_optimizations(tempdir):
     text, item = make_populated_text_corn(tempdir)
 
-    def get(request):
-        re_item = request.one().execute()
-        # Workaround a bug in Attest’s assert hook with closures
-        item_ = item
+    listed = []
+    real_listdir = text._listdir
+
+    def listdir_mock(parts):
+        listed.append('/'.join(parts))
+        return real_listdir(parts)
+
+    text._listdir = listdir_mock
+
+    def assert_listed(request, expected_listed, expected_nums=(4,)):
+        del listed[:]
+        nums = request.map(c.num).execute()
         # We already tested in test_request() that dict(some_item) has
         # all the values.
-        assert dict(re_item) == dict(item_)
+        assert list(nums) == [str(num) for num in expected_nums]
+        # Workaround a bug in Attest’s assert hook with closures
+        listed_ = listed
+        assert listed_ == expected_listed
 
-    def os_listdir_mock(dirname):
-        listed.append(dirname)
-        return real_os_listdir(dirname)
+    # No fixed values: all directories on the path are listed.
+    assert_listed(text.all, ['', 'lipsum'])
 
-    real_os_listdir = os.listdir
-    os.listdir = os_listdir_mock
+    # The category was fixed, no need to listdir() the root.
+    assert_listed(text.all.filter(category='lipsum'), ['lipsum'])
 
-    try:
-        listed = []
-        get(text.all)
-        # No fixed values: all directories on the path are listed.
-        assert listed == [tempdir, os.path.join(tempdir, 'lipsum')]
+    # The num and name were fixed, no need to listdir() the lipsum dir.
+    assert_listed(text.all.filter(num='4', name='foo'), [''])
 
-        listed = []
-        get(text.all.filter(category='lipsum'))
-        # The category was fixed, no need to listdir() the root.
-        assert listed == [os.path.join(tempdir, 'lipsum')]
+    # All filename properties were fixed, no need to listdir() anything
+    assert_listed(text.all.filter(category='lipsum', num='4', name='foo'), [])
 
-        listed = []
-        get(text.all.filter(num='4', name='foo'))
-        # The num and name were fixed, no need to listdir() the lipsum dir.
-        assert listed == [tempdir]
-
-        listed = []
-        get(text.all.filter(category='lipsum', num='4', name='foo'))
-        # All filename properties were fixed, no need to listdir() anything
-        assert listed == []
-
-        # TODO: More tests for non-fixed value predicates
-    finally:
-        os.listdir = real_os_listdir
+    # TODO: More tests for non-fixed value predicates
