@@ -184,8 +184,8 @@ class Alchemy(AbstractCorn):
             if return_type.type != list:
                 sql_result = next(iter(sql_result), None)
                 if isinstance(wrapped_request, OneWrapper) and sql_result is None:
-                    if request.default_value:
-                        return python_executor.execute(request.default_value,
+                    if wrapped_request.default:
+                        return python_executor.execute(wrapped_request.default,
                                 (List(return_type)))
                     raise ValueError('.one() on an empty sequence')
             print(unicode(sql_query))

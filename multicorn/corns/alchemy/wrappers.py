@@ -8,6 +8,7 @@ from . import Alchemy, InvalidRequestException
 from sqlalchemy import sql as sqlexpr, Unicode
 from sqlalchemy.sql import expression
 
+import re
 
 class Context(object):
 
@@ -136,17 +137,26 @@ class RegexRequest(wrappers.RegexWrapper, AlchemyWrapper):
         return self.subject.extract_tables()
 
     def is_valid(self, contexts=()):
-        pass
+        self.subject.is_valid(contexts)
+        if not isinstance(self.other, wrappers.LiteralWrapper):
+            raise InvalidRequestException(self, "Regex support only works with"
+                "literals in alchemy")
+        value = self.other.value
+        value = value.replace('_', '\_')
+        # Escaping chars
+        value = value.replace('%', '\%')
+        value = value.replace('.*', '%')
+        value = value.replace('.', '_')
+        value = value.replace('$', '\$')
+        value = value.replace('^', '\^')
+        if value != re.escape(value):
+            raise InvalidRequestException(self, "Regex only supports '.*',.,^,$'")
+        self.value = value
 
     def to_alchemy(self, query, contexts=()):
         subject = self.subject.to_alchemy(query, contexts)
-        if isinstance(self.other, requests.LiteralRequest):
-            value = self.other.value
-            value = value.replace('_', '\_')
-            value = value.replace('%', '\%')
-            value = value.replace('.*', '%')
-            value = value.replace('.', '_')
-            return subject.like(value)
+        value = self.value
+        return subject.like(value)
 
 
 
@@ -420,7 +430,7 @@ class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
         return self.subject.extract_tables()
 
     def is_valid(self, contexts):
-        pass
+        self.subject.is_valid(contexts)
 
 class AggregateWrapper(AlchemyWrapper):
 
@@ -444,6 +454,11 @@ class LenWrapper(wrappers.LenWrapper, AggregateWrapper):
         return query.with_only_columns([expression.func.count(1)])
 
 
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+
+
+
 @AlchemyWrapper.register_wrapper(requests.SumRequest)
 class SumWrapper(wrappers.AggregateWrapper, AggregateWrapper):
 
@@ -452,6 +467,11 @@ class SumWrapper(wrappers.AggregateWrapper, AggregateWrapper):
         column = list(query.c)[0]
         return query.with_only_columns([expression.func.sum(column)])
 
+
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+
+
 @AlchemyWrapper.register_wrapper(requests.MaxRequest)
 class MaxWrapper(wrappers.AggregateWrapper, AggregateWrapper):
 
@@ -459,6 +479,10 @@ class MaxWrapper(wrappers.AggregateWrapper, AggregateWrapper):
         query = self.subject.to_alchemy(query, contexts)
         column = list(query.c)[0]
         return query.with_only_columns([expression.func.max(column)])
+
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+
 
 @AlchemyWrapper.register_wrapper(requests.MinRequest)
 class MinWrapper(wrappers.AggregateWrapper, AggregateWrapper):
@@ -469,12 +493,21 @@ class MinWrapper(wrappers.AggregateWrapper, AggregateWrapper):
         return query.with_only_columns([expression.func.min(column)])
 
 
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+
+
+
 @AlchemyWrapper.register_wrapper(requests.DistinctRequest)
 class DistinctWrapper(wrappers.AggregateWrapper, AggregateWrapper):
 
     def to_alchemy(self, query, contexts=()):
         query = self.subject.to_alchemy(query, contexts)
         return query.distinct()
+
+    def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
+
 
 @AlchemyWrapper.register_wrapper(requests.SliceRequest)
 class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
@@ -485,6 +518,7 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
             return query.limit(self.slice)
 
     def is_valid(self, contexts=()):
+        self.subject.is_valid(contexts)
         if not isinstance(self.subject.return_type(contexts), types.List):
             raise InvalidRequestException(self,
                     "Slice is not managed on not list objects")

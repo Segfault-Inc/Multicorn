@@ -282,3 +282,15 @@ def test_groupby(Corn):
     assert len(items) == 2
     assert items[0] == 'baz : 1 items'
     assert items[1] == 'foo : 2 items'
+
+@corntest
+def test_str_funs(Corn):
+    """Test various string functions"""
+    make_data(Corn)
+    items = list(Corn.all.map(c.id.str()).sort().execute())
+    assert items == [u'1', u'2', u'3']
+    item = Corn.all.map(c.id.str() + (c.id * c.id).str()).filter(
+        c.matches("1$")).one().execute()
+    assert item == '11'
+
+

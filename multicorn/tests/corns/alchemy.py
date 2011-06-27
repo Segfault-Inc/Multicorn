@@ -164,3 +164,6 @@ def test_optimization(Corn):
     assert len(items) == 3
     items = list(Corn.all.map(c.name.upper()).sort(c).execute())
     assert items == ['BAZ', 'FOO', 'FOO']
+    items = list(Corn.all.filter(c.name.matches('f..')).execute())
+    assert len(items) == 2
+    assert items[0]['name'] == 'foo'
