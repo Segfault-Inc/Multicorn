@@ -521,7 +521,7 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
                 query = query.limit(stop)
             if self.slice.start:
                 query = query.offset(self.slice.start)
-            return query
+            return query.select()
 
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)
