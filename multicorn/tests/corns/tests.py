@@ -320,3 +320,14 @@ def test_slice(Corn):
     items = list(Corn.all.map(c.id).sort(c)[::2].execute())
     assert items == [1, 3]
 
+
+@corntest
+def test_aggregate_slice(Corn):
+    """ Test aggregates with slices"""
+    make_data(Corn)
+    max = Corn.all.sort(c.id)[:2].max(c.id).execute()
+    assert max == 2
+    min = Corn.all.sort(c.id)[1:].min(c.id).execute()
+    assert min == 2
+    sum = Corn.all.sort(c.id)[1:2].sum(c.id).execute()
+    assert sum == 2
