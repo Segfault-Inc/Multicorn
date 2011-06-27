@@ -5,6 +5,8 @@
 import io
 import os.path
 import functools
+import tempfile
+import shutil
 from contextlib import contextmanager
 
 from attest import assert_hook
@@ -12,9 +14,37 @@ import attest.contexts
 
 from multicorn.corns.filesystem import Filesystem
 from multicorn import Multicorn
-from multicorn.requests import CONTEXT as c
+from multicorn.declarative import declare, Property
+from multicorn.corns.extensers.typeextenser import TypeExtenser
 
 from . import make_test_suite
+
+
+def make_generic_corn():
+    fs_corn = Filesystem(
+        'raw_fs_corn',
+        root_dir=tempfile.mkdtemp(),
+        pattern='{id}_{name}.txt',
+        content_property='lastname',
+        encoding='utf8')
+    @declare(TypeExtenser, wrapped_corn=fs_corn)
+    class Corn(object):
+        id = Property(type=int)
+        name = Property(type=unicode)
+        lastname = Property(type=unicode)
+    return Corn
+
+def generic_corn_teardown(corn):
+    shutil.rmtree(corn.root)
+
+## Generic tests
+# TODO: uncomment this when TypeExtenser is implemented.
+#generic_suite = make_test_suite(make_generic_corn, 'filesystem',
+#                                teardown=generic_corn_teardown)
+
+# Filesystem-specific tests
+specific_suite = attest.Tests(contexts=[attest.contexts.tempdir])
+
 
 
 @contextmanager
@@ -27,11 +57,8 @@ def assert_raises(exception_class, message_part):
     assert message_part.lower() in exception.args[0].lower()
 
 
-# Filesystem-specific tests
-suite = attest.Tests(contexts=[attest.contexts.tempdir])
 
-
-@suite.test
+@specific_suite.test
 def test_parser(tempdir):
     make_corn = functools.partial(Filesystem, 'test_corn', tempdir)
 
@@ -94,7 +121,7 @@ def make_populated_text_corn(root):
     return text, item
 
 
-@suite.test
+@specific_suite.test
 def test_init(tempdir):
     binary = make_binary_corn(tempdir)
     text = make_text_corn(tempdir)
@@ -102,7 +129,7 @@ def test_init(tempdir):
     assert set(text.properties) == set(['category', 'num', 'name', 'content'])
 
 
-@suite.test
+@specific_suite.test
 def test_filenames(tempdir):
     binary = make_binary_corn(tempdir)
     text = make_text_corn(tempdir)
@@ -142,7 +169,7 @@ def test_filenames(tempdir):
     assert [i.filename for i in binary.all.execute()] == ['lipsum/4_foo.bin']
 
 
-@suite.test
+@specific_suite.test
 def test_save(tempdir):
     binary = make_binary_corn(tempdir)
     text = make_text_corn(tempdir)
@@ -161,7 +188,7 @@ def test_save(tempdir):
     with open(item2.full_filename, 'rb') as fd:
         assert fd.read() == content.encode('utf8')
 
-@suite.test
+@specific_suite.test
 def test_delete(tempdir):
     text, item = make_populated_text_corn(tempdir)
 
@@ -179,7 +206,7 @@ def test_delete(tempdir):
     assert os.path.isdir(text.root_dir)
 
 
-@suite.test
+@specific_suite.test
 def test_request(tempdir):
     text, item = make_populated_text_corn(tempdir)
 
@@ -192,7 +219,7 @@ def test_request(tempdir):
     assert re_item is not item
 
 
-@suite.test
+@specific_suite.test
 def test_laziness(tempdir):
     text, item = make_populated_text_corn(tempdir)
 
@@ -217,7 +244,7 @@ def test_laziness(tempdir):
         io.open = real_io_open
 
 
-@suite.test
+@specific_suite.test
 def test_optimizations(tempdir):
     text, item = make_populated_text_corn(tempdir)
 
@@ -256,7 +283,7 @@ def test_optimizations(tempdir):
         get(text.all.filter(category='lipsum', num='4', name='foo'))
         # All filename properties were fixed, no need to listdir() anything
         assert listed == []
-        
+
         # TODO: More tests for non-fixed value predicates
     finally:
         os.listdir = real_os_listdir
