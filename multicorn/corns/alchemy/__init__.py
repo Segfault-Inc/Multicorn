@@ -7,6 +7,7 @@ from ..abstract import AbstractCorn
 from ...requests.types import Type, List, Dict
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
+from multicorn.utils import print_sql
 
 class InvalidRequestException(Exception):
 
@@ -188,7 +189,7 @@ class Alchemy(AbstractCorn):
                         return python_executor.execute(wrapped_request.default,
                                 (List(return_type)))
                     raise ValueError('.one() on an empty sequence')
-            print(unicode(sql_query))
+            print_sql(unicode(sql_query))
             return self._transform_result(sql_result, return_type)
         else:
             return python_executor.execute(request)

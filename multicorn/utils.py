@@ -6,9 +6,34 @@
 # If pygment installed use colorize
 try:
     from pygments.console import colorize
+    from pygments import highlight
+    from pygments.lexers import PythonLexer
+    from pygments.lexers import JavascriptLexer
+    from pygments.lexers import SqlLexer
+    from pygments.formatters import TerminalFormatter
+
+    def print_py(py):
+        print(highlight(py,
+                  PythonLexer(),
+                  TerminalFormatter(bg="dark")))
+
+    def print_js(js):
+        print(highlight(js,
+                  JavascriptLexer(),
+                  TerminalFormatter(bg="dark")))
+
+    def print_sql(sql):
+        print(highlight(sql,
+                  SqlLexer(),
+                  TerminalFormatter(bg="dark")))
+
 except ImportError:
     colorize = lambda x, y: y
 
+    def print_py(py):
+        print(py)
+    print_js = print_py
+    print_sql = print_py
 
 try:
     str.isidentifier
