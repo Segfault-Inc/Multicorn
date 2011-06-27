@@ -37,7 +37,7 @@ def assert_value(request, expected):
 
 @suite.test
 def test_attributes():
-    assert repr(c.foo) == "Attribute[Context[0], 'foo']"
+    assert repr(c.foo) == "c.foo"
     with attest.raises(AttributeError):
         c.foo = 4
     assert_value(literal({'foo': 12}).foo, 12)
@@ -48,28 +48,27 @@ def test_attributes():
 @suite.test
 def test_logical_simplifications():
     for true, false in ((True, False), (1, 0), ('a', '')):
-        assert repr(c.foo & true) == "Attribute[Context[0], 'foo']"
-        assert repr(c.foo | false) == "Attribute[Context[0], 'foo']"
-        assert repr(c.foo & false) == 'Literal[False]'
-        assert repr(c.foo | true) == 'Literal[True]'
+        assert repr(c.foo & true) == "c.foo"
+        assert repr(c.foo | false) == "c.foo"
+        assert repr(c.foo & false) == 'literal(False)'
+        assert repr(c.foo | true) == 'literal(True)'
 
-        assert repr(true & c.foo) == "Attribute[Context[0], 'foo']"
-        assert repr(false | c.foo) == "Attribute[Context[0], 'foo']"
-        assert repr(false & c.foo) == 'Literal[False]'
-        assert repr(true | c.foo) == 'Literal[True]'
+        assert repr(true & c.foo) == "c.foo"
+        assert repr(false | c.foo) == "c.foo"
+        assert repr(false & c.foo) == 'literal(False)'
+        assert repr(true | c.foo) == 'literal(True)'
 
-    assert repr(~c.foo) == "Not[Attribute[Context[0], 'foo']]"
-    assert repr(~literal('hello')) == 'Literal[False]'
-    assert repr(~literal('')) == 'Literal[True]'
+    assert repr(~c.foo) == "~c.foo"
+    assert repr(~literal('hello')) == 'literal(False)'
+    assert repr(~literal('')) == 'literal(True)'
 
     # Augmented assignment doesn't need to be defined explicitly
     a = b = c.foo
     assert not hasattr(type(a), '__iadd__')
     a &= c.bar
-    assert repr(a) == \
-        "And[Attribute[Context[0], 'foo'], Attribute[Context[0], 'bar']]"
+    assert repr(a) == "(c.foo & c.bar)"
     # No in-place mutation
-    assert repr(b) == "Attribute[Context[0], 'foo']"
+    assert repr(b) == "c.foo"
 
 
 @suite.test
