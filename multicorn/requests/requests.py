@@ -230,6 +230,9 @@ class Request(object):
             # TODO: does the following this help? does it hurt?
 #            else:
 #                return LiteralRequest([])
+        if isinstance(self, FilterRequest):
+            this = WithRealAttributes(self)
+            return FilterRequest(this.subject, this.predicate & predicate)
 
         return FilterRequest(self, predicate)
 

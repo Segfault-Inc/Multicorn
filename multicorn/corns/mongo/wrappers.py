@@ -345,14 +345,37 @@ class ContextWrapper(wrappers.ContextWrapper, MongoWrapper):
 
 
 @MongoWrapper.register_wrapper(requests.SliceRequest)
-class SliceWrapper(wrappers.PreservingWrapper, MongoWrapper):
+class SliceWrapper(wrappers.SliceWrapper, MongoWrapper):
 
     def to_mongo(self, contexts=()):
-        mrq = self.subject.to_mongo(contexts)
         if self.slice.step:
             raise RageQuit(
                 self, "Step in slice are not supported "
                 "(who needs that anyway?)")
+
+        mrq = self.subject.to_mongo(contexts)
+        if isinstance(mrq, basestring):
+            start = self.slice.start or 0
+            if self.slice.stop:
+                return "%s.slice(%d, %d)" % (
+                    mrq, start, self.slice.stop)
+            return "%s.slice(%d)" % (
+                mrq, start)
+
         mrq.last.start = self.slice.start or 0
         mrq.last.stop = self.slice.stop or 0
+        return mrq
+
+
+@MongoWrapper.register_wrapper(requests.IndexRequest)
+class IndexWrapper(wrappers.AggregateWrapper, MongoWrapper):
+
+    def to_mongo(self, contexts=()):
+        mrq = self.subject.to_mongo(contexts)
+        if isinstance(mrq, basestring):
+            return "%s[%d]" % (mrq, self.index)
+
+        mrq.last.start = self.index
+        mrq.last.stop = self.index + 1
+        mrq.last.one = True
         return mrq
