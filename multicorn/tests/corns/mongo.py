@@ -34,8 +34,7 @@ else:
     suite = make_test_suite(make_corn, 'mongo', teardown)
 
 
-@suite.test
-def test_optimization(Corn):
+def init_opt(Corn):
     class NotOptimizedError(Exception):
         pass
 
@@ -46,6 +45,11 @@ def test_optimization(Corn):
     Corn.create({'id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
     Corn.create({'id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
     Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
+
+
+@suite.test
+def test_opt_base(Corn):
+    init_opt(Corn)
     items = list(Corn.all.execute())
     assert len(items) == 3
     items = list(Corn.all.filter(c.name == 'foo').execute())
@@ -63,6 +67,11 @@ def test_optimization(Corn):
     items = list(Corn.all.filter(c.name == 'foo').execute())
     assert len(items) == 2
     assert all(item['name'] == 'foo' for item in items)
+
+
+@suite.test
+def test_opt_filter_ops(Corn):
+    init_opt(Corn)
     items = list(Corn.all.filter((c.name == 'foo') &
         (c.lastname == 'bar')).execute())
     assert len(items) == 1
@@ -97,6 +106,11 @@ def test_optimization(Corn):
     assert 1 in (x['id'] for x in items)
     assert 3 in (x['id'] for x in items)
     assert all([item.corn == Corn for item in items])
+
+
+@suite.test
+def test_opt_map(Corn):
+    init_opt(Corn)
     items = list(Corn.all.map(c.name).execute())
     assert len(items) == 3
     assert all(type(item) == unicode for item in items)
@@ -121,6 +135,11 @@ def test_optimization(Corn):
     assert all(item['square'] == item['id'] ** 2 for item in items)
     items = list(Corn.all.map(c + c).execute())
     assert len(items) == 3
+
+
+@suite.test
+def test_opt_subrequest(Corn):
+    init_opt(Corn)
     items = list(Corn.all.map(
         c + Corn.all.filter(c.id == c(-1).id).map({
             'otherid': c.id,
@@ -138,6 +157,11 @@ def test_optimization(Corn):
     assert all(all(subitem['name'] == item['name']
         for subitem in item['homonymes'])
             for item in items)
+
+
+@suite.test
+def test_opt_sort(Corn):
+    init_opt(Corn)
     items = list(Corn.all.sort(c.name).execute())
     assert [item['name'] for item in items] == ['baz', 'foo', 'foo']
     items = list(Corn.all.sort(-c.name).execute())
@@ -146,6 +170,11 @@ def test_optimization(Corn):
     assert items[0]['name'] == 'foo' and items[0]['id'] == 3
     assert items[1]['name'] == 'foo' and items[1]['id'] == 1
     assert items[2]['name'] == 'baz' and items[2]['id'] == 2
+
+
+@suite.test
+def test_opt_aggregates(Corn):
+    init_opt(Corn)
     length = Corn.all.len().execute()
     assert length == 3
     items = list(
@@ -165,6 +194,11 @@ def test_optimization(Corn):
     assert item == 3
     item = Corn.all.min(c.id).execute()
     assert item == 1
+
+
+@suite.test
+def test_opt_groupby(Corn):
+    init_opt(Corn)
     items = list(
         Corn.all.groupby(c.name, group=c.sum(c.id)).sort(c.group).execute())
     assert len(items) == 2
@@ -192,6 +226,11 @@ def test_optimization(Corn):
     assert len(items) == 2
     assert items[0] == {'max__': 2, 'min__': 2, 'sum__': 2, 'key': 'BAZ'}
     assert items[1] == {'max__': 3, 'min__': 1, 'sum__': 4, 'key': 'FOO'}
+
+
+@suite.test
+def test_opt_slice(Corn):
+    init_opt(Corn)
     items = list(Corn.all.map(c.id).sort(c)[1:].execute())
     assert items == [2, 3]
     items = list(Corn.all.map(c.id).sort(c)[:2].execute())
@@ -217,6 +256,10 @@ def test_optimization(Corn):
     sum = Corn.all.sort(c.id)[1:2].sum(c.id).execute()
     assert sum == 2
 
+
+@suite.test
+def test_opt_regex(Corn):
+    init_opt(Corn)
     items = list(Corn.all.map(c.id.str()).sort().execute())
     assert items == [u'1', u'2', u'3']
     item = Corn.all.map(c.id.str() + (c.id * c.id).str()).filter(
