@@ -311,9 +311,9 @@ class Request(object):
         for arg_name in self.arg_spec:
             arg = getattr(self, arg_name)
             if isinstance(arg, Request):
-                if arg_name in self.context_switching_args:
-                    scope_depth += 1
-                object.__getattribute__(arg, '_visit')(func, scope_depth)
+                object.__getattribute__(arg, '_visit')(func, scope_depth + 1
+                        if arg_name in self.context_switching_args
+                        else scope_depth)
 
     @self_with_attrs
     def _copy_replace(self, replacements):
@@ -409,6 +409,12 @@ class DictRequest(Request):
             (key, as_request(value))
             for key, value in obj.iteritems())
 
+    @self_with_attrs
+    def _visit(self, func, scope_depth=0):
+        super(DictRequest, self._wrapped_obj)._visit(func, scope_depth)
+        for value in self.value.values():
+            if isinstance(value, Request):
+                object.__getattribute__(value, '_visit')(func, scope_depth + 1)
 
 class ContextRequest(Request):
     arg_spec = ('scope_depth',)
