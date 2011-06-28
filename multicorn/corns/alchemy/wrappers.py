@@ -145,18 +145,23 @@ class RegexRequest(wrappers.RegexWrapper, AlchemyWrapper):
         value = value.replace('_', '\_')
         # Escaping chars
         value = value.replace('%', '\%')
-        value = value.replace('.*', '%')
         value = value.replace('.', '_')
         value = value.replace('$', '\$')
-        value = value.replace('^', '\^')
+        if value.startswith('^'):
+            value = value.strip('^')
+        else:
+            value = '%' + value
+        if value.endswith('$'):
+            value = value.strip('$')
+        else:
+            value = value + '%'
         if value != re.escape(value):
             raise InvalidRequestException(self, "Regex only supports '.*',.,^,$'")
         self.value = value
 
     def to_alchemy(self, query, contexts=()):
         subject = self.subject.to_alchemy(query, contexts)
-        value = self.value
-        return subject.like(value)
+        return subject.like(self.value)
 
 
 
