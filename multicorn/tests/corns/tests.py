@@ -186,25 +186,6 @@ def maps(Corn):
     item = Corn.all.map({'fullname': fullname, 'id': c.id}).filter(
             (c.id * c.id) == 1).one().execute()
     assert item == {'fullname': 'foo bar', 'id': 1}
-    items = list(Corn.all.map(
-        {'ln': c.lastname,
-         'n': c.name,
-         'i': c.id}).map(
-        {'i': c.ln,
-         'ii': c.n,
-         'iii': c.i}).sort(c.iii).execute())
-    item = items[0]
-    assert item['iii'] == 1
-    assert item['ii'] == 'foo'
-    assert item['i'] == 'bar'
-    item = items[1]
-    assert item['iii'] == 2
-    assert item['ii'] == 'baz'
-    assert item['i'] == 'bar'
-    item = items[2]
-    assert item['iii'] == 3
-    assert item['ii'] == 'foo'
-    assert item['i'] == 'baz'
 
 
 @corntest
@@ -259,8 +240,6 @@ def filter(Corn):
     assert len(items) == 1
     assert items[0]['id'] == 2
     assert all([item.corn == Corn for item in items])
-    items2 = list(Corn.all.filter(c.id < 3).filter(c.id > 1).execute())
-    assert items == items2
     items = list(Corn.all.filter(c.id >= 2).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
@@ -399,3 +378,40 @@ def test_re(Corn):
     assert len(items) == 3
     items = list(Corn.all.filter(c.lastname.matches("\d+")).execute())
     assert len(items) == 0
+
+
+@corntest
+def test_combinations(Corn):
+    """ Test less trivial combinations"""
+    make_data(Corn)
+    items = list(Corn.all.map(
+        {'ln': c.lastname,
+         'n': c.name,
+         'i': c.id}).map(
+        {'i': c.ln,
+         'ii': c.n,
+         'iii': c.i}).sort(c.iii).execute())
+    item = items[0]
+    assert item['iii'] == 1
+    assert item['ii'] == 'foo'
+    assert item['i'] == 'bar'
+    item = items[1]
+    assert item['iii'] == 2
+    assert item['ii'] == 'baz'
+    assert item['i'] == 'bar'
+    item = items[2]
+    assert item['iii'] == 3
+    assert item['ii'] == 'foo'
+    assert item['i'] == 'baz'
+    items = list(Corn.all.filter((c.id < 3) & (c.id > 1)).execute())
+    items2 = list(Corn.all.filter(c.id < 3).filter(c.id > 1).execute())
+    assert items == items2
+    item = Corn.all.map({
+        'fn': c.lastname + ' ' + c.name,
+        'ln': c.lastname,
+        'n': c.name,
+        'i': c.id}).filter(
+        c.n == 'foo').map(
+        {'fullname': c.fn, 'index': c.i}).filter(
+        c.fullname.matches("^baz")).one().execute()
+    assert item["index"] == 3
