@@ -296,6 +296,13 @@ def test_str_funs(Corn):
     items = list(Corn.all.map({'login': c.name[1] + c.lastname[1:-1]}).filter(
         c.login == "oa").execute())
     assert len(items) == 2
+    items = list(
+        Corn.all.map({'first': c.name[:-2]}).filter(c.first == "f").execute())
+    assert len(items) == 2
+    items2 = list(
+        Corn.all.map({'first': c.name[0]}).filter(c.first == "f").execute())
+    assert len(items) == 2
+    assert items == items2
 
 
 @corntest
@@ -412,6 +419,6 @@ def test_combinations(Corn):
         'n': c.name,
         'i': c.id}).filter(
         c.n == 'foo').map(
-        {'fullname': c.fn, 'index': c.i}).filter(
-        c.fullname.matches("^baz")).one().execute()
+        {'fullname': c.fn.upper()[1:], 'index': c.i}).filter(
+        c.fullname.matches("^AZ")).one().execute()
     assert item["index"] == 3
