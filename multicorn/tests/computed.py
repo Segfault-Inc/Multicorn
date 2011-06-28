@@ -34,7 +34,8 @@ def test_basic():
     assert len(items)
     for item in items:
         assert item['fullname'] == item['name'] + ' : ' + item['lastname']
-        assert all(subitem['name'] == item['name'] for subitem in item['homonymes'])
+        assert all([subitem['name'] == item['name']
+                    for subitem in item['homonymes']])
     item = Corn.all.filter(c.fullname == 'foo : bar').one().execute()
     assert item['id'] == 1
     assert item['fullname'] == 'foo : bar'
