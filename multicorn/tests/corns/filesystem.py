@@ -273,7 +273,8 @@ def test_optimizations(tempdir):
     def assert_listed(request, expected_ids, expected_listed):
         del listed[:]
         expected_contents = set(contents[num] for num in expected_ids)
-        assert set(request.map(c.content).execute()) == expected_contents
+        results = request.map(c.content).execute()
+        assert set(results) == expected_contents
         # Workaround a bug in Attest’s assert hook with closures
         listed_ = listed
         assert set(listed_) == set(expected_listed)
@@ -297,22 +298,31 @@ def test_optimizations(tempdir):
         ['1'], [])
 
     create(cat='lorem ipsum', org='b', name='foo', id='2')
-    create(cat='lorem ipsum', org='c', name='foo', id='3')
-    create(cat='lipsum dolor', org='d', name='foo', id='4')
+    create(cat='lorem ipsum', org='c', name='bar', id='3')
+    create(cat='lipsum dolor', org='d', name='bar', id='4')
 
     assert_listed(corn.all, ['1', '2', '3', '4'],
         ['', 'lipsum', 'lorem ipsum', 'lipsum dolor', 'lipsum/a_foo',
-         'lorem ipsum/b_foo', 'lorem ipsum/c_foo', 'lipsum dolor/d_foo'])
+         'lorem ipsum/b_foo', 'lorem ipsum/c_bar', 'lipsum dolor/d_bar'])
 
     assert_listed(corn.all.filter(c.cat == 'lipsum'),
         ['1'], ['lipsum', 'lipsum/a_foo'])
 
     assert_listed(corn.all.filter(c.cat[:6] == 'lipsum'),
         ['1', '4'], ['', 'lipsum', 'lipsum dolor', 'lipsum/a_foo',
-                     'lipsum dolor/d_foo'])
+                     'lipsum dolor/d_bar'])
 
     assert_listed(corn.all.filter(c.cat[:2] != 'li', cat='lipsum'),
         [], [])
 
+    # Does not list the root and directry tries to list 'nonexistent'
     assert_listed(corn.all.filter(cat='nonexistent'),
-        [], [])
+        [], ['nonexistent'])
+
+    # The (un-splitable) "or" predicate rules out 'lorem ipsum/b_foo'.
+    assert_listed(
+        corn.all.filter(((c.cat[:2] == 'li') | (c.org == 'c')) &
+                        (c.id >= '3')),
+        ['3', '4'],
+        ['', 'lipsum', 'lipsum dolor', 'lorem ipsum', 'lipsum dolor/d_bar',
+         'lorem ipsum/c_bar', 'lipsum/a_foo'])
