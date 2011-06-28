@@ -48,14 +48,14 @@ def test_optimization(Corn):
     Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
     items = list(Corn.all.execute())
     assert len(items) == 3
-    items = list(Corn.all.filter(c.name == 'foo' ).execute())
+    items = list(Corn.all.filter(c.name == 'foo').execute())
     assert len(items) == 2
     assert all(item['name'] == 'foo' for item in items)
-    items = list(Corn.all.filter((c.name == 'foo' ) &
+    items = list(Corn.all.filter((c.name == 'foo') &
         (c.lastname == 'bar')).execute())
     assert len(items) == 1
     assert items[0]['id'] == 1
-    items = list(Corn.all.filter((c.name == 'baz' ) |
+    items = list(Corn.all.filter((c.name == 'baz') |
         (c.lastname == 'baz')).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
@@ -63,12 +63,12 @@ def test_optimization(Corn):
     items = list(Corn.all.filter(c.name == 'foo').execute())
     assert len(items) == 2
     assert all(item['name'] == 'foo' for item in items)
-    items = list(Corn.all.filter((c.name == 'foo' ) &
+    items = list(Corn.all.filter((c.name == 'foo') &
         (c.lastname == 'bar')).execute())
     assert len(items) == 1
     assert items[0]['id'] == 1
     assert all([item.corn == Corn for item in items])
-    items = list(Corn.all.filter((c.name == 'baz' ) |
+    items = list(Corn.all.filter((c.name == 'baz') |
         (c.lastname == 'baz')).execute())
     assert len(items) == 2
     assert 2 in (x['id'] for x in items)
@@ -104,28 +104,36 @@ def test_optimization(Corn):
     assert len(items) == 3
     assert all(type(item) == dict for item in items)
     assert all('foo' in item for item in items)
-    items = list(Corn.all.map({'foo': c.name}).filter(c.foo == 'baz').execute())
+    items = list(Corn.all.map(
+        {'foo': c.name}).filter(c.foo == 'baz').execute())
     assert len(items) == 1
     assert all(type(item) == dict for item in items)
     assert all(item['foo'] == 'baz' for item in items)
-    items = list(Corn.all.map(c + {'doubleid' : c.id}).execute())
+    items = list(Corn.all.map(
+        c + {'doubleid': c.id}).execute())
     assert len(items) == 3
     assert all(type(item) == dict for item in items)
     assert all(item['doubleid'] == item['id'] for item in items)
-    items = list(Corn.all.map(c + {'square' : c.id * c.id}).execute())
+    items = list(Corn.all.map(
+        c + {'square': c.id * c.id}).execute())
     assert len(items) == 3
     assert all(type(item) == dict for item in items)
     assert all(item['square'] == item['id'] ** 2 for item in items)
     items = list(Corn.all.map(c + c).execute())
     assert len(items) == 3
-    items = list(Corn.all.map(c + Corn.all.filter(c.id == c(-1).id).map({
-            'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
+    items = list(Corn.all.map(
+        c + Corn.all.filter(c.id == c(-1).id).map({
+            'otherid': c.id,
+            'othername': c.name,
+            'otherlastname': c.lastname}).one()).execute())
     assert all(item['id'] == item['otherid'] for item in items)
-    items = list(Corn.all.map(c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()}).execute())
+    items = list(Corn.all.map(
+        c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()}).execute())
     assert len(items) == 3
     assert all(hasattr(item['foreign'], 'corn') for item in items)
     assert all(item['foreign']['id'] == item['id'] for item in items)
-    items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
+    items = list(Corn.all.map(
+        c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
     assert len(items) == 3
     assert all(all(subitem['name'] == item['name']
         for subitem in item['homonymes'])
@@ -140,7 +148,8 @@ def test_optimization(Corn):
     assert items[2]['name'] == 'baz' and items[2]['id'] == 2
     length = Corn.all.len().execute()
     assert length == 3
-    items = list(Corn.all.groupby(c.name, group=c.len()).sort(c.group).execute())
+    items = list(
+        Corn.all.groupby(c.name, group=c.len()).sort(c.group).execute())
     assert len(items) == 2
     assert items[0]['group'] == 1
     assert items[1]['group'] == 2
@@ -156,7 +165,8 @@ def test_optimization(Corn):
     assert item == 3
     item = Corn.all.min(c.id).execute()
     assert item == 1
-    items = list(Corn.all.groupby(c.name, group=c.sum(c.id)).sort(c.group).execute())
+    items = list(
+        Corn.all.groupby(c.name, group=c.sum(c.id)).sort(c.group).execute())
     assert len(items) == 2
     assert items[0]['key'] == 'baz' and items[0]['group'] == 2
     assert items[1]['key'] == 'foo' and items[1]['group'] == 4

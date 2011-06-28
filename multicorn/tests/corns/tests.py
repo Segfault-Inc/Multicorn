@@ -413,6 +413,12 @@ def test_combinations(Corn):
     items = list(Corn.all.filter((c.id < 3) & (c.id > 1)).execute())
     items2 = list(Corn.all.filter(c.id < 3).filter(c.id > 1).execute())
     assert items == items2
+    items = list(Corn.all.filter(
+        c.name == "foo").map(
+        {'idpow': c.id ** c.id}).sort(c.idpow).execute())
+    assert items[0]["idpow"] == 1
+    assert items[1]["idpow"] == 27
+
     item = Corn.all.map({
         'fn': c.lastname + ' ' + c.name,
         'ln': c.lastname,
