@@ -70,8 +70,14 @@ class Mongo(AbstractCorn):
         used_types = request.used_types()
         all_requests = reduce(
             lambda x, y: list(x) + list(y), used_types.values(), set())
-        return all(
-            isinstance(x, MongoWrapper) for x in all_requests)
+        all_in = True
+        for rq in all_requests:
+            if not isinstance(rq, MongoWrapper):
+                print(colorize("red", "%r not supported in mongo" % rq))
+                import pdb; pdb.set_trace()
+
+                all_in = False
+        return all_in
 
     def _mongo_to_item(self, mongo_item):
         item = {}
@@ -80,7 +86,7 @@ class Mongo(AbstractCorn):
         return self.create(item)
 
     def _execute(self, mrq, return_type):
-        print_py(repr(mrq))
+        # print_py(repr(mrq))
         result = mrq.execute(self.collection)
 
         # Several results
@@ -122,7 +128,7 @@ class Mongo(AbstractCorn):
 
     def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
-        print_py(repr(wrapped_request))
+        # print_py(repr(wrapped_request))
         if self.is_all_mongo(wrapped_request):
             try:
                 return self._execute(
@@ -142,4 +148,6 @@ class Mongo(AbstractCorn):
                     else:
                         result = self._all()
                     return python_executor.execute(not_managed, (result,))
+                raise RuntimeError("WTF")
+        print (colorize("yellow", "Python execution for %r" % wrapped_request))
         return python_executor.execute(request)

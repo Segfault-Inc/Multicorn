@@ -32,8 +32,8 @@ class MapReduce(object):
                 "this.", "this.value.").replace(
                 "this.value._id", "this._id")) \
                      if in_value else Code(self.reduce)
-        print_js(mapjs)
-        print_js(reducejs)
+        # print_js(mapjs)
+        # print_js(reducejs)
 
         results = collection.map_reduce(
             mapjs,

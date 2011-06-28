@@ -314,6 +314,27 @@ def test_str_funs(Corn):
     item = Corn.all.map(c.id.str() + (c.id * c.id).str()).filter(
         c.matches("1$")).one().execute()
     assert item == '11'
+    items = list(Corn.all.map({'login': c.name[1] + c.lastname[1:-1]}).filter(
+        c.login == "oa").execute())
+    assert len(items) == 2
+
+
+@corntest
+def test_index(Corn):
+    """Test various indexings"""
+    make_data(Corn)
+    item = Corn.all.sort(c.id)[0].execute()
+    assert item["id"] == 1
+    assert item["name"] == "foo"
+    assert item["lastname"] == "bar"
+    item = Corn.all.sort(c.id)[1].execute()
+    assert item["id"] == 2
+    assert item["name"] == "baz"
+    assert item["lastname"] == "bar"
+    item = Corn.all.sort(c.id)[2].execute()
+    assert item["id"] == 3
+    assert item["name"] == "foo"
+    assert item["lastname"] == "baz"
 
 
 @corntest
