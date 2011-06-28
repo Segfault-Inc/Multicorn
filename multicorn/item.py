@@ -61,11 +61,11 @@ class BaseItem(MutableMapping):
         self._values[key] = value
         self._lazy_values.pop(key, None)
 
+    def __delitem__(self, key):
+        raise TypeError('Can not delete properties from an item.')
+
     def save(self):
         self.corn.save(self)
 
     def delete(self):
         self.corn.delete(self)
-
-    def __delitem__(self, key):
-        raise TypeError('Can not delete properties from an item.')
