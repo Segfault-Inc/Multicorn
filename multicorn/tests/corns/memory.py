@@ -24,8 +24,8 @@ def make_generic_corn():
 # Generic tests
 suite = make_test_suite(make_generic_corn, 'memory')
 
-# Memory-specific tests
 
+# Memory-specific tests
 def make_corn():
     mc = Multicorn()
 

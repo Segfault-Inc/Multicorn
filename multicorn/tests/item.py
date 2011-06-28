@@ -14,6 +14,7 @@ suite = Tests()
 
 @suite.test
 def test_item():
+    """ Test BaseItem """
     class Dummy:
         pass
     corn = Dummy()
