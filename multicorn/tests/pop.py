@@ -56,6 +56,16 @@ def test_pop_get(Corn):
 
 
 @suite.test
+def test_pop_sort(Corn):
+    """ Test pop get """
+    items = Pop(Corn).get(sort=(c.name, -c.id))
+    assert len(items) == 3
+    assert items[0].id == 2
+    assert items[1].id == 3
+    assert items[2].id == 1
+
+
+@suite.test
 def test_lazy_pop(Corn):
     """ Test lazy pop """
     lazy_items = LazyPop(Corn).get()
