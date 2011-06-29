@@ -12,8 +12,10 @@ Multicorn is a data access library.
 import sys
 from setuptools import setup, find_packages
 
-
-VERSION = "git"
+# Use a time-based version number with ridiculous precision as pip in tox
+# does not reinstall the same version.
+import datetime
+VERSION = "git-" + datetime.datetime.now().isoformat()
 
 
 options = dict(
