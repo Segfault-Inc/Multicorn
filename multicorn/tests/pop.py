@@ -7,7 +7,7 @@ from multicorn.corns.memory import Memory
 from multicorn import Multicorn
 from multicorn.declarative import declare, Property
 from multicorn.requests import CONTEXT as c
-from multicorn.pop import Pop, LazyPop
+from multicorn.pop import Pop, LazyPop, FunkyPop
 import types
 
 suite = Tests()
@@ -63,6 +63,22 @@ def test_pop_sort(Corn):
     assert items[0].id == 2
     assert items[1].id == 3
     assert items[2].id == 1
+
+
+@suite.test
+def test_pop_list(Corn):
+    """ Test pop get """
+    items = FunkyPop(Corn).get(sort=-c.id)
+    assert len(items) == 3
+    assert items.id == [3, 2, 1]
+    assert items.name == ["foo", "baz", "foo"]
+    assert items.lastname == ["baz", "bar", "bar"]
+    items.name = ('a', 'b', 'c')
+    assert items.name == ['a', 'b', 'c']
+    items.name = ('a', 'b')
+    assert items.name == ['a', 'b', 'b']
+    items.name = ('a', 'b', 'c', 'd')
+    assert items.name == ['a', 'b', 'c']
 
 
 @suite.test
