@@ -9,6 +9,7 @@ from ...requests.helpers import cut_on_predicate
 from ... import python_executor
 from multicorn.utils import print_sql
 
+from psycopg2.extensions import STATUS_BEGIN
 class InvalidRequestException(Exception):
 
     def __init__(self, request, message=""):
@@ -73,12 +74,12 @@ class Alchemy(AbstractCorn):
         table = Table(self.tablename, self.metadata, *columns,
                 **kwargs)
         if self.create_table == True:
-            table.create()
+            table.create(checkfirst=True)
         self.__table = table
         return table
 
     def _all(self):
-        return self.table.select().execute()
+        return self.dialect._transform_result(self.table.select().execute(), List(self.type), self)
 
     def _to_pk_where_clause(self, item):
         conditions = []
@@ -89,31 +90,45 @@ class Alchemy(AbstractCorn):
     def save(self, item):
         connection = self.table.bind.connect()
         transaction = connection.begin()
-        # Try to open the item
-        where_clause = self._to_pk_where_clause(item)
-        statement = self.table.select().where(where_clause)
-        results = statement.execute()
         try:
-            iter(results).next()
-            # The item exists, it's an UPDATTE
-            rows = self.table.update().where(where_clause).values(dict(item)).execute()
-            if rows.rowcount > 1:
-                transaction.rollback()
-                raise ValueError("There is more than one item to update!")
-            transaction.commit()
-        except StopIteration:
-            # The item does not exist, it's an INSERT
-            statement = self.table.insert().values(dict(item)).execute()
-            transaction.commit()
+            # Try to open the item
+            where_clause = self._to_pk_where_clause(item)
+            statement = self.table.select().where(where_clause)
+            results = connection.execute(statement)
+            olditem = next(iter(results), None)
+            if olditem is None:
+                # The item does not exist, it's an INSERT
+                statement = connection.execute(self.table.insert().values(dict(item)))
+                transaction.commit()
+            else:
+                # The item exists, it's an UPDATTE
+                rows = connection.execute(self.table.update().where(where_clause).values(dict(item)))
+                if rows.rowcount > 1:
+                    transaction.rollback()
+                    raise ValueError("There is more than one item to update!")
+                transaction.commit()
+        except:
+            transaction.rollback()
+            raise
+        finally:
+            connection.close()
 
     def delete(self, item):
         connection = self.table.bind.connect()
         transaction = connection.begin()
-        result = self.table.delete().where(
-                self._to_pk_where_clause(item)).execute()
-        if result.rowcount > 1:
+        try:
+            result = connection.execute(self.table.delete().where(
+                    self._to_pk_where_clause(item)))
+            if result.rowcount > 1:
+                transaction.rollback()
+                raise ValueError("There is more than one item to delete!")
+            else:
+                transaction.commit()
+        except:
             transaction.rollback()
-            raise ValueError("There is more than one item to delete!")
+            raise
+        finally:
+            connection.close()
 
     def _is_same_db(self, other_type):
         return other_type.corn is None or (isinstance(other_type.corn, Alchemy)\
@@ -122,43 +137,8 @@ class Alchemy(AbstractCorn):
     def is_all_alchemy(self, request, contexts=()):
         used_types = request.used_types()
         all_requests = reduce(lambda x, y: list(x) + list(y), used_types.values(), set())
-        return all(isinstance(x, self.dialect.RequestWrapper) for x in all_requests) and\
+        return all(isinstance(x, AlchemyWrapper) for x in all_requests) and\
                 all(self._is_same_db(x) for x in used_types.keys())
-
-    def _transform_result(self, result, return_type):
-        def process_list(result):
-            for item in result:
-                yield self._transform_result(item, return_type.inner_type)
-        if isinstance(return_type, List):
-            return process_list(result)
-        elif return_type.type == dict:
-            if return_type == self.type:
-                result = dict(((key, value) for key, value in dict(result).iteritems()
-                    if key in self.properties))
-                return self.create(result)
-            elif return_type.corn:
-                return return_type.corn.create(result)
-            else:
-                newdict = {}
-                for key, type in return_type.mapping.iteritems():
-                    # Even for dicts, sql returns results "inline"
-                    if isinstance(type, Dict):
-                        subresult = {}
-                        for subkey in result.keys():
-                            subresult[subkey.replace('__%s_' % key,'').strip('__')] = result[subkey]
-                        newdict[key] = self._transform_result(subresult, type)
-                    elif isinstance(type, List):
-                        newdict[key] = self._transform_result(result, type)
-                    else:
-                        newdict[key] = result[key]
-                return newdict
-        else:
-            result = list(result)
-            if len(result) > 1:
-                raise ValueError('More than one element in .one()')
-            if len(result) == 0:
-                raise ValueError('.one() on an empty sequence')
-            return result[0]
 
     def execute(self, request, contexts=()):
         wrapped_request = self.dialect.wrap_request(request)
@@ -181,7 +161,11 @@ class Alchemy(AbstractCorn):
             sql_query = sqlexpr.select(from_obj=tables)
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
-            sql_result = sql_query.execute()
+            try:
+                connection = self.table.bind.connect()
+                sql_result = connection.execute(sql_query)
+            finally:
+                connection.close()
             if return_type.type != list:
                 sql_result = next(iter(sql_result), None)
                 if isinstance(wrapped_request, OneWrapper) and sql_result is None:
@@ -189,11 +173,10 @@ class Alchemy(AbstractCorn):
                         return python_executor.execute(wrapped_request.default,
                                 (List(return_type)))
                     raise ValueError('.one() on an empty sequence')
-            print_sql(unicode(sql_query))
-            return self._transform_result(sql_result, return_type)
+            return self.dialect._transform_result(sql_result, return_type, self)
         else:
             return python_executor.execute(request)
 
 
 from .dialects import get_dialect
-from .wrappers import OneWrapper
+from .wrappers import OneWrapper, AlchemyWrapper

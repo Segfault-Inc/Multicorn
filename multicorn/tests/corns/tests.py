@@ -136,19 +136,14 @@ def basic_query(Corn):
     assert item['name'] == 'foo'
     assert item['lastname'] == 'baz'
 
-    item = Corn.all.filter(1 == c.id / 2).one().execute()
-    assert item['id'] == 2
-    assert item['name'] == 'baz'
-    assert item['lastname'] == 'bar'
-
     item = Corn.all.filter((c.id * c.id) == 9).one().execute()
     assert item['id'] == 3
     assert item['name'] == 'foo'
     assert item['lastname'] == 'baz'
 
-    item = Corn.all.filter(c.id ** c.id == c.id).one().execute()
-    assert item['id'] == 1
-    assert item['name'] == 'foo'
+    item = Corn.all.filter(1 == c.id / 2).one().execute()
+    assert item['id'] == 2
+    assert item['name'] == 'baz'
     assert item['lastname'] == 'bar'
 
 

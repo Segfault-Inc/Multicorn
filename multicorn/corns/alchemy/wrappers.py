@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright © 2008-2011 Kozea
+# Copyright © 2008-2011 Kozea/
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from ...requests import requests, wrappers, types
@@ -77,7 +77,7 @@ class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
         if not isinstance(self.return_type(type_context(contexts)),
                 (types.List, types.Dict)):
            # Context is a scalar, we should have only one column
-           return list(query.c)[0]
+           return list(query.c)[0].proxies[-1]
         return query
 
     def extract_tables(self):
@@ -131,7 +131,7 @@ class LowerWrapper(wrappers.LowerWrapper, AlchemyWrapper):
 
 
 @AlchemyWrapper.register_wrapper(requests.RegexRequest)
-class RegexRequest(wrappers.RegexWrapper, AlchemyWrapper):
+class RegexWrapper(wrappers.RegexWrapper, AlchemyWrapper):
 
     def extract_tables(self):
         return self.subject.extract_tables()
@@ -502,7 +502,6 @@ class MinWrapper(wrappers.AggregateWrapper, AggregateWrapper):
         self.subject.is_valid(contexts)
 
 
-
 @AlchemyWrapper.register_wrapper(requests.DistinctRequest)
 class DistinctWrapper(wrappers.AggregateWrapper, AggregateWrapper):
 
@@ -526,7 +525,7 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
                 query = query.limit(stop)
             if self.slice.start:
                 query = query.offset(self.slice.start)
-            return query.select()
+            return query.alias().select()
 
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)

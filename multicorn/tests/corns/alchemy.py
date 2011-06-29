@@ -1,13 +1,25 @@
 from attest import assert_hook
-
+import attest
+from multicorn import Multicorn
 from multicorn.corns.alchemy import Alchemy
 from multicorn.declarative import declare, Property
 from . import make_test_suite
 from multicorn.requests import CONTEXT as c
 
+from psycopg2.extensions import STATUS_BEGIN
 
 def make_corn():
     @declare(Alchemy, identity_properties=("id",))
+    class Corn(object):
+        id = Property(type=int)
+        name = Property(type=unicode)
+        lastname = Property(type=unicode)
+    return Corn
+
+def make_postgres_corn():
+    @declare(Alchemy, identity_properties=("id",),
+            url="postgresql://multicorn:multicorn@localhost/",
+            engine_opts={'strategy': 'threadlocal'})
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
@@ -18,11 +30,11 @@ def make_corn():
 def teardown(Corn):
     Corn.table.drop()
 
-#suite = make_test_suite(make_corn, teardown=teardown)
-suite = make_test_suite(make_corn, 'alchemy')
-
+suite = make_test_suite(make_corn, 'alchemy-sqlite', teardown=teardown)
+postgres_suite = make_test_suite(make_postgres_corn, 'alchemy-postgres', teardown=teardown)
 
 @suite.test
+@postgres_suite.test
 def test_optimization(Corn):
     class NotOptimizedError(Exception):
         pass
@@ -34,6 +46,16 @@ def test_optimization(Corn):
     Corn.create({'id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
     Corn.create({'id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
     Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
+    item = Corn.all.filter(1 == c.id / 2).one().execute()
+    assert item['id'] == 2
+    assert item['name'] == 'baz'
+    assert item['lastname'] == 'bar'
+
+    item = Corn.all.filter((c.id * c.id) == 9).one().execute()
+    assert item['id'] == 3
+    assert item['name'] == 'foo'
+    assert item['lastname'] == 'baz'
+
     items = list(Corn.all.execute())
     assert len(items) == 3
     items = list(Corn.all.filter(c.name == 'foo' ).execute())
@@ -109,10 +131,6 @@ def test_optimization(Corn):
     items = list(Corn.all.map(c + Corn.all.filter(c.id == c(-1).id).map({
             'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
     assert all(item['id'] == item['otherid'] for item in items)
-    items = list(Corn.all.map(c + Corn.all.filter(c.name == c(-1).name).map({
-            'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
-    assert len(items) == 5
-    assert all(item['name'] == item['othername'] for item in items)
     items = list(Corn.all.map(c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()}).execute())
     assert len(items) == 3
     assert all(hasattr(item['foreign'], 'corn') for item in items)
@@ -167,3 +185,9 @@ def test_optimization(Corn):
     items = list(Corn.all.filter(c.name.matches('f..')).execute())
     assert len(items) == 2
     assert items[0]['name'] == 'foo'
+    items = list(Corn.all.map(c + Corn.all.filter(c.name == c(-1).name).map({
+                'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
+    assert len(items) == 3
+    assert all(item['name'] == item['othername'] for item in items)
+
+

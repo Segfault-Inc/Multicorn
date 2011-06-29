@@ -8,10 +8,14 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from ..wrappers import AlchemyWrapper
+from .postgres import PostgresWrapper
+from ....requests import types
 
 
 def get_dialect(engine):
     # Todo: manage ACTUAL dialects!
+    if engine.name == 'postgresql':
+        return PostgresDialect()
     return BaseDialect()
 
 
@@ -44,3 +48,85 @@ class BaseDialect(object):
 
     def wrap_request(self, request):
         return self.RequestWrapper.from_request(request)
+
+    def _transform_result(self, result, return_type, corn):
+        def process_list(result):
+            for item in result:
+                yield self._transform_result(item, return_type.inner_type, corn)
+        if isinstance(return_type, types.List):
+            return process_list(result)
+        elif return_type.type == dict:
+            if return_type == corn.type:
+                result = dict(((key, value) for key, value in dict(result).iteritems()
+                    if key in corn.properties))
+                return corn.create(result)
+            elif return_type.corn:
+                return return_type.corn.create(result)
+            else:
+                newdict = {}
+                for key, type in return_type.mapping.iteritems():
+                    # Even for dicts, sql returns results "inline"
+                    if isinstance(type, types.Dict):
+                        subresult = {}
+                        for subkey in result.keys():
+                            subresult[subkey.replace('__%s_' % key,'').strip('__')] = result[subkey]
+                        newdict[key] = self._transform_result(subresult, type, corn)
+                    elif isinstance(type, types.List):
+                        newdict[key] = self._transform_result(result, type, corn)
+                    else:
+                        newdict[key] = result[key]
+                return newdict
+        else:
+            result = list(result)
+            if len(result) > 1:
+                raise ValueError('More than one element in .one()')
+            if len(result) == 0:
+                raise ValueError('.one() on an empty sequence')
+            return result[0]
+
+
+
+class PostgresDialect(BaseDialect):
+
+    RequestWrapper = PostgresWrapper
+
+    def _transform_result(self, result, return_type, corn):
+        def process_list(result):
+            for item in result:
+                yield self._transform_result(item, return_type.inner_type, corn)
+        if isinstance(return_type, types.List):
+            return process_list(result)
+        elif return_type.type == dict:
+            if return_type == corn.type:
+                result = dict(((key, value) for key, value in dict(result).iteritems()
+                    if key in corn.properties))
+                return corn.create(result)
+            elif return_type.corn:
+                return return_type.corn.create(result)
+            else:
+                newdict = {}
+                ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
+                for idx, (key, type) in enumerate(ordered_dict):
+                    # Even for dicts, sql returns results "inline"
+                    if isinstance(type, types.Dict):
+                        subresult = {}
+                        values = tuple(result[key].strip('(').strip(')').split(','))
+                        for idx, subkey in enumerate(type.mapping.keys()):
+                            subresult[subkey] = values[idx]
+                        newdict[key] = self._transform_result(subresult, type, corn)
+                    elif isinstance(type, types.List):
+                        newdict[key] = self._transform_result(result, type, corn)
+                    else:
+                        newdict[key] = result[key]
+                return newdict
+        else:
+            result = list(result)
+            if len(result) > 1:
+                raise ValueError('More than one element in .one()')
+            if len(result) == 0:
+                raise ValueError('.one() on an empty sequence')
+            return result[0]
+
+    def wrap_request(self, request):
+        return self.RequestWrapper.from_request(request)
+
