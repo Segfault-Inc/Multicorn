@@ -10,9 +10,10 @@ from multicorn.utils import print_js
 
 class MapReduce(object):
 
-    def __init__(self, map, reduce):
+    def __init__(self, map, reduce, finalize=None):
         self.map = map
         self.reduce = reduce
+        self.finalize = finalize
 
     def execute(self, collection, where, in_value=False, **kwargs):
         if "skip" in kwargs:
@@ -32,8 +33,14 @@ class MapReduce(object):
                 "this.", "this.value.").replace(
                 "this.value._id", "this._id")) \
                      if in_value else Code(self.reduce)
-        # print_js(mapjs)
-        # print_js(reducejs)
+
+        print_js(mapjs)
+        print_js(reducejs)
+
+        if self.finalize:
+            finalizejs = Code(self.finalize)
+            kwargs.setdefault('finalize', finalizejs)
+            print_js(finalizejs)
 
         results = collection.map_reduce(
             mapjs,
@@ -69,9 +76,7 @@ def make_mr_map(wrapper, fields):
            "  %s"
            "  emit(this._id, fields);"
            "}") % fields_str
-    reduce = ("function (k, v) {"
-              "  return v[0];"
-              "}")
+    reduce = "function () {}"
     return MapReduce(map, reduce)
 
 
@@ -144,15 +149,42 @@ def make_mr_min(wrapper, key, name, mined):
     return MapReduce(map, reduce)
 
 
+def make_mr_list_groupby(grouper, alias):
+    map = "function () {"
+    map += "  var k = %s, fields = {};" % grouper
+    map += "  for (attr in this) {"
+    map += "     if (attr != '_id') {"
+    map += "        fields[attr] = this[attr];"
+    map += "     }"
+    map += "  }"
+    map += "  emit(k, fields);"
+    map += "}"
+
+    reduce = "function (k, v) {"
+    reduce += "  return { key: k, %s: v }" % alias
+    reduce += "}"
+
+    finalize = "function (k, v) {"
+    finalize += "  if (!v.hasOwnProperty('key'))"
+    finalize += "    v = { key: k, %s:[v]};" % alias
+    finalize += "  return v;"
+    finalize += "}"
+
+    return MapReduce(map, reduce, finalize)
+
+
 def make_mr_groupby(wrapper, grouper, aggregates):
     aggregations = {}
     level1 = aggregates.values()[0]
+
     if not isinstance(level1, dict):
-        return make_mr_len(wrapper, grouper, aggregates)
-    level2 = level1.values()[0]
-    if isinstance(level2, dict):
-        raise RageQuit(wrapper, "Too much level in groupy")
+        if level1 == 'len':
+            return make_mr_len(wrapper, grouper, aggregates)
+
     for key, value in aggregates.items():
+        if not isinstance(value, dict) and 'this' in value:
+            return make_mr_list_groupby(grouper, key)
+
         for op, aggregated in value.items():
             if isinstance(aggregated, dict):
                 new_aggregate = aggregates.values()[0]
@@ -172,6 +204,7 @@ def make_mr_groupby(wrapper, grouper, aggregates):
 
     return_ = " return { key: k, "
     reduce = "function (k, v) {"
+    finalize = None
     if "sum" in aggregations:
         sum = aggregations["sum"]
         reduce += "  var sum = 0;"
@@ -196,4 +229,4 @@ def make_mr_groupby(wrapper, grouper, aggregates):
     reduce += return_
     reduce += "}"
 
-    return MapReduce(map, reduce)
+    return MapReduce(map, reduce, finalize)

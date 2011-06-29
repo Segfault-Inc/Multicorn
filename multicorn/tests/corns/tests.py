@@ -261,6 +261,13 @@ def filter(Corn):
 def test_groupby(Corn):
     """Test groupby requests"""
     make_data(Corn)
+    items = list(Corn.all.groupby(c.name).sort(c.key).execute())
+    assert len(items) == 2
+    assert items[0]['key'] == 'baz'
+    assert items[1]['key'] == 'foo'
+    assert len(items[0]['elements']) == 1
+    assert len(items[1]['elements']) == 2
+
     items = list(Corn.all.groupby(c.name, max_=c.max(c.id), min_=c.min(c.id),
         sum_=c.sum(c.id)).sort(c.key).execute())
     assert len(items) == 2
