@@ -45,6 +45,7 @@ class Mongo(AbstractCorn):
             self.multicorn._mongo_metadatas[connect_point] = connection
         self.connection = connection
         self.db = self.connection[self.database]
+        self.db.set_profiling_level(1)
         self.collection = self.db[self.collection_name]
 
     def register(self, name, type=object, **kwargs):

@@ -34,13 +34,13 @@ class MapReduce(object):
                 "this.value._id", "this._id")) \
                      if in_value else Code(self.reduce)
 
-        print_js(mapjs)
-        print_js(reducejs)
+        # print_js(mapjs)
+        # print_js(reducejs)
 
         if self.finalize:
             finalizejs = Code(self.finalize)
             kwargs.setdefault('finalize', finalizejs)
-            print_js(finalizejs)
+            # print_js(finalizejs)
 
         results = collection.map_reduce(
             mapjs,
