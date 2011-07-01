@@ -247,66 +247,82 @@ def test_laziness(tempdir):
 
 @specific_suite.test
 def test_optimizations(tempdir):
-    text = make_text_corn(tempdir)
-
-    item_values = {}
-    def create(**values):
-        values['content'] = u'%s !' % values['num']
-        item_values[values['num']] = values
-        text.create(values).save()
+    corn = Filesystem(
+        'test_corn',
+        root_dir=tempdir,
+        pattern='{cat}/{org}_{name}/{id}')
 
     listed = []
-    real_listdir = text._listdir
+    real_listdir = corn._listdir
 
     def listdir_mock(parts):
         listed.append('/'.join(parts))
         return real_listdir(parts)
 
-    text._listdir = listdir_mock
+    corn._listdir = listdir_mock
 
-    def assert_listed(request, expected_nums, expected_listed):
+    contents = {}
+    def create(**values):
+        item = corn.create(dict(values, content=bytes()))
+        content = item.filename.encode('ascii')
+        assert values['id'] not in contents # Make sure ids are unique
+        item['content'] = content
+        item.save()
+        contents[values['id']] = content
+
+    def assert_listed(request, expected_ids, expected_listed):
         del listed[:]
-        expected = sorted((item_values[num] for num in expected_nums),
-                          key=lambda values: values['num'])
-        nums = map(dict, request.sort(c.num).execute())
-        assert nums == expected
+        expected_contents = set(contents[num] for num in expected_ids)
+        results = request.map(c.content).execute()
+        assert set(results) == expected_contents
         # Workaround a bug in Attest’s assert hook with closures
         listed_ = listed
         assert set(listed_) == set(expected_listed)
 
-    create(category='lipsum', num='1', name='foo')
+    create(cat='lipsum', org='a', name='foo', id='1')
 
     # No fixed values: all directories on the path are listed.
-    assert_listed(text.all,
-        ['1'], ['', 'lipsum'])
+    assert_listed(corn.all,
+        ['1'], ['', 'lipsum', 'lipsum/a_foo'])
 
     # The category was fixed, no need to listdir() the root.
-    assert_listed(text.all.filter(category='lipsum'),
-        ['1'], ['lipsum'])
+    assert_listed(corn.all.filter(cat='lipsum'),
+        ['1'], ['lipsum', 'lipsum/a_foo'])
 
     # The num and name were fixed, no need to listdir() the lipsum dir.
-    assert_listed(text.all.filter(num='1', name='foo'),
-        ['1'], [''])
+    assert_listed(corn.all.filter(org='a', name='foo'),
+        ['1'], ['', 'lipsum/a_foo'])
 
     # All filename properties were fixed, no need to listdir() anything
-    assert_listed(text.all.filter(category='lipsum', num='1', name='foo'),
+    assert_listed(corn.all.filter(cat='lipsum', org='a', name='foo', id='1'),
         ['1'], [])
 
-    create(category='lorem ipsum', num='2', name='foo')
-    create(category='lorem ipsum', num='3', name='foo')
-    create(category='lipsum dolor', num='4', name='foo')
+    create(cat='lorem ipsum', org='b', name='foo', id='2')
+    create(cat='lorem ipsum', org='c', name='bar', id='3')
+    create(cat='lipsum dolor', org='d', name='bar', id='4')
 
-    assert_listed(text.all,
-        ['1', '2', '3', '4'], ['', 'lipsum', 'lorem ipsum', 'lipsum dolor'])
+    assert_listed(corn.all, ['1', '2', '3', '4'],
+        ['', 'lipsum', 'lorem ipsum', 'lipsum dolor', 'lipsum/a_foo',
+         'lorem ipsum/b_foo', 'lorem ipsum/c_bar', 'lipsum dolor/d_bar'])
 
-    assert_listed(text.all.filter(c.category == 'lipsum'),
-        ['1'], ['lipsum'])
+    assert_listed(corn.all.filter(c.cat == 'lipsum'),
+        ['1'], ['lipsum', 'lipsum/a_foo'])
 
-    assert_listed(text.all.filter(c.category[:6] == 'lipsum'),
-        ['1', '4'], ['', 'lipsum', 'lipsum dolor'])
+    assert_listed(corn.all.filter(c.cat[:6] == 'lipsum'),
+        ['1', '4'], ['', 'lipsum', 'lipsum dolor', 'lipsum/a_foo',
+                     'lipsum dolor/d_bar'])
 
-    assert_listed(text.all.filter(c.category[:2] != 'li', category='lipsum'),
+    assert_listed(corn.all.filter(c.cat[:2] != 'li', cat='lipsum'),
         [], [])
 
-    assert_listed(text.all.filter(c.category[:2] == 'lo'),
-        ['2', '3'], ['', 'lorem ipsum'])
+    # Does not list the root and directry tries to list 'nonexistent'
+    assert_listed(corn.all.filter(cat='nonexistent'),
+        [], ['nonexistent'])
+
+    # The (un-splitable) "or" predicate rules out 'lorem ipsum/b_foo'.
+    assert_listed(
+        corn.all.filter(((c.cat[:2] == 'li') | (c.org == 'c')) &
+                        (c.id >= '3')),
+        ['3', '4'],
+        ['', 'lipsum', 'lipsum dolor', 'lorem ipsum', 'lipsum dolor/d_bar',
+         'lorem ipsum/c_bar', 'lipsum/a_foo'])

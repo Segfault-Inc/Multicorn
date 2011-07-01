@@ -34,6 +34,9 @@ class Alchemy(AbstractCorn):
         super(Alchemy, self).__init__(name, identity_properties)
         self.__table = None
         self.url = url
+        self.__open_statement = None
+        self.__insert_statement = None
+        self.__update_statement = None
         self.tablename = tablename or name
         self.schema = schema
         self.engine_opts = engine_opts or {}
@@ -87,26 +90,61 @@ class Alchemy(AbstractCorn):
              conditions.append(self.table.columns[key] == item[key])
         return sqlexpr.and_(*conditions)
 
-    def save(self, item):
+    @property
+    def open_statement(self):
+        if not self.__open_statement:
+            conditions = []
+            for key in self.identity_properties:
+                 # Prefix with "b_" like adviced from sqlalchemy because
+                 # of reserved names
+                 conditions.append(self.table.columns[key] == sqlexpr.bindparam("b_%s" % key))
+            statement = self.table.select().where(sqlexpr.and_(*conditions))
+            self.__open_statement = statement.compile()
+        return self.__open_statement
+
+    @property
+    def insert_statement(self):
+        if not self.__insert_statement:
+            self.__insert_statement = self.table.insert().compile()
+        return self.__insert_statement
+
+    @property
+    def update_statement(self):
+        if not self.__update_statement:
+            conditions = []
+            for key in self.identity_properties:
+                 # Prefix with "b_" like adviced from sqlalchemy because
+                 # of reserved names
+                 conditions.append(self.table.columns[key] == sqlexpr.bindparam("b_%s" % key))
+            statement = self.table.update().where(sqlexpr.and_(*conditions))
+            self.__update_statement = statement.compile()
+        return self.__update_statement
+
+
+
+    def save(self, *args):
         connection = self.table.bind.connect()
         transaction = connection.begin()
         try:
             # Try to open the item
-            where_clause = self._to_pk_where_clause(item)
-            statement = self.table.select().where(where_clause)
-            results = connection.execute(statement)
-            olditem = next(iter(results), None)
-            if olditem is None:
-                # The item does not exist, it's an INSERT
-                statement = connection.execute(self.table.insert().values(dict(item)))
-                transaction.commit()
-            else:
-                # The item exists, it's an UPDATTE
-                rows = connection.execute(self.table.update().where(where_clause).values(dict(item)))
-                if rows.rowcount > 1:
-                    transaction.rollback()
-                    raise ValueError("There is more than one item to update!")
-                transaction.commit()
+            inserts = []
+            updates = []
+            for item in args:
+                id = dict(("b_%s" % key, item[key])
+                       for key in self.identity_properties)
+                results = self.open_statement.execute(id)
+                olditem = next(iter(results), None)
+                if olditem is None:
+                    inserts.append(dict(item))
+                else:
+                    values = dict(item)
+                    values.update(id)
+                    updates.append(values)
+            if inserts:
+                connection.execute(self.insert_statement, inserts)
+            if updates:
+                connection.execute(self.update_statement, updates)
+            transaction.commit()
         except:
             transaction.rollback()
             raise
@@ -173,6 +211,8 @@ class Alchemy(AbstractCorn):
                         return python_executor.execute(wrapped_request.default,
                                 (List(return_type)))
                     raise ValueError('.one() on an empty sequence')
+            else:
+                sql_result = sql_result.fetchall()
             return self.dialect._transform_result(sql_result, return_type, self)
         else:
             return python_executor.execute(request)

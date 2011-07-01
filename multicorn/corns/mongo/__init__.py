@@ -45,6 +45,7 @@ class Mongo(AbstractCorn):
             self.multicorn._mongo_metadatas[connect_point] = connection
         self.connection = connection
         self.db = self.connection[self.database]
+        self.db.set_profiling_level(1)
         self.collection = self.db[self.collection_name]
 
     def register(self, name, type=object, **kwargs):
@@ -60,11 +61,12 @@ class Mongo(AbstractCorn):
         self.collection.remove(
             dict((key, value) for key, value in item.items()))
 
-    def save(self, item):
-        self.collection.save(dict(
-            (key, value) for key, value in item.items()
-            if not (key == "_id" and value is None)))
-        item.saved = True
+    def save(self, *args):
+        for item in args:
+            self.collection.save(dict(
+                (key, value) for key, value in item.items()
+                if not (key == "_id" and value is None)))
+            item.saved = True
 
     def is_all_mongo(self, request):
         used_types = request.used_types()

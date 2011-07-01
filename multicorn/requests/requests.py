@@ -261,6 +261,8 @@ class Request(object):
         return SortRequest(self, decorated_sort_keys)
 
     def groupby(self, key, **aggregates):
+        if not aggregates:
+            aggregates = {'elements': ContextRequest()}
         return GroupbyRequest(self, as_request(key), as_request(aggregates))
 
     def sum(self, subject=None):

@@ -5,6 +5,7 @@
 
 import re
 import io
+import errno
 import string
 import os.path
 import itertools
@@ -253,9 +254,9 @@ class Filesystem(AbstractCorn):
             path_parts.pop()  # Go to the parent directory
 
     def execute(self, request):
-        return self.transform_request(request).execute()
+        return self._transform_request(request).execute()
 
-    def transform_request(self, request):
+    def _transform_request(self, request):
         chain = requests.as_chain(request)
         assert isinstance(chain[0], requests.StoredItemsRequest)
         storeditems_req = chain[0]
@@ -311,13 +312,15 @@ class Filesystem(AbstractCorn):
         """
         contexts = (self.type,)
         parts_infos = []
+        types = []
         remaining_predicate = self.RequestWrapper.from_request(predicate)
         for pattern_part, part_properties in zip(
                 self.pattern.split('/'), self._path_parts_properties):
-            part_types = [self.properties[name] for name in part_properties]
+            # Include properties for all parts so far
+            types += [self.properties[name] for name in part_properties]
             # Isolate the predicate only about this part’s properties.
             part_predicate, remaining_predicate = helpers.inner_split(
-                remaining_predicate, part_types, contexts)
+                remaining_predicate, types, contexts)
             values, non_fixed_part_predicate = helpers.isolate_values(
                 part_predicate.wrapped_request, contexts)
 
@@ -345,11 +348,14 @@ class Filesystem(AbstractCorn):
         for name, values in self._find_matching_names(
                 previous_path_parts, previous_values, parts_infos):
             path_parts = previous_path_parts + [name]
-            filename = self._join(path_parts)
 
-            if is_leaf and os.path.isfile(filename):
-                yield self._create_item(filename, values)
-            elif (not is_leaf) and os.path.isdir(filename):
+            if is_leaf:
+                filename = self._join(path_parts)
+                if os.path.isfile(filename):
+                    yield self._create_item(filename, values)
+            # Do not check if filename is a directory or even exists,
+            # let listdir() raise later.
+            else:
                 for item in self._walk(path_parts, values, parts_infos):
                     yield item
 
@@ -364,7 +370,17 @@ class Filesystem(AbstractCorn):
             if predicate.execute((values,)):
                 yield fixed_name, values
         else:
-            for name in self._listdir(previous_path_parts):
+            try:
+                names = self._listdir(previous_path_parts)
+            except OSError, exc:
+                if exc.errno in [errno.ENOENT, errno.ENOTDIR]:
+                    # Does not exist or is not a directory, just return
+                    # without yielding any name.
+                    return
+                else:
+                    # Re-raise other errors
+                    raise
+            for name in names:
                 new_values = self._match_part(depth, name)
                 if new_values is not None:
                     # name matches the pattern

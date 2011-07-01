@@ -24,10 +24,11 @@ class Memory(AbstractCorn):
     def _key(self, item):
         return tuple(item[name] for name in self.identity_properties)
 
-    def save(self, item):
-        key = self._key(item)
-        self._storage[key] = dict(item)
-        item.saved = True
+    def save(self, *args):
+        for item in args:
+            key = self._key(item)
+            self._storage[key] = dict(item)
+            item.saved = True
 
     def delete(self, item):
         key = self._key(item)

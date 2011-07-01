@@ -72,7 +72,7 @@ class AbstractCorn(object):
 
     # Minimal API for concrete access points
 
-    def save(self, item):
+    def save(self, *args):
         """Save an item"""
         raise NotImplementedError
 
