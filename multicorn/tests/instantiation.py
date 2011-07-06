@@ -10,7 +10,7 @@ from multicorn.corns.memory import Memory
 from multicorn.requests.types import Type
 from multicorn import Multicorn
 from multicorn.requests import CONTEXT as c
-from multicorn.declarative import declare, Property, computed
+from multicorn.declarative import declare, Property, computed, Relation
 from multicorn.corns.extensers.computed import ComputedExtenser
 
 suite = Tests()
@@ -68,3 +68,26 @@ def test_wrapper_declaration():
     item2.save()
     item2 = Corn.all.filter(c.id == 2).one().execute()
     assert item2['foreign'] == item1
+
+@suite.test
+def test_relation_declaration():
+    mc = Multicorn()
+    @mc.register
+    @declare(Memory, identity_properties=("id",))
+    class Corn(object):
+        id = Property(type=int)
+        name = Property(type=unicode)
+        foreign = Relation("Corn")
+    assert isinstance(Corn, ComputedExtenser)
+    assert "name" in Corn.properties
+    assert "id" in Corn.properties
+    assert "foreign" in Corn.properties
+    assert hasattr(Corn.properties['foreign'], 'expression')
+    assert Corn.identity_properties == ("id",)
+
+    item1 = Corn.create({'id': 1, 'name': 'foo'})
+    item1.save()
+    item2 = Corn.create({'id': 2, 'name': 'bar', 'foreign': item1})
+    item2.save()
+    item2 = Corn.all.filter(c.id == 2).one().execute()
+    #assert item2['foreign'] == item1

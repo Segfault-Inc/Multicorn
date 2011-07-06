@@ -9,7 +9,7 @@ from ..requests import CONTEXT as c
 from ..requests import requests
 
 
-class Property():
+class Property(object):
     _wrapper = None
 
     def __init__(self, property=None, **kwargs):
@@ -60,6 +60,7 @@ class Relation(ComputedProperty):
                 self_property = Property(name=remote_ap)
             else:
                 self_property = Property(name=remote_ap.name, type=remote_ap.identity_properties(1))
+        name = self_property.kwargs['name']
         def foreign(self):
             if isinstance(remote_ap, basestring):
                 real_ap = self.multicorn.corns[remote_ap]
@@ -70,5 +71,18 @@ class Relation(ComputedProperty):
                         "than one identity properties")
             remote_attr = requests.AttributeRequest(subject=c,
                 attr_name=real_ap.identity_properties[0])
-            self_attr = requests.AttributeRequest(subject=c(-1), attr_name=self_property)
-            return remote_ap.all.filter(remote_attr == self_attr)
+            self_attr = requests.AttributeRequest(subject=c(-1), attr_name=name)
+            return real_ap.all.filter(remote_attr == self_attr).one(None)
+
+        def reverse(self):
+            if isinstance(remote_ap, basestring):
+                real_ap = self.multicorn.corns[remote_ap]
+            else:
+                real_ap = remote_ap
+            if len(real_ap.identity_properties) != 1:
+                raise KeyError("Unable to build relationship: real_ap has more"
+                        "than one identity properties")
+            remote_attr = requests.AttributeRequest(subject=c,
+                attr_name=real_ap.identity_properties[0])
+            return {name: remote_attr}
+        super(Relation, self).__init__(self_property, expression=foreign)
