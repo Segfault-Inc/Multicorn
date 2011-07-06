@@ -162,6 +162,11 @@ def test_optimization(Corn):
     assert item == 3
     item = Corn.all.min(c.id).execute()
     assert item == 1
+    default = object()
+    item = Corn.all.filter(c.id == 1000).one(default).execute()
+    assert item == default
+    items = list(Corn.all.filter(c.name.upper() == 'FOO').execute())
+    assert len(items) == 2
     items = list(Corn.all.groupby(c.name, group=c.sum(c.id)).sort(c.group).execute())
     assert len(items) == 2
     assert items[0]['key'] == 'baz' and items[0]['group'] == 2

@@ -220,8 +220,8 @@ class Alchemy(AbstractCorn):
                 sql_result = next(iter(sql_result), None)
                 if isinstance(wrapped_request, OneWrapper) and sql_result is None:
                     if wrapped_request.default:
-                        return python_executor.execute(wrapped_request.default,
-                                (List(return_type)))
+                        value = python_executor.execute(wrapped_request.default.wrapped_request)
+                        return value
                     raise ValueError('.one() on an empty sequence')
             else:
                 sql_result = sql_result.fetchall()

@@ -208,6 +208,19 @@ class BinaryOperationWrapper(AlchemyWrapper):
         self.subject.is_valid(contexts)
         self.other.is_valid(contexts)
 
+    def left_column(self, query, contexts):
+        subject = self.subject.to_alchemy(query, contexts)
+        if isinstance(subject, sqlexpr.Selectable):
+            return list(subject.c)[0].proxies[-1]
+        return subject
+
+    def right_column(self, query, contexts):
+        other = self.other.to_alchemy(query, contexts)
+        if isinstance(other, sqlexpr.Selectable):
+            return list(other.c)[0].proxies[-1]
+        return other
+
+
 
 @AlchemyWrapper.register_wrapper(requests.AndRequest)
 class AndWrapper(wrappers.AndWrapper, BinaryOperationWrapper):
@@ -229,44 +242,44 @@ class OrWrapper(wrappers.OrWrapper, BinaryOperationWrapper):
 class EqWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        return self.subject.to_alchemy(query, contexts) ==\
-                self.other.to_alchemy(query, contexts)
+        return self.left_column(query, contexts) ==\
+                self.right_column(query, contexts)
 
 
 @AlchemyWrapper.register_wrapper(requests.NeRequest)
 class NeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        return self.subject.to_alchemy(query, contexts) !=\
-                self.other.to_alchemy(query, contexts)
+        return self.left_column(query, contexts) !=\
+                self.right_column(query, contexts)
 
 @AlchemyWrapper.register_wrapper(requests.LtRequest)
 class LtWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        return self.subject.to_alchemy(query, contexts) <\
-                self.other.to_alchemy(query, contexts)
+        return self.left_column(query, contexts) <\
+                self.right_column(query, contexts)
 
 @AlchemyWrapper.register_wrapper(requests.GtRequest)
 class GtWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        return self.subject.to_alchemy(query, contexts) >\
-                self.other.to_alchemy(query, contexts)
+        return self.left_column(query, contexts) >\
+                self.right_column(query, contexts)
 
 @AlchemyWrapper.register_wrapper(requests.LeRequest)
 class LeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        return self.subject.to_alchemy(query, contexts) <=\
-                self.other.to_alchemy(query, contexts)
+        return self.left_column(query, contexts) <=\
+                self.right_column(query, contexts)
 
 @AlchemyWrapper.register_wrapper(requests.GeRequest)
 class GeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        return self.subject.to_alchemy(query, contexts) >=\
-                self.other.to_alchemy(query, contexts)
+        return self.left_column(query, contexts) >=\
+                self.right_column(query, contexts)
 
 @AlchemyWrapper.register_wrapper(requests.AddRequest)
 class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
