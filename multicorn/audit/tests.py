@@ -98,3 +98,29 @@ def robustness(Corn):
         return list(Corn.all.map(c + {'square': c.id * c.id}).execute())
 
     map_square()
+
+    @timed(Corn)
+    def map_agg_max():
+        return Corn.all.max(c.id).execute()
+
+    assert map_agg_max() == size - 1
+
+    @timed(Corn)
+    def map_agg_min():
+        return Corn.all.min(c.id).execute()
+
+    assert map_agg_min() == 0
+
+    @timed(Corn)
+    def map_agg_sum():
+        return Corn.all.sum(c.id).execute()
+
+    assert map_agg_sum() == sum(xrange(size))
+
+    @timed(Corn)
+    def map_groupby():
+        return list(Corn.all.groupby(
+            c.name[:3], max_=c.max(c.id), min_=c.min(c.id),
+            sum_=c.sum(c.id)).sort(c.key).execute())
+
+    assert len(map_groupby()) == 10

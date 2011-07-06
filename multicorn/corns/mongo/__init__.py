@@ -47,6 +47,8 @@ class Mongo(AbstractCorn):
         self.db = self.connection[self.database]
         self.db.set_profiling_level(1)
         self.collection = self.db[self.collection_name]
+        for prop in self.identity_properties:
+            self.collection.ensure_index(prop)
 
     def register(self, name, type=object, **kwargs):
         self.properties[name] = Type(
@@ -76,8 +78,6 @@ class Mongo(AbstractCorn):
         for rq in all_requests:
             if not isinstance(rq, MongoWrapper):
                 print(colorize("red", "%r not supported in mongo" % rq))
-                import pdb; pdb.set_trace()
-
                 all_in = False
         return all_in
 
