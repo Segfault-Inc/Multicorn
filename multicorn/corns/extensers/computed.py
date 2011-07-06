@@ -11,9 +11,10 @@ from ...python_executor import execute
 
 class ComputedType(Type):
 
-    def __init__(self, type, name=None, corn=None, expression=None):
+    def __init__(self, type, name=None, corn=None, expression=None, reverse=None):
         super(ComputedType, self).__init__(type, name=name, corn=corn)
         self.expression = expression
+        self.reverse = reverse
 
     def __getattr__(self, key):
         return getattr(self.type, key)
@@ -33,12 +34,13 @@ class ComputedExtenser(AbstractCornExtenser):
         super(ComputedExtenser, self).__init__(name, wrapped_corn)
         self.computed_properties = {}
 
-    def register(self, name, expression):
+    def register(self, name, expression, reverse=None):
         wrapped_expr = RequestWrapper.from_request(expression)
         type = wrapped_expr.return_type((self.wrapped_corn.type,))
-        self.computed_properties[name] = ComputedType(type, name, self, expression)
+        if reverse is None:
+            reverse = {}
+        self.computed_properties[name] = ComputedType(type, name, self, expression, reverse)
         self.properties[name] = ComputedType(type, name, self, expression)
-
 
     def _all(self):
         for item in self.wrapped_corn._all():
@@ -54,7 +56,7 @@ class ComputedExtenser(AbstractCornExtenser):
         # We cannot do this on the all method itself!
         if len(chain) > 1:
             dict_expr = dict((key, p.expression) for key, p in
-                self.computed_properties.iteritems())
+                self.computed_properties.iteritems() if p in types)
             replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
         for type, request_parts in types.iteritems():
             if type.corn is self:
@@ -81,6 +83,8 @@ class ComputedExtenser(AbstractCornExtenser):
         if isinstance(return_type, List):
             return process_list(result, return_type)
         elif return_type == self.type:
+            if result is None:
+                return result
             return self._transform_item(result)
         elif isinstance(return_type, Dict):
             newdict = {}
@@ -90,6 +94,22 @@ class ComputedExtenser(AbstractCornExtenser):
         else:
             return result
 
+    def _transform_items(self, items):
+        for item in items:
+            wrapped_item = dict((key, value) for key, value in item.iteritems()
+                    if key not in self.computed_properties)
+            for name, property in self.computed_properties.iteritems():
+                for key, expr in property.reverse.iteritems():
+                    if not isinstance(expr, requests.Request) and hasattr(expr, '__call__'):
+                        value = expr(item)
+                    else:
+                        expr = inject_context(expr, (item,))
+                        value = execute(expr, (item,))
+                    wrapped_item[key] = value
+            yield wrapped_item
+
+    def save(self, *args):
+        self.wrapped_corn.save(*self._transform_items(args))
 
     def _transform_item(self, item):
         base_dict = dict(item)

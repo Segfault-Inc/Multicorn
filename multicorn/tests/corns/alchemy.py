@@ -148,7 +148,6 @@ def test_optimization(Corn):
     assert length == 3
     items = list(Corn.all.groupby(c.name, group=c.len()).sort(c.group).execute())
     assert len(items) == 2
-    print items
     assert items[0]['group'] == 1
     assert items[1]['group'] == 2
     item = Corn.all.map(c.id).sum().execute()

@@ -24,8 +24,10 @@ class Type(object):
         return hash((self.corn, self.name, self.type))
 
     def common_type(self, other):
-        if self == other:
+        if self == other or other.type is type(None):
             return self
+        if self.type is type(None):
+            return other
         if self.type == other.type:
             return Type(type=self.type)
         return Type(type=object)

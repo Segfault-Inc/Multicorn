@@ -34,6 +34,10 @@ class BaseItem(MutableMapping):
             for key in missing_keys:
                 self._values[key] = None
 
+    def __eq__(self, other):
+        return all(self[key] == other[key]
+                for key in self.corn.identity_properties)
+
     def __repr__(self):
         return '<%s %s>' % (type(self).__name__, ', '.join(
             '%s=%r' % (key, self[key])

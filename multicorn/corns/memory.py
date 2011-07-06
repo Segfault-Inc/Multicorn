@@ -28,12 +28,10 @@ class Memory(AbstractCorn):
         for item in args:
             key = self._key(item)
             self._storage[key] = dict(item)
-            item.saved = True
 
     def delete(self, item):
         key = self._key(item)
         del self._storage[key]
-        item.saved = False # XXX ?
 
     def _all(self):
         for values in self._storage.itervalues():

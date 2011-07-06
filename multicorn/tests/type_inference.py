@@ -97,7 +97,7 @@ def test_nimp():
         'index': Corn.all[10],
         'slice': Corn.all[10:20],
         'one': Corn.all.one(),
-        'onedefault': Corn.all.one(None),
+        'onedefault': Corn.all.one(1),
         'onedefaulthomogeneous': Corn.all.one(Corn.all.one()),
         'sort': Corn.all.sort(c.name, ~c.lastname),
         'groupby': Corn.all.groupby(c.name, group=c),

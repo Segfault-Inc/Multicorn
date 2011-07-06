@@ -24,7 +24,6 @@ except ImportError:
 else:
     from sqlalchemy import create_engine, Table, Column, MetaData
     from sqlalchemy import sql as sqlexpr
-    from sqlalchemy import Sequence
 
 DB_SEQ = object()
 DEFAULT_VALUE = object()

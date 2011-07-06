@@ -13,3 +13,7 @@ class AbstractCornExtenser(AbstractCorn):
         self.wrapped_corn = wrapped_corn
         self.identity_properties = list(self.wrapped_corn.identity_properties)
         self.properties = dict(self.wrapped_corn.properties)
+
+    def bind(self, multicorn):
+        super(AbstractCornExtenser, self).bind(multicorn)
+        self.wrapped_corn.bind(multicorn)
