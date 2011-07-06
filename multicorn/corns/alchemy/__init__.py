@@ -9,7 +9,6 @@ from ...requests.helpers import cut_on_predicate
 from ... import python_executor
 from multicorn.utils import print_sql
 
-from psycopg2.extensions import STATUS_BEGIN
 class InvalidRequestException(Exception):
 
     def __init__(self, request, message=""):
