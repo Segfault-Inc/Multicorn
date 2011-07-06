@@ -9,7 +9,9 @@ import attest
 from multicorn.corns.memory import Memory
 from multicorn.requests.types import Type
 from multicorn import Multicorn
-from multicorn.declarative import declare, Property
+from multicorn.requests import CONTEXT as c
+from multicorn.declarative import declare, Property, computed
+from multicorn.corns.extensers.computed import ComputedExtenser
 
 suite = Tests()
 
@@ -38,3 +40,31 @@ def test_declarative():
     assert name.type == object
     assert name.corn == Corn
     assert name.name == "name"
+
+@suite.test
+def test_wrapper_declaration():
+    @declare(Memory, identity_properties=("id",))
+    class Corn(object):
+        id = Property(type=int)
+        name = Property(type=unicode)
+        @computed(on=Property(type=int, name='foreign_id'))
+        def foreign(self):
+            return self.all.filter(c.id == c(-1).foreign_id).one()
+
+        @foreign.reverse
+        def foreign(self):
+            return {'foreign_id': lambda item: item['foreign']['id'] if item['foreign'] else None}
+
+    assert isinstance(Corn, ComputedExtenser)
+    assert "name" in Corn.properties
+    assert "id" in Corn.properties
+    assert "foreign" in Corn.properties
+    assert hasattr(Corn.properties['foreign'], 'expression')
+    assert Corn.identity_properties == ("id",)
+
+    item1 = Corn.create({'id': 1, 'name': 'foo'})
+    item1.save()
+    item2 = Corn.create({'id': 2, 'name': 'bar', 'foreign': item1})
+    item2.save()
+    item2 = Corn.all.filter(c.id == 2).one().execute()
+    assert item2['foreign'] == item1

@@ -28,9 +28,11 @@ def declare(clazz, **kwargs):
             if isinstance(prop, Property):
                 props[name] = prop
                 append_wrapper(prop)
-                corn.register(name, **(find_prop(prop, None).kwargs))
-        for wrapper in sorted(wrappers.items(), key=lambda x: x[1]):
-            corn = wrapper(corn)
+                prop = find_prop(prop, None)
+                name = prop.kwargs.pop('name', name)
+                corn.register(name, **prop.kwargs)
+        for wrapper, idx in sorted(wrappers.items(), key=lambda x: x[1]):
+            corn = wrapper(corn.name, corn)
             for name, prop in props.items():
                 wrapped_prop = find_prop(prop, wrapper)
                 if wrapped_prop:

@@ -11,7 +11,7 @@ class AbstractCornExtenser(AbstractCorn):
         self.name = name
         self.multicorn = None
         self.wrapped_corn = wrapped_corn
-        self.identity_properties = list(self.wrapped_corn.identity_properties)
+        self.identity_properties = tuple(self.wrapped_corn.identity_properties)
         self.properties = dict(self.wrapped_corn.properties)
 
     def bind(self, multicorn):

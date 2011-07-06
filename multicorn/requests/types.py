@@ -4,7 +4,7 @@
 
 class Type(object):
 
-    def __init__(self,type=object, corn=None, name=None,):
+    def __init__(self, type=object, corn=None, name=None,):
         self.corn = corn
         self.name = name
         self.type = type

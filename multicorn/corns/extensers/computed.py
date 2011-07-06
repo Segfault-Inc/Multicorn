@@ -72,6 +72,8 @@ class ComputedExtenser(AbstractCornExtenser):
     def _make_lazy(self, computed):
         def lazy_loader(item):
             expr = computed.expression
+            if not isinstance(expr, requests.Request) and hasattr(expr, '__call__'):
+                expr = expr(self)
             expr = inject_context(expr, (item,))
             return execute(expr, (item,))
         return lazy_loader
@@ -109,12 +111,12 @@ class ComputedExtenser(AbstractCornExtenser):
             yield wrapped_item
 
     def save(self, *args):
-        self.wrapped_corn.save(*self._transform_items(args))
+        self.wrapped_corn.save(*list(self._transform_items(args)))
 
     def _transform_item(self, item):
         base_dict = dict(item)
         base_lazy = {}
         for type in self.computed_properties.values():
-            if type.name not in base_dict:
-                base_lazy[type.name] = self._make_lazy(type)
+            base_dict.pop(type.name, None)
+            base_lazy[type.name] = self._make_lazy(type)
         return self.create(base_dict, base_lazy)

@@ -262,18 +262,18 @@ def test_groupby(Corn):
     assert items[1]['key'] == 'foo'
     elems = list(items[0]['elements'])
     assert len(elems) == 1
-    assert elems[0] == {
+    assert dict(elems[0]) == {
         'id': 2, 'name': u'baz', 'lastname': u'bar'}
     elems = list(items[1]['elements'])
     assert len(elems) == 2
     assert {
         'id': 1,
         'name': u'foo',
-        'lastname': u'bar'} in elems
+        'lastname': u'bar'} in (dict(elem) for elem in elems)
     assert {
         'id': 3,
         'name': u'foo',
-        'lastname': u'baz'} in elems
+        'lastname': u'baz'} in (dict(elem) for elem in elems)
 
     items = list(Corn.all.groupby(c.name, max_=c.max(c.id), min_=c.min(c.id),
         sum_=c.sum(c.id)).sort(c.key).execute())

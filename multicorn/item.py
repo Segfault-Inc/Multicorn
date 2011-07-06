@@ -35,6 +35,8 @@ class BaseItem(MutableMapping):
                 self._values[key] = None
 
     def __eq__(self, other):
+        if not isinstance(other, BaseItem):
+            return False
         return all(self[key] == other[key]
                 for key in self.corn.identity_properties)
 
