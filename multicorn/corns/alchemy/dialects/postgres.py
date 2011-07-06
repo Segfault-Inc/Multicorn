@@ -5,12 +5,12 @@ from ....requests import requests, types, CONTEXT as c, helpers
 from sqlalchemy import sql as sqlexpr
 try:
     import psycopg2
+    converter = psycopg2.extensions.string_types[1015]
 except:
     print "Warning: postgresql driver not found"
 
 
 #Base (dummy) array converter
-converter = psycopg2.extensions.string_types[1015]
 
 def convert_tuple(datum, cursor):
     datum = datum.strip('(')
