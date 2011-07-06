@@ -30,6 +30,7 @@ except ImportError:
     import sys
     print >>sys.stderr, "WARNING: The Mongo DB AP is not tested."
     suite = Tests()
+    suite.test = lambda x: None
 else:
     suite = make_test_suite(make_corn, 'mongo', teardown)
 
@@ -280,3 +281,4 @@ def test_opt_regex(Corn):
     assert len(items) == 3
     items = list(Corn.all.filter(c.lastname.matches("\d+")).execute())
     assert len(items) == 0
+

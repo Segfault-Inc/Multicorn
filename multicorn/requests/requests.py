@@ -418,6 +418,18 @@ class DictRequest(Request):
             if isinstance(value, Request):
                 object.__getattribute__(value, '_visit')(func, scope_depth + 1)
 
+    @self_with_attrs
+    def _copy_replace(self, replacements):
+        newvalue = {}
+        for key, value in self.value.iteritems():
+            if value in replacements:
+                newvalue[key] = replacements[value]
+            else:
+                newvalue[key] = object.__getattribute__(value, '_copy_replace')\
+                    (replacements)
+        return DictRequest(newvalue)
+
+
 class ContextRequest(Request):
     arg_spec = ('scope_depth',)
 

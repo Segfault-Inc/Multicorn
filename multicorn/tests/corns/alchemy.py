@@ -131,15 +131,11 @@ def test_optimization(Corn):
     items = list(Corn.all.map(c + Corn.all.filter(c.id == c(-1).id).map({
             'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
     assert all(item['id'] == item['otherid'] for item in items)
-    items = list(Corn.all.map(c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()}).execute())
+    req = Corn.all.map(c + {'foreign': Corn.all.filter(c.id == c(-1).id).one()})
+    items = list(req.execute())
     assert len(items) == 3
     assert all(hasattr(item['foreign'], 'corn') for item in items)
     assert all(item['foreign']['id'] == item['id'] for item in items)
-    items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
-    assert len(items) == 3
-    assert all(all(subitem['name'] == item['name']
-        for subitem in item['homonymes'])
-            for item in items)
     items = list(Corn.all.sort(c.name).execute())
     assert [item['name'] for item in items] == ['baz', 'foo', 'foo']
     items = list(Corn.all.sort(-c.name).execute())
@@ -185,9 +181,8 @@ def test_optimization(Corn):
     items = list(Corn.all.filter(c.name.matches('f..')).execute())
     assert len(items) == 2
     assert items[0]['name'] == 'foo'
-    items = list(Corn.all.map(c + Corn.all.filter(c.name == c(-1).name).map({
-                'otherid': c.id, 'othername': c.name, 'otherlastname': c.lastname}).one()).execute())
+    items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
     assert len(items) == 3
-    assert all(item['name'] == item['othername'] for item in items)
-
-
+    assert all(all(subitem['name'] == item['name']
+        for subitem in item['homonymes'])
+            for item in items)

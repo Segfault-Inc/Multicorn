@@ -25,6 +25,16 @@ except ImportError:
 else:
     from sqlalchemy import create_engine, Table, Column, MetaData
     from sqlalchemy import sql as sqlexpr
+    from sqlalchemy import Sequence
+
+DB_SEQ = object()
+DEFAULT_VALUE = object()
+
+class ColumnDefinition(object):
+
+    def __init__(self, type, default):
+        self.type = type
+        self.default = default
 
 
 class Alchemy(AbstractCorn):
@@ -41,6 +51,7 @@ class Alchemy(AbstractCorn):
         self.schema = schema
         self.engine_opts = engine_opts or {}
         self.create_table = True
+        self.definitions = {}
 
     def bind(self, multicorn):
         super(Alchemy, self).bind(multicorn)
@@ -54,22 +65,24 @@ class Alchemy(AbstractCorn):
             self.multicorn._alchemy_metadatas[self.url] = metadata
         self.metadata = metadata
         # TODO: manage dialect creation here
-        self.dialect = get_dialect(engine)
+        self.dialect = get_dialect(metadata.bind)
 
-    def register(self, name, type):
-        self.properties[name] = Type(corn=self, name=name, type=type)
+    def register(self, name, type, default=DEFAULT_VALUE):
+        type = Type(corn=self, name=name, type=type)
+        self.properties[name] = type
+        self.definitions[name] = ColumnDefinition(type, default=default)
 
     @property
     def table(self):
         if self.__table is not None:
             return self.__table
         columns = []
-        for prop in self.properties.values():
+        for name, prop in sorted(self.definitions.iteritems()):
             kwargs = {}
-            if prop.name in self.identity_properties:
+            if name in self.identity_properties:
                 kwargs["primary_key"] = True
-            type = self.dialect.alchemy_type(prop)
-            column = Column(prop.name, type, **kwargs)
+            type = self.dialect.alchemy_type(prop.type)
+            column = Column(name, type, **kwargs)
             columns.append(column)
         kwargs = dict(useexisting=True)
         if self.schema:
@@ -199,6 +212,7 @@ class Alchemy(AbstractCorn):
             sql_query = sqlexpr.select(from_obj=tables)
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
+            print_sql(unicode(sql_query))
             try:
                 connection = self.table.bind.connect()
                 sql_result = connection.execute(sql_query)

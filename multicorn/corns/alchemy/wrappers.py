@@ -2,7 +2,7 @@
 # Copyright © 2008-2011 Kozea/
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-from ...requests import requests, wrappers, types
+from ...requests import requests, wrappers, types, CONTEXT as c
 from . import Alchemy, InvalidRequestException
 
 from sqlalchemy import sql as sqlexpr, Unicode
@@ -56,7 +56,7 @@ class FilterWrapper(wrappers.FilterWrapper, AlchemyWrapper):
 class StoredItemsWrapper(wrappers.StoredItemsWrapper, AlchemyWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        for c in self.aliased_table.c:
+        for c in sorted(self.aliased_table.c, key = lambda x: x.name):
             query = query.column(c.label(c.name))
         if contexts:
             return query.apply_labels()
@@ -279,13 +279,14 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
         other_type = self.other.return_type(type_context(contexts))
         # Dict addition is a mapping merge
         if all(isinstance(x, types.Dict) for x in (subject_type, other_type)):
-            for c in subject.c:
+            for c in sorted(subject.c, key=lambda x : x.name):
                 other = other.column(c.proxies[-1])
             return other.correlate(subject)
         elif all(isinstance(x, types.List) for x in (subject_type, other_type)):
             return subject.union(other)
         else:
             return subject + other
+
 
 @AlchemyWrapper.register_wrapper(requests.SubRequest)
 class SubWrapper(wrappers.ArithmeticOperationWrapper, BinaryOperationWrapper):
@@ -339,7 +340,7 @@ class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
 
     def to_alchemy(self, query, contexts=()):
         selects = []
-        for key, request in self.value.iteritems():
+        for key, request in sorted(self.value.iteritems()):
             return_type = request.return_type(type_context(contexts))
             req = request.to_alchemy(query, contexts)
             if return_type.type == list:
@@ -378,7 +379,8 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, AlchemyWrapper):
         type = self.subject.return_type(type_context(contexts))
         key = self.key.to_alchemy(query, contexts +
                 (Context(query, type.inner_type),))
-        group = self.aggregates.to_alchemy(query, contexts + (Context(query, type),))
+        group = self.aggregates.to_alchemy(query, contexts +
+                (Context(query, type),))
         group = group.group_by(key)
         group = group.column(key.label('key'))
         return group
@@ -436,6 +438,8 @@ class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
 
     def is_valid(self, contexts):
         self.subject.is_valid(contexts)
+        if contexts:
+            raise InvalidRequestException(self, "This request is not doable!")
 
 class AggregateWrapper(AlchemyWrapper):
 
@@ -447,7 +451,7 @@ class AggregateWrapper(AlchemyWrapper):
         self.subject.is_valid(contexts)
         type = self.subject.return_type(contexts)
         if not isinstance(type, types.List):
-            raise InvalidRequestException("Cannot perform a sum on something\
+            raise InvalidRequestException(self, "Cannot perform a sum on something\
                     which isn't a list")
 
 

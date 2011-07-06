@@ -8,11 +8,11 @@ from multicorn.requests.types import Type, Dict, List
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
 from ..abstract import AbstractCorn
-from .wrappers import MongoWrapper
 from .ragequit import RageQuit
 
 try:
     import pymongo
+    from .wrappers import MongoWrapper
 except ImportError:
     import sys
     print(colorize(

@@ -72,7 +72,7 @@ class BaseDialect(object):
                             subresult[subkey.replace('__%s_' % key,'').strip('__')] = result[subkey]
                         newdict[key] = self._transform_result(subresult, type, corn)
                     elif isinstance(type, types.List):
-                        newdict[key] = self._transform_result(result, type, corn)
+                        newdict[key] = self._transform_result(result[key], type, corn)
                     else:
                         newdict[key] = result[key]
                 return newdict
@@ -97,35 +97,28 @@ class PostgresDialect(BaseDialect):
         if isinstance(return_type, types.List):
             return process_list(result)
         elif return_type.type == dict:
-            if return_type == corn.type:
-                result = dict(((key, value) for key, value in dict(result).iteritems()
-                    if key in corn.properties))
-                return corn.create(result)
-            elif return_type.corn:
-                return return_type.corn.create(result)
+            newdict = {}
+            ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
+            for idx, (key, type) in enumerate(ordered_dict):
+                # Even for dicts, sql returns results "inline"
+                newdict[key] = self._transform_result(result[idx], type, corn)
+            if return_type.corn:
+                return return_type.corn.create(newdict)
             else:
-                newdict = {}
-                ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
-                for idx, (key, type) in enumerate(ordered_dict):
-                    # Even for dicts, sql returns results "inline"
-                    if isinstance(type, types.Dict):
-                        subresult = {}
-                        values = tuple(result[key].strip('(').strip(')').split(','))
-                        for idx, subkey in enumerate(type.mapping.keys()):
-                            subresult[subkey] = values[idx]
-                        newdict[key] = self._transform_result(subresult, type, corn)
-                    elif isinstance(type, types.List):
-                        newdict[key] = self._transform_result(result, type, corn)
-                    else:
-                        newdict[key] = result[key]
                 return newdict
         else:
-            result = list(result)
-            if len(result) > 1:
-                raise ValueError('More than one element in .one()')
-            if len(result) == 0:
-                raise ValueError('.one() on an empty sequence')
-            return result[0]
+            if hasattr(result, '__iter__'):
+                result = list(result)
+                if len(result) > 1:
+                    raise ValueError('More than one element in .one()')
+                if len(result) == 0:
+                    raise ValueError('.one() on an empty sequence')
+                return result[0]
+            else:
+                if not isinstance(result, return_type.type):
+                    return return_type.type(result)
+                else:
+                    return result
 
     def wrap_request(self, request):
         return self.RequestWrapper.from_request(request)
