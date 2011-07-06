@@ -214,17 +214,17 @@ class Alchemy(AbstractCorn):
             try:
                 connection = self.table.bind.connect()
                 sql_result = connection.execute(sql_query)
+                if return_type.type != list:
+                    sql_result = next(iter(sql_result), None)
+                    if isinstance(wrapped_request, OneWrapper) and sql_result is None:
+                        if wrapped_request.default:
+                            value = python_executor.execute(wrapped_request.default.wrapped_request)
+                            return value
+                        raise ValueError('.one() on an empty sequence')
+                else:
+                    sql_result = sql_result.fetchall()
             finally:
                 connection.close()
-            if return_type.type != list:
-                sql_result = next(iter(sql_result), None)
-                if isinstance(wrapped_request, OneWrapper) and sql_result is None:
-                    if wrapped_request.default:
-                        value = python_executor.execute(wrapped_request.default.wrapped_request)
-                        return value
-                    raise ValueError('.one() on an empty sequence')
-            else:
-                sql_result = sql_result.fetchall()
             return self.dialect._transform_result(sql_result, return_type, self)
         else:
             return python_executor.execute(request)

@@ -76,7 +76,7 @@ class Relation(ComputedProperty):
 
         def reverse(self):
             if isinstance(remote_ap, basestring):
-                real_ap = self.multicorn.corns[remote_ap]
+                real_ap = self.corn.multicorn.corns[remote_ap]
             else:
                 real_ap = remote_ap
             if len(real_ap.identity_properties) != 1:
@@ -84,5 +84,5 @@ class Relation(ComputedProperty):
                         "than one identity properties")
             remote_attr = requests.AttributeRequest(subject=c,
                 attr_name=real_ap.identity_properties[0])
-            return {name: remote_attr}
-        super(Relation, self).__init__(self_property, expression=foreign)
+            return remote_attr
+        super(Relation, self).__init__(self_property, expression=foreign, reverse={name: reverse})
