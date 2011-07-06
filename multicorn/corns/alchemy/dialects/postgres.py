@@ -3,7 +3,11 @@ from .. import InvalidRequestException
 from ....requests import requests, types, CONTEXT as c, helpers
 
 from sqlalchemy import sql as sqlexpr
-import psycopg2
+try:
+    import psycopg2
+except:
+    print "Warning: postgresql driver not found"
+
 
 #Base (dummy) array converter
 converter = psycopg2.extensions.string_types[1015]
