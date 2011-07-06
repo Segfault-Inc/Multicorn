@@ -3,19 +3,6 @@ from .. import InvalidRequestException
 from ....requests import requests, types, CONTEXT as c, helpers
 
 from sqlalchemy import sql as sqlexpr
-try:
-    import psycopg2
-    converter = psycopg2.extensions.string_types[1015]
-    TUPLE_ARRAY = psycopg2.extensions.new_type((2287,), "TUPLEARRAY", convert_tuple_array)
-    TUPLE = psycopg2.extensions.new_type((2249,), "TUPLE", convert_tuple)
-    psycopg2.extensions.register_type(TUPLE_ARRAY)
-    psycopg2.extensions.register_type(TUPLE)
-
-except:
-    print "Warning: postgresql driver not found"
-
-
-#Base (dummy) array converter
 
 def convert_tuple(datum, cursor):
     datum = datum.strip('(')
@@ -50,6 +37,22 @@ def convert_tuple_array(data, cursor):
     for datum in data:
         tuples.append(convert_tuple(datum, cursor))
     return tuples
+
+
+
+try:
+    import psycopg2
+    converter = psycopg2.extensions.string_types[1015]
+    TUPLE_ARRAY = psycopg2.extensions.new_type((2287,), "TUPLEARRAY", convert_tuple_array)
+    TUPLE = psycopg2.extensions.new_type((2249,), "TUPLE", convert_tuple)
+    psycopg2.extensions.register_type(TUPLE_ARRAY)
+    psycopg2.extensions.register_type(TUPLE)
+
+except:
+    print "Warning: postgresql driver not found"
+
+
+#Base (dummy) array converter
 
 
 class PostgresWrapper(wrappers.AlchemyWrapper):
