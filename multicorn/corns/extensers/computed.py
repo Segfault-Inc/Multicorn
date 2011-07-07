@@ -48,7 +48,7 @@ class ComputedExtenser(AbstractCornExtenser):
 
     def _all(self):
         for item in self.wrapped_corn._all():
-            yield self._transform_item(item)
+            yield self.create(item)
 
     def execute(self, request):
         # TODO: transform the request!
@@ -84,7 +84,7 @@ class ComputedExtenser(AbstractCornExtenser):
         elif return_type == self.type:
             if result is None:
                 return result
-            return self._transform_item(result)
+            return self.create(result)
         elif isinstance(return_type, Dict):
             newdict = {}
             for key, type in return_type.mapping.iteritems():
@@ -108,15 +108,35 @@ class ComputedExtenser(AbstractCornExtenser):
             yield wrapped_item
 
     def save(self, *args):
-        self.wrapped_corn.save(*list(self._transform_items(args)))
+        transformed_items = list(self._transform_items(args))
+        self.wrapped_corn.save(*transformed_items)
+        for old_item, new_item in zip(args, transformed_items):
+            for key, value in new_item.iteritems():
+                if new_item[key] != old_item[key]:
+                    old_item[key] = new_item[key]
 
-    def _transform_item(self, item):
-        base_dict = dict(item)
-        base_lazy = {}
+    def delete(self, item):
+        transformed_item = list(self._transform_items([item]))[0]
+        self.wrapped_corn.delete(transformed_item)
+
+    def create(self, props=None, lazy_props=None):
+        self_props = {}
+        if isinstance(props, BaseItem):
+           item = props
+        else:
+            for name in self.computed_properties:
+                self_props[name] = props.pop(name, None)
+            item = self.wrapped_corn.create(props, lazy_props)
+        lazy_values = dict(item._lazy_values)
+        values = dict(item._values)
+        values.update(self_props)
         for type in self.computed_properties.values():
-            base_dict.pop(type.name, None)
-            base_lazy[type.name] = self._make_lazy(type)
-        return self.create(base_dict, base_lazy)
+            if type.name not in values:
+                lazy_values[type.name] = self._make_lazy(type)
+        return super(ComputedExtenser, self).create(values, lazy_values)
+
+
+
 
 class Relation(object):
 
