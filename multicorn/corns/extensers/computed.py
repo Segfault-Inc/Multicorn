@@ -2,6 +2,7 @@ from . import AbstractCornExtenser
 
 from pprint import isrecursive, saferepr
 
+from ...item import BaseItem
 from ...requests.types import Type, List, Dict
 from ...requests.helpers import inject_context, collect
 from ...requests import requests
@@ -168,7 +169,9 @@ class RelationExtenser(ComputedExtenser):
                 foreign = foreign.one(None)
             def link_getter(item):
                 foreign = item[relation.name]
-                return foreign[relation.on] if foreign is not None else None
+                if isinstance(foreign, BaseItem):
+                    return foreign[relation.on]
+                return foreign
             reverse = {relation.uses: link_getter}
             self.relations.remove(relation)
             super(RelationExtenser, self).register(relation.name, foreign, reverse)

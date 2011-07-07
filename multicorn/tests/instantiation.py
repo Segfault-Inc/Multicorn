@@ -100,3 +100,5 @@ def test_relation_declaration():
     item2 = Corn.all.filter(c.foreign.name == 'foo').one().execute()
     assert item2['id'] == 2
     assert item2['foreign'] == item1
+    item1 = Corn.create({'id': 1, 'name': 'foo', 'foreign': 1})
+    item1.save()
