@@ -171,11 +171,11 @@ class Alchemy(AbstractCorn):
                     updates.append(values)
             if inserts:
                 values = connection.execute(self.insert_statement, inserts)
+                for key, value in zip(self._generated_keys,
+                        values.inserted_primary_key):
+                   item[key] = value
             if updates:
                 values = connection.execute(self.update_statement, updates)
-            for key, value in zip(self._generated_keys,
-                    values.inserted_primary_key):
-                item[key] = value
             transaction.commit()
         except:
             transaction.rollback()
