@@ -158,15 +158,15 @@ class Alchemy(AbstractCorn):
             inserts = []
             updates = []
             for item in args:
-                item = dict((key, None if value is DEFAULT_VALUE else value) for key, value in item.iteritems())
-                id = dict(("b_%s" % key, item[key])
-                       for key in self.identity_properties if key in item)
+                item_dict = dict((key, None if value is DEFAULT_VALUE else value) for key, value in item.iteritems())
+                id = dict(("b_%s" % key, item_dict[key])
+                       for key in self.identity_properties if key in item_dict)
                 results = self.open_statement.execute(id)
                 olditem = next(iter(results), None)
                 if olditem is None:
-                    inserts.append(dict(item))
+                    inserts.append(dict(item_dict))
                 else:
-                    values = dict(item)
+                    values = dict(item_dict)
                     values.update(id)
                     updates.append(values)
             if inserts:
