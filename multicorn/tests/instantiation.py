@@ -43,11 +43,14 @@ def test_declarative():
 
 @suite.test
 def test_wrapper_declaration():
+    mc = Multicorn()
+    @mc.register
     @declare(Memory, identity_properties=("id",))
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
-        @computed(on=Property(type=int, name='foreign_id'))
+        foreign_id = Property(type=int)
+        @computed()
         def foreign(self):
             return self.all.filter(c.id == c(-1).foreign_id).one()
 
@@ -77,7 +80,7 @@ def test_relation_declaration():
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
-        foreign = Relation("Corn")
+        foreign = Relation(to="Corn")
     assert isinstance(Corn, ComputedExtenser)
     assert "name" in Corn.properties
     assert "id" in Corn.properties
@@ -90,4 +93,4 @@ def test_relation_declaration():
     item2 = Corn.create({'id': 2, 'name': 'bar', 'foreign': item1})
     item2.save()
     item2 = Corn.all.filter(c.id == 2).one().execute()
-    #assert item2['foreign'] == item1
+    assert item2['foreign'] == item1

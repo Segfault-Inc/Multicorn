@@ -25,14 +25,13 @@ else:
     from sqlalchemy import create_engine, Table, Column, MetaData
     from sqlalchemy import sql as sqlexpr
 
-DB_SEQ = object()
 DEFAULT_VALUE = object()
 
 class ColumnDefinition(object):
 
-    def __init__(self, type, default):
+    def __init__(self, type, db_gen=False):
         self.type = type
-        self.default = default
+        self.db_gen = db_gen
 
 
 class Alchemy(AbstractCorn):
@@ -65,10 +64,22 @@ class Alchemy(AbstractCorn):
         # TODO: manage dialect creation here
         self.dialect = get_dialect(metadata.bind)
 
-    def register(self, name, type, default=DEFAULT_VALUE):
+    def create(self, props=None, lazy_props=None):
+        props = props or {}
+        for name in self._generated_keys:
+            if name not in props and name not in lazy_props:
+                props[name] == DEFAULT_VALUE
+        return super(Alchemy, self).create(props, lazy_props)
+
+    def register(self, name, type, db_gen=None):
+        if db_gen is None:
+            if name in self.identity_properties:
+                db_gen = True
+            else:
+                db_gen = False
         type = Type(corn=self, name=name, type=type)
         self.properties[name] = type
-        self.definitions[name] = ColumnDefinition(type, default=default)
+        self.definitions[name] = ColumnDefinition(type, db_gen=db_gen)
 
     @property
     def table(self):
@@ -132,6 +143,11 @@ class Alchemy(AbstractCorn):
         return self.__update_statement
 
 
+    @property
+    def _generated_keys(self):
+        for key, value in self.definitions.iteritems():
+            if value.db_gen:
+                yield key
 
     def save(self, *args):
         connection = self.table.bind.connect()
@@ -142,7 +158,8 @@ class Alchemy(AbstractCorn):
             updates = []
             for item in args:
                 id = dict(("b_%s" % key, item[key])
-                       for key in self.identity_properties)
+                       for key in self.identity_properties
+                       if item[key] is not DEFAULT_VALUE)
                 results = self.open_statement.execute(id)
                 olditem = next(iter(results), None)
                 if olditem is None:
@@ -152,9 +169,12 @@ class Alchemy(AbstractCorn):
                     values.update(id)
                     updates.append(values)
             if inserts:
-                connection.execute(self.insert_statement, inserts)
+                values = connection.execute(self.insert_statement, inserts)
             if updates:
-                connection.execute(self.update_statement, updates)
+                values = connection.execute(self.update_statement, updates)
+            for key, value in zip(self._generated_keys,
+                    values.inserted_primary_key):
+                item[key] = value
             transaction.commit()
         except:
             transaction.rollback()

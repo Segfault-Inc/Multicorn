@@ -35,6 +35,9 @@ class ComputedExtenser(AbstractCornExtenser):
         self.computed_properties = {}
 
     def register(self, name, expression, reverse=None):
+        if name in self.wrapped_corn.properties:
+            raise KeyError("A property named %s is already registered "
+                "in the underlying corn" % name)
         wrapped_expr = RequestWrapper.from_request(expression)
         type = wrapped_expr.return_type((self.wrapped_corn.type,))
         if reverse is None:
@@ -120,3 +123,70 @@ class ComputedExtenser(AbstractCornExtenser):
             base_dict.pop(type.name, None)
             base_lazy[type.name] = self._make_lazy(type)
         return self.create(base_dict, base_lazy)
+
+class Relation(object):
+
+    def __init__(self, name, to, on, uses, multiple=True):
+        self.name = name
+        self.to = to
+        self.on = on
+        self.uses = uses
+        self.multiple = multiple
+
+class RelationExtenser(ComputedExtenser):
+
+
+    def __init__(self, *args, **kwargs):
+        super(RelationExtenser, self).__init__(*args, **kwargs)
+        self.relations = []
+
+    def _bind_relations(self, multicorn):
+        for relation in list(self.relations):
+            if isinstance(relation.to, basestring):
+                if relation.to == self.name:
+                    #Auto join, the corn is not yet registered
+                    remote_corn = self
+                else:
+                    remote_corn = multicorn.corns.get(relation.to, None)
+                    if remote_corn is None:
+                        # If the remote_corn has not been yet registered, skip
+                        # this
+                        continue
+            else:
+                remote_corn = relation.to
+            if relation.on is None:
+                if len(remote_corn.identity_properties) != 1:
+                    raise KeyError("Unable relation.to build relationship: remote_corn has more"
+                            "than relation.one identity properties")
+                relation.on = remote_corn.identity_properties[0]
+                # Nothing is given, so the relation is NOT multiple
+                relation.multiple = False
+            remote_attr = requests.AttributeRequest(subject=c,
+                attr_name=relation.on)
+            if relation.uses is None:
+                relation.uses = "%s_%s" % (remote_corn.name, relation.on)
+            if relation.uses not in self.wrapped_corn.properties:
+                remote_type = remote_corn.properties[relation.on]
+                self.wrapped_corn.register(relation.uses, type=remote_type.type)
+                self.properties[relation.uses] = self.wrapped_corn.properties[relation.uses]
+            self_attr = requests.AttributeRequest(subject=c(-1), attr_name=relation.uses)
+            foreign = remote_corn.all.filter(remote_attr == self_attr)
+            if not relation.multiple:
+                foreign = foreign.one(None)
+            def link_getter(item):
+                foreign = item[relation.name]
+                return foreign[relation.on] if foreign is not None else None
+            reverse = {relation.uses: link_getter}
+            self.relations.remove(relation)
+            super(RelationExtenser, self).register(relation.name, foreign, reverse)
+
+    def bind(self, multicorn):
+        self._bind_relations(multicorn)
+        super(RelationExtenser, self).bind(multicorn)
+
+    def register(self, name, to, on=None, uses=None, multiple=True):
+        """Do not actually register the property, wait for late binding"""
+        self.relations.append(Relation(name, to, on, uses, multiple))
+
+    def registration(self):
+        self._bind_realtions(self.multicorn)

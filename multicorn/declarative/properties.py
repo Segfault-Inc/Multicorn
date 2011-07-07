@@ -3,7 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from ..corns.extensers.typeextenser import TypeExtenser
-from ..corns.extensers.computed import ComputedExtenser
+from ..corns.extensers.computed import ComputedExtenser, RelationExtenser
 from functools import wraps
 from ..requests import CONTEXT as c
 from ..requests import requests
@@ -43,46 +43,16 @@ class TextProperty(TypeProperty):
 
 class computed(object):
 
-    def __init__(self, on=None):
-        self.on = on
+    def __init__(self):
+        pass
 
     def __call__(self, fun):
         kwargs = {'expression': fun}
-        if self.on:
-            kwargs['property'] = self.on
         return ComputedProperty(**kwargs)
 
 class Relation(ComputedProperty):
 
-    def __init__(self, remote_ap, self_property=None):
-        if self_property is None:
-            if isinstance(remote_ap, basestring):
-                self_property = Property(name=remote_ap)
-            else:
-                self_property = Property(name=remote_ap.name, type=remote_ap.identity_properties(1))
-        name = self_property.kwargs['name']
-        def foreign(self):
-            if isinstance(remote_ap, basestring):
-                real_ap = self.multicorn.corns[remote_ap]
-            else:
-                real_ap = remote_ap
-            if len(real_ap.identity_properties) != 1:
-                raise KeyError("Unable to build relationship: real_ap has more"
-                        "than one identity properties")
-            remote_attr = requests.AttributeRequest(subject=c,
-                attr_name=real_ap.identity_properties[0])
-            self_attr = requests.AttributeRequest(subject=c(-1), attr_name=name)
-            return real_ap.all.filter(remote_attr == self_attr).one(None)
+    _wrapper = RelationExtenser
 
-        def reverse(self):
-            if isinstance(remote_ap, basestring):
-                real_ap = self.corn.multicorn.corns[remote_ap]
-            else:
-                real_ap = remote_ap
-            if len(real_ap.identity_properties) != 1:
-                raise KeyError("Unable to build relationship: real_ap has more"
-                        "than one identity properties")
-            remote_attr = requests.AttributeRequest(subject=c,
-                attr_name=real_ap.identity_properties[0])
-            return remote_attr
-        super(Relation, self).__init__(self_property, expression=foreign, reverse={name: reverse})
+    def __init__(self, to=None, on=None, uses=None):
+        super(Relation, self).__init__(property=None, to=to, on=None, uses=None)

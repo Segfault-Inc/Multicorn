@@ -15,7 +15,8 @@ def declare(clazz, **kwargs):
             if prop._wrapper:
                 wrappers[prop._wrapper] = max(prop.depth,
                         wrappers.get(prop._wrapper, 0))
-                append_wrapper(prop.wrapped_property)
+                if prop.wrapped_property:
+                    append_wrapper(prop.wrapped_property)
 
         def find_prop(prop, wrapper_cls):
             if prop._wrapper == wrapper_cls:
@@ -29,8 +30,8 @@ def declare(clazz, **kwargs):
                 props[name] = prop
                 append_wrapper(prop)
                 prop = find_prop(prop, None)
-                name = prop.kwargs.pop('name', name)
-                corn.register(name, **prop.kwargs)
+                if prop:
+                    corn.register(name, **prop.kwargs)
         for wrapper, idx in sorted(wrappers.items(), key=lambda x: x[1]):
             corn = wrapper(corn.name, corn)
             for name, prop in props.items():

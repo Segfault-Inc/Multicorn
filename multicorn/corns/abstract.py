@@ -93,6 +93,9 @@ class AbstractCorn(object):
     def type(self):
         return Dict(corn=self, mapping=self.properties)
 
+    def registration(self):
+        pass
+
     @property
     def sequence_type(self):
         return List(Dict(corn=self, mapping=self.properties))

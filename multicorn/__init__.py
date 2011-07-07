@@ -9,5 +9,9 @@ class Multicorn(object):
 
     def register(self, corn):
         corn.bind(self)  # Do this first as it may raise.
+        corns = list(self.corns)
         self.corns[corn.name] = corn
+        for corn in corns:
+            corn.registration()
         return corn
+
