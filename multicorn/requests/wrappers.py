@@ -186,7 +186,9 @@ class AttributeWrapper(OperationWrapper):
             return Type(type=object)
 
     def used_types(self, contexts=()):
-        return {self.return_type(contexts): set((self,))}
+        types = {self.return_type(contexts): set((self,))}
+        self.merge_dict(types, self.subject.used_types(contexts))
+        return types
 
 @RequestWrapper.register_wrapper(requests.BinaryOperationRequest)
 class BooleanOperationWrapper(BinaryOperationWrapper):

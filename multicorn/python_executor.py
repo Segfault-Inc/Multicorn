@@ -95,7 +95,7 @@ def execute_attribute(self, contexts):
     subject = execute(self.subject, contexts)
     # XXX The execution of __getattr__ is actually __getitem__ !!
     # eg. if r represents item, r.firstname represents item['firstname']
-    return subject[self.attr_name]
+    return subject[self.attr_name] if subject is not None else None
 
 
 @register_executor(requests.SliceRequest)

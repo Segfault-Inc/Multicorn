@@ -2,6 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
+
 class Type(object):
 
     def __init__(self, type=object, corn=None, name=None,):
@@ -33,7 +34,16 @@ class Type(object):
         return Type(type=object)
 
 
+class Metadict(type):
+
+    def __instancecheck__(cls, inst):
+        return hasattr(inst, 'type') and hasattr(inst, 'mapping')
+
+
+
 class Dict(Type):
+
+    __metaclass__ = Metadict
 
     def __init__(self, mapping=None,corn=None, name=None):
         super(Dict, self).__init__(corn=corn, name=name, type=dict)

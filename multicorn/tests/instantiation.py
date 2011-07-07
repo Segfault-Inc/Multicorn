@@ -52,7 +52,7 @@ def test_wrapper_declaration():
         foreign_id = Property(type=int)
         @computed()
         def foreign(self):
-            return self.all.filter(c.id == c(-1).foreign_id).one()
+            return self.all.filter(c.id == c(-1).foreign_id).one(None)
 
         @foreign.reverse
         def foreign(self):
@@ -70,6 +70,9 @@ def test_wrapper_declaration():
     item2 = Corn.create({'id': 2, 'name': 'bar', 'foreign': item1})
     item2.save()
     item2 = Corn.all.filter(c.id == 2).one().execute()
+    assert item2['foreign'] == item1
+    item2 = Corn.all.filter(c.foreign.name == 'foo').one().execute()
+    assert item2['id'] == 2
     assert item2['foreign'] == item1
 
 @suite.test
@@ -92,5 +95,8 @@ def test_relation_declaration():
     item1.save()
     item2 = Corn.create({'id': 2, 'name': 'bar', 'foreign': item1})
     item2.save()
-    item2 = Corn.all.filter(c.id == 2).one().execute()
+    #item2 = Corn.all.filter(c.id == 2).one().execute()
+    #assert item2['foreign'] == item1
+    item2 = Corn.all.filter(c.foreign.name == 'foo').one().execute()
+    assert item2['id'] == 2
     assert item2['foreign'] == item1

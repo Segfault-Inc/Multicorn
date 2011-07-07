@@ -51,7 +51,7 @@ class ComputedExtenser(AbstractCornExtenser):
 
     def execute(self, request):
         # TODO: transform the request!
-        wrapped_request = RequestWrapper.from_request(request)
+        wrapped_request = RequestWrapper.from_request(request._copy_replace({}))
         types = wrapped_request.used_types()
         replacements = {}
         return_type = wrapped_request.return_type()
@@ -61,13 +61,6 @@ class ComputedExtenser(AbstractCornExtenser):
             dict_expr = dict((key, p.expression) for key, p in
                 self.computed_properties.iteritems() if p in types)
             replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
-        for type, request_parts in types.iteritems():
-            if type.corn is self:
-                # We should replace every occurence of this request
-                # with its transformation
-                for request in request_parts:
-                    if isinstance(request, AttributeWrapper):
-                        replacements[request.wrapped_request] = type.expression
         request = wrapped_request._copy_replace(replacements)
         return self._transform_result(self.wrapped_corn.execute(request),
                 return_type)
