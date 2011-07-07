@@ -11,7 +11,7 @@ class Multicorn(object):
         corn.bind(self)  # Do this first as it may raise.
         corns = list(self.corns.values())
         self.corns[corn.name] = corn
-        for corn in corns:
-            corn.registration()
+        for oldcorn in corns:
+            oldcorn.registration()
         return corn
 
