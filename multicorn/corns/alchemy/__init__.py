@@ -66,9 +66,10 @@ class Alchemy(AbstractCorn):
 
     def create(self, props=None, lazy_props=None):
         props = props or {}
+        lazy_props = lazy_props or {}
         for name in self._generated_keys:
             if name not in props and name not in lazy_props:
-                props[name] == DEFAULT_VALUE
+                props[name] = DEFAULT_VALUE
         return super(Alchemy, self).create(props, lazy_props)
 
     def register(self, name, type, db_gen=None):
@@ -157,9 +158,9 @@ class Alchemy(AbstractCorn):
             inserts = []
             updates = []
             for item in args:
+                item = dict((key, None if value is DEFAULT_VALUE else value) for key, value in item.iteritems())
                 id = dict(("b_%s" % key, item[key])
-                       for key in self.identity_properties
-                       if item[key] is not DEFAULT_VALUE)
+                       for key in self.identity_properties if key in item)
                 results = self.open_statement.execute(id)
                 olditem = next(iter(results), None)
                 if olditem is None:
