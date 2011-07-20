@@ -205,4 +205,4 @@ class RelationExtenser(ComputedExtenser):
         self.relations.append(Relation(name, to, on, uses, multiple))
 
     def registration(self):
-        self._bind_realtions(self.multicorn)
+        self._bind_relations(self.multicorn)
