@@ -56,7 +56,7 @@ class FilterWrapper(wrappers.FilterWrapper, AlchemyWrapper):
 class StoredItemsWrapper(wrappers.StoredItemsWrapper, AlchemyWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        for c in sorted(self.aliased_table.c, key = lambda x: x.name):
+        for c in sorted(self.aliased_table.c, key = lambda x: x.key):
             query = query.column(c.label(c.name))
         if contexts:
             return query.apply_labels()
@@ -292,7 +292,7 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
         other_type = self.other.return_type(type_context(contexts))
         # Dict addition is a mapping merge
         if all(isinstance(x, types.Dict) for x in (subject_type, other_type)):
-            for c in sorted(subject.c, key=lambda x : x.name):
+            for c in sorted(subject.c, key=lambda x : x.key):
                 other = other.column(c.proxies[-1])
             return other.correlate(subject)
         elif all(isinstance(x, types.List) for x in (subject_type, other_type)):
