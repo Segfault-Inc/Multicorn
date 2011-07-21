@@ -29,9 +29,10 @@ DEFAULT_VALUE = object()
 
 class ColumnDefinition(object):
 
-    def __init__(self, type, db_gen=False):
+    def __init__(self, type, db_gen=False, column_name=None):
         self.type = type
         self.db_gen = db_gen
+        self.column_name = column_name
 
 
 class Alchemy(AbstractCorn):
@@ -72,15 +73,16 @@ class Alchemy(AbstractCorn):
                 props[name] = DEFAULT_VALUE
         return super(Alchemy, self).create(props, lazy_props)
 
-    def register(self, name, type, db_gen=None):
+    def register(self, name, type, db_gen=None, column_name=None):
         if db_gen is None:
             if name in self.identity_properties:
                 db_gen = True
             else:
                 db_gen = False
+        column_name = column_name or name
         type = Type(corn=self, name=name, type=type)
         self.properties[name] = type
-        self.definitions[name] = ColumnDefinition(type, db_gen=db_gen)
+        self.definitions[name] = ColumnDefinition(type, db_gen=db_gen, column_name=column_name)
 
     @property
     def table(self):
@@ -92,7 +94,7 @@ class Alchemy(AbstractCorn):
             if name in self.identity_properties:
                 kwargs["primary_key"] = True
             type = self.dialect.alchemy_type(prop.type)
-            column = Column(name, type, **kwargs)
+            column = Column(prop.column_name, type, key=name, **kwargs)
             columns.append(column)
         kwargs = dict(useexisting=True)
         if self.schema:
