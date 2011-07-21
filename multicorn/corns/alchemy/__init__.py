@@ -45,7 +45,7 @@ class Alchemy(AbstractCorn):
         self.__open_statement = None
         self.__insert_statement = None
         self.__update_statement = None
-        self.tablename = tablename or name
+        self.tablename = tablename or name.lower()
         self.schema = schema
         self.engine_opts = engine_opts or {}
         self.create_table = True
