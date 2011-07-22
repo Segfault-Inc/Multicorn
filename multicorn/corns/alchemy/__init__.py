@@ -235,6 +235,7 @@ class Alchemy(AbstractCorn):
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
             print_sql(unicode(sql_query))
+
             try:
                 connection = self.table.bind.connect()
                 sql_result = connection.execute(sql_query)

@@ -31,7 +31,7 @@ def test_declarative():
     class Corn(object):
         id = Property()
         name = Property()
-    assert isinstance(Corn, Memory)
+    assert isinstance(Corn.wrapped_corn, Memory)
     assert "name" in Corn.properties
     assert "id" in Corn.properties
     assert Corn.identity_properties == ("id",)

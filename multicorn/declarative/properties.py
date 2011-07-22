@@ -54,5 +54,5 @@ class Relation(ComputedProperty):
 
     _wrapper = RelationExtenser
 
-    def __init__(self, to=None, on=None, uses=None):
-        super(Relation, self).__init__(property=None, to=to, on=on, uses=uses)
+    def __init__(self, to=None, on=None, uses=None, reverse_suffix='s'):
+        super(Relation, self).__init__(property=None, to=to, on=on, uses=uses, reverse_suffix=reverse_suffix)

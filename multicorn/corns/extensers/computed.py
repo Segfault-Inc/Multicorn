@@ -140,12 +140,13 @@ class ComputedExtenser(AbstractCornExtenser):
 
 class Relation(object):
 
-    def __init__(self, name, to, on, uses, multiple=True):
+    def __init__(self, name, to, on, uses, multiple=True, reverse_suffix='s'):
         self.name = name
         self.to = to
         self.on = on
         self.uses = uses
         self.multiple = multiple
+        self.reverse_suffix = reverse_suffix
 
 class RelationExtenser(ComputedExtenser):
 
@@ -197,15 +198,24 @@ class RelationExtenser(ComputedExtenser):
                 return foreign
             reverse = {relation.uses: link_getter}
             self.relations.remove(relation)
+
+            if relation.reverse_suffix:
+                if isinstance(remote_corn, ComputedExtenser):
+                    remote_corn.register(
+                        "%s%s" % (self.name.lower(), relation.reverse_suffix),
+                        self.all.filter(
+                            getattr(c, relation.uses) == getattr(c(-1), relation.on)))
+
             super(RelationExtenser, self).register(relation.name, foreign, reverse)
 
     def bind(self, multicorn):
         self._bind_relations(multicorn)
         super(RelationExtenser, self).bind(multicorn)
 
-    def register(self, name, to, on=None, uses=None, multiple=True):
+    def register(self, name, to, on=None, uses=None, multiple=True, reverse_suffix='s'):
         """Do not actually register the property, wait for late binding"""
-        self.relations.append(Relation(name, to, on, uses, multiple))
+        self.relations.append(Relation(name, to, on, uses, multiple, reverse_suffix))
 
     def registration(self):
         self._bind_relations(self.multicorn)
+

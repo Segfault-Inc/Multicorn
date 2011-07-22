@@ -32,11 +32,12 @@ def declare(clazz, **kwargs):
                 prop = find_prop(prop, None)
                 if prop:
                     corn.register(name, **prop.kwargs)
+
         for wrapper, idx in sorted(wrappers.items(), key=lambda x: x[1]):
             corn = wrapper(corn.name, corn)
             for name, prop in props.items():
                 wrapped_prop = find_prop(prop, wrapper)
                 if wrapped_prop:
                     corn.register(name, **wrapped_prop.kwargs)
-        return corn
+        return corn if isinstance(corn, ComputedExtenser) else ComputedExtenser(corn.name, corn)
     return build_corn
