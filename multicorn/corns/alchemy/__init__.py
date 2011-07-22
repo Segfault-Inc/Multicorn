@@ -73,7 +73,7 @@ class Alchemy(AbstractCorn):
                 props[name] = DEFAULT_VALUE
         return super(Alchemy, self).create(props, lazy_props)
 
-    def register(self, name, type, db_gen=None, column_name=None):
+    def register(self, name, type=unicode, db_gen=None, column_name=None):
         if db_gen is None:
             if name in self.identity_properties:
                 db_gen = True
@@ -130,7 +130,7 @@ class Alchemy(AbstractCorn):
     def insert_statement(self, keys):
         keys = tuple(set(keys))
         if not self.__insert_statements.get(keys, None):
-            self.__insert_statements[keys] = self.table.insert(keys).compile()
+            self.__insert_statements[keys] = self.table.insert({key: None for key in keys}).compile()
         return self.__insert_statements[keys]
 
     @property
@@ -159,7 +159,7 @@ class Alchemy(AbstractCorn):
             inserts = []
             updates = []
             for item in args:
-                item_dict = dict((key, None if value is DEFAULT_VALUE else value) for key, value in item.iteritems())
+                item_dict = dict((key, value) for key, value in item.iteritems() if value is not DEFAULT_VALUE)
                 id = dict(("b_%s" % key, item_dict[key])
                        for key in self.identity_properties if key in item_dict)
                 results = self.open_statement.execute(id)
@@ -215,6 +215,7 @@ class Alchemy(AbstractCorn):
     def execute(self, request, contexts=()):
         wrapped_request = self.dialect.wrap_request(request)
         # TODO: try to split the request if something is not managed
+
         if self.is_all_alchemy(wrapped_request, contexts):
             try:
                 wrapped_request.is_valid(contexts)

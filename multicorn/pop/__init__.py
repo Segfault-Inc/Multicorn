@@ -7,6 +7,12 @@ from .attrwrap import AttrWrap
 from .poplist import PopList
 
 
+def wrap(item):
+    if item is None:
+        return None
+    return AttrWrap(item)
+
+
 class Pop(object):
 
     def __init__(self, corn):
@@ -16,7 +22,7 @@ class Pop(object):
 
     def one(self, predicate=ARGUMENT_NOT_GIVEN, **kwargs):
         self._filter(predicate, **kwargs)
-        return AttrWrap(self.pop.one().execute())
+        return wrap(self.pop.one(None).execute())
 
     def get(self, filter=ARGUMENT_NOT_GIVEN, sort=None):
         self._filter(filter)
@@ -43,7 +49,7 @@ class Pop(object):
                 self.pop = self.pop.sort(*sort)
 
     def _exec(self):
-        return [AttrWrap(item) for item in self.pop.execute()]
+        return [wrap(item) for item in self.pop.execute()]
 
 
 class LazyPop(Pop):
@@ -54,7 +60,7 @@ class LazyPop(Pop):
     def _exec(self):
         def wgen(items):
             for item in items:
-                yield AttrWrap(item)
+                yield wrap(item)
         return wgen(self.pop.execute())
 
 
@@ -64,4 +70,4 @@ class FunkyPop(Pop):
         super(FunkyPop, self).__init__(corn)
 
     def _exec(self):
-        return PopList(AttrWrap(item) for item in self.pop.execute())
+        return PopList(wrap(item) for item in self.pop.execute())
