@@ -43,7 +43,7 @@ class Alchemy(AbstractCorn):
         self.__table = None
         self.url = url
         self.__open_statement = None
-        self.__insert_statement = None
+        self.__insert_statements = {}
         self.__update_statement = None
         self.tablename = tablename or name.lower()
         self.schema = schema
@@ -127,11 +127,11 @@ class Alchemy(AbstractCorn):
             self.__open_statement = statement.compile()
         return self.__open_statement
 
-    @property
-    def insert_statement(self):
-        if not self.__insert_statement:
-            self.__insert_statement = self.table.insert().compile()
-        return self.__insert_statement
+    def insert_statement(self, keys):
+        keys = tuple(set(keys))
+        if not self.__insert_statements.get(keys, None):
+            self.__insert_statements[keys] = self.table.insert(keys).compile()
+        return self.__insert_statements[keys]
 
     @property
     def update_statement(self):
@@ -144,7 +144,6 @@ class Alchemy(AbstractCorn):
             statement = self.table.update().where(sqlexpr.and_(*conditions))
             self.__update_statement = statement.compile()
         return self.__update_statement
-
 
     @property
     def _generated_keys(self):
@@ -172,7 +171,7 @@ class Alchemy(AbstractCorn):
                     values.update(id)
                     updates.append(values)
             if inserts:
-                values = connection.execute(self.insert_statement, inserts)
+                values = connection.execute(self.insert_statement(item_dict.keys()), inserts)
                 if len(args) == 1:
                     for key, value in zip(self._generated_keys,
                             values.inserted_primary_key):

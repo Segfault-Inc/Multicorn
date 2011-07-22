@@ -83,7 +83,7 @@ def test_relation_declaration():
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
-        foreign = Relation(to="Corn")
+        foreign = Relation(to="corn")
     assert isinstance(Corn, ComputedExtenser)
     assert "name" in Corn.properties
     assert "id" in Corn.properties
