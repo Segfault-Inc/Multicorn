@@ -39,6 +39,9 @@ class ComputedExtenser(AbstractCornExtenser):
         if name in self.wrapped_corn.properties:
             raise KeyError("A property named %s is already registered "
                 "in the underlying corn" % name)
+        if not isinstance(expression, requests.Request)\
+                and hasattr(expression, '__call__'):
+            expression = expression(self)
         wrapped_expr = wrappers.RequestWrapper.from_request(expression)
         type = wrapped_expr.return_type((self.wrapped_corn.type,))
         if reverse is None:
@@ -52,7 +55,8 @@ class ComputedExtenser(AbstractCornExtenser):
 
     def execute(self, request):
         # TODO: transform the request!
-        wrapped_request = wrappers.RequestWrapper.from_request(request._copy_replace({}))
+        request = request._copy_replace({})
+        wrapped_request = wrappers.RequestWrapper.from_request(request)
         types = wrapped_request.used_types()
         replacements = {}
         return_type = wrapped_request.return_type()
@@ -63,8 +67,10 @@ class ComputedExtenser(AbstractCornExtenser):
             for p in types:
                 if isinstance(p, ComputedType):
                     dict_expr[p.name] = p.expression
-            replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
-        replacements = {}
+            if dict_expr:
+                replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
+            else:
+                replacements[chain[0]] = self.wrapped_corn.all
         request = wrapped_request._copy_replace(replacements)
         return self._transform_result(self.wrapped_corn.execute(request),
                 return_type)
@@ -215,31 +221,6 @@ class RelationExtenser(ComputedExtenser):
             other = requests.AttributeRequest(subject=request.other.wrapped_request, attr_name=key)
             replacement = requests.AndRequest(replacement, attr == other)
         return replacement
-
-
-#   def execute(self, request):
-#       # TODO: transform the request!
-#       wrapped_request = wrappers.RequestWrapper.from_request(request._copy_replace({}))
-#       types = wrapped_request.used_types()
-#       replacements = {}
-#       return_type = wrapped_request.return_type()
-#       chain = requests.as_chain(request)
-#       if len(chain) > 1:
-#           dict_expr = dict((key, p.expression) for key, p in
-#               self.computed_properties.iteritems() if p in types)
-#           replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
-#           for rel in self.relations:
-#               type = self.properties[rel.name]
-#               reqs = types.get(self.type, [])
-#               for req in reqs:
-#                   if isinstance(req, wrappers.EqWrapper):
-#                       for other_req in reqs:
-#                           if req.subject is other_req or req.other is other_req:
-#                               # Subject is doing something with our type
-#                               replacements[req] = self.__replace_by_id_props(req, rel)
-#       request = wrapped_request._copy_replace(replacements)
-#       return self._transform_result(self.wrapped_corn.execute(request),
-#               return_type)
 
 
     def register(self, name, to, on=None, uses=None, multiple=True):
