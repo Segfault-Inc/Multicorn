@@ -38,7 +38,7 @@ def test_declarative():
     name = Corn.properties["name"]
     assert isinstance(name, Type)
     assert name.type == object
-    assert name.corn == Corn
+    assert name.corn == Corn.wrapped_corn
     assert name.name == "name"
 
 @suite.test

@@ -209,12 +209,14 @@ class RelationExtenser(ComputedExtenser):
 
             self.relations.append(relation)
             self._pending_relations.remove(relation)
-            if relation.reverse_suffix:
-                if isinstance(remote_corn, ComputedExtenser):
-                    remote_corn.register(
-                        "%s%s" % (self.name.lower(), relation.reverse_suffix),
-                        self.all.filter(
-                            getattr(c, relation.uses) == getattr(c(-1), relation.on)))
+
+            # if relation.reverse_suffix:
+            #     if isinstance(remote_corn, ComputedExtenser):
+            #         remote_corn.register(
+            #             "%s%s" % (self.name.lower(), relation.reverse_suffix),
+            #             self.all.filter(
+            #                 getattr(c, relation.uses) == getattr(c(-1), relation.on)))
+
             super(RelationExtenser, self).register(relation.name, foreign, reverse)
 
     def bind(self, multicorn):

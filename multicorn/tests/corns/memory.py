@@ -63,7 +63,7 @@ def test_optimization():
 
     def new_all():
         raise NotOptimizedError
-    Corn._all = new_all
+    Corn.wrapped_corn._all = new_all
     item = (Corn.all.filter(c.id == 1).one().execute())
     assert item['id'] == 1
     assert item['name'] == u'foo'

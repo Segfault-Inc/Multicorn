@@ -7,27 +7,29 @@ from multicorn.declarative import declare, Property
 from multicorn.requests import CONTEXT as c
 from multicorn.corns.extensers.computed import ComputedExtenser
 
+
 def make_corn():
     mc = Multicorn()
+
     @declare(Memory, identity_properties=("id",))
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
         lastname = Property(type=unicode)
         bff = Property(type=int)
-    extenser = ComputedExtenser("Corn", Corn)
-    extenser.register("fullname", c.name + ' : ' + c.lastname)
-    extenser.register("homonymes", extenser.all.filter((c(-1).name == c.name) &
+
+    Corn.register("fullname", c.name + ' : ' + c.lastname)
+    Corn.register("homonymes", Corn.all.filter((c(-1).name == c.name) &
                                     (c(-1).id != c.id)))
-    friend_request = extenser.all.filter((c(-1).bff == c.id)\
+    friend_request = Corn.all.filter((c(-1).bff == c.id)\
             & (c(-1).bff != None)).one(None)
     reverse = {'bff': c.friend.id}
-    extenser.register("friend", friend_request, reverse=reverse )
+    Corn.register("friend", friend_request, reverse=reverse)
     Corn.create({'id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
     Corn.create({'id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
     Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
-    mc.register(extenser)
-    return extenser
+    mc.register(Corn)
+    return Corn
 
 suite = attest.Tests()
 
@@ -62,6 +64,7 @@ def test_basic():
     assert others[0]['name'] == 'foo : baz'
     assert list(others[0]['others']) == [1]
 
+
 @suite.test
 def test_save():
     Corn = make_corn()
@@ -72,6 +75,3 @@ def test_save():
     item_one = Corn.all.filter(c.id == 1).one().execute()
     friend = item_one['friend']
     assert item_one['friend'] == item_two
-
-
-
