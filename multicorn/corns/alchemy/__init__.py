@@ -130,7 +130,7 @@ class Alchemy(AbstractCorn):
     def insert_statement(self, keys):
         keys = tuple(set(keys))
         if not self.__insert_statements.get(keys, None):
-            self.__insert_statements[keys] = self.table.insert(keys).compile()
+            self.__insert_statements[keys] = self.table.insert({key: None for key in keys}).compile()
         return self.__insert_statements[keys]
 
     @property
@@ -159,7 +159,7 @@ class Alchemy(AbstractCorn):
             inserts = []
             updates = []
             for item in args:
-                item_dict = dict((key, None if value is DEFAULT_VALUE else value) for key, value in item.iteritems())
+                item_dict = dict((key, value) for key, value in item.iteritems() if value is not DEFAULT_VALUE)
                 id = dict(("b_%s" % key, item_dict[key])
                        for key in self.identity_properties if key in item_dict)
                 results = self.open_statement.execute(id)
