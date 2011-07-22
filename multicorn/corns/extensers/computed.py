@@ -177,6 +177,9 @@ class RelationExtenser(ComputedExtenser):
                 relation.multiple = False
             remote_attr = requests.AttributeRequest(subject=c,
                 attr_name=relation.on)
+            if relation.uses == relation.name:
+                raise KeyError("The relation can not be built on a property"
+                               "with the same name!")
             if relation.uses is None:
                 relation.uses = "%s_%s" % (remote_corn.name, relation.on)
             if relation.uses not in self.wrapped_corn.properties:
