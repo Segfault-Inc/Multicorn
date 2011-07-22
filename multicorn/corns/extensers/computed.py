@@ -134,7 +134,9 @@ class ComputedExtenser(AbstractCornExtenser):
            item = props
         else:
             for name in self.computed_properties:
-                self_props[name] = props.pop(name, None)
+                value = props.pop(name, None)
+                if value:
+                    self_props[name] = value
             item = self.wrapped_corn.create(props, lazy_props)
         lazy_values = dict(item._lazy_values)
         values = dict(item._values)
