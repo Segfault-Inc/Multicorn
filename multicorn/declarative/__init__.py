@@ -7,7 +7,7 @@ from .properties import *
 
 def declare(clazz, **kwargs):
     def build_corn(corn_definition):
-        corn = clazz(corn_definition.__name__, **kwargs)
+        corn = clazz(corn_definition.__name__.lower(), **kwargs)
         # Contains
         wrappers = {}
 
