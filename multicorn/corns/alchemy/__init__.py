@@ -73,7 +73,7 @@ class Alchemy(AbstractCorn):
                 props[name] = DEFAULT_VALUE
         return super(Alchemy, self).create(props, lazy_props)
 
-    def register(self, name, type, db_gen=None, column_name=None):
+    def register(self, name, type=unicode, db_gen=None, column_name=None):
         if db_gen is None:
             if name in self.identity_properties:
                 db_gen = True
@@ -216,6 +216,7 @@ class Alchemy(AbstractCorn):
     def execute(self, request, contexts=()):
         wrapped_request = self.dialect.wrap_request(request)
         # TODO: try to split the request if something is not managed
+
         if self.is_all_alchemy(wrapped_request, contexts):
             try:
                 wrapped_request.is_valid(contexts)
