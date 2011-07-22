@@ -115,7 +115,8 @@ class PostgresDialect(BaseDialect):
                     raise ValueError('.one() on an empty sequence')
                 return result[0]
             else:
-                if not isinstance(result, return_type.type):
+                if result is not None and not isinstance(
+                        result, return_type.type):
                     return return_type.type(result)
                 else:
                     return result

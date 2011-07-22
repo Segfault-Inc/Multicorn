@@ -50,6 +50,8 @@ class RequestWrapper(object):
         return '%s(%r)' % (self.__class__.__name__, self.wrapped_request)
 
     def used_types(self, contexts=()):
+        """Returns a dictionary mapping every type used in the expression
+        with the expressions using it"""
         return {self.return_type(contexts): set((self,))}
 
     def merge_dict(self, left, right):
@@ -318,6 +320,7 @@ class MapWrapper(OperationWrapper):
         types = self.subject.used_types(contexts)
         self.merge_dict(types, self.new_value.used_types(newcontext))
         return types
+
 
 
 

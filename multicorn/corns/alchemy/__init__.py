@@ -203,7 +203,7 @@ class Alchemy(AbstractCorn):
             connection.close()
 
     def _is_same_db(self, other_type):
-        return other_type.corn is None or (isinstance(other_type.corn, Alchemy)\
+        return other_type.corn is None or (hasattr(other_type.corn, 'url')\
                 and other_type.corn.url == self.url)
 
     def is_all_alchemy(self, request, contexts=()):
@@ -215,7 +215,6 @@ class Alchemy(AbstractCorn):
     def execute(self, request, contexts=()):
         wrapped_request = self.dialect.wrap_request(request)
         # TODO: try to split the request if something is not managed
-
         if self.is_all_alchemy(wrapped_request, contexts):
             try:
                 wrapped_request.is_valid(contexts)

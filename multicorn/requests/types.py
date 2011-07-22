@@ -39,7 +39,10 @@ class Metadict(type):
     def __instancecheck__(cls, inst):
         return hasattr(inst, 'type') and hasattr(inst, 'mapping')
 
+class MetaList(type):
 
+    def __instancecheck__(cls, inst):
+        return hasattr(inst, 'type') and hasattr(inst, 'inner_type')
 
 class Dict(Type):
 
@@ -62,6 +65,8 @@ class Dict(Type):
 
 
 class List(Type):
+
+    __metaclass__ = MetaList
 
     def __init__(self, inner_type=Type(type=object), corn=None, name=None):
         super(List, self).__init__(corn=corn, name=name, type=list)

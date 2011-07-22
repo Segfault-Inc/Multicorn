@@ -57,7 +57,7 @@ class StoredItemsWrapper(wrappers.StoredItemsWrapper, AlchemyWrapper):
 
     def to_alchemy(self, query, contexts=()):
         for c in sorted(self.aliased_table.c, key = lambda x: x.key):
-            query = query.column(c.label(c.name))
+            query = query.column(c.label(c.key))
         if contexts:
             return query.apply_labels()
         return query
