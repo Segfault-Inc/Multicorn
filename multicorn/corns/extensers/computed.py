@@ -4,10 +4,10 @@ from pprint import isrecursive, saferepr
 
 from ...item import BaseItem
 from ...requests.types import Type, List, Dict
-from ...requests.helpers import inject_context, collect
+from ...requests.helpers import inject_context
 from ...requests import requests
 from ...requests import CONTEXT as c
-from ...requests.wrappers import RequestWrapper, AttributeWrapper, FilterWrapper, FilterWrapper
+from ...requests import wrappers 
 from ...python_executor import execute
 
 class ComputedType(Type):
@@ -39,7 +39,7 @@ class ComputedExtenser(AbstractCornExtenser):
         if name in self.wrapped_corn.properties:
             raise KeyError("A property named %s is already registered "
                 "in the underlying corn" % name)
-        wrapped_expr = RequestWrapper.from_request(expression)
+        wrapped_expr = wrappers.RequestWrapper.from_request(expression)
         type = wrapped_expr.return_type((self.wrapped_corn.type,))
         if reverse is None:
             reverse = {}
@@ -52,16 +52,19 @@ class ComputedExtenser(AbstractCornExtenser):
 
     def execute(self, request):
         # TODO: transform the request!
-        wrapped_request = RequestWrapper.from_request(request._copy_replace({}))
+        wrapped_request = wrappers.RequestWrapper.from_request(request._copy_replace({}))
         types = wrapped_request.used_types()
         replacements = {}
         return_type = wrapped_request.return_type()
         chain = requests.as_chain(request)
         # We cannot do this on the all method itself!
         if len(chain) > 1:
-            dict_expr = dict((key, p.expression) for key, p in
-                self.computed_properties.iteritems() if p in types)
+            dict_expr = {}
+            for p in types:
+                if isinstance(p, ComputedType):
+                    dict_expr[p.name] = p.expression
             replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
+        replacements = {}
         request = wrapped_request._copy_replace(replacements)
         return self._transform_result(self.wrapped_corn.execute(request),
                 return_type)
@@ -136,8 +139,6 @@ class ComputedExtenser(AbstractCornExtenser):
         return super(ComputedExtenser, self).create(values, lazy_values)
 
 
-
-
 class Relation(object):
 
     def __init__(self, name, to, on, uses, multiple=True):
@@ -153,9 +154,10 @@ class RelationExtenser(ComputedExtenser):
     def __init__(self, *args, **kwargs):
         super(RelationExtenser, self).__init__(*args, **kwargs)
         self.relations = []
+        self._pending_relations = []
 
     def _bind_relations(self, multicorn):
-        for relation in list(self.relations):
+        for relation in list(self._pending_relations):
             if isinstance(relation.to, basestring):
                 if relation.to == self.name:
                     #Auto join, the corn is not yet registered
@@ -168,6 +170,7 @@ class RelationExtenser(ComputedExtenser):
                         continue
             else:
                 remote_corn = relation.to
+            relation.to = remote_corn
             if relation.on is None:
                 if len(remote_corn.identity_properties) != 1:
                     raise KeyError("Unable relation.to build relationship: remote_corn has more"
@@ -196,16 +199,52 @@ class RelationExtenser(ComputedExtenser):
                     return foreign[relation.on]
                 return foreign
             reverse = {relation.uses: link_getter}
-            self.relations.remove(relation)
+            self.relations.append(relation)
+            self._pending_relations.remove(relation)
             super(RelationExtenser, self).register(relation.name, foreign, reverse)
 
     def bind(self, multicorn):
         self._bind_relations(multicorn)
         super(RelationExtenser, self).bind(multicorn)
 
+
+    def __replace_by_id_props(self, request, relation):
+        replacement = requests.LiteralRequest(True)
+        for key in relation.to.identity_properties:
+            attr =  requests.AttributeRequest(subject=request.subject.wrapped_request, attr_name=key)
+            other = requests.AttributeRequest(subject=request.other.wrapped_request, attr_name=key)
+            replacement = requests.AndRequest(replacement, attr == other)
+        return replacement
+
+
+#   def execute(self, request):
+#       # TODO: transform the request!
+#       wrapped_request = wrappers.RequestWrapper.from_request(request._copy_replace({}))
+#       types = wrapped_request.used_types()
+#       replacements = {}
+#       return_type = wrapped_request.return_type()
+#       chain = requests.as_chain(request)
+#       if len(chain) > 1:
+#           dict_expr = dict((key, p.expression) for key, p in
+#               self.computed_properties.iteritems() if p in types)
+#           replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
+#           for rel in self.relations:
+#               type = self.properties[rel.name]
+#               reqs = types.get(self.type, [])
+#               for req in reqs:
+#                   if isinstance(req, wrappers.EqWrapper):
+#                       for other_req in reqs:
+#                           if req.subject is other_req or req.other is other_req:
+#                               # Subject is doing something with our type
+#                               replacements[req] = self.__replace_by_id_props(req, rel)
+#       request = wrapped_request._copy_replace(replacements)
+#       return self._transform_result(self.wrapped_corn.execute(request),
+#               return_type)
+
+
     def register(self, name, to, on=None, uses=None, multiple=True):
         """Do not actually register the property, wait for late binding"""
-        self.relations.append(Relation(name, to, on, uses, multiple))
+        self._pending_relations.append(Relation(name, to, on, uses, multiple))
 
     def registration(self):
         self._bind_relations(self.multicorn)

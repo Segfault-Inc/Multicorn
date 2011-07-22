@@ -321,6 +321,7 @@ class MapWrapper(OperationWrapper):
 
 
 
+
 @RequestWrapper.register_wrapper(requests.GroupbyRequest)
 class GroupbyWrapper(OperationWrapper):
     def __init__(self, *args, **kwargs):
