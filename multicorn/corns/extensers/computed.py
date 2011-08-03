@@ -7,7 +7,7 @@ from ...requests.types import Type, List, Dict
 from ...requests.helpers import inject_context
 from ...requests import requests
 from ...requests import CONTEXT as c
-from ...requests import wrappers 
+from ...requests import wrappers
 from ...python_executor import execute
 
 class ComputedType(Type):
@@ -202,15 +202,19 @@ class RelationExtenser(ComputedExtenser):
             foreign = remote_corn.all.filter(remote_attr == self_attr)
             if not relation.multiple:
                 foreign = foreign.one(None)
-            def link_getter(item):
-                foreign = item[relation.name]
-                if isinstance(foreign, BaseItem):
-                    return foreign[relation.on]
-                return foreign
-            reverse = {relation.uses: link_getter}
+            # 2nd closure to hold relaiton
+            def get_link_getter(relation):
+                def link_getter(item):
+                    foreign = item[relation.name]
+                    if isinstance(foreign, BaseItem):
+                        return foreign[relation.on]
+                    return foreign
+                return link_getter
+            reverse = {relation.uses: get_link_getter(relation)}
 
             self.relations.append(relation)
             self._pending_relations.remove(relation)
+
             if relation.reverse_suffix:
                 if isinstance(remote_corn, ComputedExtenser):
                     remote_corn.register(
@@ -234,11 +238,10 @@ class RelationExtenser(ComputedExtenser):
         return replacement
 
 
-    def register(self, name, to, on=None, uses=None, multiple=True, reverse_suffix='s'):
+    def register_relation(self, name, to, on=None, uses=None, multiple=True, reverse_suffix='s'):
         """Do not actually register the property, wait for late binding"""
         self._pending_relations.append(Relation(name, to, on, uses, multiple, reverse_suffix))
 
 
     def registration(self):
         self._bind_relations(self.multicorn)
-

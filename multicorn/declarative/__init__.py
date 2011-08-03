@@ -38,6 +38,6 @@ def declare(clazz, **kwargs):
             for name, prop in props.items():
                 wrapped_prop = find_prop(prop, wrapper)
                 if wrapped_prop:
-                    corn.register(name, **wrapped_prop.kwargs)
+                    corn.register_relation(name, **wrapped_prop.kwargs)
         return corn if isinstance(corn, ComputedExtenser) else ComputedExtenser(corn.name, corn)
     return build_corn
