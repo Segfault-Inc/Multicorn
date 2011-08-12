@@ -326,15 +326,21 @@ def execute_add(self, contexts):
 @register_executor(requests.AndRequest)
 def execute_and(self, contexts):
     left = execute(self.subject, contexts)
-    right = execute(self.other, contexts)
-    return bool(left and right)
+    if left:
+        return bool(execute(self.other, contexts))
+    else:
+        # Short-circuit. TODO: test it.
+        return False
 
 
 @register_executor(requests.OrRequest)
 def execute_or(self, contexts):
     left = execute(self.subject, contexts)
-    right = execute(self.other, contexts)
-    return bool(left or right)
+    if left:
+        return True
+    else:
+        # Short-circuit. TODO: test it.
+        return bool(execute(self.other, contexts))
 
 
 @register_executor(requests.LenRequest)
