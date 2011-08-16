@@ -73,7 +73,6 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
                     for c in req.c:
                         tuple_elems.append(c.proxies[-1])
                     req = req.with_only_columns([sqlexpr.tuple_(*tuple_elems).label('__array_elem')])
-                req = req.correlate(query)
                 selects.append(sqlexpr.expression.func.ARRAY(req.as_scalar()).label(key))
             elif isinstance(req, sqlexpr.Selectable):
                 # If it is a dict, ensure that names dont collide
@@ -81,10 +80,11 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
                     tuple_elems = []
                     for c in req.c:
                         tuple_elems.append(c.proxies[-1])
-                    selects.append(sqlexpr.tuple_(*tuple_elems).label(key))
+                    select_expr = sqlexpr.tuple_(*tuple_elems)
                 else:
-                    selects.append(list(req.c)[0].proxies[-1].label(key))
-                query = req.correlate(query)
+                    select_expr = list(req.c)[0].proxies[-1]
+                selects.append(select_expr.label(key))
+                query = req
             else:
                 selects.append(req.label(key))
         return query.with_only_columns(selects)
@@ -250,7 +250,7 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
             # append a filter after the context request
             if isinstance(chain[0], requests.ContextRequest):
                 replacements[chain[0]] = chain[0].filter(
-                        requests.LiteralRequest(sqlexpr.literal_column(unicode(key))) == c(-1).key)
+                        c(-1).key == key)
         if replacements:
             aggregates = self.aggregates.wrapped_request._copy_replace(
                     replacements)

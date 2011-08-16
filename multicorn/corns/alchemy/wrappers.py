@@ -294,7 +294,7 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
         if all(isinstance(x, types.Dict) for x in (subject_type, other_type)):
             for c in sorted(subject.c, key=lambda x : x.key):
                 other = other.column(c.proxies[-1])
-            return other.correlate(subject)
+            return other
         elif all(isinstance(x, types.List) for x in (subject_type, other_type)):
             return subject.union(other)
         else:
@@ -366,7 +366,7 @@ class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
                 else:
                     for c in req.c:
                         selects.append(c.proxies[-1].label("__%s_%s__" % (key, c.name)))
-                query = req.correlate(query)
+                query = req
             else:
                 selects.append(req.label(key))
         return query.with_only_columns(selects)
