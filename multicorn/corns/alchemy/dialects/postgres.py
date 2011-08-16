@@ -142,6 +142,7 @@ class RegexRequest(wrappers.RegexWrapper, PostgresWrapper):
             else:
                 # Failure occured from unability to transform to like
                 # construct, silently ignore and fall back to a regexp
+                self.value = None
                 pass
 
 @PostgresWrapper.register_wrapper(requests.LiteralRequest)
