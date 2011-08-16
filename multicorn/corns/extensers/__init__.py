@@ -18,5 +18,5 @@ class AbstractCornExtenser(AbstractCorn):
         super(AbstractCornExtenser, self).bind(multicorn)
         self.wrapped_corn.bind(multicorn)
 
-    # def __getattr__(self, key):
-    #     return getattr(self.wrapped_corn, key)
+    def __getattr__(self, key):
+        return getattr(self.wrapped_corn, key)

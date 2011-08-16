@@ -217,11 +217,10 @@ class RelationExtenser(ComputedExtenser):
 
             if relation.reverse_suffix:
                 if isinstance(remote_corn, ComputedExtenser):
-                    remote_corn.register(
+                    ComputedExtenser.register(remote_corn,
                         "%s%s" % (self.name.lower(), relation.reverse_suffix),
                         self.all.filter(
                             getattr(c, relation.uses) == getattr(c(-1), relation.on)))
-
             super(RelationExtenser, self).register(relation.name, foreign, reverse)
 
     def bind(self, multicorn):
@@ -238,7 +237,7 @@ class RelationExtenser(ComputedExtenser):
         return replacement
 
 
-    def register_relation(self, name, to, on=None, uses=None, multiple=True, reverse_suffix='s'):
+    def register(self, name, to, on=None, uses=None, multiple=True, reverse_suffix='s'):
         """Do not actually register the property, wait for late binding"""
         self._pending_relations.append(Relation(name, to, on, uses, multiple, reverse_suffix))
 
