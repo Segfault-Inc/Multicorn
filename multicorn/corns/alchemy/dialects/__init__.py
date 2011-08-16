@@ -22,8 +22,6 @@ def get_dialect(engine):
 BASE_TYPES_MAPPING = {
     unicode: Unicode,
     bytes: Unicode,
-    unicode: Unicode,
-    bytes: Unicode,
     int: Integer,
     datetime: DateTime,
     date: Date,
