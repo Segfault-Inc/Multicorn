@@ -59,9 +59,9 @@ class BaseDialect(object):
             if return_type == corn.type:
                 result = dict(((key, value) for key, value in dict(result).iteritems()
                     if key in corn.properties))
-                return corn.create(result)
+                return corn.create(dict(result))
             elif return_type.corn:
-                return return_type.corn.create(result)
+                return return_type.corn.create(dict(result))
             else:
                 newdict = {}
                 for key, type in return_type.mapping.iteritems():
