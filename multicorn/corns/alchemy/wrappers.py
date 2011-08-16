@@ -142,9 +142,10 @@ class RegexWrapper(wrappers.RegexWrapper, AlchemyWrapper):
             raise InvalidRequestException(self, "Regex support only works with"
                 "literals in alchemy")
         value = self.other.value
-        value = value.replace('_', '\_')
         # Escaping chars
+        value = value.replace('_', '\_')
         value = value.replace('%', '\%')
+        value = value.replace('.*', '%')
         value = value.replace('.', '_')
         value = value.replace('$', '\$')
         if value.startswith('^'):
@@ -155,7 +156,8 @@ class RegexWrapper(wrappers.RegexWrapper, AlchemyWrapper):
             value = value.strip('$')
         else:
             value = value + '%'
-        if value != re.escape(value):
+        base_value = value.replace('%', '')
+        if base_value.replace('%', '') != re.escape(base_value):
             raise InvalidRequestException(self, "Regex only supports '.*',.,^,$'")
         self.value = value
 

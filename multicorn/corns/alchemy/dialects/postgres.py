@@ -122,7 +122,27 @@ class LowerWrapper(wrappers.LowerWrapper, PostgresWrapper):
 
 @PostgresWrapper.register_wrapper(requests.RegexRequest)
 class RegexRequest(wrappers.RegexWrapper, PostgresWrapper):
-    pass
+
+    def to_alchemy(self, query, contexts=()):
+        if self.value:
+            # Validation succeeded, we have an "equivalent" like
+            # construct
+            return super(RegexRequest, self).to_alchemy(query, contexts)
+        else:
+            subject = self.subject.to_alchemy(query, contexts)
+            other = self.other.to_alchemy(query, contexts)
+            return subject.op('~')(other)
+
+    def is_valid(self, contexts=()):
+        try:
+            super(RegexRequest, self).is_valid(contexts)
+        except InvalidRequestException as e:
+            if e.request != self:
+                raise
+            else:
+                # Failure occured from unability to transform to like
+                # construct, silently ignore and fall back to a regexp
+                pass
 
 @PostgresWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(wrappers.LiteralWrapper, PostgresWrapper):
