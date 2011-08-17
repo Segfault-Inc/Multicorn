@@ -10,6 +10,7 @@ from sqlalchemy.sql import expression
 
 import re
 
+
 class Context(object):
 
     def __init__(self, query, type):

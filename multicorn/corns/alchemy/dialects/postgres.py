@@ -354,6 +354,7 @@ class SliceWrapper(wrappers.SliceWrapper, AggregateWrapper):
                 query = list(query.c)[0].proxies[-1]
             args = [start + 1]
             if self.slice.stop is not None:
+                stop = self.slice.stop - start
                 args.append(self.slice.stop)
             return substr(query, *args)
 
