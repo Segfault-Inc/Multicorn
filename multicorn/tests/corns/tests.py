@@ -442,3 +442,8 @@ def test_combinations(Corn):
         {'fullname': c.fn.upper()[1:], 'index': c.i}).filter(
         c.fullname.matches("^AZ")).one().execute()
     assert item["index"] == 3
+    item = (Corn.all.map(c + {'int': 2, 'none': None})
+        .filter((c.id == 1) & (c.none == None)).one()
+        .execute())
+    assert item['int'] == 2
+    assert item['none'] == None

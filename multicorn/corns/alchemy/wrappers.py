@@ -173,6 +173,12 @@ class RegexWrapper(wrappers.RegexWrapper, AlchemyWrapper):
 class LiteralWrapper(wrappers.LiteralWrapper, AlchemyWrapper):
 
     def to_alchemy(self, query, contexts=()):
+        # Wrap literal if needed.
+        if not isinstance(self.value, sqlexpr.ClauseElement):
+            if self.value is None:
+                return sqlexpr.null()
+            else:
+                return sqlexpr.literal(self.value)
         return self.value
 
     def extract_tables(self):

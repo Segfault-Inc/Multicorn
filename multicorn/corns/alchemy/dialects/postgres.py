@@ -282,7 +282,7 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
             # append a filter after the context request
             if isinstance(chain[0], requests.ContextRequest):
                 replacements[chain[0]] = chain[0].filter(
-                        c(-1).key == key)
+                    c(-1).key == key)
         if replacements:
             aggregates = self.aggregates.wrapped_request._copy_replace(
                     replacements)
