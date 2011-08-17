@@ -3,6 +3,17 @@ from .. import InvalidRequestException
 from ....requests import requests, types, CONTEXT as c, helpers
 
 from sqlalchemy import sql as sqlexpr
+from sqlalchemy.types import Unicode
+from sqlalchemy.sql import expression
+from sqlalchemy.ext.compiler import compiles
+
+class substr(expression.FunctionElement, expression.ColumnElement):
+    type = Unicode()
+    name = 'substr'
+
+@compiles(substr)
+def default_substr(element, compiler, **kw):
+    return compiler.visit_function(element)
 
 def convert_tuple(datum, cursor):
     datum = datum.strip('(')
@@ -74,7 +85,7 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
                         tuple_elems.append(c.proxies[-1])
                     req = req.with_only_columns([sqlexpr.tuple_(*tuple_elems).label('__array_elem')])
                 selects.append(sqlexpr.expression.func.ARRAY(req.as_scalar()).label(key))
-            elif isinstance(req, sqlexpr.Selectable):
+            elif isinstance(req, sqlexpr.Select):
                 # If it is a dict, ensure that names dont collide
                 if return_type.type == dict:
                     tuple_elems = []
@@ -338,6 +349,17 @@ class SliceWrapper(wrappers.SliceWrapper, AggregateWrapper):
                 query = query.offset(self.slice.start)
             return query.alias().select()
         elif type.type in (unicode, str):
-            return sqlexpr.expression.func.substr(query,
-                    self.slice.start,
-                    self.slice.stop - self.slice.start + 1)
+            start = self.slice.start or 0
+            if isinstance(query, expression.Select):
+                query = list(query.c)[0].proxies[-1]
+            args = [start + 1]
+            if self.slice.stop is not None:
+                args.append(self.slice.stop)
+            return substr(query, *args)
+
+    def is_valid(self, contexts=()):
+        self.basic_check(contexts)
+        type = self.subject.return_type(contexts)
+        if not (isinstance(type, types.List) or issubclass(type.type, basestring)):
+            raise InvalidRequestException(self,
+                    "Slice is not managed on not list or string objects")

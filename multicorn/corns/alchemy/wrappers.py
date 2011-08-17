@@ -546,7 +546,7 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
                 query = query.offset(self.slice.start)
             return query.alias().select()
 
-    def is_valid(self, contexts=()):
+    def basic_check(self, contexts=()):
         self.subject.is_valid(contexts)
         if self.slice.step:
             raise InvalidRequestException(self,
@@ -554,6 +554,9 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
         if any((x or 0) < 0 for x in (self.slice.start, self.slice.stop)):
             raise InvalidRequestException(self,
                     "Negative slice indexes not supported")
+
+    def is_valid(self, contexts=()):
+        self.basic_check(contexts)
         if not isinstance(self.subject.return_type(contexts), types.List):
             raise InvalidRequestException(self,
                     "Slice is not managed on not list objects")

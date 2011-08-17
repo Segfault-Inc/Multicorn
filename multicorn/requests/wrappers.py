@@ -222,21 +222,19 @@ class NotOperationWrapper(OperationWrapper):
 @RequestWrapper.register_wrapper(requests.StrRequest)
 class StrWrapper(OperationWrapper):
     def return_type(self, contexts=()):
-        return Type(type==unicode)
+        return Type(type=unicode)
 
 
 @RequestWrapper.register_wrapper(requests.LowerRequest)
 class LowerWrapper(OperationWrapper):
     def return_type(self, contexts=()):
-        return Type(type==unicode)
+        return Type(type=unicode)
 
 
 @RequestWrapper.register_wrapper(requests.UpperRequest)
 class UpperWrapper(OperationWrapper):
     def return_type(self, contexts=()):
-        return Type(type==unicode)
-
-
+        return Type(type=unicode)
 
 
 ARITHMETIC_OPERATORS = ('sub', 'mul', 'div', 'pow')
