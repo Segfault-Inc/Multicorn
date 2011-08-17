@@ -355,7 +355,7 @@ class SliceWrapper(wrappers.SliceWrapper, AggregateWrapper):
             args = [start + 1]
             if self.slice.stop is not None:
                 stop = self.slice.stop - start
-                args.append(self.slice.stop)
+                args.append(stop)
             return substr(query, *args)
 
     def is_valid(self, contexts=()):
