@@ -230,7 +230,7 @@ class Alchemy(AbstractCorn):
                     result = self._all()
                 return python_executor.execute(not_managed, (result,))
             tables = wrapped_request.extract_tables()
-            sql_query = sqlexpr.select(from_obj=tables)
+            sql_query = sqlexpr.select()
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
             print_sql(unicode(sql_query))

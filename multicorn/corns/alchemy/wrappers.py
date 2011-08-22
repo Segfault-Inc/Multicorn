@@ -57,6 +57,7 @@ class FilterWrapper(wrappers.FilterWrapper, AlchemyWrapper):
 class StoredItemsWrapper(wrappers.StoredItemsWrapper, AlchemyWrapper):
 
     def to_alchemy(self, query, contexts=()):
+        query = self.aliased_table.select().with_only_columns([])
         for c in sorted(self.aliased_table.c, key = lambda x: x.key):
             query = query.column(c.label(c.key))
         if contexts:
@@ -77,8 +78,9 @@ class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
         query = contexts[self.scope_depth - 1].query
         if not isinstance(self.return_type(type_context(contexts)),
                 (types.List, types.Dict)):
-           # Context is a scalar, we should have only one column
-           return list(query.c)[0].proxies[-1]
+            if hasattr(query, 'c'):
+               # Context is a scalar, we should have only one column
+               return list(query.c)[0].proxies[-1]
         return query
 
     def extract_tables(self):

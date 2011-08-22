@@ -6,6 +6,8 @@ from sqlalchemy import sql as sqlexpr
 from sqlalchemy.types import Unicode
 from sqlalchemy.sql import expression
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import ARRAY
+
 
 class substr(expression.FunctionElement, expression.ColumnElement):
     type = Unicode()
@@ -14,6 +16,15 @@ class substr(expression.FunctionElement, expression.ColumnElement):
 @compiles(substr)
 def default_substr(element, compiler, **kw):
     return compiler.visit_function(element)
+
+class array(expression.ColumnElement):
+    type = ARRAY(None)
+
+@compiles(array)
+def default_array(element, compiler, **kw):
+    arg1 = element.clauses[0]
+    return "ARRAY[%s]" % compiler.process(arg1)
+
 
 def convert_tuple(datum, cursor):
     datum = datum.strip('(')
@@ -78,24 +89,22 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
         for key, request in sorted(self.value.iteritems(), key=lambda x: x[0]):
             return_type = request.return_type(wrappers.type_context(contexts))
             req = request.to_alchemy(query, contexts)
-            if return_type.type == list:
-                if len(list(req.c)) > 1:
-                    tuple_elems = []
-                    for c in req.c:
-                        tuple_elems.append(c.proxies[-1])
-                    req = req.with_only_columns([sqlexpr.tuple_(*tuple_elems).label('__array_elem')])
-                selects.append(sqlexpr.expression.func.ARRAY(req.as_scalar()).label(key))
-            elif isinstance(req, sqlexpr.Select):
+            if isinstance(req, sqlexpr.Select):
+                if return_type.type == list:
+                    req = req.with_only_columns([sqlexpr.tuple_(*[c.proxies[-1] for c in req.c]).label('__array__elem__')])
+                    req = req.correlate(*query._froms)
+                    select_expr = sqlexpr.expression.func.ARRAY(req.as_scalar())
                 # If it is a dict, ensure that names dont collide
-                if return_type.type == dict:
+                elif return_type.type == dict:
                     tuple_elems = []
                     for c in req.c:
                         tuple_elems.append(c.proxies[-1])
                     select_expr = sqlexpr.tuple_(*tuple_elems)
+                    query = req
                 else:
                     select_expr = list(req.c)[0].proxies[-1]
+                    query = req
                 selects.append(select_expr.label(key))
-                query = req
             else:
                 selects.append(req.label(key))
         return query.with_only_columns(selects)
@@ -162,12 +171,42 @@ class LiteralWrapper(wrappers.LiteralWrapper, PostgresWrapper):
 
 @PostgresWrapper.register_wrapper(requests.AttributeRequest)
 class AttributeWrapper(wrappers.AttributeWrapper, PostgresWrapper):
-    pass
 
-class BinaryOperationWrapper(PostgresWrapper):
-    pass
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        return_type = self.subject.return_type(wrappers.type_context(contexts))
+        idx = sorted(return_type.mapping.keys()).index(self.attr_name)
+        return self._extract_attr(query, idx)
 
-@PostgresWrapper.register_wrapper(requests.AndRequest)
+    def _extract_attr(self, query, idx):
+        values = None
+        if hasattr(query, 'c'):
+            values = list(query.c)
+        elif hasattr(query, 'clauses'):
+            values = query.clauses
+        if values is None:
+            return self._extract_attr(query.element, idx)
+        return sorted(list(values), key=lambda x : x.name)[idx].proxies[-1]
+
+def select_to_tuple(query):
+    if len(list(getattr(query, 'c', []))) > 1:
+        return sqlexpr.tuple_(*[col.proxies[-1] for col in list(query.c)])
+    elif isinstance(query, sqlexpr.Selectable):
+        return list(query.c)[0].proxies[-1]
+    else:
+        return query
+
+class BinaryOperationWrapper(PostgresWrapper, wrappers.BinaryOperationWrapper):
+
+    def left_column(self, query, contexts):
+        subject = self.subject.to_alchemy(query, contexts)
+        return select_to_tuple(subject)
+
+    def right_column(self, query, contexts):
+        other = self.other.to_alchemy(query, contexts)
+        return select_to_tuple(other)
+
+
 @PostgresWrapper.register_wrapper(requests.AndRequest)
 class AndWrapper(wrappers.AndWrapper, BinaryOperationWrapper):
     pass
@@ -179,7 +218,6 @@ class OrWrapper(wrappers.OrWrapper, BinaryOperationWrapper):
 @PostgresWrapper.register_wrapper(requests.EqRequest)
 class EqWrapper(wrappers.EqWrapper, BinaryOperationWrapper):
     pass
-
 
 @PostgresWrapper.register_wrapper(requests.NeRequest)
 class NeWrapper(wrappers.NeWrapper, BinaryOperationWrapper):
@@ -265,10 +303,15 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
 
     def to_alchemy(self, query, contexts=()):
 
-        query = self.subject.to_alchemy(query, contexts)
+        query = self.subject.to_alchemy(query, contexts).alias().select()
         type = self.subject.return_type(wrappers.type_context(contexts))
-        key = self.key.to_alchemy(query, contexts +
+        group_key = self.key.to_alchemy(query, contexts +
                 (wrappers.Context(query, type.inner_type),))
+        key = select_to_tuple(group_key).label('key')
+        if isinstance(group_key, expression.Select):
+            group_key = [col.proxies[-1] for col in group_key.c]
+        else:
+            group_key = [group_key]
         replacements = {}
         self.aggregates = self.from_request(self.aggregates._copy_replace({}))
         need_subquery = False
@@ -277,26 +320,34 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
             if return_type.type == list:
                 # If we plan on returning a list, we need a subquery
                 need_subquery = True
-            chain = requests.as_chain(aggregate.wrapped_request)
-            # If we have things to do on the list of elements,
-            # append a filter after the context request
-            if isinstance(chain[0], requests.ContextRequest):
-                replacements[chain[0]] = chain[0].filter(
-                    c(-1).key == key)
+
+                # If we have things to do on the list of elements,
+                # append a filter after the context request
+                chain = requests.as_chain(aggregate.wrapped_request)
+                if isinstance(chain[0], requests.ContextRequest):
+                    replacements[chain[0]] = chain[0].filter(
+                        c(-2).key == c.key)
         if replacements:
             aggregates = self.aggregates.wrapped_request._copy_replace(
                     replacements)
             aggregates = self.from_request(aggregates)
         else:
             aggregates = self.aggregates
-        newquery = query.column(key.label('key'))
+        newquery = query.column(key)
         if need_subquery:
             newquery = newquery.alias().select()
+        key_type = self.key.return_type(wrappers.type_context(contexts) +
+                    (type.inner_type,))
+        key_type = types.Dict({'key': key_type})
+        new_dict = dict(type.inner_type.mapping)
+        new_dict['key'] = key_type
+        new_type = types.List(types.Dict(new_dict))
         args = (query, contexts +
-                (wrappers.Context(key, type),
-                wrappers.Context(newquery, type)))
+                (wrappers.Context(query, type),
+                wrappers.Context(query.with_only_columns([key]), key_type),
+                wrappers.Context(newquery, new_type)))
         group = aggregates.to_alchemy(*args)
-        group = group.group_by(key)
+        group = group.group_by(*group_key)
         columns = sorted(list(group._raw_columns) + [key.label('key')],
                 key=lambda x: x.name)
         group = group.with_only_columns(columns)
