@@ -339,7 +339,10 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
         key_type = self.key.return_type(wrappers.type_context(contexts) +
                     (type.inner_type,))
         key_type = types.Dict({'key': key_type})
-        new_dict = dict(type.inner_type.mapping)
+        if isinstance(type.inner_type, types.Dict):
+            new_dict = dict(type.inner_type.mapping)
+        else:
+            new_dict = {}
         new_dict['key'] = key_type
         new_type = types.List(types.Dict(new_dict))
         args = (query, contexts +
