@@ -274,7 +274,12 @@ def test_groupby(Corn):
         'id': 3,
         'name': u'foo',
         'lastname': u'baz'} in (dict(elem) for elem in elems)
-
+    items = list(Corn.all.map(c.name).groupby(c, count=c.len()).sort(c.key).execute())
+    assert len(items) == 2
+    assert items[0]['key'] == 'baz'
+    assert items[0]['count'] == 1
+    assert items[1]['key'] == 'foo'
+    assert items[1]['count'] == 2
     items = list(Corn.all.groupby(c.name, max_=c.max(c.id), min_=c.min(c.id),
         sum_=c.sum(c.id)).sort(c.key).execute())
     assert len(items) == 2
