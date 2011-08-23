@@ -383,6 +383,12 @@ def execute_regexp(self, contexts):
     other = execute(self.other, contexts)
     return bool(re.search(other, subject))
 
+@register_executor(requests.InRequest)
+def execute_is_in(self, contexts):
+    subject = execute(self.subject, contexts)
+    other = execute(self.other, contexts)
+    return subject in other
+
 del register_executor, simple_executor
 
 

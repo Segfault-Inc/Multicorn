@@ -295,6 +295,12 @@ class Request(object):
     def len(self):
         return LenRequest(self)
 
+    def is_in(self, other):
+        return InRequest(self, other)
+
+    def split(self, other):
+        return SplitRequest(self, other)
+
     def distinct(self):
         return DistinctRequest(self)
 
@@ -546,6 +552,14 @@ class BinaryOperationRequest(OperationRequest):
 class RegexRequest(BinaryOperationRequest):
     arg_spec = ('subject', 'other')
     __repr__ = method_repr('matches')
+
+class InRequest(BinaryOperationRequest):
+    arg_spec=  ('subject', 'other')
+    __repr__ = method_repr('is_in')
+
+class SplitRequest(BinaryOperationRequest):
+    arg_spec=  ('subject', 'other')
+    __repr__ = method_repr('is_in')
 
 
 class EqRequest(BinaryOperationRequest):

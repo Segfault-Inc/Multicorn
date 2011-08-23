@@ -169,6 +169,11 @@ class RegexRequest(wrappers.RegexWrapper, PostgresWrapper):
 class LiteralWrapper(wrappers.LiteralWrapper, PostgresWrapper):
     pass
 
+@PostgresWrapper.register_wrapper(requests.ListRequest)
+class ListWrapper(wrappers.ListWrapper, LiteralWrapper):
+    pass
+
+
 @PostgresWrapper.register_wrapper(requests.AttributeRequest)
 class AttributeWrapper(wrappers.AttributeWrapper, PostgresWrapper):
 
@@ -206,6 +211,10 @@ class BinaryOperationWrapper(PostgresWrapper, wrappers.BinaryOperationWrapper):
         other = self.other.to_alchemy(query, contexts)
         return select_to_tuple(other)
 
+
+@PostgresWrapper.register_wrapper(requests.InRequest)
+class InWrapper(wrappers.InWrapper, BinaryOperationWrapper):
+    pass
 
 @PostgresWrapper.register_wrapper(requests.AndRequest)
 class AndWrapper(wrappers.AndWrapper, BinaryOperationWrapper):

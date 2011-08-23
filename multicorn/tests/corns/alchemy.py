@@ -185,6 +185,11 @@ def test_optimization(Corn):
     items = list(Corn.all.filter(c.name.matches('f..')).execute())
     assert len(items) == 2
     assert items[0]['name'] == 'foo'
+    req = Corn.all.filter(c.id.is_in([1, 2])).sort(c.id)
+    items = list(req.execute())
+    assert len(items) == 2
+    assert items[0]['id'] == 1
+    assert items[1]['id'] == 2
     items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
     assert len(items) == 3
     assert all(all(subitem['name'] == item['name']

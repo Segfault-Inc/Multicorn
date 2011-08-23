@@ -452,3 +452,12 @@ def test_combinations(Corn):
         .execute())
     assert item['int'] == 2
     assert item['none'] == None
+
+@corntest
+def test_in_request(Corn):
+    make_data(Corn)
+    items = list(Corn.all.filter(c.id.is_in([1, 2])).sort(c.id).execute())
+    assert len(items) == 2
+    assert items[0]['id'] == 1
+    assert items[1]['id'] == 2
+

@@ -190,6 +190,14 @@ class LiteralWrapper(wrappers.LiteralWrapper, AlchemyWrapper):
        # TODO: raise on invalid Types
        pass
 
+@AlchemyWrapper.register_wrapper(requests.ListRequest)
+class ListWrapper(wrappers.ListWrapper, LiteralWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        values = [value.to_alchemy(query, contexts) for value in
+                self.value]
+        return values
+
 
 @AlchemyWrapper.register_wrapper(requests.AttributeRequest)
 class AttributeWrapper(wrappers.AttributeWrapper, AlchemyWrapper):
@@ -247,6 +255,14 @@ class OrWrapper(wrappers.OrWrapper, BinaryOperationWrapper):
     def to_alchemy(self, query, contexts=()):
         return sqlexpr.or_(self.subject.to_alchemy(query, contexts),
                     self.other.to_alchemy(query, contexts))
+
+@AlchemyWrapper.register_wrapper(requests.InRequest)
+class InWrapper(wrappers.InWrapper, BinaryOperationWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        return self.subject.to_alchemy(query, contexts).in_(
+                self.other.to_alchemy(query, contexts))
+
 
 
 @AlchemyWrapper.register_wrapper(requests.EqRequest)
