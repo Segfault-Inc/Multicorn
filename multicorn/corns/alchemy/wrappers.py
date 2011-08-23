@@ -557,6 +557,7 @@ class DistinctWrapper(wrappers.AggregateWrapper, AggregateWrapper):
         self.subject.is_valid(contexts)
 
 
+
 @AlchemyWrapper.register_wrapper(requests.SliceRequest)
 class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
 

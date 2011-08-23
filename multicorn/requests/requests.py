@@ -43,7 +43,6 @@ def as_chain(request):
     return chain
 
 
-
 class WithRealAttributes(object):
     """
     Wrap a Request object to allow access to its attributes without going
@@ -834,3 +833,4 @@ class LenRequest(UnaryOperationRequest):
 
 class DistinctRequest(UnaryOperationRequest):
     __repr__ = method_repr('distinct')
+

@@ -4,7 +4,7 @@ from pprint import isrecursive, saferepr
 
 from ...item import BaseItem
 from ...requests.types import Type, List, Dict
-from ...requests.helpers import inject_context
+from ...requests.helpers import inject_context, collect
 from ...requests import requests
 from ...requests import CONTEXT as c
 from ...requests import wrappers
@@ -53,27 +53,55 @@ class ComputedExtenser(AbstractCornExtenser):
         for item in self.wrapped_corn._all():
             yield self.create(item)
 
-    def execute(self, request):
-        # TODO: transform the request!
-        request = request._copy_replace({})
+    def _transform_request(self, request, contexts=()):
         wrapped_request = wrappers.RequestWrapper.from_request(request)
-        types = wrapped_request.used_types()
+        types = wrapped_request.used_types(contexts)
         replacements = {}
-        return_type = wrapped_request.return_type()
-        chain = requests.as_chain(request)
+        main_chain = requests.as_chain(request)
         # We cannot do this on the all method itself!
-        if len(chain) > 1:
-            dict_expr = {}
+        if len(main_chain) > 1:
+            replacements = {}
+            not_found = set()
             for p in types:
                 if isinstance(p, ComputedType):
-                    dict_expr[p.name] = p.expression
-            if dict_expr:
-                replacements[chain[0]] = self.wrapped_corn.all.map(c + dict_expr)
-            else:
-                replacements[chain[0]] = self.wrapped_corn.all
-        request = wrapped_request._copy_replace(replacements)
-        return self._transform_result(self.wrapped_corn.execute(request),
-                return_type)
+                    found = False
+                    for req in types[p]:
+                        chain = requests.as_chain(req)
+                        if isinstance(chain[0], requests.StoredItemsRequest) and\
+                                chain[0].storage is p.corn:
+                            # Modify it!
+                            found = True
+                            replacements.set_default(chain[0], {})[p.name] = p.expression
+                    if not found:
+                        not_found.add(p)
+            replacements = dict([(key, key.map(c + value)) for key, value in
+                replacements.iteritems()])
+            for p in list(not_found):
+                def predicate(req):
+                    req = requests.WithRealAttributes(req)
+                    if hasattr(req, 'storage') and req.storage is p.corn:
+                        return True
+                stored = collect(request, predicate)
+                for s in stored:
+                    not_found = not_found - set([p])
+                    req = replacements.get(s, p.corn.wrapped_corn.all)
+                    replacements[s] = req.map(c + {p.name: p.expression})
+            request = wrapped_request._copy_replace(replacements)
+            if not_found:
+                for corn in set(p.corn for p in not_found):
+                    request = corn._transform_request(request)
+            return request
+        return request
+
+
+
+    def execute(self, request):
+        wrapped_request = wrappers.RequestWrapper.from_request(request)
+        return_type = wrapped_request.return_type()
+        # TODO: transform the request!
+        return self._transform_result(self.wrapped_corn.execute(
+            self._transform_request(request)),
+            return_type)
 
     def _make_lazy(self, computed):
         def lazy_loader(item):

@@ -178,10 +178,16 @@ class ListWrapper(wrappers.ListWrapper, LiteralWrapper):
 class AttributeWrapper(wrappers.AttributeWrapper, PostgresWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        query = self.subject.to_alchemy(query, contexts)
+        newquery = self.subject.to_alchemy(query, contexts)
         return_type = self.subject.return_type(wrappers.type_context(contexts))
-        idx = sorted(return_type.mapping.keys()).index(self.attr_name)
-        return self._extract_attr(query, idx)
+        if return_type.corn is not None:
+            # We work directly on a type, better do something good with
+            # it!
+            keys = return_type.corn.definitions.keys()
+        else:
+            keys = return_type.mapping.keys()
+        idx = sorted(keys).index(self.attr_name)
+        return self._extract_attr(newquery, idx)
 
     def _extract_attr(self, query, idx):
         values = None
@@ -260,35 +266,38 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
                 if value.type == list:
                     need_subquery = True
                     break
-        other_base = query.with_only_columns([])
         if need_subquery:
             subject = self.subject.to_alchemy(query.alias().select(), contexts)
-            alias = query.alias().select()
-            columns = [sqlexpr.literal_column(unicode(c.proxies[-1].label(c.name)))
-                    for c in alias.c]
-            other_base = alias.with_only_columns(columns)
-            contexts = contexts[:-1] + (wrappers.Context(other_base,
+            contexts = contexts[:-1] + (wrappers.Context(subject,
                 contexts[-1].type),)
             # If we have things to do on the list of elements,
             # append a filter after the context request
-            other = self.other.to_alchemy(other_base, contexts)
-            other = sqlexpr.select(from_obj=[other.alias(), subject.alias()])
-        else:
-            other = self.other.to_alchemy(other_base, contexts)
-            subject = self.subject.to_alchemy(query, contexts)
-        # Dict addition is a mapping merge
-        if all(isinstance(x, types.Dict) for x in (subject_type, other_type)):
+            other = self.other.to_alchemy(subject, contexts)
+            base_request = sqlexpr.select(from_obj=[other.alias(), subject.alias()])
             columns = []
             for member in (subject, other):
                 for c in sorted(member.c, key=lambda x : x.name):
                     columns.append(c.proxies[-1])
             columns = sorted(columns, key=lambda c: c.name)
-            other = other.with_only_columns(columns)
-            return other
-        elif all(isinstance(x, types.List) for x in (subject_type, other_type)):
-            return subject.union(other)
+            return subject.with_only_columns(columns)
         else:
-            return subject + other
+            other_base = query.with_only_columns([])
+            other = self.other.to_alchemy(other_base, contexts)
+            subject = self.subject.to_alchemy(query, contexts)
+            base_request = other
+        # Dict addition is a mapping merge
+            if all(isinstance(x, types.Dict) for x in (subject_type, other_type)):
+                columns = []
+                for member in (subject, other):
+                    for c in sorted(member.c, key=lambda x : x.name):
+                        columns.append(c.proxies[-1])
+                columns = sorted(columns, key=lambda c: c.name)
+                other = base_request.with_only_columns(columns)
+                return other
+            elif all(isinstance(x, types.List) for x in (subject_type, other_type)):
+                return subject.union(other)
+            else:
+                return subject + other
 
 
 @PostgresWrapper.register_wrapper(requests.SubRequest)
