@@ -181,12 +181,12 @@ class AttributeWrapper(wrappers.AttributeWrapper, PostgresWrapper):
     def _extract_attr(self, query, idx):
         values = None
         if hasattr(query, 'c'):
-            values = list(query.c)
+            values = sorted(list(query.c), key=lambda x : x.name)
         elif hasattr(query, 'clauses'):
             values = query.clauses
         if values is None:
             return self._extract_attr(query.element, idx)
-        return sorted(list(values), key=lambda x : x.name)[idx].proxies[-1]
+        return values[idx].proxies[-1]
 
 def select_to_tuple(query):
     if len(list(getattr(query, 'c', []))) > 1:

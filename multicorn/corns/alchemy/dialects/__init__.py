@@ -96,7 +96,12 @@ class PostgresDialect(BaseDialect):
             return process_list(result)
         elif return_type.type == dict:
             newdict = {}
-            ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
+            if return_type.corn:
+                ordered_dict = sorted(((x, y.type)
+                        for x, y in return_type.corn.definitions.iteritems()),
+                        key=lambda x: x[0])
+            else:
+                ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
             for idx, (key, type) in enumerate(ordered_dict):
                 # Even for dicts, sql returns results "inline"
                 newdict[key] = self._transform_result(result[idx], type, corn)
