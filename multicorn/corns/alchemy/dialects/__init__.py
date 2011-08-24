@@ -70,7 +70,7 @@ class BaseDialect(object):
                             subresult[subkey.replace('__%s_' % key,'').strip('__')] = result[subkey]
                         newdict[key] = self._transform_result(subresult, type, corn)
                     elif isinstance(type, types.List):
-                        newdict[key] = self._transform_result(result[key], type, corn)
+                        newdict[key] = self._transform_result(result[key][0], type, corn)
                     else:
                         newdict[key] = result[key]
                 return newdict

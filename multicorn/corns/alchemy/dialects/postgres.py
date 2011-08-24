@@ -3,7 +3,7 @@ from .. import InvalidRequestException
 from ....requests import requests, types, CONTEXT as c, helpers
 
 from sqlalchemy import sql as sqlexpr
-from sqlalchemy.types import Unicode
+from sqlalchemy.types import Unicode, NullType, UserDefinedType
 from sqlalchemy.sql import expression
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -17,17 +17,12 @@ class substr(expression.FunctionElement, expression.ColumnElement):
 def default_substr(element, compiler, **kw):
     return compiler.visit_function(element)
 
-class array(expression.ColumnElement):
-    type = ARRAY(None)
-
-@compiles(array)
-def default_array(element, compiler, **kw):
-    arg1 = element.clauses[0]
-    return "ARRAY[%s]" % compiler.process(arg1)
-
 
 def convert_tuple(datum, cursor):
-    datum = datum.strip('(')
+    datum = datum.lstrip('(')
+    if datum.startswith('"{"'):
+        return convert_tuple_array(datum.strip('"'), cursor)
+
     current_token = ""
     elems = []
     in_string = False
@@ -70,11 +65,81 @@ try:
     psycopg2.extensions.register_type(TUPLE_ARRAY)
     psycopg2.extensions.register_type(TUPLE)
 
+
+
+
 except:
     print "Warning: postgresql driver not found"
 
+class Tuple(UserDefinedType):
 
-#Base (dummy) array converter
+    def __init__(self):
+        pass
+
+    def get_col_spec(self):
+        pass
+
+    def result_processor(self, dialect, coltype):
+        def processor(value):
+            return value
+        return processor
+
+class base_column_delegate(object):
+
+    @property
+    def clauses(self):
+        if hasattr(self.clause, 'clauses'):
+            return self.clause.clauses
+        return [self.clause]
+
+    @property
+    def c(self):
+        if hasattr(self.clause, 'c'):
+            return self.clause.c
+        raise AttributeError('%s[%s] object has no attribute c'
+               % (self.__class__.__name__, self.clause))
+
+
+
+
+class array(expression.ColumnElement, base_column_delegate):
+
+    type = ARRAY(Tuple())
+
+    def __init__(self, clause):
+        self.clause = clause
+
+
+
+
+@compiles(array)
+def default_array(element, compiler, **kw):
+    arg1 = element.clause
+    if isinstance(arg1.type, ARRAY):
+        return "ARRAY(select row(%s))" % compiler.process(arg1)
+    return "ARRAY(%s)" % compiler.process(arg1)
+
+
+class array_elem(expression.ColumnElement, base_column_delegate):
+
+    type = Tuple()
+
+    def __init__(self, clause):
+        self.clause = clause
+
+    @property
+    def clauses(self):
+        return self.clause.clauses
+
+@compiles(array_elem)
+def default_array_elem(element, compiler, **kw):
+    req = element.clause
+    req = (req.with_only_columns(
+        [sqlexpr.tuple_(
+            *[c.proxies[-1] for c in req.c])
+            .label('__array__elem__')]))
+    req = req.as_scalar()
+    return compiler.process(req)
 
 
 class PostgresWrapper(wrappers.AlchemyWrapper):
@@ -91,9 +156,7 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
             req = request.to_alchemy(query, contexts)
             if isinstance(req, sqlexpr.Select):
                 if return_type.type == list:
-                    req = req.with_only_columns([sqlexpr.tuple_(*[c.proxies[-1] for c in req.c]).label('__array__elem__')])
-                    req = req.correlate(*query._froms)
-                    select_expr = sqlexpr.expression.func.ARRAY(req.as_scalar())
+                    select_expr = array(array_elem(req))
                 # If it is a dict, ensure that names dont collide
                 elif return_type.type == dict:
                     tuple_elems = []
