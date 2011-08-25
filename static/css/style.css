@@ -13,7 +13,6 @@
   src: url(CaviarDreams.ttf);
 }
 
-
 /*
   ---------------
   - HTML / Body -
@@ -21,21 +20,16 @@
 */
 html {
   background: url(img/background.jpg) repeat top left;
-  border-bottom: 15px solid black;
   border-top: 15px solid black;
-  margin: 0;
-  padding: 0;
 }
 
 body {
-  border-radius: 0;
+  background: white;
   box-shadow:0px 0px 5px #8f8f8f;
-  margin: auto;
-  padding-top: 40px;
-  opacity: 1;
-  width: 850px;
+  margin: 0 auto;
+  padding: 40px 4% 0px 4%;
+  max-width: 850px;
 }
-
 
 /*
   ----------
@@ -78,35 +72,31 @@ pre {
   box-shadow:0px 0px 5px #8f8f8f;
 }
 
-
 /*
   ----------
   - Header -
   ----------
 */
 h1 a {
-  color: #D0272B !important;
+  color: #D0272B;
   font-family: "arual";
-  font-size: 3.5em;
+  font-size: 111px;
   font-weight: lighter;
-  padding-left: 135px;
+  line-height: 111px;
+  padding-left: 108px;
   text-transform: uppercase;
 }
 
 h1 a:hover,
 h1 a:visited {
-  background: none;
-  box-shadow: none;
   color: #D0272B;
 }
 
 header {
-  background: url(img/multicorn.png) no-repeat 105px -15px;
-  height: 137px;
-  padding-left: 100px;
-  width: 850px;
+  background: url(img/multicorn.png) no-repeat 80px 50%;
+  margin-top: -25px;
+  padding-left: 80px;
 }
-
 
 /*
   --------------
@@ -114,35 +104,25 @@ header {
   --------------
 */
 nav {
-  background: none;
-  display: block;
-  font-family: "arual";
   font-size: 1.3em;
-  margin: -160px auto 0 auto;
   text-align: center;
 }
 
 nav ul {
   background: url(img/break.jpg) no-repeat top center;
   border-bottom: 1px solid #dadada;
-  border-radius: 0;
-  box-shadow: none;
-  margin-top: 160px;
   padding: 23px 0 0 0;
   text-transform: uppercase;
 }
 
 nav li {
-  color: #b62226;
-  margin: 0;
+  display: inline;
 }
 
 nav li a {
-  border-radius: 0;
   color: #b62226;
   display: inline-block;
   font-family: "arual";
-  margin: 0;
   padding: 0.5em 0.5em 0.25em 0.5em;
 }
 
@@ -156,15 +136,12 @@ nav ul li a:visited {
   color: #b62226;
 }
 
-
 /*
   -----------
   - Section -
   -----------
 */
 body > section {
-  background-color: white;
-  border: none;
   margin-bottom: 30px;
 }
 
@@ -181,12 +158,8 @@ article section {
 article h2 {
   background: url(img/multicorn.jpg) no-repeat,
               url(img/break2.jpg) no-repeat bottom center;
-  color: #d0272b;
-  font-family: "arual";
   padding: 5px 0 23px 25px;
-  text-transform: upper-case;
 }
-
 
 /*
   ----------
@@ -194,24 +167,27 @@ article h2 {
   ----------
 */
 footer {
-  background: url(img/horse.jpg) no-repeat center right;      
+  background: url(img/horse.jpg) no-repeat 100% 0;  
+  font-family: "text";    
   margin-top: 50px;
-  padding-top: 35px;
+  padding: 3px 0 0 0;
+  text-align: center;
 }
 
 footer ul {
   background: url(img/footer.png) no-repeat top center;
-  margin-top: 0;
-  padding-top: 20px;
+  padding: 20px 0;
+}
+
+footer li { 
+  display: inline;
 }
 
 footer li a {
   color: #d0272b !important;
+  padding: 0 5px;
 }
 
 footer li a:hover {
-  background: none;
-  border-radius: 0;
-  box-shadow: none !important;
   color: black !important;
 }
