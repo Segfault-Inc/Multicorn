@@ -229,12 +229,12 @@ class Alchemy(AbstractCorn):
                 else:
                     result = self._all()
                 return python_executor.execute(not_managed, (result,))
-            tables = wrapped_request.extract_tables()
+            # Create all aliased tables in ther request
+            wrapped_request.extract_tables()
             sql_query = sqlexpr.select()
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
             print_sql(unicode(sql_query))
-
             try:
                 connection = self.table.bind.connect()
                 sql_result = connection.execute(sql_query)

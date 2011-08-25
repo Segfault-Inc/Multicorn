@@ -39,7 +39,7 @@ def convert_tuple(datum, cursor):
             elif a == '\\':
                 escape = True
         elif a in (',', ')'):
-            elems.append(current_token)
+            elems.append(unicode_converter(current_token, cursor))
             current_token = ""
         else:
             current_token += a
@@ -60,6 +60,7 @@ def convert_tuple_array(data, cursor):
 try:
     import psycopg2
     converter = psycopg2.extensions.string_types[1015]
+    unicode_converter = psycopg2.extensions.string_types[1043]
     TUPLE_ARRAY = psycopg2.extensions.new_type((2287,), "TUPLEARRAY", convert_tuple_array)
     TUPLE = psycopg2.extensions.new_type((2249,), "TUPLE", convert_tuple)
     psycopg2.extensions.register_type(TUPLE_ARRAY)
@@ -105,21 +106,20 @@ class array_elem(expression.ColumnElement):
     type = Tuple()
 
     def __init__(self, element):
+        if len(element.c) == 1:
+            col_base = element._raw_columns[0].element
+        else:
+            col_base = element
+        self.clauses = list(col_base.c)
+        element = element.with_only_columns([tuple_(*self.clauses)])
+        element = element.as_scalar()
         self.element = element
 
-    @property
-    def elements(self):
-        return self.element.elements
 
 
 @compiles(array_elem)
 def default_array_elem(element, compiler, **kw):
-    req = element.element
-    req = (req.with_only_columns(
-        [tuple_(
-            *[c.proxies[-1] for c in req.c])]))
-    req = req.as_scalar()
-    return compiler.process(req)
+    return compiler.process(element.element)
 
 class tuple_(expression.ColumnElement):
 
@@ -127,6 +127,10 @@ class tuple_(expression.ColumnElement):
 
     def __init__(self, *clauses):
         self.clauses = clauses
+
+    @property
+    def c(self):
+        return sqlexpr.ColumnCollection(*self.clauses)
 
 
 @compiles(tuple_)
@@ -368,7 +372,25 @@ class DivWrapper(wrappers.DivWrapper, BinaryOperationWrapper):
 
 @PostgresWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(wrappers.MapWrapper, PostgresWrapper):
-    pass
+
+    def to_alchemy(self, query, contexts=()):
+        newquery = self.subject.to_alchemy(query, contexts)
+        type = self.subject.return_type(wrappers.type_context(contexts))
+        contexts = contexts + (wrappers.Context(newquery, type.inner_type),)
+        select = self.new_value.to_alchemy(newquery, contexts)
+        # When we have a subselect as a scalar, un-nest it to take
+        # the base query
+        while not isinstance(newquery, sqlexpr.Select):
+            newquery = newquery.element
+        if not isinstance(select, expression.Selectable):
+            if hasattr(select, 'element') and\
+                    select.element.type == tuple_.type:
+                select = select.element.clauses
+            if not hasattr(select, '__iter__'):
+                select = [select]
+            return newquery.with_only_columns(select)
+        return select
+
 
 @PostgresWrapper.register_wrapper(requests.GroupbyRequest)
 class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
