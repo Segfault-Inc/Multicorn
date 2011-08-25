@@ -1,8 +1,0 @@
-{
-  "name": "Multicorn",
-  "description": "Unified data access library",
-  "menu": [
-    {"name": "Overview", "link": "/"},
-    {"name": "Issues", "link": "http://redmine.kozea.fr/projects/multicorn/issues"}
-  ]
-}

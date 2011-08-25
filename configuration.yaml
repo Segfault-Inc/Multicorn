@@ -1,0 +1,18 @@
+name: Multicorn
+description: Unified data access library
+license: GPLv3
+public: true
+url: http://www.multicorn.org/
+
+menu:
+  - Overview
+      link: /
+  - Issues
+      link: http://redmine.kozea.fr/projects/multicorn/issues
+
+vcs (git):
+  url: git://github.com/Kozea/Multicorn.git
+  path: /var/db/git/multicorn.git
+
+code browser (github):
+  project name: Kozea/Multicorn
