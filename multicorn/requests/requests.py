@@ -435,6 +435,24 @@ class DictRequest(Request):
         return DictRequest(newvalue)
 
 
+class CaseRequest(Request):
+    arg_spec = ('whens', 'default')
+
+    @self_with_attrs
+    def __init__(self, whens, default):
+        self.whens = whens
+        self.default = default
+
+
+class WhenRequest(Request):
+    arg_spec = ('condition', 'result')
+
+    @self_with_attrs
+    def __init__(self, condition, result):
+        self.condition = condition
+        self.result = result
+
+
 class ContextRequest(Request):
     arg_spec = ('scope_depth',)
 
@@ -751,8 +769,6 @@ class AttributeRequest(OperationRequest):
     @self_with_attrs
     def __repr__(self):
         return '%r.%s' % (self.subject, self.attr_name)
-
-
 
 
 class OneRequest(OperationRequest):

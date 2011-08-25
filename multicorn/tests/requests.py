@@ -419,3 +419,16 @@ def test_groupby():
             ({'foo': 4, 'bar': 143}, 1),
         ]
     )
+
+
+@suite.test
+def test_case():
+    from ..requests import case, when
+    from ..requests import ARGUMENT_NOT_GIVEN
+
+    assert (repr(case(when(c.age > 18, c.pics), c.text)) ==
+            "Case[(When[(c.age > literal(18)), c.pics],), c.text]")
+    assert repr(case(when(c.age > 18, c.pics), when(c.age <= 18, c.text)) ==
+                "Case[(When[(c.age > literal(18)), c.pics],"
+                "When[(c.age <= literal(18)), c.text]),"
+                "%r]" % ARGUMENT_NOT_GIVEN)
