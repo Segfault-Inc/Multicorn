@@ -84,63 +84,54 @@ class Tuple(UserDefinedType):
             return value
         return processor
 
-class base_column_delegate(object):
 
-    @property
-    def clauses(self):
-        if hasattr(self.clause, 'clauses'):
-            return self.clause.clauses
-        return [self.clause]
-
-    @property
-    def c(self):
-        if hasattr(self.clause, 'c'):
-            return self.clause.c
-        raise AttributeError('%s[%s] object has no attribute c'
-               % (self.__class__.__name__, self.clause))
-
-
-
-
-class array(expression.ColumnElement, base_column_delegate):
+class array(expression.ColumnElement):
 
     type = ARRAY(Tuple())
 
-    def __init__(self, clause):
-        self.clause = clause
-
-
+    def __init__(self, element):
+        self.element = element
 
 
 @compiles(array)
 def default_array(element, compiler, **kw):
-    arg1 = element.clause
+    arg1 = element.element
     if isinstance(arg1.type, ARRAY):
         return "ARRAY(select row(%s))" % compiler.process(arg1)
     return "ARRAY(%s)" % compiler.process(arg1)
 
-
-class array_elem(expression.ColumnElement, base_column_delegate):
+class array_elem(expression.ColumnElement):
 
     type = Tuple()
 
-    def __init__(self, clause):
-        self.clause = clause
+    def __init__(self, element):
+        self.element = element
 
     @property
-    def clauses(self):
-        return self.clause.clauses
+    def elements(self):
+        return self.element.elements
+
 
 @compiles(array_elem)
 def default_array_elem(element, compiler, **kw):
-    req = element.clause
+    req = element.element
     req = (req.with_only_columns(
-        [sqlexpr.tuple_(
-            *[c.proxies[-1] for c in req.c])
-            .label('__array__elem__')]))
+        [tuple_(
+            *[c.proxies[-1] for c in req.c])]))
     req = req.as_scalar()
     return compiler.process(req)
 
+class tuple_(expression.ColumnElement):
+
+    type = Tuple()
+
+    def __init__(self, *clauses):
+        self.clauses = clauses
+
+
+@compiles(tuple_)
+def default_tuple_(element, compiler, **kw):
+    return "(%s)" % compiler.process(sqlexpr.tuple_(*element.clauses))
 
 class PostgresWrapper(wrappers.AlchemyWrapper):
     class_map = wrappers.AlchemyWrapper.class_map.copy()
@@ -162,7 +153,7 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
                     tuple_elems = []
                     for c in req.c:
                         tuple_elems.append(c.proxies[-1])
-                    select_expr = sqlexpr.tuple_(*tuple_elems)
+                    select_expr = tuple_(*tuple_elems)
                     query = req
                 else:
                     select_expr = list(req.c)[0].proxies[-1]
@@ -264,7 +255,7 @@ class AttributeWrapper(wrappers.AttributeWrapper, PostgresWrapper):
 
 def select_to_tuple(query):
     if len(list(getattr(query, 'c', []))) > 1:
-        return sqlexpr.tuple_(*[col.proxies[-1] for col in list(query.c)])
+        return tuple_(*[col.proxies[-1] for col in list(query.c)])
     elif isinstance(query, sqlexpr.Selectable):
         return list(query.c)[0].proxies[-1]
     else:
