@@ -5,9 +5,9 @@ public: true
 url: http://www.multicorn.org/
 
 menu:
-  - Overview
+  - Overview:
       link: /
-  - Issues
+  - Issues:
       link: http://redmine.kozea.fr/projects/multicorn/issues
 
 vcs (git):
