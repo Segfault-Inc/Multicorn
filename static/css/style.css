@@ -5,7 +5,7 @@
 */
 @font-face {
   font-family: "arual";
-  src: url(Arual.ttf);
+  src: url(Arual.otf);
 }
 
 @font-face {
@@ -41,14 +41,12 @@ h2, h3, h4, h5, h6 {
   font-family: "arual";
   font-weight: normal;
   letter-spacing: 0.2em;
-  text-shadow: none;
 }
 
 h2 a, h3 a, h4 a, h5 a, h6 a {
   color: #d0272b;
   font-family: "arual";
   letter-spacing: 0.1em;
-  text-shadow: none;
 }
 
 a {
@@ -63,7 +61,7 @@ a:focus {
   color: #dd292e;
 }
 
-a:visited {
+section a:visited {
   color: #901b1e;
 }
 
@@ -77,25 +75,28 @@ pre {
   - Header -
   ----------
 */
-h1 a {
-  color: #D0272B;
+h1 {
   font-family: "arual";
   font-size: 111px;
   font-weight: lighter;
   line-height: 111px;
-  padding-left: 108px;
+  text-align: center;
   text-transform: uppercase;
 }
 
+h1 a{  color: #d0272b;}
+
+h1:before{color: #d0272b;
+content:'¤'
+}
+
 h1 a:hover,
-h1 a:visited {
-  color: #D0272B;
+h1 a:focus {
+  color: black;
 }
 
 header {
-  background: url(img/multicorn.png) no-repeat 80px 50%;
   margin-top: -25px;
-  padding-left: 80px;
 }
 
 /*
