@@ -4,7 +4,7 @@
 
 from . import requests
 from .requests import as_request, literal # To be imported form here
-from .requests import CaseRequest, WhenRequest, ARGUMENT_NOT_GIVEN
+from .requests import CaseRequest, WhenRequest
 
 CONTEXT = requests.ContextRequest()
 
@@ -18,4 +18,4 @@ def case(*args):
     if not isinstance(args[-1], WhenRequest):
         return CaseRequest(args[:-1], args[-1])
 
-    return CaseRequest(args, ARGUMENT_NOT_GIVEN)
+    return CaseRequest(args, None)

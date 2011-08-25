@@ -62,6 +62,22 @@ def execute_dict(self, contexts):
         for key, value in self.value.iteritems())
 
 
+@register_executor(requests.WhenRequest)
+def execute_when(self, contexts):
+    if execute(self.condition, contexts):
+        return (True, execute(self.result, contexts))
+    return (False, False)
+
+
+@register_executor(requests.CaseRequest)
+def execute_case(self, contexts):
+    for when in self.whens:
+        state, result = execute(when, contexts)
+        if state:
+            return result
+    return execute(self.default, contexts)
+
+
 @register_executor(requests.ContextRequest)
 def execute_context(self, contexts):
     assert self.scope_depth <= 0
@@ -367,21 +383,25 @@ simple_executor(requests.MaxRequest, max)
 
 simple_executor(requests.StrRequest, unicode)
 
+
 @register_executor(requests.LowerRequest)
 def execute_lower(self, contexts):
     subject = execute(self.subject, contexts)
     return subject.lower()
+
 
 @register_executor(requests.UpperRequest)
 def execute_upper(self, contexts):
     subject = execute(self.subject, contexts)
     return subject.upper()
 
+
 @register_executor(requests.RegexRequest)
 def execute_regexp(self, contexts):
     subject = execute(self.subject, contexts)
     other = execute(self.other, contexts)
     return bool(re.search(other, subject))
+
 
 @register_executor(requests.InRequest)
 def execute_is_in(self, contexts):

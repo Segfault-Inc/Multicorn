@@ -424,11 +424,47 @@ def test_groupby():
 @suite.test
 def test_case():
     from ..requests import case, when
-    from ..requests import ARGUMENT_NOT_GIVEN
 
     assert (repr(case(when(c.age > 18, c.pics), c.text)) ==
             "Case[(When[(c.age > literal(18)), c.pics],), c.text]")
     assert repr(case(when(c.age > 18, c.pics), when(c.age <= 18, c.text)) ==
                 "Case[(When[(c.age > literal(18)), c.pics],"
-                "When[(c.age <= literal(18)), c.text]),"
-                "%r]" % ARGUMENT_NOT_GIVEN)
+                "When[(c.age <= literal(18)), c.text]), None")
+
+    literal_request = literal([
+        {'foo': 1, 'bar': 12},
+        {'foo': 3, 'bar': 143},
+        {'foo': 4, 'bar': 5},
+    ])
+    assert list(execute(literal_request.map(
+        case(when(c.bar > 10, 99), c.bar)))) == [99, 99, 5]
+
+    assert list(execute(literal_request.map(
+        case(when(c.bar > 7, 123))))) == [123, 123, None]
+
+    assert list(execute(literal_request.map(
+        case(
+            when((c.bar > 7) & (c.bar < 40), 123),
+            c.foo
+        )))) == [123, 3, 4]
+
+    assert list(execute(literal_request.map(
+        case(
+            when(c.bar > 100, 100),
+            when(c.bar > 10, 10),
+            when(c.bar > 1, 1)
+        )))) == [10, 100, 1]
+
+    assert list(execute(literal_request.map(
+        case(
+            when(c.bar > 1, 1),
+            when(c.bar > 10, 10),
+            when(c.bar > 100, 100)
+        )))) == [1, 1, 1]
+
+    assert list(execute(literal_request.map(
+        case(
+            when(c.bar > 10,
+                 case(when(c.foo == 3, 1337), 10)),
+            c.bar
+        )))) == [10, 1337, 5]

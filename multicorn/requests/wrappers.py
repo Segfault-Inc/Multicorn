@@ -140,6 +140,41 @@ class DictWrapper(RequestWrapper):
         return types
 
 
+@RequestWrapper.register_wrapper(requests.WhenRequest)
+class WhenWrapper(RequestWrapper):
+    def __init__(self, *args, **kwargs):
+        super(WhenWrapper, self).__init__(*args, **kwargs)
+        self.condition = self.from_request(self.condition)
+        self.result = self.from_request(self.result)
+
+    def return_type(self, contexts=()):
+        return self.result.return_type(contexts)
+
+    def used_types(self, contexts=()):
+        types = {}
+        self.merge_dict(types , self.condition.used_types(contexts))
+        self.merge_dict(types , self.result.used_types(contexts))
+        return types
+
+
+@RequestWrapper.register_wrapper(requests.CaseRequest)
+class CaseWrapper(RequestWrapper):
+    def __init__(self, *args, **kwargs):
+        super(CaseWrapper, self).__init__(*args, **kwargs)
+        
+        self.whens = [self.from_request(when) for when in self.whens]
+        self.default = self.from_request(self.default) 
+
+    def return_type(self, contexts=()):
+        return Type(object)
+
+    def used_types(self, contexts=()):
+        types = {}
+        for when in self.whens:
+            self.merge_dict(types , when.used_types(contexts))
+        self.merge_dict(types , self.default.used_types(contexts))
+        return types
+
 
 @RequestWrapper.register_wrapper(requests.ContextRequest)
 class ContextWrapper(RequestWrapper):
