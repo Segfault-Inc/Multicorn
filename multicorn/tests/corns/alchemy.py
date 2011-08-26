@@ -257,3 +257,28 @@ def test_case(Corn):
     assert items[0]['case'] == 'foo'
     assert items[1]['case'] == 'baz'
     assert items[2]['case'] == 'baz'
+
+    items = list(Corn.all.map(
+        {'id': c.id,
+         'case': case(
+             when(c.name == 'foo', 'yoo'),
+             when(c.name == 'baz', 'yar')
+         )})
+        .sort(c.id)
+        .execute())
+    assert len(items) == 3
+    assert items[0]['case'] == 'yoo'
+    assert items[1]['case'] == 'yar'
+    assert items[2]['case'] == 'yoo'
+
+    items = list(Corn.all.map(
+        {'id': c.id,
+         'case': case(
+             when(c.name == 'foo', 12),
+         )})
+        .sort(c.id)
+        .execute())
+    assert len(items) == 3
+    assert items[0]['case'] == 12
+    assert items[1]['case'] == None
+    assert items[2]['case'] == 12
