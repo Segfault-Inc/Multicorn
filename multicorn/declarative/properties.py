@@ -4,9 +4,6 @@
 
 from ..corns.extensers.typeextenser import TypeExtenser
 from ..corns.extensers.computed import ComputedExtenser, RelationExtenser
-from functools import wraps
-from ..requests import CONTEXT as c
-from ..requests import requests
 
 
 class Property(object):
@@ -27,6 +24,7 @@ class Property(object):
 class TypeProperty(Property):
     _wrapper = TypeExtenser
 
+
 class ComputedProperty(Property):
     _wrapper = ComputedExtenser
 
@@ -34,12 +32,14 @@ class ComputedProperty(Property):
         self.kwargs['reverse'] = fun(self)
         return self
 
+
 class DateProperty(TypeProperty):
     pass
 
 
 class TextProperty(TypeProperty):
     pass
+
 
 class computed(object):
 
@@ -50,9 +50,13 @@ class computed(object):
         kwargs = {'expression': fun}
         return ComputedProperty(**kwargs)
 
+
 class Relation(ComputedProperty):
 
     _wrapper = RelationExtenser
 
-    def __init__(self, to=None, on=None, property=None, uses=None, reverse_suffix='s'):
-        super(Relation, self).__init__(property=property, to=to, on=on, uses=uses, reverse_suffix=reverse_suffix)
+    def __init__(
+        self, to=None, on=None, property=None, uses=None, reverse_suffix='s'):
+        super(Relation, self).__init__(
+            property=property, to=to, on=on, uses=uses,
+            reverse_suffix=reverse_suffix)

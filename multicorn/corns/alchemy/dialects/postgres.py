@@ -19,6 +19,7 @@ class substr(expression.FunctionElement, expression.ColumnElement):
     type = Unicode()
     name = 'substr'
 
+
 @compiles(substr)
 def default_substr(element, compiler, **kw):
     return compiler.visit_function(element)
@@ -75,8 +76,6 @@ def convert_tuple_array(data, cursor):
         tuples.append(convert_tuple(datum, cursor))
     return tuples
 
-
-
 try:
     import psycopg2
     type_map = {
@@ -87,12 +86,14 @@ try:
     }
     converter = psycopg2.extensions.string_types[1015]
     unicode_converter = psycopg2.extensions.string_types[1043]
-    TUPLE_ARRAY = psycopg2.extensions.new_type((2287,), "TUPLEARRAY", convert_tuple_array)
+    TUPLE_ARRAY = psycopg2.extensions.new_type(
+        (2287,), "TUPLEARRAY", convert_tuple_array)
     TUPLE = psycopg2.extensions.new_type((2249,), "TUPLE", convert_tuple)
     psycopg2.extensions.register_type(TUPLE_ARRAY)
     psycopg2.extensions.register_type(TUPLE)
 except:
     print "Warning: postgresql driver not found"
+
 
 class Tuple(UserDefinedType):
 
@@ -123,6 +124,7 @@ def default_array(element, compiler, **kw):
         return "ARRAY(select row(%s))" % compiler.process(arg1)
     return "ARRAY(%s)" % compiler.process(arg1)
 
+
 class array_elem(expression.ColumnElement):
 
     type = Tuple()
@@ -138,10 +140,10 @@ class array_elem(expression.ColumnElement):
         self.element = element
 
 
-
 @compiles(array_elem)
 def default_array_elem(element, compiler, **kw):
     return compiler.process(element.element)
+
 
 class tuple_(expression.ColumnElement):
 
@@ -158,6 +160,7 @@ class tuple_(expression.ColumnElement):
 @compiles(tuple_)
 def default_tuple_(element, compiler, **kw):
     return "(%s)" % compiler.process(sqlexpr.tuple_(*element.clauses))
+
 
 class PostgresWrapper(wrappers.AlchemyWrapper):
     class_map = wrappers.AlchemyWrapper.class_map.copy()
@@ -194,7 +197,6 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
             req.is_valid(contexts)
 
 
-
 @PostgresWrapper.register_wrapper(requests.FilterRequest)
 class FilterWrapper(wrappers.FilterWrapper, PostgresWrapper):
     pass
@@ -204,21 +206,26 @@ class FilterWrapper(wrappers.FilterWrapper, PostgresWrapper):
 class StoredItemsWrapper(wrappers.StoredItemsWrapper, PostgresWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.ContextRequest)
 class ContextWrapper(wrappers.ContextWrapper, PostgresWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.StrRequest)
 class StrWrapper(wrappers.StrWrapper, PostgresWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.UpperRequest)
 class UpperWrapper(wrappers.UpperWrapper, PostgresWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.LowerRequest)
 class LowerWrapper(wrappers.LowerWrapper, PostgresWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.RegexRequest)
 class RegexRequest(wrappers.RegexWrapper, PostgresWrapper):
@@ -245,9 +252,11 @@ class RegexRequest(wrappers.RegexWrapper, PostgresWrapper):
                 self.value = None
                 pass
 
+
 @PostgresWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(wrappers.LiteralWrapper, PostgresWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.ListRequest)
 class ListWrapper(wrappers.ListWrapper, LiteralWrapper):
@@ -272,12 +281,13 @@ class AttributeWrapper(wrappers.AttributeWrapper, PostgresWrapper):
     def _extract_attr(self, query, idx):
         values = None
         if hasattr(query, 'c'):
-            values = sorted(list(query.c), key=lambda x : x.name)
+            values = sorted(list(query.c), key=lambda x: x.name)
         elif hasattr(query, 'clauses'):
             values = query.clauses
         if values is None:
             return self._extract_attr(query.element, idx)
         return values[idx].proxies[-1]
+
 
 def select_to_tuple(query):
     if len(list(getattr(query, 'c', []))) > 1:
@@ -286,6 +296,7 @@ def select_to_tuple(query):
         return list(query.c)[0].proxies[-1]
     else:
         return query
+
 
 class BinaryOperationWrapper(PostgresWrapper, wrappers.BinaryOperationWrapper):
 
@@ -302,43 +313,53 @@ class BinaryOperationWrapper(PostgresWrapper, wrappers.BinaryOperationWrapper):
 class InWrapper(wrappers.InWrapper, BinaryOperationWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.AndRequest)
 class AndWrapper(wrappers.AndWrapper, BinaryOperationWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.OrRequest)
 class OrWrapper(wrappers.OrWrapper, BinaryOperationWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.EqRequest)
 class EqWrapper(wrappers.EqWrapper, BinaryOperationWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.NeRequest)
 class NeWrapper(wrappers.NeWrapper, BinaryOperationWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.LtRequest)
 class LtWrapper(wrappers.LtWrapper, BinaryOperationWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.GtRequest)
 class GtWrapper(wrappers.GtWrapper, BinaryOperationWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.LeRequest)
 class LeWrapper(wrappers.LeWrapper, BinaryOperationWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.GeRequest)
 class GeWrapper(wrappers.GeWrapper, BinaryOperationWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.AddRequest)
 class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
-        subject_type = self.subject.return_type(wrappers.type_context(contexts))
+        subject_type = self.subject.return_type(
+            wrappers.type_context(contexts))
         other_type = self.other.return_type(wrappers.type_context(contexts))
         need_subquery = False
         if isinstance(other_type, types.Dict):
@@ -353,10 +374,11 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
             # If we have things to do on the list of elements,
             # append a filter after the context request
             other = self.other.to_alchemy(subject, contexts)
-            base_request = sqlexpr.select(from_obj=[other.alias(), subject.alias()])
+            base_request = sqlexpr.select(
+                from_obj=[other.alias(), subject.alias()])
             columns = []
             for member in (subject, other):
-                for c in sorted(member.c, key=lambda x : x.name):
+                for c in sorted(member.c, key=lambda x: x.name):
                     columns.append(c.proxies[-1])
             columns = sorted(columns, key=lambda c: c.name)
             return subject.with_only_columns(columns)
@@ -366,15 +388,17 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
             subject = self.subject.to_alchemy(query, contexts)
             base_request = other
         # Dict addition is a mapping merge
-            if all(isinstance(x, types.Dict) for x in (subject_type, other_type)):
+            if all(isinstance(x, types.Dict)
+                   for x in (subject_type, other_type)):
                 columns = []
                 for member in (subject, other):
-                    for c in sorted(member.c, key=lambda x : x.name):
+                    for c in sorted(member.c, key=lambda x: x.name):
                         columns.append(c.proxies[-1])
                 columns = sorted(columns, key=lambda c: c.name)
                 other = base_request.with_only_columns(columns)
                 return other
-            elif all(isinstance(x, types.List) for x in (subject_type, other_type)):
+            elif all(isinstance(x, types.List)
+                     for x in (subject_type, other_type)):
                 return subject.union(other)
             else:
                 return subject + other
@@ -384,13 +408,16 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
 class SubWrapper(wrappers.SubWrapper, BinaryOperationWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.MulRequest)
 class MulWrapper(wrappers.MulWrapper, BinaryOperationWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.DivRequest)
 class DivWrapper(wrappers.DivWrapper, BinaryOperationWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(wrappers.MapWrapper, PostgresWrapper):
@@ -432,7 +459,8 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
         self.aggregates = self.from_request(self.aggregates._copy_replace({}))
         need_subquery = False
         for aggregate in self.aggregates.value.values():
-            return_type = aggregate.return_type(wrappers.type_context(contexts) + (type,))
+            return_type = aggregate.return_type(
+                wrappers.type_context(contexts) + (type,))
             if return_type.type == list:
                 # If we plan on returning a list, we need a subquery
                 need_subquery = True
@@ -472,9 +500,11 @@ class GroupbyWrapper(wrappers.GroupbyWrapper, PostgresWrapper):
         group = group.with_only_columns(columns)
         return group
 
+
 @PostgresWrapper.register_wrapper(requests.SortRequest)
 class SortWrapper(wrappers.SortWrapper, PostgresWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(wrappers.OneWrapper, PostgresWrapper):
@@ -482,28 +512,35 @@ class OneWrapper(wrappers.OneWrapper, PostgresWrapper):
     def is_valid(self, contexts):
         self.subject.is_valid(contexts)
 
+
 class AggregateWrapper(wrappers.AggregateWrapper, PostgresWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.LenRequest)
 class LenWrapper(wrappers.LenWrapper, AggregateWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.SumRequest)
 class SumWrapper(wrappers.SumWrapper, AggregateWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.MaxRequest)
 class MaxWrapper(wrappers.MaxWrapper, AggregateWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.MinRequest)
 class MinWrapper(wrappers.MinWrapper, AggregateWrapper):
     pass
 
+
 @PostgresWrapper.register_wrapper(requests.DistinctRequest)
 class DistinctWrapper(wrappers.DistinctWrapper, AggregateWrapper):
     pass
+
 
 @PostgresWrapper.register_wrapper(requests.SliceRequest)
 class SliceWrapper(wrappers.SliceWrapper, AggregateWrapper):
@@ -531,9 +568,11 @@ class SliceWrapper(wrappers.SliceWrapper, AggregateWrapper):
     def is_valid(self, contexts=()):
         self.basic_check(contexts)
         type = self.subject.return_type(contexts)
-        if not (isinstance(type, types.List) or issubclass(type.type, basestring)):
+        if not (isinstance(type, types.List) or
+                issubclass(type.type, basestring)):
             raise InvalidRequestException(self,
                     "Slice is not managed on not list or string objects")
+
 
 class PostgresDialect(BaseDialect):
 
@@ -542,7 +581,8 @@ class PostgresDialect(BaseDialect):
     def _transform_result(self, result, return_type, corn):
         def process_list(result):
             for item in result:
-                yield self._transform_result(item, return_type.inner_type, corn)
+                yield self._transform_result(
+                    item, return_type.inner_type, corn)
         if isinstance(return_type, types.List):
             return process_list(result)
         elif return_type.type == dict:
@@ -552,7 +592,8 @@ class PostgresDialect(BaseDialect):
                         for x, y in return_type.corn.definitions.iteritems()),
                         key=lambda x: x[0])
             else:
-                ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
+                ordered_dict = sorted(
+                    return_type.mapping.iteritems(), key=lambda x: x[0])
             if result is None:
                 return None
             # Temporary fix for one value tuples
@@ -574,8 +615,9 @@ class PostgresDialect(BaseDialect):
                     raise ValueError('.one() on an empty sequence')
                 return result[0]
             else:
-                if result is not None and not isinstance(
-                        result, return_type.type) and isinstance(result, basestring):
+                if (result is not None and not
+                    isinstance(result, return_type.type) and
+                    isinstance(result, basestring)):
                     postgres_type = type_map.get(return_type.type, None)
                     if postgres_type:
                         return postgres_type(result, None)

@@ -43,7 +43,8 @@ class RequestWrapper(object):
         return object.__getattribute__(self.wrapped_request, name)
 
     def return_type(self, contexts=()):
-        """Contexts is a tuple representing the stack of types accessible via context(index)"""
+        """Contexts is a tuple representing the stack
+        of types accessible via context(index)"""
         raise NotImplementedError("return_type is not implemented")
 
     def __repr__(self):
@@ -70,12 +71,10 @@ class StoredItemsWrapper(RequestWrapper):
         return {self.return_type(contexts).inner_type: set((self,))}
 
 
-
 @RequestWrapper.register_wrapper(requests.LiteralRequest)
 class LiteralWrapper(RequestWrapper):
     def return_type(self, contexts=()):
         return Type(type=type(self.value))
-
 
 
 @RequestWrapper.register_wrapper(requests.ListRequest)
@@ -98,7 +97,6 @@ class ListWrapper(RequestWrapper):
             used_types = value.used_types(contexts)
             self.merge_dict(types, used_types)
         return types
-
 
 
 @RequestWrapper.register_wrapper(requests.TupleRequest)
@@ -152,8 +150,8 @@ class WhenWrapper(RequestWrapper):
 
     def used_types(self, contexts=()):
         types = {}
-        self.merge_dict(types , self.condition.used_types(contexts))
-        self.merge_dict(types , self.result.used_types(contexts))
+        self.merge_dict(types, self.condition.used_types(contexts))
+        self.merge_dict(types, self.result.used_types(contexts))
         return types
 
 
@@ -161,9 +159,9 @@ class WhenWrapper(RequestWrapper):
 class CaseWrapper(RequestWrapper):
     def __init__(self, *args, **kwargs):
         super(CaseWrapper, self).__init__(*args, **kwargs)
-        
+
         self.whens = [self.from_request(when) for when in self.whens]
-        self.default = self.from_request(self.default) 
+        self.default = self.from_request(self.default)
 
     def return_type(self, contexts=()):
         return Type(object)
@@ -171,8 +169,8 @@ class CaseWrapper(RequestWrapper):
     def used_types(self, contexts=()):
         types = {}
         for when in self.whens:
-            self.merge_dict(types , when.used_types(contexts))
-        self.merge_dict(types , self.default.used_types(contexts))
+            self.merge_dict(types, when.used_types(contexts))
+        self.merge_dict(types, self.default.used_types(contexts))
         return types
 
 
@@ -210,10 +208,9 @@ class BinaryOperationWrapper(OperationWrapper):
         return types
 
 
-
-
 @RequestWrapper.register_wrapper(requests.AttributeRequest)
 class AttributeWrapper(OperationWrapper):
+
     def return_type(self, contexts=()):
         initial_types = self.subject.return_type(contexts)
         if isinstance(initial_types, Dict):
@@ -227,6 +224,7 @@ class AttributeWrapper(OperationWrapper):
         self.merge_dict(types, self.subject.used_types(contexts))
         return types
 
+
 @RequestWrapper.register_wrapper(requests.BinaryOperationRequest)
 class BooleanOperationWrapper(BinaryOperationWrapper):
     def return_type(self, contexts=()):
@@ -234,7 +232,8 @@ class BooleanOperationWrapper(BinaryOperationWrapper):
 
 
 # Only the binary ones, exclude invert.
-BOOL_OPERATORS = ('and', 'or', 'eq', 'ne', 'lt', 'gt', 'le', 'ge', 'regex', 'in')
+BOOL_OPERATORS = (
+    'and', 'or', 'eq', 'ne', 'lt', 'gt', 'le', 'ge', 'regex', 'in')
 
 
 def defclass(operator, base_class):
@@ -285,6 +284,7 @@ class ArithmeticOperationWrapper(BinaryOperationWrapper):
 
 for operator in ARITHMETIC_OPERATORS:
     defclass(operator, ArithmeticOperationWrapper)
+
 
 @RequestWrapper.register_wrapper(requests.AddRequest)
 class AddWrapper(ArithmeticOperationWrapper):
@@ -349,12 +349,11 @@ class MapWrapper(OperationWrapper):
             inner_type=self.new_value.return_type(contexts + (newcontext,)))
 
     def used_types(self, contexts=()):
-        newcontext = contexts + (self.subject.return_type(contexts).inner_type,)
+        newcontext = contexts + (
+            self.subject.return_type(contexts).inner_type,)
         types = self.subject.used_types(contexts)
         self.merge_dict(types, self.new_value.used_types(newcontext))
         return types
-
-
 
 
 @RequestWrapper.register_wrapper(requests.GroupbyRequest)
@@ -376,10 +375,11 @@ class GroupbyWrapper(OperationWrapper):
     def used_types(self, contexts=()):
         subject_type = self.subject.return_type(contexts)
         types = self.subject.used_types(contexts)
-        self.merge_dict(types, self.key.used_types(contexts + (subject_type.inner_type,)))
-        self.merge_dict(types, self.aggregates.used_types(contexts + (subject_type,)))
+        self.merge_dict(types, self.key.used_types(
+            contexts + (subject_type.inner_type,)))
+        self.merge_dict(types, self.aggregates.used_types(
+            contexts + (subject_type,)))
         return types
-
 
 
 @RequestWrapper.register_wrapper(requests.LenRequest)

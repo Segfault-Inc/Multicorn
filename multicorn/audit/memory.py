@@ -3,12 +3,10 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from attest import assert_hook
-import attest
 
 from multicorn.corns.memory import Memory
-from multicorn import Multicorn
 from multicorn.declarative import declare, Property
-from multicorn.requests import CONTEXT as c
+
 
 from . import make_test_suite
 
@@ -23,5 +21,3 @@ def make_corn():
 
 # Generic tests
 suite = make_test_suite(make_corn, 'memory')
-
-

@@ -1,6 +1,6 @@
 from . import AbstractCornExtenser
 
-from pprint import isrecursive, saferepr
+from pprint import saferepr
 
 from ...item import BaseItem
 from ...requests.types import Type, List, Dict
@@ -10,9 +10,11 @@ from ...requests import CONTEXT as c
 from ...requests import wrappers
 from ...python_executor import execute
 
+
 class ComputedType(Type):
 
-    def __init__(self, type, name=None, corn=None, expression=None, reverse=None):
+    def __init__(self, type,
+                 name=None, corn=None, expression=None, reverse=None):
         super(ComputedType, self).__init__(type, name=name, corn=corn)
         self.expression = expression
         self.reverse = reverse
@@ -28,6 +30,7 @@ class ComputedType(Type):
             return self.expression == other.expression and\
                     self.type == other.type
         return False
+
 
 class ComputedExtenser(AbstractCornExtenser):
 
@@ -46,7 +49,8 @@ class ComputedExtenser(AbstractCornExtenser):
         type = wrapped_expr.return_type((self.wrapped_corn.type,))
         if reverse is None:
             reverse = {}
-        self.computed_properties[name] = ComputedType(type, name, self, expression, reverse)
+        self.computed_properties[name] = ComputedType(
+            type, name, self, expression, reverse)
         self.properties[name] = ComputedType(type, name, self, expression)
 
     def _all(self):
@@ -67,11 +71,13 @@ class ComputedExtenser(AbstractCornExtenser):
                     found = False
                     for req in types[p]:
                         chain = requests.as_chain(req)
-                        if isinstance(chain[0], requests.StoredItemsRequest) and\
-                                chain[0].storage is p.corn:
+                        if (isinstance(
+                            chain[0], requests.StoredItemsRequest) and
+                                chain[0].storage is p.corn):
                             # Modify it!
                             found = True
-                            replacements.set_default(chain[0], {})[p.name] = p.expression
+                            replacements.set_default(
+                                chain[0], {})[p.name] = p.expression
                     if not found:
                         not_found.add(p)
             replacements = dict([(key, key.map(c + value)) for key, value in
@@ -93,8 +99,6 @@ class ComputedExtenser(AbstractCornExtenser):
             return request
         return request
 
-
-
     def execute(self, request):
         wrapped_request = wrappers.RequestWrapper.from_request(request)
         return_type = wrapped_request.return_type()
@@ -106,7 +110,8 @@ class ComputedExtenser(AbstractCornExtenser):
     def _make_lazy(self, computed):
         def lazy_loader(item):
             expr = computed.expression
-            if not isinstance(expr, requests.Request) and hasattr(expr, '__call__'):
+            if (not isinstance(expr, requests.Request) and
+                hasattr(expr, '__call__')):
                 expr = expr(self)
             expr = inject_context(expr, (item,))
             return execute(expr, (item,))
@@ -162,7 +167,7 @@ class ComputedExtenser(AbstractCornExtenser):
     def create(self, props=None, lazy_props=None):
         self_props = {}
         if isinstance(props, BaseItem):
-           item = props
+            item = props
         else:
             for name in self.computed_properties:
                 value = props.pop(name, None)
@@ -188,8 +193,8 @@ class Relation(object):
         self.multiple = multiple
         self.reverse_suffix = reverse_suffix
 
-class RelationExtenser(ComputedExtenser):
 
+class RelationExtenser(ComputedExtenser):
 
     def __init__(self, *args, **kwargs):
         super(RelationExtenser, self).__init__(*args, **kwargs)
@@ -213,8 +218,10 @@ class RelationExtenser(ComputedExtenser):
             relation.to = remote_corn
             if relation.on is None:
                 if len(remote_corn.identity_properties) != 1:
-                    raise KeyError("Unable relation.to build relationship: remote_corn has more"
-                            "than relation.one identity properties")
+                    raise KeyError(
+                        "Unable relation.to build relationship:"
+                        "remote_corn has more than relation.one "
+                        "identity properties")
                 relation.on = remote_corn.identity_properties[0]
                 # Nothing is given, so the relation is NOT multiple
                 relation.multiple = False
@@ -227,13 +234,17 @@ class RelationExtenser(ComputedExtenser):
                 relation.uses = "%s_%s" % (remote_corn.name, relation.on)
             if relation.uses not in self.wrapped_corn.properties:
                 remote_type = remote_corn.properties[relation.on]
-                self.wrapped_corn.register(relation.uses, type=remote_type.type)
-                self.properties[relation.uses] = self.wrapped_corn.properties[relation.uses]
-            self_attr = requests.AttributeRequest(subject=c(-1), attr_name=relation.uses)
+                self.wrapped_corn.register(
+                    relation.uses, type=remote_type.type)
+                self.properties[relation.uses] = self.wrapped_corn.properties[
+                    relation.uses]
+            self_attr = requests.AttributeRequest(subject=c(-1),
+                                                  attr_name=relation.uses)
             foreign = remote_corn.all.filter(remote_attr == self_attr)
             if not relation.multiple:
                 foreign = foreign.one(None)
             # 2nd closure to hold relaiton
+
             def get_link_getter(relation):
                 def link_getter(item):
                     foreign = item[relation.name]
@@ -251,27 +262,30 @@ class RelationExtenser(ComputedExtenser):
                     ComputedExtenser.register(remote_corn,
                         "%s%s" % (self.name.lower(), relation.reverse_suffix),
                         self.all.filter(
-                            getattr(c, relation.uses) == getattr(c(-1), relation.on)))
-            super(RelationExtenser, self).register(relation.name, foreign, reverse)
+                            getattr(c, relation.uses) == getattr(
+                                c(-1), relation.on)))
+            super(RelationExtenser, self).register(
+                relation.name, foreign, reverse)
 
     def bind(self, multicorn):
         self._bind_relations(multicorn)
         super(RelationExtenser, self).bind(multicorn)
 
-
     def __replace_by_id_props(self, request, relation):
         replacement = requests.LiteralRequest(True)
         for key in relation.to.identity_properties:
-            attr =  requests.AttributeRequest(subject=request.subject.wrapped_request, attr_name=key)
-            other = requests.AttributeRequest(subject=request.other.wrapped_request, attr_name=key)
+            attr = requests.AttributeRequest(
+                subject=request.subject.wrapped_request, attr_name=key)
+            other = requests.AttributeRequest(
+                subject=request.other.wrapped_request, attr_name=key)
             replacement = requests.AndRequest(replacement, attr == other)
         return replacement
 
-
-    def register(self, name, to, on=None, uses=None, multiple=True, reverse_suffix='s'):
+    def register(self, name, to,
+                 on=None, uses=None, multiple=True, reverse_suffix='s'):
         """Do not actually register the property, wait for late binding"""
-        self._pending_relations.append(Relation(name, to, on, uses, multiple, reverse_suffix))
-
+        self._pending_relations.append(Relation(
+            name, to, on, uses, multiple, reverse_suffix))
 
     def registration(self):
         self._bind_relations(self.multicorn)

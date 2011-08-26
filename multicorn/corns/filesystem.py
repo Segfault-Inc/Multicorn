@@ -6,13 +6,11 @@
 import re
 import io
 import errno
-import string
 import os.path
-import itertools
 
 from ..item import BaseItem
 from ..utils import isidentifier
-from ..requests import requests, helpers, CONTEXT as c
+from ..requests import requests, helpers
 from ..requests.types import Type
 from .abstract import AbstractCorn
 
@@ -174,6 +172,7 @@ class FilteredFilesystem(requests.LiteralRequest):
     def value(self):
         return self.corn._items_with(self.parts_infos)
 
+
 class Filesystem(AbstractCorn):
     """
     A simple access point that keep Python Item objects in memory.
@@ -244,7 +243,7 @@ class Filesystem(AbstractCorn):
 
         # Remove empty directories up to (but not including) root_dir
         path_parts = item.filename.split('/')
-        path_parts.pop() # Last part is the file name, only keep directories.
+        path_parts.pop()  # Last part is the file name, only keep directories.
         while path_parts:
             directory = self._join(path_parts)
             if os.listdir(directory):

@@ -30,7 +30,6 @@ def return_type(request):
     return RequestWrapper.from_request(request).return_type()
 
 
-
 @suite.test
 def test_simple_types():
     Corn = make_corn()

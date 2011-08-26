@@ -14,4 +14,3 @@ class Multicorn(object):
         for oldcorn in corns:
             oldcorn.registration()
         return corn
-

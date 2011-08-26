@@ -41,7 +41,7 @@ options = dict(
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.1", # TODO: test it?
+        "Programming Language :: Python :: 3.1",  # TODO: test it?
         "Programming Language :: Python :: 3.2",
         "Topic :: Database :: Front-Ends",
         "Topic :: Software Development :: Libraries :: Python Modules"])

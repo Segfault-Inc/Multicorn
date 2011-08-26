@@ -91,7 +91,6 @@ def test_boolean_logic():
     assert_value(false | false, False)
 
 
-
 @suite.test
 def test_comparaisons():
     four = literal(3) + 1
@@ -310,7 +309,7 @@ def test_indexing_slicing():
     assert [10, 12, 5][-2::-1] == [12, 10]
     assert_list(SOURCE.map(c.price)[-2::-1], [12, 10])
 
-    assert [10, 12, 5][:-1:-1] == [] # XXX WTF?
+    assert [10, 12, 5][:-1:-1] == []  # XXX WTF?
     assert_list(SOURCE.map(c.price)[:-1:-1], [])
 
     with attest.raises(ValueError):

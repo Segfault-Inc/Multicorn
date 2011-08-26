@@ -281,4 +281,3 @@ def test_opt_regex(Corn):
     assert len(items) == 3
     items = list(Corn.all.filter(c.lastname.matches("\d+")).execute())
     assert len(items) == 0
-

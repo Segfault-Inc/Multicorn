@@ -39,22 +39,25 @@ class Metadict(type):
     def __instancecheck__(cls, inst):
         return hasattr(inst, 'type') and hasattr(inst, 'mapping')
 
+
 class MetaList(type):
 
     def __instancecheck__(cls, inst):
         return hasattr(inst, 'type') and hasattr(inst, 'inner_type')
 
+
 class Dict(Type):
 
     __metaclass__ = Metadict
 
-    def __init__(self, mapping=None,corn=None, name=None):
+    def __init__(self, mapping=None, corn=None, name=None):
         super(Dict, self).__init__(corn=corn, name=name, type=dict)
         self.mapping = mapping
 
     def __repr__(self):
         return '%s(%r, %r, %r)' % (type(self).__name__, self.mapping,
                                    self.corn, self.name)
+
     def __eq__(self, other):
         return super(Dict, self).__eq__(other) and\
                 self.mapping == other.mapping
@@ -75,6 +78,7 @@ class List(Type):
     def __repr__(self):
         return '%s(%r, %r, %r)' % (type(self).__name__, self.inner_type,
                                    self.corn, self.name)
+
     def __eq__(self, other):
         return super(List, self).__eq__(other) and\
                 self.inner_type == other.inner_type
@@ -86,6 +90,7 @@ class List(Type):
         if self == other:
             return self
         elif isinstance(other, List):
-            return List(inner_type=self.inner_type.common_type(other.inner_type))
+            return List(
+                inner_type=self.inner_type.common_type(other.inner_type))
         else:
             return Type(type=object)
