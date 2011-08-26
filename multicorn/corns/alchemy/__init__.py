@@ -4,10 +4,11 @@
 
 from __future__ import print_function
 from ..abstract import AbstractCorn
+from multicorn.utils import colorize
 from ...requests.types import Type, List
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
-from multicorn.utils import print_sql
+from multicorn.utils import highlight_sql, highlight_py
 
 
 class InvalidRequestException(Exception):
@@ -21,7 +22,9 @@ try:
     import sqlalchemy
 except ImportError:
     import sys
-    print("WARNING: The SQLAlchemy AP is not available.", file=sys.stderr)
+    print(colorize(
+        'yellow',
+        "WARNING: The SQLAlchemy AP is not available."), file=sys.stderr)
 else:
     from sqlalchemy import create_engine, Table, Column, MetaData
     from sqlalchemy import sql as sqlexpr
@@ -226,6 +229,8 @@ class Alchemy(AbstractCorn):
 
     def execute(self, request, contexts=()):
         wrapped_request = self.dialect.wrap_request(request)
+        self.log.info("Alchemy> request %s" %
+                      highlight_py(repr(wrapped_request)))
         # TODO: try to split the request if something is not managed
         if self.is_all_alchemy(wrapped_request, contexts):
             try:
@@ -241,13 +246,15 @@ class Alchemy(AbstractCorn):
                     result = self.execute(managed)
                 else:
                     result = self._all()
+                self.log.warn("Alchemy> Partial python execution for %r"
+                              % not_managed)
                 return python_executor.execute(not_managed, (result,))
             # Create all aliased tables in ther request
             wrapped_request.extract_tables()
             sql_query = sqlexpr.select()
             sql_query = wrapped_request.to_alchemy(sql_query, contexts)
             return_type = wrapped_request.return_type()
-            print_sql(unicode(sql_query))
+            self.log.info(highlight_sql(unicode(sql_query)))
             try:
                 connection = self.table.bind.connect()
                 sql_result = connection.execute(sql_query)
@@ -256,6 +263,10 @@ class Alchemy(AbstractCorn):
                     if (isinstance(wrapped_request, OneWrapper) and
                         sql_result is None):
                         if wrapped_request.default:
+                            self.log.warn(
+                                "Alchemy> Partial python execution for %s"
+                              % highlight_py(repr(wrapped_request
+                                                  .default.wrapped_request)))
                             value = python_executor.execute(
                                 wrapped_request.default.wrapped_request)
                             return value
@@ -267,6 +278,8 @@ class Alchemy(AbstractCorn):
             return self.dialect._transform_result(
                 sql_result, return_type, self)
         else:
+            self.log.warn("Alchemy> Python execution for %s"
+                          % highlight_py(repr(wrapped_request)))
             return python_executor.execute(request)
 
 

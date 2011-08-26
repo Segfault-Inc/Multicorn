@@ -3,6 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from collections import MutableMapping
+from logging import getLogger
 
 
 class BaseItem(MutableMapping):
@@ -17,6 +18,9 @@ class BaseItem(MutableMapping):
     """
     def __init__(self, corn, values=None, lazy_values=None):
         self.corn = corn
+        self.log = getLogger('multicorn')
+        self.log.debug("Creating %r item with values %r and lazy %r" % (
+            corn, values, lazy_values))
         self._values = dict(values or {})
         self._lazy_values = dict(lazy_values or {})
         self.corn.properties
@@ -29,8 +33,8 @@ class BaseItem(MutableMapping):
                 "Unexpected properties: %r" % (tuple(extra_keys),))
         missing_keys = corn_properties - given_keys
         if missing_keys:
-            # log.debug("Creating a %s with missing properties: %r" %
-            # (corn, tuple(missing_keys),))
+            self.corn.log.debug("Creating a %s with missing properties: %r" %
+                      (corn, tuple(missing_keys),))
             for key in missing_keys:
                 self._values[key] = None
 
@@ -71,7 +75,9 @@ class BaseItem(MutableMapping):
         raise TypeError('Can not delete properties from an item.')
 
     def save(self):
+        self.corn.log.debug("Saving item %r" % self)
         self.corn.save(self)
 
     def delete(self):
+        self.corn.log.debug("Deleting item %r" % self)
         self.corn.delete(self)

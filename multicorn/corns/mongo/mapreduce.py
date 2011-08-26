@@ -5,12 +5,14 @@
 
 from bson.code import Code
 from .ragequit import RageQuit
-from multicorn.utils import print_js
+from multicorn.utils import highlight_js
+from logging import getLogger
 
 
 class MapReduce(object):
 
     def __init__(self, map, reduce, finalize=None):
+        self.log = getLogger('multicorn')
         self.map = map
         self.reduce = reduce
         self.finalize = finalize
@@ -34,13 +36,12 @@ class MapReduce(object):
                 "this.value._id", "this._id")) \
                      if in_value else Code(self.reduce)
 
-        # print_js(mapjs)
-        # print_js(reducejs)
+        self.log.debug(highlight_js(mapjs))
 
         if self.finalize:
             finalizejs = Code(self.finalize)
             kwargs.setdefault('finalize', finalizejs)
-            # print_js(finalizejs)
+            self.log.debug(highlight_js(finalizejs))
 
         results = collection.map_reduce(
             mapjs,

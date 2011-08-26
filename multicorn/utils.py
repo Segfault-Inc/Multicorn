@@ -12,28 +12,27 @@ try:
     from pygments.lexers import SqlLexer
     from pygments.formatters import TerminalFormatter
 
-    def print_py(py):
-        print(highlight(py,
+    def highlight_py(py):
+        return highlight(py,
                   PythonLexer(),
-                  TerminalFormatter(bg="dark")))
+                  TerminalFormatter(bg="dark"))
 
-    def print_js(js):
-        print(highlight(js,
+    def highlight_js(js):
+        return highlight(js,
                   JavascriptLexer(),
-                  TerminalFormatter(bg="dark")))
+                  TerminalFormatter(bg="dark"))
 
-    def print_sql(sql):
-        print(highlight(sql,
-                  SqlLexer(),
-                  TerminalFormatter(bg="dark")))
+    def highlight_sql(sql):
+        return '\n%s' % highlight(
+            sql, SqlLexer(), TerminalFormatter(bg="dark"))
 
 except ImportError:
     colorize = lambda x, y: y
 
-    def print_py(py):
-        print(py)
-    print_js = print_py
-    print_sql = print_py
+    def highlight_py(py):
+        return py
+    highlight_js = highlight_py
+    highlight_sql = highlight_py
 
 try:
     str.isidentifier

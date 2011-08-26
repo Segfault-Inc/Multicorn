@@ -40,7 +40,6 @@ class timed(object):
 @corntest
 def robustness(Corn):
     """ Tests if the corn is robust """
-    print()
     size = 10000
 
     @timed(Corn)
