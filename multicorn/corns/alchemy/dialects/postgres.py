@@ -19,11 +19,12 @@ def default_substr(element, compiler, **kw):
 
 
 def convert_tuple(datum, cursor):
+    datum = datum.decode(cursor.connection.encoding)
     datum = datum.lstrip('(')
     if datum.startswith('"{"'):
         return convert_tuple_array(datum.strip('"'), cursor)
 
-    current_token = ""
+    current_token = u""
     elems = []
     in_string = False
     escape = False
@@ -33,14 +34,16 @@ def convert_tuple(datum, cursor):
                 if a == '"':
                     in_string = False
                     elems.append(current_token)
-                    current_token = ""
+                    current_token = u""
                 else:
                     current_token += a
             elif a == '\\':
                 escape = True
+        elif a == '"':
+            in_string = True
         elif a in (',', ')'):
-            elems.append(unicode_converter(current_token, cursor))
-            current_token = ""
+            elems.append(current_token)
+            current_token = u""
         else:
             current_token += a
     return tuple(elems)
@@ -65,10 +68,6 @@ try:
     TUPLE = psycopg2.extensions.new_type((2249,), "TUPLE", convert_tuple)
     psycopg2.extensions.register_type(TUPLE_ARRAY)
     psycopg2.extensions.register_type(TUPLE)
-
-
-
-
 except:
     print "Warning: postgresql driver not found"
 

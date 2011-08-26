@@ -3,6 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from sqlalchemy import Unicode, Integer, DateTime, Date, Boolean, Numeric
+from sqlalchemy.engine.base import RowProxy
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -102,6 +103,11 @@ class PostgresDialect(BaseDialect):
                         key=lambda x: x[0])
             else:
                 ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
+            if result is None:
+                return None
+            # Temporary fix for one value tuples
+            if not isinstance(result, (RowProxy, tuple)):
+                result = tuple([result])
             for idx, (key, type) in enumerate(ordered_dict):
                 # Even for dicts, sql returns results "inline"
                 newdict[key] = self._transform_result(result[idx], type, corn)
