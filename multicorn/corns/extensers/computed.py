@@ -195,6 +195,10 @@ class RelationExtenser(ComputedExtenser):
         super(RelationExtenser, self).__init__(*args, **kwargs)
         self.relations = []
         self._pending_relations = []
+        if isinstance(self.wrapped_corn, ComputedExtenser):
+            # Unnest the computed wraps
+            self.computed_properties = self.wrapped_corn.computed_properties
+            self.wrapped_corn = self.wrapped_corn.wrapped_corn
 
     def _bind_relations(self, multicorn):
         for relation in list(self._pending_relations):
@@ -268,9 +272,12 @@ class RelationExtenser(ComputedExtenser):
         return replacement
 
 
-    def register(self, name, to, on=None, uses=None, multiple=True, reverse_suffix='s'):
-        """Do not actually register the property, wait for late binding"""
-        self._pending_relations.append(Relation(name, to, on, uses, multiple, reverse_suffix))
+    def register(self, name, expression=None, reverse=None, to=None, on=None, uses=None, multiple=True, reverse_suffix='s'):
+        if expression is not None:
+            super(RelationExtenser, self).register(name, expression, reverse)
+        else:
+            # Do not actually register
+            self._pending_relations.append(Relation(name, to, on, uses, multiple, reverse_suffix))
 
 
     def registration(self):

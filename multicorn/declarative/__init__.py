@@ -10,7 +10,6 @@ def declare(clazz, **kwargs):
         corn = clazz(corn_definition.__name__.lower(), **kwargs)
         # Contains
         wrappers = {}
-
         def append_wrapper(prop):
             if prop._wrapper:
                 wrappers[prop._wrapper] = max(prop.depth,
