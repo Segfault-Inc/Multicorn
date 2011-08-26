@@ -214,8 +214,6 @@ class AttributeWrapper(wrappers.AttributeWrapper, AlchemyWrapper):
         return_type = self.subject.return_type(contexts)
         # TODO: manage attr getters on date objects, maybe
         if not isinstance(return_type, types.Dict):
-            import pdb
-            pdb.set_trace()
             raise InvalidRequestException(self, "Cannot access attribute in a \
                     non-dict context")
 
