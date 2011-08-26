@@ -3,21 +3,13 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from sqlalchemy import Unicode, Integer, DateTime, Date, Boolean, Numeric
-from sqlalchemy.engine.base import RowProxy
 
 from datetime import date, datetime
 from decimal import Decimal
 
 from ..wrappers import AlchemyWrapper
-from .postgres import PostgresWrapper
 from ....requests import types
 
-
-def get_dialect(engine):
-    # Todo: manage ACTUAL dialects!
-    if engine.name == 'postgresql':
-        return PostgresDialect()
-    return BaseDialect()
 
 
 BASE_TYPES_MAPPING = {
@@ -83,53 +75,11 @@ class BaseDialect(object):
                 raise ValueError('.one() on an empty sequence')
             return result[0]
 
+from .postgres import PostgresDialect
+def get_dialect(engine):
+    # Todo: manage ACTUAL dialects!
+    if engine.name == 'postgresql':
+        return PostgresDialect()
+    return BaseDialect()
 
-
-class PostgresDialect(BaseDialect):
-
-    RequestWrapper = PostgresWrapper
-
-    def _transform_result(self, result, return_type, corn):
-        def process_list(result):
-            for item in result:
-                yield self._transform_result(item, return_type.inner_type, corn)
-        if isinstance(return_type, types.List):
-            return process_list(result)
-        elif return_type.type == dict:
-            newdict = {}
-            if return_type.corn:
-                ordered_dict = sorted(((x, y.type)
-                        for x, y in return_type.corn.definitions.iteritems()),
-                        key=lambda x: x[0])
-            else:
-                ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
-            if result is None:
-                return None
-            # Temporary fix for one value tuples
-            if not isinstance(result, (RowProxy, tuple)):
-                result = tuple([result])
-            for idx, (key, type) in enumerate(ordered_dict):
-                # Even for dicts, sql returns results "inline"
-                newdict[key] = self._transform_result(result[idx], type, corn)
-            if return_type.corn:
-                return return_type.corn.create(newdict)
-            else:
-                return newdict
-        else:
-            if hasattr(result, '__iter__'):
-                result = list(result)
-                if len(result) > 1:
-                    raise ValueError('More than one element in .one()')
-                if len(result) == 0:
-                    raise ValueError('.one() on an empty sequence')
-                return result[0]
-            else:
-                if result is not None and not isinstance(
-                        result, return_type.type):
-                    return return_type.type(result)
-                else:
-                    return result
-
-    def wrap_request(self, request):
-        return self.RequestWrapper.from_request(request)
 
