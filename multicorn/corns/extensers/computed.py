@@ -134,11 +134,12 @@ class ComputedExtenser(AbstractCornExtenser):
 
     def _transform_items(self, items):
         for item in items:
-            wrapped_item = dict((key, value) for key, value in item.iteritems()
+            wrapped_item = dict((key, item[key]) for key in item
                     if key not in self.computed_properties)
             for name, property in self.computed_properties.iteritems():
                 for key, expr in property.reverse.iteritems():
-                    if not isinstance(expr, requests.Request) and hasattr(expr, '__call__'):
+                    if (not isinstance(expr, requests.Request) and
+                        hasattr(expr, '__call__')):
                         value = expr(item)
                     else:
                         expr = inject_context(expr, (item,))

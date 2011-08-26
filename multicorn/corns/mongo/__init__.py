@@ -68,7 +68,6 @@ class Mongo(AbstractCorn):
             self.collection.save(dict(
                 (key, value) for key, value in item.items()
                 if not (key == "_id" and value is None)))
-            item.saved = True
 
     def is_all_mongo(self, request):
         used_types = request.used_types()
