@@ -598,3 +598,33 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
         if not isinstance(self.subject.return_type(contexts), types.List):
             raise InvalidRequestException(self,
                     "Slice is not managed on not list objects")
+
+
+@AlchemyWrapper.register_wrapper(requests.WhenRequest)
+class WhenWrapper(wrappers.WhenWrapper, AlchemyWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        condition = self.condition.to_alchemy(query, contexts)
+        result = self.result.to_alchemy(query, contexts)
+        return (condition, result)
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def extract_tables(self):
+        return tuple()
+
+
+@AlchemyWrapper.register_wrapper(requests.CaseRequest)
+class CaseWrapper(wrappers.CaseWrapper, AlchemyWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        whens = [when.to_alchemy(query, contexts) for when in self.whens]
+        default = self.default.to_alchemy(query, contexts)
+        return expression.case(whens, else_=default)
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def extract_tables(self):
+        return tuple()

@@ -229,3 +229,31 @@ def test_unicode(Corn):
     assert all(all(subitem['name'] == item['name']
         for subitem in item['homonymes'])
             for item in items)
+
+
+@suite.test
+@postgres_suite.test
+def test_case(Corn):
+    from multicorn.requests import case, when
+
+    class NotOptimizedError(Exception):
+        pass
+
+    def error():
+        raise NotOptimizedError
+    Corn._all = error
+    Corn.create({'id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
+    Corn.create({'id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
+    Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
+
+    items = list(Corn.all.map(
+        {'id': c.id,
+         'case': case(
+             when(c.id < 3, c.name), c.lastname)})
+        .sort(c.id)
+        .execute())
+
+    assert len(items) == 3
+    assert items[0]['case'] == 'foo'
+    assert items[1]['case'] == 'baz'
+    assert items[2]['case'] == 'baz'
