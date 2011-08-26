@@ -3,7 +3,6 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from attest import assert_hook
-import attest
 
 from multicorn.corns.memory import Memory
 from multicorn import Multicorn
@@ -55,9 +54,11 @@ def test_all():
 @suite.test
 def test_optimization():
     Corn = make_corn()
-    item = Corn.all.map({'id': c.id, 'newname': c.name}).filter(c.id == 1).one().execute()
+    item = Corn.all.map(
+        {'id': c.id, 'newname': c.name}).filter(c.id == 1).one().execute()
     assert item['id'] == 1
     assert item['newname'] == u'foo'
+
     class NotOptimizedError(Exception):
         pass
 

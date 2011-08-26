@@ -10,4 +10,5 @@ class RageQuit(Exception):
         self.message = message
 
     def __repr__(self):
-        return "RageQuit(request=%r, message=%r)" % (self.request, self.message)
+        return "RageQuit(request=%r, message=%r)" % (
+            self.request, self.message)

@@ -3,7 +3,6 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from attest import Tests, assert_hook
-import attest
 
 
 from multicorn.corns.memory import Memory
@@ -41,22 +40,26 @@ def test_declarative():
     assert name.corn == Corn.wrapped_corn
     assert name.name == "name"
 
+
 @suite.test
 def test_wrapper_declaration():
     mc = Multicorn()
+
     @mc.register
     @declare(Memory, identity_properties=("id",))
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
         foreign_id = Property(type=int)
+
         @computed()
         def foreign(self):
             return self.all.filter(c.id == c(-1).foreign_id).one(None)
 
         @foreign.reverse
         def foreign(self):
-            return {'foreign_id': lambda item: item['foreign']['id'] if item['foreign'] else None}
+            return {'foreign_id': lambda item: item['foreign']['id']
+                    if item['foreign'] else None}
 
     assert isinstance(Corn, ComputedExtenser)
     assert "name" in Corn.properties
@@ -75,9 +78,11 @@ def test_wrapper_declaration():
     assert item2['id'] == 2
     assert item2['foreign'] == item1
 
+
 @suite.test
 def test_relation_declaration():
     mc = Multicorn()
+
     @mc.register
     @declare(Memory, identity_properties=("id",))
     class Corn(object):
@@ -102,6 +107,7 @@ def test_relation_declaration():
     assert item2['foreign'] == item1
     item3 = Corn.create({'id': 3, 'name': 'foo', 'foreign': 1})
     item3.save()
-    items = list(Corn.all.filter(c.foreign.name == 'foo').map(c.foreign.id).sort(c).execute())
+    items = list(Corn.all.filter(
+        c.foreign.name == 'foo').map(c.foreign.id).sort(c).execute())
     assert len(items) == 2
     assert all(x == 1 for x in items)

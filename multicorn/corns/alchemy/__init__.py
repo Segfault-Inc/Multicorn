@@ -4,10 +4,11 @@
 
 from __future__ import print_function
 from ..abstract import AbstractCorn
-from ...requests.types import Type, List, Dict
+from ...requests.types import Type, List
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
 from multicorn.utils import print_sql
+
 
 class InvalidRequestException(Exception):
 
@@ -26,6 +27,7 @@ else:
     from sqlalchemy import sql as sqlexpr
 
 DEFAULT_VALUE = object()
+
 
 class ColumnDefinition(object):
 
@@ -82,7 +84,8 @@ class Alchemy(AbstractCorn):
         column_name = column_name or name
         type = Type(corn=self, name=name, type=type)
         self.properties[name] = type
-        self.definitions[name] = ColumnDefinition(type, db_gen=db_gen, column_name=column_name)
+        self.definitions[name] = ColumnDefinition(
+            type, db_gen=db_gen, column_name=column_name)
 
     @property
     def table(self):
@@ -107,12 +110,13 @@ class Alchemy(AbstractCorn):
         return table
 
     def _all(self):
-        return self.dialect._transform_result(self.table.select().execute(), List(self.type), self)
+        return self.dialect._transform_result(
+            self.table.select().execute(), List(self.type), self)
 
     def _to_pk_where_clause(self, item):
         conditions = []
         for key in self.identity_properties:
-             conditions.append(self.table.columns[key] == item[key])
+            conditions.append(self.table.columns[key] == item[key])
         return sqlexpr.and_(*conditions)
 
     @property
@@ -120,9 +124,11 @@ class Alchemy(AbstractCorn):
         if not self.__open_statement:
             conditions = []
             for key in self.identity_properties:
-                 # Prefix with "b_" like adviced from sqlalchemy because
-                 # of reserved names
-                 conditions.append(self.table.columns[key] == sqlexpr.bindparam("b_%s" % key))
+                # Prefix with "b_" like adviced from sqlalchemy because
+                # of reserved names
+                conditions.append(
+                    self.table.columns[key] == sqlexpr.bindparam(
+                        "b_%s" % key))
             statement = self.table.select().where(sqlexpr.and_(*conditions))
             self.__open_statement = statement.compile()
         return self.__open_statement
@@ -130,7 +136,8 @@ class Alchemy(AbstractCorn):
     def insert_statement(self, keys):
         keys = tuple(set(keys))
         if not self.__insert_statements.get(keys, None):
-            self.__insert_statements[keys] = self.table.insert({key: None for key in keys}).compile()
+            self.__insert_statements[keys] = self.table.insert(
+                {key: None for key in keys}).compile()
         return self.__insert_statements[keys]
 
     @property
@@ -138,9 +145,10 @@ class Alchemy(AbstractCorn):
         if not self.__update_statement:
             conditions = []
             for key in self.identity_properties:
-                 # Prefix with "b_" like adviced from sqlalchemy because
-                 # of reserved names
-                 conditions.append(self.table.columns[key] == sqlexpr.bindparam("b_%s" % key))
+                # Prefix with "b_" like adviced from sqlalchemy because
+                # of reserved names
+                conditions.append(
+                    self.table.columns[key] == sqlexpr.bindparam("b_%s" % key))
             statement = self.table.update().where(sqlexpr.and_(*conditions))
             self.__update_statement = statement.compile()
         return self.__update_statement
@@ -159,7 +167,9 @@ class Alchemy(AbstractCorn):
             inserts = []
             updates = []
             for item in args:
-                item_dict = dict((key, value) for key, value in item.iteritems() if value is not DEFAULT_VALUE)
+                item_dict = dict((key, value)
+                                 for key, value in item.iteritems()
+                                 if value is not DEFAULT_VALUE)
                 id = dict(("b_%s" % key, item_dict[key])
                        for key in self.identity_properties if key in item_dict)
                 results = self.open_statement.execute(id)
@@ -171,11 +181,12 @@ class Alchemy(AbstractCorn):
                     values.update(id)
                     updates.append(values)
             if inserts:
-                values = connection.execute(self.insert_statement(item_dict.keys()), inserts)
+                values = connection.execute(
+                    self.insert_statement(item_dict.keys()), inserts)
                 if len(args) == 1:
                     for key, value in zip(self._generated_keys,
                             values.inserted_primary_key):
-                       item[key] = value
+                        item[key] = value
             if updates:
                 values = connection.execute(self.update_statement, updates)
             transaction.commit()
@@ -208,7 +219,8 @@ class Alchemy(AbstractCorn):
 
     def is_all_alchemy(self, request, contexts=()):
         used_types = request.used_types()
-        all_requests = reduce(lambda x, y: list(x) + list(y), used_types.values(), set())
+        all_requests = reduce(
+            lambda x, y: list(x) + list(y), used_types.values(), set())
         return all(isinstance(x, AlchemyWrapper) for x in all_requests) and\
                 all(self._is_same_db(x) for x in used_types.keys())
 
@@ -220,6 +232,7 @@ class Alchemy(AbstractCorn):
                 wrapped_request.is_valid(contexts)
             except InvalidRequestException as e:
                 invalid_request = e.request.wrapped_request
+
                 def predicate(req):
                     return req is invalid_request
                 managed, not_managed = cut_on_predicate(request, predicate,
@@ -240,16 +253,19 @@ class Alchemy(AbstractCorn):
                 sql_result = connection.execute(sql_query)
                 if return_type.type != list:
                     sql_result = next(iter(sql_result), None)
-                    if isinstance(wrapped_request, OneWrapper) and sql_result is None:
+                    if (isinstance(wrapped_request, OneWrapper) and
+                        sql_result is None):
                         if wrapped_request.default:
-                            value = python_executor.execute(wrapped_request.default.wrapped_request)
+                            value = python_executor.execute(
+                                wrapped_request.default.wrapped_request)
                             return value
                         raise ValueError('.one() on an empty sequence')
                 else:
                     sql_result = sql_result.fetchall()
             finally:
                 connection.close()
-            return self.dialect._transform_result(sql_result, return_type, self)
+            return self.dialect._transform_result(
+                sql_result, return_type, self)
         else:
             return python_executor.execute(request)
 

@@ -3,7 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from . import requests
-from .requests import as_request, literal # To be imported form here
+from .requests import as_request, literal  # To be imported form here
 from .requests import CaseRequest, WhenRequest
 
 CONTEXT = requests.ContextRequest()

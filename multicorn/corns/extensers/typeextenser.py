@@ -4,9 +4,10 @@
 
 import decimal
 import datetime
+import unicodedata
 from collections import namedtuple
 from . import AbstractCornExtenser
-from ...requests.types import Type, Dict, List
+from ...requests.types import Type
 
 
 class FixedOffsetTimeZone(datetime.tzinfo):
@@ -124,6 +125,7 @@ def to_date(value):
         return datetime.datetime.strptime(value, "%Y%m%d").date()
     raise ValueError("%s cannot be cast to date." % value)
 
+
 def to_bytes(value, encoding="utf-8"):
     """Cast ``value`` into bytes.
 
@@ -217,6 +219,7 @@ def to_type(value, data_type):
             raise ValueError("%s cannot be cast to %s." % (
                     value, data_type.__name__))
 
+
 def to_number(value, data_type):
     if isinstance(value, data_type) or value is None:
         return value
@@ -225,6 +228,7 @@ def to_number(value, data_type):
     return to_type(value, data_type)
 
 Converter = namedtuple('Converter', ['down', 'up'])
+
 
 class TypeExtenser(AbstractCornExtenser):
 
@@ -252,17 +256,21 @@ class TypeExtenser(AbstractCornExtenser):
 
     def register(self, name, type=object, custom_down=None, custom_up=None):
         if name not in self.wrapped_corn.properties:
-            raise KeyError('Cannot register a type converter for nonexistent property')
+            raise KeyError(
+                'Cannot register a type converter for nonexistent property')
         self.properties[name] = Type(corn=self, type=type, name=name)
         if custom_down:
             down_converter = custom_down
         else:
-            down_converter = self.converters[self.wrapped_corn.properties[name].type]
+            down_converter = self.converters[
+                self.wrapped_corn.properties[name].type]
         if custom_up:
             up_converter = custom_up
         else:
             up_converter = self.converters[type]
-        self.named_convertors[self.properties[name]] = Converter(down=down_converter, up=up_converter)
+        self.named_convertors[
+            self.properties[name]] = Converter(
+                down=down_converter, up=up_converter)
 
     def execute(self, query):
         #TODO: convert query so that every type is casted appropriately

@@ -10,8 +10,6 @@ from decimal import Decimal
 from ..wrappers import AlchemyWrapper
 from ....requests import types
 
-
-
 BASE_TYPES_MAPPING = {
     unicode: Unicode,
     bytes: Unicode,
@@ -43,12 +41,14 @@ class BaseDialect(object):
     def _transform_result(self, result, return_type, corn):
         def process_list(result):
             for item in result:
-                yield self._transform_result(item, return_type.inner_type, corn)
+                yield self._transform_result(
+                    item, return_type.inner_type, corn)
         if isinstance(return_type, types.List):
             return process_list(result)
         elif return_type.type == dict:
             if return_type == corn.type:
-                result = dict(((key, value) for key, value in dict(result).iteritems()
+                result = dict(((key, value)
+                               for key, value in dict(result).iteritems()
                     if key in corn.properties))
                 return corn.create(dict(result))
             elif return_type.corn:
@@ -60,10 +60,13 @@ class BaseDialect(object):
                     if isinstance(type, types.Dict):
                         subresult = {}
                         for subkey in result.keys():
-                            subresult[subkey.replace('__%s_' % key,'').strip('__')] = result[subkey]
-                        newdict[key] = self._transform_result(subresult, type, corn)
+                            subresult[subkey.replace('__%s_' % key, '')
+                                      .strip('__')] = result[subkey]
+                        newdict[key] = self._transform_result(
+                            subresult, type, corn)
                     elif isinstance(type, types.List):
-                        newdict[key] = self._transform_result(result[key][0], type, corn)
+                        newdict[key] = self._transform_result(
+                            result[key][0], type, corn)
                     else:
                         newdict[key] = result[key]
                 return newdict
@@ -76,10 +79,10 @@ class BaseDialect(object):
             return result[0]
 
 from .postgres import PostgresDialect
+
+
 def get_dialect(engine):
     # Todo: manage ACTUAL dialects!
     if engine.name == 'postgresql':
         return PostgresDialect()
     return BaseDialect()
-
-

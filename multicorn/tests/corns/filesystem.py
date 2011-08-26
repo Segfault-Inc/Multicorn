@@ -13,12 +13,9 @@ from attest import assert_hook
 import attest.contexts
 
 from multicorn.corns.filesystem import Filesystem
-from multicorn import Multicorn
 from multicorn.declarative import declare, Property
 from multicorn.corns.extensers.typeextenser import TypeExtenser
 from multicorn.requests import CONTEXT as c
-
-from . import make_test_suite
 
 
 def make_generic_corn():
@@ -28,12 +25,14 @@ def make_generic_corn():
         pattern='{id}_{name}.txt',
         content_property='lastname',
         encoding='utf8')
+
     @declare(TypeExtenser, wrapped_corn=fs_corn)
     class Corn(object):
         id = Property(type=int)
         name = Property(type=unicode)
         lastname = Property(type=unicode)
     return Corn
+
 
 def generic_corn_teardown(corn):
     shutil.rmtree(corn.root)
@@ -47,7 +46,6 @@ def generic_corn_teardown(corn):
 specific_suite = attest.Tests(contexts=[attest.contexts.tempdir])
 
 
-
 @contextmanager
 def assert_raises(exception_class, message_part):
     """
@@ -56,7 +54,6 @@ def assert_raises(exception_class, message_part):
     with attest.raises(exception_class) as exception:
         yield
     assert message_part.lower() in exception.args[0].lower()
-
 
 
 @specific_suite.test
@@ -97,6 +94,7 @@ def test_parser(tempdir):
     assert bin._path_parts_properties == (('category',), ('name',))
     assert [regex.pattern for regex in bin._path_parts_re] \
         == ['^(?P<category>.*)$', r'^\{num\}\_(?P<name>.*)\.bin$']
+
 
 def make_binary_corn(root):
     return Filesystem(
@@ -189,6 +187,7 @@ def test_save(tempdir):
     with open(item2.full_filename, 'rb') as fd:
         assert fd.read() == content.encode('utf8')
 
+
 @specific_suite.test
 def test_delete(tempdir):
     text, item = make_populated_text_corn(tempdir)
@@ -262,10 +261,11 @@ def test_optimizations(tempdir):
     corn._listdir = listdir_mock
 
     contents = {}
+
     def create(**values):
         item = corn.create(dict(values, content=bytes()))
         content = item.filename.encode('ascii')
-        assert values['id'] not in contents # Make sure ids are unique
+        assert values['id'] not in contents  # Make sure ids are unique
         item['content'] = content
         item.save()
         contents[values['id']] = content

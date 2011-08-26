@@ -3,7 +3,6 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from attest import Tests, assert_hook
-import attest
 
 from multicorn import Multicorn
 
@@ -11,11 +10,12 @@ from multicorn.corns.memory import Memory
 from multicorn.requests import CONTEXT as c
 from multicorn.requests.requests import FilterRequest
 from multicorn.declarative import declare, Property
-from multicorn.requests.wrappers import RequestWrapper, LiteralWrapper,\
-        EqWrapper, OrWrapper
-from multicorn.requests.requests import as_chain, LiteralRequest,\
-        LtRequest, WithRealAttributes, as_request
-from multicorn.requests.helpers import split_predicate, isolate_values, cut_on_predicate
+from multicorn.requests.wrappers import (RequestWrapper, LiteralWrapper,
+        EqWrapper, OrWrapper)
+from multicorn.requests.requests import (as_chain, LiteralRequest,
+        LtRequest, WithRealAttributes, as_request)
+from multicorn.requests.helpers import (split_predicate, isolate_values,
+                                        cut_on_predicate)
 from multicorn.python_executor import PythonExecutor
 
 
@@ -47,6 +47,7 @@ def test_simple_helpers():
         PythonExecutor.from_request(request).execute((first_part_result,)))
     assert full_result == second_part_result
 
+
 def make_corn():
     mc = Multicorn()
 
@@ -74,7 +75,8 @@ def test_split_predicate():
     assert other.value == True
     assert selfpred == filter.predicate
     # Test that 'And' request are properly separated
-    filter = RequestWrapper.from_request(Corn.all.filter((c.name == 'foo') & (c.lastname == 'bar')))
+    filter = RequestWrapper.from_request(
+        Corn.all.filter((c.name == 'foo') & (c.lastname == 'bar')))
     selfpred, other = split_predicate(filter, [Corn.properties['name']])
     assert isinstance(selfpred, EqWrapper)
     assert isinstance(other, EqWrapper)
@@ -83,14 +85,18 @@ def test_split_predicate():
     assert other.subject.attr_name == 'lastname'
     assert other.other.value == 'bar'
     # Test that 'Or' request are kept unchanged
-    filter = RequestWrapper.from_request(Corn.all.filter((c.name == 'foo') | (c.lastname == 'bar')))
+    filter = RequestWrapper.from_request(
+        Corn.all.filter((c.name == 'foo') | (c.lastname == 'bar')))
     selfpred, other = split_predicate(filter, [])
     assert isinstance(selfpred, LiteralWrapper)
     assert selfpred.value == True
     assert other == filter.predicate
     # Test that Combinations of Or and And are properly managed
-    filter = RequestWrapper.from_request(Corn.all.filter(((c.lastname == 'bar') | (c.id < 4)) & (c.name == 'foo')))
-    selfpred, other = split_predicate(filter, [Corn.properties['id'], Corn.properties['name']])
+    filter = RequestWrapper.from_request(
+        Corn.all.filter(
+            ((c.lastname == 'bar') | (c.id < 4)) & (c.name == 'foo')))
+    selfpred, other = split_predicate(
+        filter, [Corn.properties['id'], Corn.properties['name']])
     assert isinstance(selfpred, EqWrapper)
     assert isinstance(other, OrWrapper)
     assert selfpred.subject.attr_name == 'name'
@@ -102,14 +108,17 @@ def test_isolate_values():
     Corn = make_corn()
     filter = RequestWrapper.from_request(Corn.all.filter(c.lastname == 'foo'))
     context = (filter.subject.return_type().inner_type,)
-    values, remainder = isolate_values(filter.predicate.wrapped_request, context)
+    values, remainder = isolate_values(
+        filter.predicate.wrapped_request, context)
     assert values == {'lastname': 'foo'}
     assert isinstance(remainder, LiteralRequest)
     assert RequestWrapper.from_request(remainder).value == True
-    filter = RequestWrapper.from_request(Corn.all.filter((c.lastname == 'foo') & (c.id < 3)))
+    filter = RequestWrapper.from_request(
+        Corn.all.filter((c.lastname == 'foo') & (c.id < 3)))
     context = (filter.subject.return_type().inner_type,)
-    values, remainder = isolate_values(filter.predicate.wrapped_request, context)
+    values, remainder = isolate_values(
+        filter.predicate.wrapped_request, context)
     assert values == {'lastname': 'foo'}
     assert isinstance(remainder, LtRequest)
-    assert RequestWrapper.from_request(remainder).subject.attr_name== 'id'
+    assert RequestWrapper.from_request(remainder).subject.attr_name == 'id'
     assert RequestWrapper.from_request(remainder).other.value == 3

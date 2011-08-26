@@ -3,7 +3,6 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 import re
-import sys
 import operator
 from itertools import islice, chain
 from collections import Mapping, Iterable, deque
@@ -189,7 +188,8 @@ def execute_sort(self, contexts):
     else:
         # Mixed sort direction : the obvious key function can not do this.
 
-        # http://wiki.python.org/moin/HowTo/Sorting/#Sort_Stability_and_Complex_Sorts
+        # http://wiki.python.org/moin/HowTo/Sorting/
+        #                                     #Sort_Stability_and_Complex_Sorts
         # According to this page, sorts are guaranteed to be stable (so the
         # following is correct) and the Timsort algorithm used takes advantage
         # of any ordering already present
@@ -251,7 +251,7 @@ def execute_groupby(self, contexts):
 
     # We have at least one non-hashable key/grouper, we can not use a dict
     # anymore.
-    groups = groups.items() # as a list.
+    groups = groups.items()  # as a list.
     # We got here on a non-hashable key, so it can not be in groups yet.
     groups.append((key, [element]))
 
@@ -419,5 +419,6 @@ def execute(request, contexts=()):
         if isinstance(chain[0], requests.StoredItemsRequest):
             #We have a real chain!
             request = inject_context(request.wrapped_request, contexts)
-            return requests.WithRealAttributes(chain[0]).storage.execute(request)
+            return requests.WithRealAttributes(
+                chain[0]).storage.execute(request)
     return request.execute(contexts)

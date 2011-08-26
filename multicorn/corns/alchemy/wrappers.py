@@ -2,8 +2,8 @@
 # Copyright © 2008-2011 Kozea/
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-from ...requests import requests, wrappers, types, CONTEXT as c
-from . import Alchemy, InvalidRequestException
+from ...requests import requests, wrappers, types
+from . import InvalidRequestException
 
 from sqlalchemy import sql as sqlexpr, Unicode
 from sqlalchemy.sql import expression
@@ -20,6 +20,7 @@ class Context(object):
 
 def type_context(context):
     return tuple([c.type for c in context])
+
 
 class AlchemyWrapper(wrappers.RequestWrapper):
     class_map = wrappers.RequestWrapper.class_map.copy()
@@ -58,7 +59,7 @@ class StoredItemsWrapper(wrappers.StoredItemsWrapper, AlchemyWrapper):
 
     def to_alchemy(self, query, contexts=()):
         query = self.aliased_table.select().with_only_columns([])
-        for c in sorted(self.aliased_table.c, key = lambda x: x.key):
+        for c in sorted(self.aliased_table.c, key=lambda x: x.key):
             query = query.column(c.label(c.key))
         if contexts:
             return query.apply_labels()
@@ -71,6 +72,7 @@ class StoredItemsWrapper(wrappers.StoredItemsWrapper, AlchemyWrapper):
     def is_valid(self, contexts=()):
         pass
 
+
 @AlchemyWrapper.register_wrapper(requests.ContextRequest)
 class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
 
@@ -79,8 +81,8 @@ class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
         if not isinstance(self.return_type(type_context(contexts)),
                 (types.List, types.Dict)):
             if hasattr(query, 'c'):
-               # Context is a scalar, we should have only one column
-               return list(query.c)[0].proxies[-1]
+                # Context is a scalar, we should have only one column
+                return list(query.c)[0].proxies[-1]
         return query
 
     def extract_tables(self):
@@ -91,6 +93,7 @@ class ContextWrapper(wrappers.ContextWrapper, AlchemyWrapper):
         if len(contexts) <= self.scope_depth:
             raise InvalidRequestException(self, "Invalid Context Request:\
                     no %sth parent scope" % self.scope_depth)
+
 
 @AlchemyWrapper.register_wrapper(requests.StrRequest)
 class StrWrapper(wrappers.StrWrapper, AlchemyWrapper):
@@ -118,6 +121,7 @@ class UpperWrapper(wrappers.UpperWrapper, AlchemyWrapper):
     def to_alchemy(self, query, contexts=()):
         subject = self.subject.to_alchemy(query, contexts)
         return query.with_only_columns([expression.func.upper(subject)])
+
 
 @AlchemyWrapper.register_wrapper(requests.LowerRequest)
 class LowerWrapper(wrappers.LowerWrapper, AlchemyWrapper):
@@ -161,14 +165,13 @@ class RegexWrapper(wrappers.RegexWrapper, AlchemyWrapper):
             value = value + '%'
         base_value = value.replace('%', '')
         if base_value.replace('%', '') != re.escape(base_value):
-            raise InvalidRequestException(self, "Regex only supports '.*',.,^,$'")
+            raise InvalidRequestException(
+                self, "Regex only supports '.*',.,^,$'")
         self.value = value
 
     def to_alchemy(self, query, contexts=()):
         subject = self.subject.to_alchemy(query, contexts)
         return subject.like(self.value)
-
-
 
 
 @AlchemyWrapper.register_wrapper(requests.LiteralRequest)
@@ -187,8 +190,9 @@ class LiteralWrapper(wrappers.LiteralWrapper, AlchemyWrapper):
         return tuple()
 
     def is_valid(self, contexts=()):
-       # TODO: raise on invalid Types
-       pass
+        # TODO: raise on invalid Types
+        pass
+
 
 @AlchemyWrapper.register_wrapper(requests.ListRequest)
 class ListWrapper(wrappers.ListWrapper, LiteralWrapper):
@@ -240,7 +244,6 @@ class BinaryOperationWrapper(AlchemyWrapper):
         return other
 
 
-
 @AlchemyWrapper.register_wrapper(requests.AndRequest)
 class AndWrapper(wrappers.AndWrapper, BinaryOperationWrapper):
 
@@ -256,13 +259,13 @@ class OrWrapper(wrappers.OrWrapper, BinaryOperationWrapper):
         return sqlexpr.or_(self.subject.to_alchemy(query, contexts),
                     self.other.to_alchemy(query, contexts))
 
+
 @AlchemyWrapper.register_wrapper(requests.InRequest)
 class InWrapper(wrappers.InWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
         return self.subject.to_alchemy(query, contexts).in_(
                 self.other.to_alchemy(query, contexts))
-
 
 
 @AlchemyWrapper.register_wrapper(requests.EqRequest)
@@ -280,12 +283,14 @@ class NeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
         return self.left_column(query, contexts) !=\
                 self.right_column(query, contexts)
 
+
 @AlchemyWrapper.register_wrapper(requests.LtRequest)
 class LtWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
         return self.left_column(query, contexts) <\
                 self.right_column(query, contexts)
+
 
 @AlchemyWrapper.register_wrapper(requests.GtRequest)
 class GtWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
@@ -294,6 +299,7 @@ class GtWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
         return self.left_column(query, contexts) >\
                 self.right_column(query, contexts)
 
+
 @AlchemyWrapper.register_wrapper(requests.LeRequest)
 class LeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
@@ -301,12 +307,14 @@ class LeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
         return self.left_column(query, contexts) <=\
                 self.right_column(query, contexts)
 
+
 @AlchemyWrapper.register_wrapper(requests.GeRequest)
 class GeWrapper(wrappers.BooleanOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
         return self.left_column(query, contexts) >=\
                 self.right_column(query, contexts)
+
 
 @AlchemyWrapper.register_wrapper(requests.AddRequest)
 class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
@@ -319,10 +327,11 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
         other_type = self.other.return_type(type_context(contexts))
         # Dict addition is a mapping merge
         if all(isinstance(x, types.Dict) for x in (subject_type, other_type)):
-            for c in sorted(subject.c, key=lambda x : x.key):
+            for c in sorted(subject.c, key=lambda x: x.key):
                 other = other.column(c.proxies[-1])
             return other
-        elif all(isinstance(x, types.List) for x in (subject_type, other_type)):
+        elif all(isinstance(x, types.List)
+                 for x in (subject_type, other_type)):
             return subject.union(other)
         else:
             return subject + other
@@ -335,6 +344,7 @@ class SubWrapper(wrappers.ArithmeticOperationWrapper, BinaryOperationWrapper):
         return self.subject.to_alchemy(query, contexts) -\
                 self.other.to_alchemy(query, contexts)
 
+
 @AlchemyWrapper.register_wrapper(requests.MulRequest)
 class MulWrapper(wrappers.ArithmeticOperationWrapper, BinaryOperationWrapper):
 
@@ -342,12 +352,14 @@ class MulWrapper(wrappers.ArithmeticOperationWrapper, BinaryOperationWrapper):
         return self.subject.to_alchemy(query, contexts) *\
                 self.other.to_alchemy(query, contexts)
 
+
 @AlchemyWrapper.register_wrapper(requests.DivRequest)
 class DivWrapper(wrappers.ArithmeticOperationWrapper, BinaryOperationWrapper):
 
     def to_alchemy(self, query, contexts=()):
         return self.subject.to_alchemy(query, contexts) /\
                 self.other.to_alchemy(query, contexts)
+
 
 @AlchemyWrapper.register_wrapper(requests.MapRequest)
 class MapWrapper(wrappers.MapWrapper, AlchemyWrapper):
@@ -375,6 +387,7 @@ class MapWrapper(wrappers.MapWrapper, AlchemyWrapper):
         contexts = contexts + (return_type.inner_type,)
         self.new_value.is_valid(contexts)
 
+
 @AlchemyWrapper.register_wrapper(requests.DictRequest)
 class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
 
@@ -392,7 +405,8 @@ class DictWrapper(wrappers.DictWrapper, AlchemyWrapper):
                     selects.append(list(req.c)[0].proxies[-1].label(key))
                 else:
                     for c in req.c:
-                        selects.append(c.proxies[-1].label("__%s_%s__" % (key, c.name)))
+                        selects.append(
+                            c.proxies[-1].label("__%s_%s__" % (key, c.name)))
                 query = req
             else:
                 selects.append(req.label(key))
@@ -460,8 +474,9 @@ class SortWrapper(wrappers.SortWrapper, AlchemyWrapper):
             key.is_valid(contexts)
 
     def extract_tables(self):
-        return reduce(lambda x, y: x+y, [key.extract_tables()
+        return reduce(lambda x, y: x + y, [key.extract_tables()
             for key, _ in self.sort_keys], self.subject.extract_tables())
+
 
 @AlchemyWrapper.register_wrapper(requests.OneRequest)
 class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
@@ -481,8 +496,8 @@ class OneWrapper(wrappers.OneWrapper, AlchemyWrapper):
         if contexts:
             raise InvalidRequestException(self, "This request is not doable!")
 
-class AggregateWrapper(AlchemyWrapper):
 
+class AggregateWrapper(AlchemyWrapper):
 
     def extract_tables(self):
         return self.subject.extract_tables()
@@ -491,8 +506,8 @@ class AggregateWrapper(AlchemyWrapper):
         self.subject.is_valid(contexts)
         type = self.subject.return_type(contexts)
         if not isinstance(type, types.List):
-            raise InvalidRequestException(self, "Cannot perform a sum on something\
-                    which isn't a list")
+            raise InvalidRequestException(
+                self, "Cannot perform a sum on something which isn't a list")
 
 
 @AlchemyWrapper.register_wrapper(requests.LenRequest)
@@ -502,10 +517,8 @@ class LenWrapper(wrappers.LenWrapper, AggregateWrapper):
         query = self.subject.to_alchemy(query, contexts)
         return query.with_only_columns([expression.func.count(1)])
 
-
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)
-
 
 
 @AlchemyWrapper.register_wrapper(requests.SumRequest)
@@ -515,7 +528,6 @@ class SumWrapper(wrappers.AggregateWrapper, AggregateWrapper):
         query = self.subject.to_alchemy(query, contexts)
         column = list(query.c)[0]
         return query.with_only_columns([expression.func.sum(column)])
-
 
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)
@@ -541,7 +553,6 @@ class MinWrapper(wrappers.AggregateWrapper, AggregateWrapper):
         column = list(query.c)[0]
         return query.with_only_columns([expression.func.min(column)])
 
-
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)
 
@@ -555,7 +566,6 @@ class DistinctWrapper(wrappers.AggregateWrapper, AggregateWrapper):
 
     def is_valid(self, contexts=()):
         self.subject.is_valid(contexts)
-
 
 
 @AlchemyWrapper.register_wrapper(requests.SliceRequest)
@@ -586,3 +596,33 @@ class SliceWrapper(wrappers.PreservingWrapper, AggregateWrapper):
         if not isinstance(self.subject.return_type(contexts), types.List):
             raise InvalidRequestException(self,
                     "Slice is not managed on not list objects")
+
+
+@AlchemyWrapper.register_wrapper(requests.WhenRequest)
+class WhenWrapper(wrappers.WhenWrapper, AlchemyWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        condition = self.condition.to_alchemy(query, contexts)
+        result = self.result.to_alchemy(query, contexts)
+        return (condition, result)
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def extract_tables(self):
+        return tuple()
+
+
+@AlchemyWrapper.register_wrapper(requests.CaseRequest)
+class CaseWrapper(wrappers.CaseWrapper, AlchemyWrapper):
+
+    def to_alchemy(self, query, contexts=()):
+        whens = [when.to_alchemy(query, contexts) for when in self.whens]
+        default = self.default.to_alchemy(query, contexts)
+        return expression.case(whens, else_=default)
+
+    def is_valid(self, contexts=()):
+        pass
+
+    def extract_tables(self):
+        return tuple()

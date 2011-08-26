@@ -6,6 +6,7 @@
 class BadQueryException(Exception):
     pass
 
+
 class QueryExecutor(object):
 
     def __init__(self, access_point):
@@ -16,7 +17,6 @@ class QueryExecutor(object):
         self.remainder = []
         self.joins = []
         self.selects = {}
-
 
     def execute(self, query):
         for operation in query.operations:

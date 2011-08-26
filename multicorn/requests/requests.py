@@ -2,8 +2,6 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-
-import sys
 import functools
 
 # Marker to distinguish "Nothing was given" and "`None` was explicitly given".
@@ -91,7 +89,6 @@ class Request(object):
     `object.__getattribute__` and `object.__setattr__`.
     """
 
-
     context_switching_args = ()
 
     # TODO: test `del some_request.fistname`. It should raise.
@@ -100,7 +97,8 @@ class Request(object):
             # Special methods such as __add__.
             # According to the following link CPython may not go through here
             # to get them, but there seems to be no guarantee that it does not.
-            # http://docs.python.org/reference/datamodel.html#new-style-special-lookup
+            # http://docs.python.org/reference/datamodel.html
+            #                                         #new-style-special-lookup
             return object.__getattribute__(self, name)
         else:
             # No as_request() on the name
@@ -108,7 +106,6 @@ class Request(object):
 
     def __setattr__(self, name, value):
         raise AttributeError('Can not assign to request attributes.')
-
 
     def __getitem__(self, key):
         # XXX No as_request() on key ?
@@ -120,7 +117,8 @@ class Request(object):
                         'not dict-like lookup.')
 
     def __iter__(self):
-        raise TypeError('Request are not iterable. Did you mean to execute it?')
+        raise TypeError(
+            'Request are not iterable. Did you mean to execute it?')
 
     def __invert__(self):
         # Simplify logic when possible
@@ -159,30 +157,63 @@ class Request(object):
     __rand__ = __and__
     __ror__ = __or__
 
-    def __eq__(self, other): return EqRequest(self, as_request(other))
-    def __ne__(self, other): return NeRequest(self, as_request(other))
-    def __lt__(self, other): return LtRequest(self, as_request(other))
-    def __gt__(self, other): return GtRequest(self, as_request(other))
-    def __le__(self, other): return LeRequest(self, as_request(other))
-    def __ge__(self, other): return GeRequest(self, as_request(other))
+    def __eq__(self, other):
+        return EqRequest(self, as_request(other))
+
+    def __ne__(self, other):
+        return NeRequest(self, as_request(other))
+
+    def __lt__(self, other):
+        return LtRequest(self, as_request(other))
+
+    def __gt__(self, other):
+        return GtRequest(self, as_request(other))
+
+    def __le__(self, other):
+        return LeRequest(self, as_request(other))
+
+    def __ge__(self, other):
+        return GeRequest(self, as_request(other))
 
     # Both __div__ and __truediv__ return a DivRequest, so that the meaning
     # of `some_req / other_req` does not depend on whether the module using
     # it has `from __future__ import division`
-    def __add__(self, other): return AddRequest(self, as_request(other))
-    def __sub__(self, other): return SubRequest(self, as_request(other))
-    def __mul__(self, other): return MulRequest(self, as_request(other))
-    def __div__(self, other): return DivRequest(self, as_request(other))
-    def __pow__(self, other): return PowRequest(self, as_request(other))
-    def __truediv__(self, other): return DivRequest(self, as_request(other))
+    def __add__(self, other):
+        return AddRequest(self, as_request(other))
+
+    def __sub__(self, other):
+        return SubRequest(self, as_request(other))
+
+    def __mul__(self, other):
+        return MulRequest(self, as_request(other))
+
+    def __div__(self, other):
+        return DivRequest(self, as_request(other))
+
+    def __pow__(self, other):
+        return PowRequest(self, as_request(other))
+
+    def __truediv__(self, other):
+        return DivRequest(self, as_request(other))
 
     # Reflected methods: swap the arguments.
-    def __radd__(self, other): return AddRequest(as_request(other), self)
-    def __rsub__(self, other): return SubRequest(as_request(other), self)
-    def __rmul__(self, other): return MulRequest(as_request(other), self)
-    def __rpow__(self, other): return PowRequest(as_request(other), self)
-    def __rdiv__(self, other): return DivRequest(as_request(other), self)
-    def __rtruediv__(self, other): return DivRequest(as_request(other), self)
+    def __radd__(self, other):
+        return AddRequest(as_request(other), self)
+
+    def __rsub__(self, other):
+        return SubRequest(as_request(other), self)
+
+    def __rmul__(self, other):
+        return MulRequest(as_request(other), self)
+
+    def __rpow__(self, other):
+        return PowRequest(as_request(other), self)
+
+    def __rdiv__(self, other):
+        return DivRequest(as_request(other), self)
+
+    def __rtruediv__(self, other):
+        return DivRequest(as_request(other), self)
 
     def __neg__(self):
         return NegRequest(self)
@@ -376,6 +407,7 @@ class StoredItemsRequest(Request):
     def __init__(self, storage):
         self.storage = storage
 
+
 class LiteralRequest(Request):
     arg_spec = ('value',)
 
@@ -430,8 +462,8 @@ class DictRequest(Request):
             if value in replacements:
                 newvalue[key] = replacements[value]
             else:
-                newvalue[key] = object.__getattribute__(value, '_copy_replace')\
-                    (replacements)
+                newvalue[key] = object.__getattribute__(
+                    value, '_copy_replace')(replacements)
         return DictRequest(newvalue)
 
 
@@ -570,12 +602,14 @@ class RegexRequest(BinaryOperationRequest):
     arg_spec = ('subject', 'other')
     __repr__ = method_repr('matches')
 
+
 class InRequest(BinaryOperationRequest):
-    arg_spec=  ('subject', 'other')
+    arg_spec = ('subject', 'other')
     __repr__ = method_repr('is_in')
 
+
 class SplitRequest(BinaryOperationRequest):
-    arg_spec=  ('subject', 'other')
+    arg_spec = ('subject', 'other')
     __repr__ = method_repr('is_in')
 
 
@@ -760,7 +794,8 @@ class AttributeRequest(OperationRequest):
         eg. `some_req.map` is `GetattrRequest(some_req, 'map')`, but
         `some_req.map(...)` is `Request.map(some_req, ...)`.
         """
-        method = getattr(WithRealAttributes(self.subject), self.attr_name, None)
+        method = getattr(
+            WithRealAttributes(self.subject), self.attr_name, None)
         if method is None:
             raise TypeError('Request objects do not have a %s method.'
                             % self.attr_name)
@@ -849,4 +884,3 @@ class LenRequest(UnaryOperationRequest):
 
 class DistinctRequest(UnaryOperationRequest):
     __repr__ = method_repr('distinct')
-
