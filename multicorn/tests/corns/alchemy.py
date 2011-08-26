@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from attest import assert_hook
 import attest
 from multicorn import Multicorn
@@ -190,6 +191,24 @@ def test_optimization(Corn):
     assert len(items) == 2
     assert items[0]['id'] == 1
     assert items[1]['id'] == 2
+    items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
+    assert len(items) == 3
+    assert all(all(subitem['name'] == item['name']
+        for subitem in item['homonymes'])
+            for item in items)
+
+@suite.test
+@postgres_suite.test
+def test_unicode(Corn):
+    class NotOptimizedError(Exception):
+        pass
+
+    def error():
+        raise NotOptimizedError
+    Corn._all = error
+    Corn.create({'id': 1, 'name': u'foo', 'lastname': u'baré'}).save()
+    Corn.create({'id': 2, 'name': u'baz', 'lastname': u'barà'}).save()
+    Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
     items = list(Corn.all.map(c + {'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
     assert len(items) == 3
     assert all(all(subitem['name'] == item['name']

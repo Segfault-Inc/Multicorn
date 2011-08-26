@@ -1,12 +1,18 @@
 from .. import wrappers
 from .. import InvalidRequestException
-from ....requests import requests, types, CONTEXT as c, helpers
+from ..dialects import BaseDialect
+
+from ....requests import requests, types, CONTEXT as c
+
+from datetime import datetime, date
 
 from sqlalchemy import sql as sqlexpr
-from sqlalchemy.types import Unicode, NullType, UserDefinedType
+from sqlalchemy.types import Unicode, UserDefinedType
 from sqlalchemy.sql import expression
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import ARRAY
+
+from sqlalchemy.engine.base import RowProxy
 
 
 class substr(expression.FunctionElement, expression.ColumnElement):
@@ -19,30 +25,44 @@ def default_substr(element, compiler, **kw):
 
 
 def convert_tuple(datum, cursor):
+    datum = datum.decode(cursor.connection.encoding)
     datum = datum.lstrip('(')
     if datum.startswith('"{"'):
         return convert_tuple_array(datum.strip('"'), cursor)
 
-    current_token = ""
+    isnull = True
+    current_token = u""
     elems = []
     in_string = False
     escape = False
-    for a in datum:
+    datum = iter(datum)
+    stop_marker = object()
+    a = next(datum)
+    while a != stop_marker:
         if in_string:
             if not escape:
                 if a == '"':
                     in_string = False
                     elems.append(current_token)
-                    current_token = ""
+                    isnull = True
+                    a = next(datum, stop_marker)
+                    current_token = u""
                 else:
                     current_token += a
             elif a == '\\':
                 escape = True
+
+        elif a == '"':
+            in_string = True
+            isnull = False
         elif a in (',', ')'):
-            elems.append(unicode_converter(current_token, cursor))
-            current_token = ""
+            elems.append(None if isnull else current_token)
+            isnull = True
+            current_token = u""
         else:
+            isnull = False
             current_token += a
+        a = next(datum, stop_marker)
     return tuple(elems)
 
 
@@ -59,16 +79,18 @@ def convert_tuple_array(data, cursor):
 
 try:
     import psycopg2
+    type_map = {
+        unicode: psycopg2.extensions.string_types[1043],
+        datetime: psycopg2.extensions.string_types[1184],
+        date: psycopg2.extensions.string_types[1082],
+        int: psycopg2.extensions.string_types[23]
+    }
     converter = psycopg2.extensions.string_types[1015]
     unicode_converter = psycopg2.extensions.string_types[1043]
     TUPLE_ARRAY = psycopg2.extensions.new_type((2287,), "TUPLEARRAY", convert_tuple_array)
     TUPLE = psycopg2.extensions.new_type((2249,), "TUPLE", convert_tuple)
     psycopg2.extensions.register_type(TUPLE_ARRAY)
     psycopg2.extensions.register_type(TUPLE)
-
-
-
-
 except:
     print "Warning: postgresql driver not found"
 
@@ -512,3 +534,55 @@ class SliceWrapper(wrappers.SliceWrapper, AggregateWrapper):
         if not (isinstance(type, types.List) or issubclass(type.type, basestring)):
             raise InvalidRequestException(self,
                     "Slice is not managed on not list or string objects")
+
+class PostgresDialect(BaseDialect):
+
+    RequestWrapper = PostgresWrapper
+
+    def _transform_result(self, result, return_type, corn):
+        def process_list(result):
+            for item in result:
+                yield self._transform_result(item, return_type.inner_type, corn)
+        if isinstance(return_type, types.List):
+            return process_list(result)
+        elif return_type.type == dict:
+            newdict = {}
+            if return_type.corn:
+                ordered_dict = sorted(((x, y.type)
+                        for x, y in return_type.corn.definitions.iteritems()),
+                        key=lambda x: x[0])
+            else:
+                ordered_dict = sorted(return_type.mapping.iteritems(), key=lambda x: x[0])
+            if result is None:
+                return None
+            # Temporary fix for one value tuples
+            if not isinstance(result, (RowProxy, tuple)):
+                result = tuple([result])
+            for idx, (key, type) in enumerate(ordered_dict):
+                # Even for dicts, sql returns results "inline"
+                newdict[key] = self._transform_result(result[idx], type, corn)
+            if return_type.corn:
+                return return_type.corn.create(newdict)
+            else:
+                return newdict
+        else:
+            if hasattr(result, '__iter__'):
+                result = list(result)
+                if len(result) > 1:
+                    raise ValueError('More than one element in .one()')
+                if len(result) == 0:
+                    raise ValueError('.one() on an empty sequence')
+                return result[0]
+            else:
+                if result is not None and not isinstance(
+                        result, return_type.type) and isinstance(result, basestring):
+                    postgres_type = type_map.get(return_type.type, None)
+                    if postgres_type:
+                        return postgres_type(result, None)
+                    else:
+                        return return_type.type(result)
+                else:
+                    return result
+
+    def wrap_request(self, request):
+        return self.RequestWrapper.from_request(request)

@@ -124,6 +124,8 @@ class ComputedExtenser(AbstractCornExtenser):
             return self.create(result)
         elif isinstance(return_type, Dict):
             newdict = {}
+            if result is None:
+                return None
             for key, type in return_type.mapping.iteritems():
                 newdict[key] = self._transform_result(result[key], type)
             return newdict
