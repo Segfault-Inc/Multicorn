@@ -1,9 +1,13 @@
+# -*- coding: utf-8 -*-
+# Copyright © 2008-2011 Kozea
+# This file is part of Multicorn, licensed under a 3-clause BSD license.
+
+from __future__ import print_function
 from .. import wrappers
 from .. import InvalidRequestException
 from ..dialects import BaseDialect
-
 from ....requests import requests, types, CONTEXT as c
-
+from multicorn.utils import colorize
 from datetime import datetime, date
 
 from sqlalchemy import sql as sqlexpr
@@ -92,7 +96,10 @@ try:
     psycopg2.extensions.register_type(TUPLE_ARRAY)
     psycopg2.extensions.register_type(TUPLE)
 except:
-    print "Warning: postgresql driver not found"
+    import sys
+    print(colorize(
+        'yellow',
+        "WARNING: Postgresql driver not found"), file=sys.stderr)
 
 
 class Tuple(UserDefinedType):

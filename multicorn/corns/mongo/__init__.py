@@ -3,7 +3,7 @@
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
 from __future__ import print_function
-from multicorn.utils import colorize, print_py
+from multicorn.utils import colorize, highlight_py
 from multicorn.requests.types import Type, Dict, List
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
@@ -76,7 +76,7 @@ class Mongo(AbstractCorn):
         all_in = True
         for rq in all_requests:
             if not isinstance(rq, MongoWrapper):
-                print(colorize("red", "%r not supported in mongo" % rq))
+                self.log.error("%r not supported in mongo" % rq)
                 all_in = False
         return all_in
 
@@ -87,7 +87,6 @@ class Mongo(AbstractCorn):
         return self.create(item)
 
     def _execute(self, mrq, return_type):
-        # print_py(repr(mrq))
         result = mrq.execute(self.collection)
 
         # Several results
@@ -129,14 +128,15 @@ class Mongo(AbstractCorn):
 
     def execute(self, request):
         wrapped_request = MongoWrapper.from_request(request)
-        # print_py(repr(wrapped_request))
+        self.log.debug("Mongo> request %s" %
+                       highlight_py(repr(wrapped_request)))
         if self.is_all_mongo(wrapped_request):
             try:
                 return self._execute(
                     wrapped_request.to_mongo(),
                     wrapped_request.return_type())
             except RageQuit as rq:
-                print (colorize("red", "%r" % rq))
+                self.log.error("%r" % rq)
                 if rq.request:
                     quited_on = rq.request.wrapped_request
 
@@ -150,5 +150,6 @@ class Mongo(AbstractCorn):
                         result = self._all()
                     return python_executor.execute(not_managed, (result,))
                 raise RuntimeError("WTF")
-        print (colorize("yellow", "Python execution for %r" % wrapped_request))
+        self.log.warn("Mongo> Python execution for %s" %
+                      highlight_py(repr(wrapped_request)))
         return python_executor.execute(request)

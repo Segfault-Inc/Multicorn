@@ -2,7 +2,9 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
+from __future__ import print_function
 from attest import Tests, assert_hook
+from multicorn.utils import colorize
 from multicorn.corns.mongo import Mongo
 from multicorn.declarative import declare, Property
 from . import make_test_suite
@@ -28,7 +30,9 @@ try:
     import pymongo
 except ImportError:
     import sys
-    print >>sys.stderr, "WARNING: The Mongo DB AP is not tested."
+    print(colorize(
+        'yellow',
+        "WARNING: The Mongo DB AP is not tested."), file=sys.stderr)
     suite = Tests()
     suite.test = lambda x: None
 else:

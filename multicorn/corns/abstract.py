@@ -6,6 +6,7 @@ from ..item import BaseItem
 from ..requests.types import Type, List, Dict
 from ..python_executor import PythonExecutor
 from ..requests.requests import StoredItemsRequest
+from logging import getLogger
 
 
 # Just a base class for the two other in case you want to catch both.
@@ -36,6 +37,7 @@ class AbstractCorn(object):
     def __init__(self, name, identity_properties):
         self.name = name
         self.multicorn = None
+        self.log = getLogger('multicorn')
         self.identity_properties = tuple(identity_properties)
         self.properties = {}
 
@@ -48,6 +50,7 @@ class AbstractCorn(object):
         An access point can only be bound once.
         """
         if self.multicorn is None:
+            self.log.debug("Binding %s to multicorn" % self)
             self.multicorn = multicorn
         else:
             raise RuntimeError('This access point is already bound.')
