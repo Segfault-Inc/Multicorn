@@ -1,2 +1,3 @@
 -e git+http://github.com/dag/attest.git#egg=Attest
+-e git+http://github.com/Kozea/log_colorizer.git#egg=log_colorizer
 -e .
