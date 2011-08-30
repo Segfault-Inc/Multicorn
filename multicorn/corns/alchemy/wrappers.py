@@ -558,7 +558,7 @@ class MinWrapper(wrappers.AggregateWrapper, AggregateWrapper):
 
 
 @AlchemyWrapper.register_wrapper(requests.DistinctRequest)
-class DistinctWrapper(wrappers.AggregateWrapper, AggregateWrapper):
+class DistinctWrapper(wrappers.PreservingWrapper, AggregateWrapper):
 
     def to_alchemy(self, query, contexts=()):
         query = self.subject.to_alchemy(query, contexts)
