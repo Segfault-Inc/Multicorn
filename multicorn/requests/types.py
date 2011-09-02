@@ -16,9 +16,9 @@ class Type(object):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.corn == other.corn and\
-                    self.name == other.name and\
-                    self.type == other.type
+            return (self.corn == other.corn and
+                    self.name == other.name and
+                    self.type == other.type)
         return False
 
     def __hash__(self):

@@ -285,8 +285,8 @@ class RelationExtenser(ComputedExtenser):
             replacement = requests.AndRequest(replacement, attr == other)
         return replacement
 
-    def register(self, name, expression=None, reverse=None,
-                to=None, on=None, uses=None, multiple=True, reverse_suffix='s'):
+    def register(self, name, expression=None, reverse=None, to=None, on=None,
+                 uses=None, multiple=True, reverse_suffix='s'):
         if expression is not None:
             super(RelationExtenser, self).register(name, expression, reverse)
         else:
