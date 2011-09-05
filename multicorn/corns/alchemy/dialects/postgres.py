@@ -122,6 +122,7 @@ class array(expression.ColumnElement):
 
     def __init__(self, element):
         self.element = element
+        self.clauses = [c.proxies[-1] if isinstance(c, expression._Label) else c  for c in self.element.clauses]
 
 
 @compiles(array)
@@ -138,18 +139,19 @@ class array_elem(expression.ColumnElement):
 
     def __init__(self, element):
         if len(element.c) == 1:
-            col_base = element._raw_columns[0].element
+            col_base = element._raw_columns[0]
+            if hasattr(col_base, 'element'):
+                col_base = col_base.element
         else:
             col_base = element
-        self.clauses = list(col_base.c)
-        element = element.with_only_columns([tuple_(*self.clauses)])
-        element = element.as_scalar()
+        col_base = element
+        self.clauses = [c.proxies[-1] for c in col_base.c]
         self.element = element
 
 
 @compiles(array_elem)
 def default_array_elem(element, compiler, **kw):
-    return compiler.process(element.element)
+    return compiler.process(element.element.with_only_columns([tuple_(*element.clauses)]))
 
 
 class tuple_(expression.ColumnElement):
@@ -196,6 +198,8 @@ class DictWrapper(PostgresWrapper, wrappers.DictWrapper):
                     query = req
                 selects.append(select_expr.label(key))
             else:
+#                if hasattr(req, 'table'):
+#                    query.append_from(req.table)
                 selects.append(req.label(key))
         return query.with_only_columns(selects)
 
@@ -289,10 +293,24 @@ class AttributeWrapper(wrappers.AttributeWrapper, PostgresWrapper):
         values = None
         if hasattr(query, 'c'):
             values = sorted(list(query.c), key=lambda x: x.name)
+        elif isinstance(query, array):
+            return query
         elif hasattr(query, 'clauses'):
-            values = query.clauses
+            values = [c for c in query.clauses]
+        elif isinstance(query, expression._Label):
+            return self._extract_attr(query.element, idx)
+        elif hasattr(query, 'proxies'):
+            newquery = query.proxies[-1]
+            if isinstance(newquery.type, (Tuple, ARRAY)):
+                truc = self._extract_attr(newquery, idx)
+                return truc
+            return newquery
+        elif isinstance(query, sqlexpr.ColumnElement):
+            return query
         if values is None:
             return self._extract_attr(query.element, idx)
+        elif len(values) == 1:
+            return self._extract_attr(values[0], idx)
         return values[idx].proxies[-1]
 
 
@@ -370,24 +388,25 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
         other_type = self.other.return_type(wrappers.type_context(contexts))
         need_subquery = False
         if isinstance(other_type, types.Dict):
-            for value in other_type.mapping.values():
-                if value.type == list:
-                    need_subquery = True
-                    break
+            need_subquery = True
         if need_subquery:
             subject = self.subject.to_alchemy(query.alias().select(), contexts)
             contexts = contexts[:-1] + (wrappers.Context(subject,
                 contexts[-1].type),)
-            # If we have things to do on the list of elements,
-            # append a filter after the context request
-            other = self.other.to_alchemy(subject, contexts)
-            base_request = sqlexpr.select(
-                from_obj=[other.alias(), subject.alias()])
+            other = self.other.to_alchemy(query, contexts)
+            other = other.correlate(*subject._froms)
             columns = []
-            for member in (subject, other):
-                for c in sorted(member.c, key=lambda x: x.name):
-                    columns.append(c.proxies[-1])
-            columns = sorted(columns, key=lambda c: c.name)
+            for c in sorted(list(other.c), key=lambda x: x.name):
+                column = None
+                for proxy in c.proxies:
+                    column = proxy
+                    if isinstance(proxy, array):
+                        column = array(array_elem(
+                            proxy.element.element.correlate(*subject._froms)))
+                        break
+                columns.append(other.with_only_columns(
+                    [column]).correlate(*subject._froms).as_scalar().label(c.name))
+            columns = sorted(columns + subject._raw_columns, key=lambda x: x.name)
             return subject.with_only_columns(columns)
         else:
             other_base = query.with_only_columns([])
@@ -436,12 +455,20 @@ class MapWrapper(wrappers.MapWrapper, PostgresWrapper):
         select = self.new_value.to_alchemy(newquery, contexts)
         # When we have a subselect as a scalar, un-nest it to take
         # the base query
+        if isinstance(select, expression._Label):
+            select = select.element
+        if isinstance(select, array):
+            base_query = select.element.element
+            # An array is based on a tuple, or at least a single column
+            column = list(select.element.element.c)[0].proxies[-1]
+            if isinstance(column, tuple_):
+                clauses = column.clauses
+            else:
+                clauses = [column.proxies[-1]]
+            return base_query.with_only_columns(clauses).alias().select().correlate(*base_query._froms)
         while not isinstance(newquery, sqlexpr.Select):
             newquery = newquery.element
         if not isinstance(select, expression.Selectable):
-            if hasattr(select, 'element') and\
-                    select.element.type == tuple_.type:
-                select = select.element.clauses
             if not hasattr(select, '__iter__'):
                 select = [select]
             return newquery.with_only_columns(select)
@@ -519,6 +546,11 @@ class OneWrapper(wrappers.OneWrapper, PostgresWrapper):
     def is_valid(self, contexts):
         self.subject.is_valid(contexts)
 
+    def to_alchemy(self, query, contexts=()):
+        query = self.subject.to_alchemy(query, contexts)
+        return query.limit(1)
+
+
 
 class AggregateWrapper(wrappers.AggregateWrapper, PostgresWrapper):
     pass
@@ -587,6 +619,8 @@ class PostgresDialect(BaseDialect):
 
     def _transform_result(self, result, return_type, corn):
         def process_list(result):
+            if isinstance(result, RowProxy) and isinstance(result._row, tuple):
+                result = result._row[0]
             for item in result:
                 yield self._transform_result(
                     item, return_type.inner_type, corn)
