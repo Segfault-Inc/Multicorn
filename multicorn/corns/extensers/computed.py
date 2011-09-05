@@ -35,8 +35,16 @@ class ComputedType(Type):
 class ComputedExtenser(AbstractCornExtenser):
 
     def __init__(self, name, wrapped_corn):
-        super(ComputedExtenser, self).__init__(name, wrapped_corn)
+        computed = None
         self.computed_properties = {}
+        if isinstance(wrapped_corn, ComputedExtenser):
+            # Unnest the computed wraps
+            computed = wrapped_corn
+            wrapped_corn = computed.wrapped_corn
+        super(ComputedExtenser, self).__init__(name, wrapped_corn)
+        if computed is not None:
+            for key, value in computed.computed_properties.iteritems():
+                self.register(value.name, value.expression, value.reverse)
 
     def register(self, name, expression, reverse=None):
         if name in self.wrapped_corn.properties:
@@ -196,14 +204,11 @@ class Relation(object):
 
 class RelationExtenser(ComputedExtenser):
 
-    def __init__(self, *args, **kwargs):
-        super(RelationExtenser, self).__init__(*args, **kwargs)
+    def __init__(self, name, wrapped_corn, *args, **kwargs):
+        super(RelationExtenser, self).__init__(name,
+                wrapped_corn, *args, **kwargs)
         self.relations = []
         self._pending_relations = []
-        if isinstance(self.wrapped_corn, ComputedExtenser):
-            # Unnest the computed wraps
-            self.computed_properties = self.wrapped_corn.computed_properties
-            self.wrapped_corn = self.wrapped_corn.wrapped_corn
 
     def _bind_relations(self, multicorn):
         for relation in list(self._pending_relations):

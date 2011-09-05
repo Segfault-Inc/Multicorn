@@ -203,12 +203,21 @@ def test_optimization(Corn):
     assert len(items) == 2
     assert items[0]['id'] == 1
     assert items[1]['id'] == 2
-    items = list(Corn.all.map(c + {
-        'homonymes': Corn.all.filter(c.name == c(-1).name)}).execute())
+    homonymes = Corn.all.map(c + {
+        'homonymes': Corn.all.filter(c.name == c(-1).name)})
+    items = list(homonymes.execute())
     assert len(items) == 3
     assert all(all(subitem['name'] == item['name']
         for subitem in item['homonymes'])
             for item in items)
+    items = list(homonymes.map(c.homonymes).execute())
+    assert len(items) == 3
+    assert all(hasattr(item, '__iter__') for item in items)
+    items = list(items)
+    for item in items:
+        item = list(item)
+        for a in item:
+            assert a.corn == Corn
 
 
 @suite.test

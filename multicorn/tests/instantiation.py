@@ -10,7 +10,7 @@ from multicorn.requests.types import Type
 from multicorn import Multicorn
 from multicorn.requests import CONTEXT as c
 from multicorn.declarative import declare, Property, computed, Relation
-from multicorn.corns.extensers.computed import ComputedExtenser
+from multicorn.corns.extensers.computed import RelationExtenser, ComputedExtenser
 
 suite = Tests()
 
@@ -30,14 +30,14 @@ def test_declarative():
     class Corn(object):
         id = Property()
         name = Property()
-    assert isinstance(Corn.wrapped_corn, Memory)
+    assert isinstance(Corn, Memory)
     assert "name" in Corn.properties
     assert "id" in Corn.properties
     assert Corn.identity_properties == ("id",)
     name = Corn.properties["name"]
     assert isinstance(name, Type)
     assert name.type == object
-    assert name.corn == Corn.wrapped_corn
+    assert name.corn == Corn
     assert name.name == "name"
 
 
@@ -47,7 +47,7 @@ def test_wrapper_declaration():
 
     @mc.register
     @declare(Memory, identity_properties=("id",))
-    class Corn(object):
+    class Corn(ComputedExtenser):
         id = Property(type=int)
         name = Property(type=unicode)
         foreign_id = Property(type=int)
@@ -85,11 +85,11 @@ def test_relation_declaration():
 
     @mc.register
     @declare(Memory, identity_properties=("id",))
-    class Corn(object):
+    class Corn(RelationExtenser):
         id = Property(type=int)
         name = Property(type=unicode)
         foreign = Relation(to="corn")
-    assert isinstance(Corn, ComputedExtenser)
+    assert isinstance(Corn, RelationExtenser)
     assert "name" in Corn.properties
     assert "id" in Corn.properties
     assert "foreign" in Corn.properties

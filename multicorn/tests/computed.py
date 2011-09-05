@@ -12,7 +12,7 @@ def make_corn():
     mc = Multicorn()
 
     @declare(Memory, identity_properties=("id",))
-    class Corn(object):
+    class Corn(ComputedExtenser):
         id = Property(type=int)
         name = Property(type=unicode)
         lastname = Property(type=unicode)
