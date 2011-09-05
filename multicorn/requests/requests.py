@@ -343,6 +343,10 @@ class Request(object):
             from ..python_executor import execute
             return execute(self, contexts)
 
+    def __call__(self):
+        """Dirty shortcut for execute"""
+        return self.execute()
+
     @self_with_attrs
     def _visit(self, func, scope_depth=0):
         func(self._wrapped_obj, scope_depth)
