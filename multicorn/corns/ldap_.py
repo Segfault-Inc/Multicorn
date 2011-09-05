@@ -9,7 +9,7 @@ except ImportError:
     import sys
     print(colorize(
         'yellow',
-        "WARNING: The LDAP AP is not available.", file=sys.stderr))
+        "WARNING: The LDAP AP is not available."), file=sys.stderr)
 else:
     import ldap.modlist
 
@@ -33,7 +33,8 @@ class Ldap(EasyCorn):
         connection = self.multicorn._ldap_metadatas.get(connect_point, None)
         if connection is None:
             connection = ldap.open(self.hostname)
-            connection.simple_bind_s(self.user, self.password)
+            if self.user and self.password:
+                connection.simple_bind_s(self.user, self.password)
             self.multicorn._ldap_metadatas[connect_point] = connection
         self.ldap = connection
 
