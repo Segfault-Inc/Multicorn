@@ -12,8 +12,7 @@ from multicorn.corns.ldap_ import Ldap
 
 # Ldap specific tests
 HOSTNAME = "localhost"
-PATH = "dc=multicorn,dc=org"
-
+PATH = "ou=People,dc=multicorn,dc=org"
 
 suite = Tests()
 try:
@@ -34,9 +33,13 @@ def make_corn():
 
     @mc.register
     @declare(Ldap,
-             hostname=HOSTNAME, ldap_path=PATH, user=USER, password=PASSWORD)
+             hostname=HOSTNAME, ldap_path=PATH)
     class Corn(object):
-        givenName = Property()
+        sn = Property()
+        street = Property()
+        l = Property()
+        telephoneNumber = Property()
+        mail = Property()
     return Corn
 
 

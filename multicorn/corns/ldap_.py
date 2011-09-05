@@ -15,8 +15,8 @@ else:
 
 
 class Ldap(EasyCorn):
-    def __init__(self, name, hostname, ldap_path, user,
-                 password, encoding="utf-8",  identity_properties=("cn",)):
+    def __init__(self, name, hostname, ldap_path, user=None,
+                 password=None, encoding="utf-8", identity_properties=("cn",)):
         super(Ldap, self).__init__(name, identity_properties)
         self.register("cn")
         self.encoding = encoding
@@ -41,7 +41,7 @@ class Ldap(EasyCorn):
     def _ldap_to_item(self, ldap_item):
         item = {}
         for name in self.properties.keys():
-            item[name] = ldap_item[name]
+            item[name] = ldap_item.get(name, None)
         return self.create(item)
 
     def _all(self):
