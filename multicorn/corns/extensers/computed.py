@@ -205,7 +205,8 @@ class Relation(object):
 class RelationExtenser(ComputedExtenser):
 
     def __init__(self, name, wrapped_corn, *args, **kwargs):
-        super(RelationExtenser, self).__init__(name, wrapped_corn, *args, **kwargs)
+        super(RelationExtenser, self).__init__(name,
+                wrapped_corn, *args, **kwargs)
         self.relations = []
         self._pending_relations = []
 
@@ -290,7 +291,8 @@ class RelationExtenser(ComputedExtenser):
         return replacement
 
     def register(self, name, expression=None, reverse=None,
-                to=None, on=None, uses=None, multiple=True, reverse_suffix='s'):
+                to=None, on=None, uses=None,
+                multiple=True, reverse_suffix='s'):
         if expression is not None:
             super(RelationExtenser, self).register(name, expression, reverse)
         else:

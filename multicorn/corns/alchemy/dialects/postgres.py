@@ -122,7 +122,8 @@ class array(expression.ColumnElement):
 
     def __init__(self, element):
         self.element = element
-        self.clauses = [c.proxies[-1] if isinstance(c, expression._Label) else c  for c in self.element.clauses]
+        self.clauses = [c.proxies[-1] if isinstance(c, expression._Label)
+                else c  for c in self.element.clauses]
 
 
 @compiles(array)
@@ -151,7 +152,8 @@ class array_elem(expression.ColumnElement):
 
 @compiles(array_elem)
 def default_array_elem(element, compiler, **kw):
-    return compiler.process(element.element.with_only_columns([tuple_(*element.clauses)]))
+    return compiler.process(element.element.with_only_columns(
+        [tuple_(*element.clauses)]))
 
 
 class tuple_(expression.ColumnElement):
@@ -405,8 +407,10 @@ class AddWrapper(wrappers.AddWrapper, BinaryOperationWrapper):
                             proxy.element.element.correlate(*subject._froms)))
                         break
                 columns.append(other.with_only_columns(
-                    [column]).correlate(*subject._froms).as_scalar().label(c.name))
-            columns = sorted(columns + subject._raw_columns, key=lambda x: x.name)
+                    [column]).correlate(*subject._froms)
+                    .as_scalar().label(c.name))
+            columns = sorted(columns + subject._raw_columns,
+                    key=lambda x: x.name)
             return subject.with_only_columns(columns)
         else:
             other_base = query.with_only_columns([])
@@ -465,7 +469,8 @@ class MapWrapper(wrappers.MapWrapper, PostgresWrapper):
                 clauses = column.clauses
             else:
                 clauses = [column.proxies[-1]]
-            return base_query.with_only_columns(clauses).alias().select().correlate(*base_query._froms)
+            return base_query.with_only_columns(clauses).alias()\
+                .select().correlate(*base_query._froms)
         while not isinstance(newquery, sqlexpr.Select):
             newquery = newquery.element
         if not isinstance(select, expression.Selectable):
@@ -549,7 +554,6 @@ class OneWrapper(wrappers.OneWrapper, PostgresWrapper):
     def to_alchemy(self, query, contexts=()):
         query = self.subject.to_alchemy(query, contexts)
         return query.limit(1)
-
 
 
 class AggregateWrapper(wrappers.AggregateWrapper, PostgresWrapper):

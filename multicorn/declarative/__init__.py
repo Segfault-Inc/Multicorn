@@ -12,6 +12,7 @@ def declare(clazz, **kwargs):
         bases = list(corn_definition.__bases__)
         # Contains
         wrappers = {}
+
         def append_wrapper(prop):
             if prop._wrapper:
                 wrappers[prop._wrapper] = max(prop.depth,
