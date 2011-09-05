@@ -7,7 +7,7 @@ from ..corns.extensers.computed import ComputedExtenser, RelationExtenser
 
 
 class Property(object):
-    _wrapper = None
+    _wrapper = None.__class__
 
     def __init__(self, property=None, **kwargs):
         self.wrapped_property = property
