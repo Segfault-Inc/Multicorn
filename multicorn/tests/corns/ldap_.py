@@ -2,6 +2,8 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
+from __future__ import print_function
+from multicorn.utils import colorize
 from attest import Tests, assert_hook
 from multicorn import Multicorn
 from multicorn.declarative import declare, Property
@@ -9,12 +11,22 @@ from multicorn.requests import CONTEXT as c
 from multicorn.corns.ldap_ import Ldap
 
 # Ldap specific tests
-HOSTNAME = "entrecote"
-PATH = "ou=People,dc=keleos,dc=fr"
-USER = "cn=Pierre Alban,ou=People,dc=keleos,dc=fr"
-PASSWORD = "########"
+HOSTNAME = "localhost"
+PATH = "dc=multicorn,dc=org"
+
 
 suite = Tests()
+try:
+    import ldap
+except ImportError:
+    import sys
+    print(colorize(
+        'yellow',
+        "WARNING: The LDAP AP is not tested."), file=sys.stderr)
+    suite = Tests()
+    suite.test = lambda x: None
+else:
+    suite = Tests()
 
 
 def make_corn():
