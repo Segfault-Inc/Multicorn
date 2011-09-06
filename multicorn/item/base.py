@@ -33,7 +33,7 @@ class BaseItem(MutableMapping):
                 "Unexpected properties: %r" % (tuple(extra_keys),))
         missing_keys = corn_properties - given_keys
         if missing_keys:
-            self.corn.log.debug("Creating a %s with missing properties: %r" %
+            self.log.debug("Creating a %s with missing properties: %r" %
                       (corn, tuple(missing_keys),))
             for key in missing_keys:
                 self._values[key] = None

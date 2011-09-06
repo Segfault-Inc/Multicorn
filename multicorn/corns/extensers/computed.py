@@ -2,7 +2,7 @@ from . import AbstractCornExtenser
 
 from pprint import saferepr
 
-from ...item import BaseItem
+from ...item.base import BaseItem
 from ...requests.types import Type, List, Dict
 from ...requests.helpers import inject_context, collect
 from ...requests import requests

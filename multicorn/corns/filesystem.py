@@ -8,7 +8,7 @@ import io
 import errno
 import os.path
 
-from ..item import BaseItem
+from ..item.base import BaseItem
 from ..utils import isidentifier
 from ..requests import requests, helpers
 from ..requests.types import Type

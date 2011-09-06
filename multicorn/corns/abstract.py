@@ -2,7 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-from ..item import BaseItem
+from ..item.base import BaseItem
 from ..requests.types import Type, List, Dict
 from ..python_executor import PythonExecutor
 from ..requests.requests import StoredItemsRequest

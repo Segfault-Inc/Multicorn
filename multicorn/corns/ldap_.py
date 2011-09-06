@@ -1,5 +1,6 @@
 from __future__ import print_function
 from multicorn.utils import colorize
+from multicorn.requests import CONTEXT as c
 from .easy import EasyCorn
 
 
@@ -15,13 +16,13 @@ else:
 
 
 class Ldap(EasyCorn):
-    def __init__(self, name, hostname, ldap_path, user=None,
+    def __init__(self, name, hostname, path, user=None,
                  password=None, encoding="utf-8", identity_properties=("cn",)):
         super(Ldap, self).__init__(name, identity_properties)
         self.register("cn")
         self.encoding = encoding
         self.hostname = hostname
-        self.ldap_path = ldap_path
+        self.path = path
         self.user = user
         self.password = password
 
@@ -46,7 +47,29 @@ class Ldap(EasyCorn):
 
     def _all(self):
         for _, item in self.ldap.search_s(
-            self.ldap_path, ldap.SCOPE_ONELEVEL, "objectClass=*",
+            self.path, ldap.SCOPE_ONELEVEL, "objectClass=*",
             # Restrict results to declared properties:
             [prop.name for prop in self.properties.values()]):
             yield self._ldap_to_item(item)
+
+    def delete(self, item):
+        dn = "cn=%s,%s" % (item['cn'], self.path)
+        self.ldap.delete_s(dn)
+
+    def save(self, item):
+        modifications = {}
+        dn = "cn=%s,%s" % (item['cn'], self.path)
+        for key in item:
+            if item[key] is not None:
+                    modifications[key] = item[key]
+
+        old_item = self.all.filter(c.cn == item["cn"]).one(None).execute()
+
+        if old_item:
+            # Here we replace properties names in order to make the diff
+            old_rdn_entry = {}
+
+            self.ldap.modify_s(dn, ldap.modlist.modifyModlist(
+                old_rdn_entry, modifications))
+        else:
+            self.ldap.add_s(dn, modifications.items())
