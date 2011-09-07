@@ -7,7 +7,7 @@ from multicorn.utils import colorize
 from attest import Tests, assert_hook
 from multicorn import Multicorn
 from multicorn.declarative import declare, Property, computed
-from multicorn.requests import CONTEXT as c
+from multicorn.requests import CONTEXT as c, case, when
 from multicorn.corns.extensers.computed import ComputedExtenser
 from multicorn.corns.ldap_ import Ldap
 from . import make_test_suite
@@ -21,35 +21,10 @@ PASSWORD = "secret"
 
 def make_corn():
     @declare(Ldap, hostname=HOSTNAME, path=PATH, user=USER, password=PASSWORD)
-    class Corn(ComputedExtenser):
-
-        @computed()
-        def id(self):
-            return c.cn
-
-        @computed()
-        def name(self):
-            return c.sn
-
-        @computed()
-        def lastname(self):
-            return c.street
-
-        @id.reverse
-        def id(self):
-            return {'cn': lambda item: [unicode(item['id'])]}
-
-        @name.reverse
-        def name(self):
-            return {'sn': lambda item: item['name']}
-
-        @lastname.reverse
-        def lastname(self):
-            return {'street': lambda item: item['lastname']}
-
+    class Corn(object):
         cn = Property()
         sn = Property()
-        street = Property()
+        l = Property(type=int)
 
     return Corn
 
@@ -69,10 +44,26 @@ except ImportError:
     suite = Tests()
     suite.test = lambda x: None
 else:
-    suite = make_test_suite(make_corn, 'ldap', teardown)
+    suite = Tests()
+    # suite = make_test_suite(make_corn, 'ldap', teardown)
 
 
-# @suite.test
-# def test_all():
-#     Corn = make_corn()
-#     items = list(Corn.all.execute())
+@suite.test
+def test_ldap():
+    mc = Multicorn()
+    Corn = make_corn()
+    mc.register(Corn)
+
+    assert Corn.all.len()() == 0
+
+    item = Corn.create({'cn': 'foo', 'sn': 'bar', 'l': 5})
+    item.save()
+
+    items = list(Corn.all())
+    assert len(items) == 1
+    item = items[0]
+    assert set(item.items()) == set(
+        [('cn', 'foo'), ('sn', 'bar'), ('l', 5)])
+
+    item.delete()
+    assert Corn.all.len()() == 0

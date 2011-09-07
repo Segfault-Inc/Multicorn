@@ -1,6 +1,7 @@
 from __future__ import print_function
 from multicorn.utils import colorize
 from multicorn.requests import CONTEXT as c
+from multicorn.item.multi import MultiValueItem
 from .easy import EasyCorn
 
 
@@ -16,13 +17,18 @@ else:
 
 
 class Ldap(EasyCorn):
+
+    Item = MultiValueItem
+
     def __init__(self, name, hostname, path, user=None,
-                 password=None, encoding="utf-8", identity_properties=("cn",)):
+                 password=None, encoding="utf-8", identity_properties=("cn",),
+                 objectClass='inetOrgPerson'):
         super(Ldap, self).__init__(name, identity_properties)
         self.register("cn")
         self.encoding = encoding
         self.hostname = hostname
         self.path = path
+        self.objectClass = objectClass
         self.user = user
         self.password = password
 
@@ -47,7 +53,8 @@ class Ldap(EasyCorn):
 
     def _all(self):
         for _, item in self.ldap.search_s(
-            self.path, ldap.SCOPE_ONELEVEL, "objectClass=*",
+            self.path, ldap.SCOPE_ONELEVEL,
+            "objectClass=%s" % self.objectClass,
             # Restrict results to declared properties:
             [prop.name for prop in self.properties.values()]):
             yield self._ldap_to_item(item)
@@ -56,20 +63,18 @@ class Ldap(EasyCorn):
         dn = "cn=%s,%s" % (item['cn'], self.path)
         self.ldap.delete_s(dn)
 
-    def save(self, item):
+    def _save(self, item):
         modifications = {}
         dn = "cn=%s,%s" % (item['cn'], self.path)
         for key in item:
-            if item[key] is not None:
-                    modifications[key] = item[key]
+            if item.getlist(key) is not None:
+                modifications[key] = item.getlist(key)
 
         old_item = self.all.filter(c.cn == item["cn"]).one(None).execute()
 
         if old_item:
-            # Here we replace properties names in order to make the diff
-            old_rdn_entry = {}
-
             self.ldap.modify_s(dn, ldap.modlist.modifyModlist(
-                old_rdn_entry, modifications))
+                dict(old_item.itemslist()), modifications))
         else:
+            modifications['objectClass'] = (self.objectClass,)
             self.ldap.add_s(dn, modifications.items())
