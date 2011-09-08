@@ -2,7 +2,7 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 from attest import assert_hook
-from multicorn.requests import CONTEXT as c
+from multicorn.requests import CONTEXT as c, as_request
 
 EMPTYTESTS = []
 FULLTESTS = []
@@ -77,3 +77,67 @@ def delete(Corn, data):
         assert Corn.all.len()() == length
 
     assert length == 0
+
+
+@fullcorntest
+def filters(Corn, data):
+    """ Test random filters """
+    print Corn
+
+    def test(request):
+        corn_exception = False
+        python_exception = False
+
+        try:
+            corn_items = Corn.all.filter(request).sort(c)()
+        except Exception as e:
+            corn_exception = True
+
+        try:
+            python_items = as_request(Corn.all()).filter(request).sort(c)()
+        except Exception as e:
+            python_exception = True
+
+        if corn_exception:
+            assert python_exception
+        else:
+            assert corn_items == python_items
+
+    keys = Corn.properties.keys()
+    key1 = keys[0]
+    ckey1 = getattr(c, key1)
+    value1 = data[0][key1]
+    key2 = keys[1]
+    ckey2 = getattr(c, key2)
+    value2 = data[1][key2]
+
+    requests = [
+        ckey1 == value1,
+        ckey1 == value2,
+        ckey2 == value1,
+        ckey2 == value2,
+        ckey1 > value2,
+        ckey1 < value1,
+        ckey2 <= value2,
+        ckey2 >= value2,
+        ckey1 != value1,
+        ckey2 != value1,
+        (ckey1 == value1) & (ckey1 != value2),
+        (ckey1 >= value1) | (ckey1 <= value1),
+        (ckey1 >= value1) | (ckey1 == value2),
+        ((ckey1 >= value1) & (ckey2 == value2) |
+         (ckey2 >= value1) & (ckey1 == value2)),
+        ((ckey1 >= value1) & ((ckey2 == value2) |
+                              (ckey2 >= value1) & (ckey1 == value2))),
+        ((ckey1 >= value1) | (ckey2 == value2) &
+         (ckey2 >= value1) | (ckey1 == value2)),
+        ((ckey1 >= value1) | ((ckey2 == value2) &
+                              (ckey2 >= value1) | (ckey1 == value2))),
+        ckey1 == value1,
+        ckey1 == value1,
+        ckey1 * 2 == value1,
+        ckey1 / 0 == value1,
+        ckey1 * 2 == value1,
+    ]
+    for request in requests:
+        test(request)

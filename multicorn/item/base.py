@@ -2,8 +2,29 @@
 # Copyright © 2008-2011 Kozea
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-from collections import MutableMapping
+from collections import MutableMapping, namedtuple
 from logging import getLogger
+
+
+class Identity(namedtuple("Identity", "corn, conditions")):
+    """Simple class identifying items.
+
+    :param corn: The corn name of the item.
+    :param conditions: A dict of conditions identifying the item.
+
+    >>> identity = Identity("corn_name", {"id": 1})
+    >>> identity.corn
+    'corn_name'
+    >>> identity.conditions
+    {'id': 1}
+
+    :class:`Identity` manages equality between equivalent items.
+
+    >>> identity2 = Identity("corn_name", {"id": 1})
+    >>> identity == identity2
+    True
+
+    """
 
 
 class BaseItem(MutableMapping):
@@ -81,3 +102,25 @@ class BaseItem(MutableMapping):
     def delete(self):
         self.corn.log.debug("Deleting item %r" % self)
         self.corn.delete(self)
+
+    @property
+    def identity(self):
+        names = self.corn.identity_properties
+        return Identity(
+            self.corn.name, dict((name, self[name]) for name in names))
+
+    def __cmp__(self, other):
+        # TODO: test this method
+        if isinstance(other, BaseItem):
+            if self.identity == other.identity:
+                return 0
+            elif self.identity > other.identity:
+                return 1
+        return -1
+
+    def __hash__(self):
+        import pdb
+        pdb.set_trace()
+        return hash((self.corn.name,
+            frozenset((prop, self[prop])
+                for prop in self.corn.identity_properties)))
