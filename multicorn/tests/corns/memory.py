@@ -21,28 +21,11 @@ def make_generic_corn():
     return Corn
 
 # Generic tests
-suite = make_test_suite(make_generic_corn, 'memory')
+emptysuite, fullsuite = make_test_suite(make_generic_corn, 'memory')
 
 
-# Memory-specific tests
-def make_corn():
-    mc = Multicorn()
-
-    @mc.register
-    @declare(Memory, identity_properties=("id",))
-    class Corn(object):
-        id = Property(type=int)
-        name = Property(type=unicode)
-        lastname = Property(type=unicode)
-    Corn.create({'id': 1, 'name': u'foo', 'lastname': u'bar'}).save()
-    Corn.create({'id': 2, 'name': u'baz', 'lastname': u'bar'}).save()
-    Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
-    return Corn
-
-
-@suite.test
-def test_all():
-    Corn = make_corn()
+@fullsuite.test
+def test_all(Corn, data):
     items = list(Corn.all.execute())
     assert len(items) == 3
     item = (Corn.all.filter(c.id == 1).one().execute())
@@ -51,9 +34,8 @@ def test_all():
     assert item['lastname'] == u'bar'
 
 
-@suite.test
-def test_optimization():
-    Corn = make_corn()
+@fullsuite.test
+def test_optimization(Corn, data):
     item = Corn.all.map(
         {'id': c.id, 'newname': c.name}).filter(c.id == 1).one().execute()
     assert item['id'] == 1

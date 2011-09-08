@@ -24,7 +24,7 @@ def make_corn():
     class Corn(object):
         cn = Property()
         sn = Property()
-        l = Property(type=int)
+        l = Property()
 
     return Corn
 
@@ -45,7 +45,12 @@ except ImportError:
     suite.test = lambda x: None
 else:
     suite = Tests()
-    # suite = make_test_suite(make_corn, 'ldap', teardown)
+    data = lambda: tuple([{'cn': ('fb',), 'sn': ('foo',), 'l': ('bar',)},
+                          {'cn': ('bb',), 'sn': ('baz',), 'l': ('bar',)},
+                          {'cn': ('fbz',), 'sn': ('foo',), 'l': ('baz',)}])
+
+    suite, _ = make_test_suite(make_corn, 'ldap', data=data,
+                                      teardown=teardown)
 
 
 @suite.test
@@ -56,14 +61,14 @@ def test_ldap():
 
     assert Corn.all.len()() == 0
 
-    item = Corn.create({'cn': 'foo', 'sn': 'bar', 'l': 5})
+    item = Corn.create({'cn': ('foo',), 'sn': ('bar',), 'l': ('5', '_')})
     item.save()
 
     items = list(Corn.all())
     assert len(items) == 1
     item = items[0]
     assert set(item.items()) == set(
-        [('cn', 'foo'), ('sn', 'bar'), ('l', 5)])
+        [('cn', ('foo',)), ('sn', ('bar',)), ('l', ('5', '_'))])
 
     item.delete()
     assert Corn.all.len()() == 0

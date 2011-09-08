@@ -1,7 +1,8 @@
 from __future__ import print_function
+from multicorn.requests.types import Type, List
 from multicorn.utils import colorize
 from multicorn.requests import CONTEXT as c
-from multicorn.item.multi import MultiValueItem
+from multicorn.item.base import BaseItem
 from .easy import EasyCorn
 
 
@@ -16,9 +17,18 @@ else:
     import ldap.modlist
 
 
+class LdapItem(BaseItem):
+
+    @property
+    def dn(self):
+        if not self.get("cn", False):
+            raise ValueError("Ldap items must have a cn")
+        return "cn=%s,%s" % (self['cn'][0], self.corn.path)
+
+
 class Ldap(EasyCorn):
 
-    Item = MultiValueItem
+    Item = LdapItem
 
     def __init__(self, name, hostname, path, user=None,
                  password=None, encoding="utf-8", identity_properties=("cn",),
@@ -45,10 +55,16 @@ class Ldap(EasyCorn):
             self.multicorn._ldap_metadatas[connect_point] = connection
         self.ldap = connection
 
+    def register(self, name):
+        type = List(corn=self, name=name,
+                    inner_type=Type(corn=self, type=unicode))
+        self.properties[name] = type
+
     def _ldap_to_item(self, ldap_item):
         item = {}
         for name in self.properties.keys():
-            item[name] = ldap_item.get(name, None)
+            item[name] = (tuple(ldap_item[name])
+                          if ldap_item.get(name, None) is not None else None)
         return self.create(item)
 
     def _all(self):
@@ -60,21 +76,19 @@ class Ldap(EasyCorn):
             yield self._ldap_to_item(item)
 
     def delete(self, item):
-        dn = "cn=%s,%s" % (item['cn'], self.path)
-        self.ldap.delete_s(dn)
+        self.ldap.delete_s(item.dn)
 
-    def _save(self, item):
+    def save(self, item):
         modifications = {}
-        dn = "cn=%s,%s" % (item['cn'], self.path)
         for key in item:
-            if item.getlist(key) is not None:
-                modifications[key] = item.getlist(key)
+            if item[key] is not None:
+                modifications[key] = item[key]
 
         old_item = self.all.filter(c.cn == item["cn"]).one(None).execute()
 
         if old_item:
-            self.ldap.modify_s(dn, ldap.modlist.modifyModlist(
+            self.ldap.modify_s(item.dn, ldap.modlist.modifyModlist(
                 dict(old_item.itemslist()), modifications))
         else:
             modifications['objectClass'] = (self.objectClass,)
-            self.ldap.add_s(dn, modifications.items())
+            self.ldap.add_s(item.dn, modifications.items())

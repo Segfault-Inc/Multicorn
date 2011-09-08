@@ -33,14 +33,14 @@ def make_postgres_corn():
 def teardown(Corn):
     Corn.table.drop()
 
-suite = make_test_suite(make_corn, 'alchemy-sqlite', teardown=teardown)
-postgres_suite = make_test_suite(
+suite, _ = make_test_suite(make_corn, 'alchemy-sqlite', teardown=teardown)
+postgres_suite, _ = make_test_suite(
     make_postgres_corn, 'alchemy-postgres', teardown=teardown)
 
 
 @suite.test
 @postgres_suite.test
-def test_optimization(Corn):
+def test_optimization(Corn, data):
     class NotOptimizedError(Exception):
         pass
 
@@ -222,7 +222,7 @@ def test_optimization(Corn):
 
 @suite.test
 @postgres_suite.test
-def test_unicode(Corn):
+def test_unicode(Corn, data):
     class NotOptimizedError(Exception):
         pass
 
@@ -242,7 +242,7 @@ def test_unicode(Corn):
 
 @suite.test
 @postgres_suite.test
-def test_case(Corn):
+def test_case(Corn, data):
     from multicorn.requests import case, when
 
     class NotOptimizedError(Exception):
