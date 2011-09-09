@@ -29,11 +29,6 @@ def make_corn():
     return Corn
 
 
-def teardown(corn):
-    #Deleting all objects the hardcore way
-    for item in corn.all():
-        item.delete()
-
 try:
     import ldap
 except ImportError:
@@ -46,22 +41,28 @@ except ImportError:
     fullsuite = Tests()
     fullsuite.test = lambda x: None
 else:
-    data = lambda: tuple([{'cn': ('fb',), 'sn': ('foo',), 'l': ('bar',)},
-                          {'cn': ('bb',), 'sn': ('baz',), 'l': ('bar',)},
-                          {'cn': ('fbz',), 'sn': ('foo',), 'l': ('baz',)}])
+    def teardown(corn):
+        # Deleting all objects the hardcore way
+        all = corn.ldap.search_s(
+            PATH, ldap.SCOPE_ONELEVEL, "objectClass=*", ["dn"])
 
+        for item in all:
+            corn.ldap.delete_s(item[0])
+
+    data = lambda: tuple([{'cn': 'fb', 'sn': 'foo', 'l': 'bar'},
+                          {'cn': 'bb', 'sn': 'baz', 'l': 'bar'},
+                          {'cn': 'fbz', 'sn': 'foo', 'l': 'baz'}])
     emptysuite, fullsuite = make_test_suite(make_corn, 'ldap', data=data,
-                                      teardown=teardown)
+                                            teardown=teardown)
 
 
 @emptysuite.test
-def test_ldap():
-
-    mc = Multicorn()
+def test_optimization_ldap():
+    mc = Multicorn(quiet=False)
     Corn = make_corn()
     mc.register(Corn)
 
-    assert Corn.all.len()() == 0
+    assert Corn.all.len() == 0
 
     item = Corn.create({'cn': ('foo',), 'sn': ('bar',), 'l': ('5', '_')})
     item.save()
@@ -69,8 +70,39 @@ def test_ldap():
     items = list(Corn.all())
     assert len(items) == 1
     item = items[0]
-    assert set(item.items()) == set(
+    assert set(item.itemslist()) == set(
         [('cn', ('foo',)), ('sn', ('bar',)), ('l', ('5', '_'))])
+
+    assert set(item.items()) == set(
+        [('cn', 'foo'), ('sn', 'bar'), ('l', '5')])
 
     item.delete()
     assert Corn.all.len()() == 0
+    Corn.create({'cn': ('foo',), 'sn': ('bar',), 'l': ('5', '_')}).save()
+    Corn.create({'cn': 'bar', 'sn': 'bat', 'l': ('5', '_', "!")}).save()
+    Corn.create({'cn': ('baz',), 'sn': 'bat', 'l': ('6',)}).save()
+
+    assert Corn.all.len()() == 3
+
+    class NotOptimizedError(Exception):
+        pass
+
+    def error():
+        raise NotOptimizedError
+
+    Corn._all = error
+
+    items = Corn.all.filter(c.cn == 'foo')()
+    assert len(list(items)) == 1
+
+    # items = Corn.all.filter(c.cn != 'bar')()
+    # assert len(list(items)) == 2
+
+    # items == Corn.all.filter(c.cn == 'nf')()
+    # assert len(list(items)) == 0
+
+    # items = Corn.all.filter(c.sn == 'bat')()
+    # assert len(list(items)) == 2
+
+    # items = Corn.all.filter(c.sn != 'bar')()
+    # assert len(list(items)) == 2

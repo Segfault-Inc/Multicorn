@@ -2,8 +2,8 @@ from __future__ import print_function
 from multicorn.requests.types import Type, List
 from multicorn.utils import colorize
 from multicorn.requests import CONTEXT as c
-from multicorn.item.base import BaseItem
-from .easy import EasyCorn
+from multicorn.item.multi import MultiValueItem
+from .easy import EasyCorn, EasyFilter
 
 
 try:
@@ -17,18 +17,25 @@ else:
     import ldap.modlist
 
 
-class LdapItem(BaseItem):
+class LdapItem(MultiValueItem):
 
     @property
     def dn(self):
         if not self.get("cn", False):
             raise ValueError("Ldap items must have a cn")
-        return "cn=%s,%s" % (self['cn'][0], self.corn.path)
+        return "cn=%s,%s" % (self['cn'], self.corn.path)
+
+
+class LdapFilter(EasyFilter):
+
+    def equal(self, first_operand, second_operand):
+        return "(%s=%s)" % (first_operand, second_operand)
 
 
 class Ldap(EasyCorn):
 
     Item = LdapItem
+    EasyFilter = LdapFilter
 
     def __init__(self, name, hostname, path, user=None,
                  password=None, encoding="utf-8", identity_properties=("cn",),
@@ -68,9 +75,12 @@ class Ldap(EasyCorn):
         return self.create(item)
 
     def _all(self):
+        return self.filter("(cn=*)")
+
+    def filter(self, request):
         for _, item in self.ldap.search_s(
             self.path, ldap.SCOPE_ONELEVEL,
-            "objectClass=%s" % self.objectClass,
+            "(&(objectClass=%s)%s)" % (self.objectClass, request),
             # Restrict results to declared properties:
             [prop.name for prop in self.properties.values()]):
             yield self._ldap_to_item(item)
@@ -82,9 +92,9 @@ class Ldap(EasyCorn):
         modifications = {}
         for key in item:
             if item[key] is not None:
-                modifications[key] = item[key]
+                modifications[key] = item.getlist(key)
 
-        old_item = self.all.filter(c.cn == item["cn"]).one(None).execute()
+        old_item = self.all.filter(c.cn == item["cn"]).one(None)()
 
         if old_item:
             self.ldap.modify_s(item.dn, ldap.modlist.modifyModlist(
