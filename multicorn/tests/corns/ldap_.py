@@ -41,20 +41,22 @@ except ImportError:
     print(colorize(
         'yellow',
         "WARNING: The LDAP AP is not tested."), file=sys.stderr)
-    suite = Tests()
-    suite.test = lambda x: None
+    emptysuite = Tests()
+    emptysuite.test = lambda x: None
+    fullsuite = Tests()
+    fullsuite.test = lambda x: None
 else:
-    suite = Tests()
     data = lambda: tuple([{'cn': ('fb',), 'sn': ('foo',), 'l': ('bar',)},
                           {'cn': ('bb',), 'sn': ('baz',), 'l': ('bar',)},
                           {'cn': ('fbz',), 'sn': ('foo',), 'l': ('baz',)}])
 
-    suite, _ = make_test_suite(make_corn, 'ldap', data=data,
+    emptysuite, fullsuite = make_test_suite(make_corn, 'ldap', data=data,
                                       teardown=teardown)
 
 
-@suite.test
+@emptysuite.test
 def test_ldap():
+
     mc = Multicorn()
     Corn = make_corn()
     mc.register(Corn)

@@ -82,7 +82,6 @@ def delete(Corn, data):
 @fullcorntest
 def filters(Corn, data):
     """ Test random filters """
-    print Corn
 
     def test(request):
         corn_exception = False
@@ -90,13 +89,13 @@ def filters(Corn, data):
 
         try:
             corn_items = Corn.all.filter(request).sort(c)()
-        except Exception as e:
-            corn_exception = True
+        except Exception as exception:
+            corn_exception = exception
 
         try:
             python_items = as_request(Corn.all()).filter(request).sort(c)()
-        except Exception as e:
-            python_exception = True
+        except Exception as exception:
+            python_exception = exception
 
         if corn_exception:
             assert python_exception

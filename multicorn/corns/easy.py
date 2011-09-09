@@ -13,7 +13,7 @@ class EasyCorn(AbstractCorn):
     This is an helper for creating corns with simple optimizations.
     """
 
-    def filter(predicate):
+    def filter(self, predicate):
         raise NotImplementedError("Filter is not implemented")
 
     def register(self, name, type=unicode):
@@ -21,9 +21,14 @@ class EasyCorn(AbstractCorn):
         self.properties[name] = type
 
     def execute(self, request):
-        # chain = requests.as_chain(request)
-        # if len(chain) > 1 and isinstance(chain[1], requests.FilterRequest):
-        #     filter_request = chain[1]
-        #     predicate = object.__getattribute__(filter_request, 'predicate')
-        #     self.filter(predicate)
+        chain = requests.as_chain(request)
+        if len(chain) > 1 and isinstance(chain[1], requests.FilterRequest):
+            filter_request = chain[1]
+            predicate = object.__getattribute__(filter_request, 'predicate')
+            try:
+                new_filter_request = self.filter(predicate)
+            except:
+                return python_executor.execute(request)
+            request._copy_replace({filter_request: new_filter_request})
+            return request()
         return python_executor.execute(request)

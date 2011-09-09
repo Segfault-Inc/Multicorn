@@ -9,13 +9,16 @@ from multicorn import Multicorn
 from multicorn.utils import colorize
 
 
-def module_name_docstring(fun, module_name):
+def module_name_docstring(fun, module_name, with_data=False):
     @wraps(fun)
     def wrapper(corn, data):
         return fun(corn, data)
     wrapper.__doc__ = "[%s]%s" % (
         colorize('yellow', module_name),
         colorize('green', fun.__doc__ or "Untitled test"))
+    wrapper.__name__ += " for (%s)" % module_name
+    wrapper.__name__ += " on a filled set" if with_data else " on an empty set"
+
     return wrapper
 
 
@@ -61,11 +64,12 @@ def make_test_suite(make_corn, module_name, data=None, teardown=None):
         emptysuite.test(module_name_docstring(test_prototype, module_name))
 
     for test_prototype in base.FULLTESTS:
-        fullsuite.test(module_name_docstring(test_prototype, module_name))
+        fullsuite.test(
+            module_name_docstring(test_prototype, module_name, True))
 
     if data is None:
         for test_prototype in tests.TESTS:
             fullsuite.test(
-                module_name_docstring(test_prototype, module_name))
+                module_name_docstring(test_prototype, module_name, True))
 
     return emptysuite, fullsuite

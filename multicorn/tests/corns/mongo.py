@@ -33,10 +33,10 @@ except ImportError:
     print(colorize(
         'yellow',
         "WARNING: The Mongo DB AP is not tested."), file=sys.stderr)
-    suite = Tests()
-    suite.test = lambda x: None
+    emptysuite = Tests()
+    emptysuite.test = lambda x: None
 else:
-    suite = make_test_suite(make_corn, 'mongo', teardown)
+    emptysuite, fullsuite = make_test_suite(make_corn, 'mongo', teardown)
 
 
 def init_opt(Corn):
@@ -52,7 +52,7 @@ def init_opt(Corn):
     Corn.create({'id': 3, 'name': u'foo', 'lastname': u'baz'}).save()
 
 
-@suite.test
+@emptysuite.test
 def test_opt_base(Corn):
     init_opt(Corn)
     items = list(Corn.all.execute())
@@ -74,7 +74,7 @@ def test_opt_base(Corn):
     assert all(item['name'] == 'foo' for item in items)
 
 
-@suite.test
+@emptysuite.test
 def test_opt_filter_ops(Corn):
     init_opt(Corn)
     items = list(Corn.all.filter((c.name == 'foo') &
@@ -113,7 +113,7 @@ def test_opt_filter_ops(Corn):
     assert all([item.corn == Corn for item in items])
 
 
-@suite.test
+@emptysuite.test
 def test_opt_map(Corn):
     init_opt(Corn)
     items = list(Corn.all.map(c.name).execute())
@@ -142,7 +142,7 @@ def test_opt_map(Corn):
     assert len(items) == 3
 
 
-@suite.test
+@emptysuite.test
 def test_opt_subrequest(Corn):
     init_opt(Corn)
     items = list(Corn.all.map(
@@ -164,7 +164,7 @@ def test_opt_subrequest(Corn):
             for item in items)
 
 
-@suite.test
+@emptysuite.test
 def test_opt_sort(Corn):
     init_opt(Corn)
     items = list(Corn.all.sort(c.name).execute())
@@ -177,7 +177,7 @@ def test_opt_sort(Corn):
     assert items[2]['name'] == 'baz' and items[2]['id'] == 2
 
 
-@suite.test
+@emptysuite.test
 def test_opt_aggregates(Corn):
     init_opt(Corn)
     length = Corn.all.len().execute()
@@ -201,7 +201,7 @@ def test_opt_aggregates(Corn):
     assert item == 1
 
 
-@suite.test
+@emptysuite.test
 def test_opt_groupby(Corn):
     init_opt(Corn)
     items = list(
@@ -233,7 +233,7 @@ def test_opt_groupby(Corn):
     assert items[1] == {'max__': 3, 'min__': 1, 'sum__': 4, 'key': 'FOO'}
 
 
-@suite.test
+@emptysuite.test
 def test_opt_slice(Corn):
     init_opt(Corn)
     items = list(Corn.all.map(c.id).sort(c)[1:].execute())
@@ -262,7 +262,7 @@ def test_opt_slice(Corn):
     assert sum == 2
 
 
-@suite.test
+@emptysuite.test
 def test_opt_regex(Corn):
     init_opt(Corn)
     items = list(Corn.all.map(c.id.str()).sort().execute())
