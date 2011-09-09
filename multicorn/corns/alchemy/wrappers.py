@@ -2,7 +2,7 @@
 # Copyright © 2008-2011 Kozea/
 # This file is part of Multicorn, licensed under a 3-clause BSD license.
 
-from ...requests import requests, wrappers, types
+from ...requests import requests, wrappers, types, CONTEXT
 from . import InvalidRequestException
 
 from sqlalchemy import sql as sqlexpr, Unicode
@@ -459,7 +459,16 @@ class SortWrapper(wrappers.SortWrapper, AlchemyWrapper):
         type = self.subject.return_type(type_context(contexts))
         contexts = contexts + (Context(query, type.inner_type,),)
         keys = []
-        for key, reverse in self.sort_keys:
+        sort_keys = self.sort_keys
+        # Un-nest sorting on context
+        if len(self.sort_keys) == 1:
+            key, direction = self.sort_keys[0]
+            key_type = key.return_type(type_context(contexts))
+            if isinstance(key_type, types.Dict):
+                sort_keys = [(self.from_request(getattr(CONTEXT, dict_key)),
+                    direction) for dict_key in
+                        key_type.mapping.keys()]
+        for key, reverse in sort_keys:
             sqlkey = key.to_alchemy(query, contexts)
             if reverse:
                 keys.append(sqlexpr.desc(sqlkey))
