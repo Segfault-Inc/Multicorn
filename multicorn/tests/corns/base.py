@@ -86,6 +86,8 @@ def filters(Corn, data):
     def test(request):
         corn_exception = False
         python_exception = False
+        python_items = None
+        corn_items = None
 
         try:
             corn_items = Corn.all.filter(request).sort(c)()
@@ -100,7 +102,7 @@ def filters(Corn, data):
         if corn_exception:
             assert python_exception
         else:
-            assert corn_items == python_items
+            assert list(corn_items) == list(python_items)
 
     keys = Corn.properties.keys()
     key1 = keys[0]
