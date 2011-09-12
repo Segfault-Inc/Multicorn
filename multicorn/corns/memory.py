@@ -34,7 +34,7 @@ class Memory(AbstractCorn):
         del self._storage[key]
 
     def _all(self):
-        for values in self._storage.itervalues():
+        for values in self._storage.values():
             yield self.create(values)
 
     def execute(self, request):

@@ -58,7 +58,7 @@ else:
 
 @emptysuite.test
 def test_optimization_ldap():
-    mc = Multicorn(quiet=False)
+    mc = Multicorn()
     Corn = make_corn()
     mc.register(Corn)
 
@@ -92,7 +92,7 @@ def test_optimization_ldap():
 
     Corn._all = error
 
-    items = Corn.all.filter(c.cn == 'foo')()
+    items = Corn.all.filter(c.cn == 'foo').execute()
     assert len(list(items)) == 1
 
     # items = Corn.all.filter(c.cn != 'bar')()

@@ -137,8 +137,8 @@ def filters(Corn, data):
         ckey1 == value1,
         ckey1 == value1,
         ckey1 * 2 == value1,
-        ckey1 / 0 == value1,
-        ckey1 * 2 == value1,
+        ckey1 / 10 == value1,
+        ckey1 / 0 == value1
     ]
     for request in requests:
         test(request)

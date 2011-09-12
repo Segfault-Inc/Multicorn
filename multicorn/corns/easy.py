@@ -19,6 +19,12 @@ class EasyFilter():
         return value
 
 
+def easy(maybe_easy, *args):
+    if hasattr(maybe_easy, 'to_easy'):
+        return maybe_easy.to_easy(*args)
+    raise NotImplementedError("%r not implemented" % maybe_easy)
+
+
 class EasyWrapper(wrappers.RequestWrapper):
     class_map = wrappers.RequestWrapper.class_map.copy()
 
@@ -47,8 +53,8 @@ for operator, filter_fun in FILTER_OPERATORS.items():
     def lambda_are_broken(filter_fun):
         return lambda kc, easy_filter: (
             getattr(easy_filter, filter_fun)(
-                kc.subject.to_easy(easy_filter),
-                kc.other.to_easy(easy_filter)))
+                easy(kc.subject, easy_filter),
+                easy(kc.other, easy_filter)))
 
     class_.to_easy = lambda_are_broken(filter_fun)
 
@@ -56,6 +62,7 @@ for operator, filter_fun in FILTER_OPERATORS.items():
     setattr(sys.modules[__name__], class_name, class_)
 
     def lambda_are_broken(filter_fun):
+
         def not_implemented(slf, op1, op2):
             raise NotImplementedError("%s not implemented" % filter_fun)
         return not_implemented
@@ -74,7 +81,7 @@ class StoredItemsWrapper(wrappers.StoredItemsWrapper, EasyWrapper):
 class FilterWrapper(wrappers.FilterWrapper, EasyWrapper):
 
     def to_easy(self, easy_filter):
-        return self.predicate.to_easy(easy_filter)
+        return easy(self.predicate, easy_filter)
 
 
 @EasyWrapper.register_wrapper(requests.LiteralRequest)
@@ -107,25 +114,16 @@ class EasyCorn(AbstractCorn):
             isinstance(chain[1], requests.FilterRequest)):
             filter, other = cut_on_index(request, 1)
             easy_wrapped_filter = EasyWrapper.from_request(filter)
-
             try:
-                # def visitor(request, depth):
-                    # if not isinstance(request, EasyWrapper):
-                        # raise NotImplementedError(
-                            # "%s not implemented" % request)
-
-                # easy_wrapped_filter._visit(visitor)
                 results = self.filter(easy_wrapped_filter
                                           .to_easy(self.EasyFilter()))
-                if len(chain) == 2:
-                    return results
-                else:
-                    return self.RequestWrapper.from_request(
+
+                return self.RequestWrapper.from_request(
                         other).execute((results,))
 
             except NotImplementedError as e:
-                self.log.error("Not implemented %s" % e)
+                self.log.warning("Not implemented %s" % e)
                 return python_executor.execute(request)
 
-        self.log.error("Not optimized")
+        self.log.warning("%r not optimized" % request)
         return python_executor.execute(request)

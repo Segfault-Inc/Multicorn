@@ -5,7 +5,7 @@ import logging
 
 
 class Multicorn(object):
-    def __init__(self, quiet=True):
+    def __init__(self, quiet=False):
         self.corns = {}
         self.log = logging.getLogger('multicorn')
 
@@ -16,7 +16,10 @@ class Multicorn(object):
 
         handler = NullHandler()
         if not quiet:
-            self.log.setLevel(logging.WARN)
+            self.log.setLevel(logging.ERROR)
+            # logging.getLogger("multicorn.alchemy").setLevel(logging.WARNING)
+            # logging.getLogger("multicorn.mongo").setLevel(logging.WARNING)
+            # logging.getLogger("multicorn.ldap").setLevel(logging.DEBUG)
             try:
                 from log_colorizer import make_colored_stream_handler
                 handler = make_colored_stream_handler()

@@ -37,7 +37,7 @@ class AbstractCorn(object):
     def __init__(self, name, identity_properties):
         self.name = name
         self.multicorn = None
-        self.log = getLogger('multicorn')
+        self.log = getLogger('multicorn.%s' % self.__class__.__name__.lower())
         self.identity_properties = tuple(identity_properties)
         self.properties = {}
 

@@ -9,6 +9,7 @@ from ...requests.types import Type, List
 from ...requests.helpers import cut_on_predicate
 from ... import python_executor
 from multicorn.utils import highlight_sql, highlight_py
+from logging import getLogger
 
 
 class InvalidRequestException(Exception):

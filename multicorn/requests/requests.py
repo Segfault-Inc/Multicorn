@@ -365,6 +365,8 @@ class Request(object):
             wrapper = WithRealAttributes(arg)
             found = False
             for key, replacement in replacements.iteritems():
+                if self._wrapped_obj is key:
+                    return replacement
                 if arg is key:
                     newargs.append(replacement)
                     found = True
