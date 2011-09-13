@@ -9,8 +9,8 @@ REGRESS_OPTS = --inputdir=test --load-language=plpgsql
 MODULES      = $(patsubst %.c,%,$(wildcard src/*.c))
 PG_CONFIG    = `which pg_config`
 PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\.| 9\.0" && echo no || echo yes)
-PG_CPPFLAGS  = $(python_includespec)  $(CPPFLAGS)
-
+PG_CPPFLAGS  = $(python_includespec) $(CPPFLAGS)
+PROFILE =  -lpython2.7
 ifeq ($(PG91),yes)
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
