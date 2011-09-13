@@ -152,12 +152,12 @@ dummy_iterate(ForeignScanState *node)
     /* Python lol */
 
     Py_Initialize();
-    pName = PyUnicode_FromString("lol_module");
+    pName = PyUnicode_FromString("py_fdw");
     pModule = PyImport_Import(pName);
     Py_DECREF(pName);
 
     if (pModule != NULL) {
-        pFunc = PyObject_GetAttrString(pModule, "lol");
+        pFunc = PyObject_GetAttrString(pModule, "get");
         /* pFunc is a new reference */
 
         if (pFunc && PyCallable_Check(pFunc)) {
@@ -165,7 +165,7 @@ dummy_iterate(ForeignScanState *node)
             pValue = PyObject_CallObject(pFunc, pArgs);
             Py_DECREF(pArgs);
             if (pValue != NULL) {
-              printf("Result of call lolmao: %s\n", PyString_AsString(pValue));
+              printf("Result of call : %s\n", PyString_AsString(pValue));
               Py_DECREF(pValue);
             }
             else {
@@ -179,14 +179,14 @@ dummy_iterate(ForeignScanState *node)
         else {
             if (PyErr_Occurred())
                 PyErr_Print();
-            fprintf(stderr, "Cannot find function \"%s\"\n", "lol");
+            fprintf(stderr, "Cannot find function \"%s\"\n", "get");
         }
         Py_XDECREF(pFunc);
         Py_DECREF(pModule);
     }
     else {
         PyErr_Print();
-        fprintf(stderr, "Failed to load \"%s\"\n", "lol");
+        fprintf(stderr, "Failed to load \"%s\"\n", "py_fdw");
         return 1;
     }
     Py_Finalize();
