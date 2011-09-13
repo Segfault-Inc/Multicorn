@@ -9,8 +9,7 @@
    },
    "resources": {
       "repository": {
-        "url":  "git://github.com/rdunklau/dummy_fdw.git",
-        "web":  "https://github.com/rdunklau/dummy_fdw",
+        "url":  "git://github.com/Kozea/dummy_fdw.git",
         "type": "git"
       }
    },
@@ -23,7 +22,7 @@
       }
    },
    "release_status": "stable",
-   "generated_by": "Dickson S. Guedes <guedes@guedesoft.net>",
+   "generated_by": "Ronan Dunklau",
    "meta-spec": {
       "version": "1.0.0",
       "url": "http://pgxn.org/meta/spec.txt"
