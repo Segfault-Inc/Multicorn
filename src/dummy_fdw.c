@@ -39,6 +39,7 @@ typedef struct DummyState
 {
     AttInMetadata *attinmeta;
     int rownum;
+    PyObject *pFunc;
 } DummyState;
 
 extern Datum dummy_fdw_handler(PG_FUNCTION_ARGS);
@@ -57,6 +58,7 @@ static void dummy_begin(ForeignScanState *node, int eflags);
 static TupleTableSlot *dummy_iterate(ForeignScanState *node);
 static void dummy_rescan(ForeignScanState *node);
 static void dummy_end(ForeignScanState *node);
+
 
 Datum
 dummy_fdw_handler(PG_FUNCTION_ARGS)
@@ -79,7 +81,7 @@ dummy_fdw_validator(PG_FUNCTION_ARGS)
     PG_RETURN_BOOL(true);
 }
 
-static FdwPlan * 
+static FdwPlan *
 dummy_plan( Oid foreign_table_id,
            PlannerInfo *root,
            RelOptInfo  *base_relation)
@@ -115,14 +117,33 @@ dummy_begin(ForeignScanState *node, int eflags)
     AttInMetadata  *attinmeta;
     Relation        rel = node->ss.ss_currentRelation;
     DummyState      *state;
-
+    PyObject *pName, *pModule, *pValue;
 
     attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
     state = (DummyState *) palloc(sizeof(DummyState));
     state->rownum = 0;
     state->attinmeta = attinmeta;
     node->fdw_state = (void *) state;
-    return;
+
+    Py_Initialize();
+
+    pName = PyUnicode_FromString("py_fdw");
+    pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+
+    if (pModule != NULL) {
+      state->pFunc = PyObject_GetAttrString(pModule, "get");
+      Py_DECREF(pModule);
+      if (!(state->pFunc && PyCallable_Check(state->pFunc))) {
+        if (PyErr_Occurred())
+          PyErr_Print();
+        fprintf(stderr, "Cannot find function \"%s\"\n", "get");
+      }
+    }
+    else {
+        PyErr_Print();
+        fprintf(stderr, "Failed to load \"%s\"\n", "py_fdw");
+    }
 }
 
 
@@ -139,8 +160,7 @@ dummy_iterate(ForeignScanState *node)
     int                total_attributes, i;
     char            **tup_values;
     MemoryContext        oldcontext;
-    PyObject *pName, *pModule, *pDict, *pFunc;
-    PyObject *pArgs, *pValue;
+    PyObject *pValue, *pArgs;
 
     ExecClearTuple(slot);
     total_attributes = relation->rd_att->natts;
@@ -149,47 +169,13 @@ dummy_iterate(ForeignScanState *node)
     if (state->rownum > 10) {
       return slot;
     }
-    /* Python lol */
 
-    Py_Initialize();
-    pName = PyUnicode_FromString("py_fdw");
-    pModule = PyImport_Import(pName);
-    Py_DECREF(pName);
-
-    if (pModule != NULL) {
-        pFunc = PyObject_GetAttrString(pModule, "get");
-        /* pFunc is a new reference */
-
-        if (pFunc && PyCallable_Check(pFunc)) {
-            pArgs = PyTuple_New(0);
-            pValue = PyObject_CallObject(pFunc, pArgs);
-            Py_DECREF(pArgs);
-            if (pValue != NULL) {
-              printf("Result of call : %s\n", PyString_AsString(pValue));
-              Py_DECREF(pValue);
-            }
-            else {
-                Py_DECREF(pFunc);
-                Py_DECREF(pModule);
-                PyErr_Print();
-                fprintf(stderr,"Call failed\n");
-                return 1;
-            }
-        }
-        else {
-            if (PyErr_Occurred())
-                PyErr_Print();
-            fprintf(stderr, "Cannot find function \"%s\"\n", "get");
-        }
-        Py_XDECREF(pFunc);
-        Py_DECREF(pModule);
+    pArgs = PyTuple_New(0);
+    pValue = PyObject_CallObject(state->pFunc, pArgs);
+    Py_DECREF(pArgs);
+    if (pValue != NULL) {
+      Py_DECREF(pValue);
     }
-    else {
-        PyErr_Print();
-        fprintf(stderr, "Failed to load \"%s\"\n", "py_fdw");
-        return 1;
-    }
-    Py_Finalize();
 
     /*
      * FIXME
@@ -225,7 +211,9 @@ dummy_rescan(ForeignScanState *node)
 static void
 dummy_end(ForeignScanState *node)
 {
-    /* TODO : Do things */
+    DummyState *state = (DummyState *) node->fdw_state;
+    Py_XDECREF(state->pFunc);
+    Py_Finalize();
 }
 
 
