@@ -1,0 +1,38 @@
+{
+   "name": "dummy_fdw",
+   "abstract": "dummy Foreign Data Wrapper for PostgreSQL 9.1+",
+   "description": "dummy Foreign Data Wrapper allow your PostgreSQL to query things",
+   "version": "0.0.1",
+   "maintainer": "Ronan Dunklau",
+   "license": {
+	   "PostgreSQL": "http://www.postgresql.org/about/licence"
+   },
+   "resources": {
+      "repository": {
+        "url":  "git://github.com/rdunklau/dummy_fdw.git",
+        "web":  "https://github.com/rdunklau/dummy_fdw",
+        "type": "git"
+      }
+   },
+   "provides": {
+      "dummy_fdw": {
+         "abstract": "dummy Foreign Data Wrapper",
+         "file": "sql/dummy_fdw.sql",
+         "docfile": "doc/dummy_fdw.md",
+         "version": "0.0.1"
+      }
+   },
+   "release_status": "stable",
+   "generated_by": "Dickson S. Guedes <guedes@guedesoft.net>",
+   "meta-spec": {
+      "version": "1.0.0",
+      "url": "http://pgxn.org/meta/spec.txt"
+   },
+   "tags": [
+		"dummy",
+		"fdw",
+		"SQL MED",
+		"foreign data wrapper",
+		"external data"
+   ]
+}
