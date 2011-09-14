@@ -4,5 +4,4 @@ class ForeignDataWrapper(object):
         print "Initializing fdw"
 
     def execute(self, options):
-        # yield element
         pass
