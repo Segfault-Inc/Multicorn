@@ -67,6 +67,8 @@ static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static char* pyobject_to_cstring(PyObject *pyobject);
 
+const char* DATE_FORMAT_STRING = "%Y-%m-%d";
+
 Datum
 dummy_fdw_handler(PG_FUNCTION_ARGS)
 {
@@ -133,7 +135,6 @@ dummy_begin(ForeignScanState *node, int eflags)
   state->attinmeta = attinmeta;
   node->fdw_state = (void *) state;
 
-  elog(INFO, "Initialising python");
   Py_Initialize();
   elog(INFO, "Getting options");
   options_dict = PyDict_New();
@@ -300,13 +301,26 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
     key = NameStr(desc->attrs[i]->attname);
     tup_values[i] = pyobject_to_cstring(PyMapping_GetItemString(pydict, key));
   }
-  elog(INFO, tup_values[0]);
   tuple = BuildTupleFromCStrings(attinmeta, tup_values);
   return tuple;
 }
 
 static char* pyobject_to_cstring(PyObject *pyobject)
 {
+    PyObject * date_module = PyImport_Import(
+                PyUnicode_FromString("datetime"));
+    PyObject * date_cls = PyObject_GetAttrString(date_module, "date");
+    if(PyNumber_Check(pyobject)){
+        return PyString_AsString(PyObject_Str(pyobject));
+    }
+    if(PyObject_IsInstance(pyobject, date_cls)){
+        PyObject * date_format_method = PyObject_GetAttrString(pyobject, "strftime");
+        PyObject * pArgs = PyTuple_New(1);
+        PyTuple_SetItem(pArgs, 0, PyString_FromString(DATE_FORMAT_STRING));
+        PyObject * formatted_date = PyObject_CallObject(date_format_method, pArgs);
+        char * result = PyString_AsString(formatted_date);
+        return PyString_AsString(formatted_date);
+    }
     return PyString_AsString(pyobject);
 }
 
