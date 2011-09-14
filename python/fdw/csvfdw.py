@@ -1,5 +1,5 @@
 from . import ForeignDataWrapper
-from datetime import date
+import csv
 
 
 class CsvFdw(ForeignDataWrapper):
@@ -11,12 +11,7 @@ class CsvFdw(ForeignDataWrapper):
         # self.filename = fdw_options["filename"]
 
     def execute(self):
-        import csv
         with open(self.filename) as fd:
             reader = csv.reader(fd)
             for line in reader:
-                print line
                 yield line
-        # with open(self.filename) as csv:
-            # for line in csv.readLine():
-                # yield line

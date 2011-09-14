@@ -64,7 +64,7 @@ static void dummy_end(ForeignScanState *node);
   Helpers
 */
 static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
-static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
+static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static char* pyobject_to_cstring(PyObject *pyobject);
 
@@ -321,10 +321,9 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
 }
 
 static HeapTuple
-pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
+pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
 {
   HeapTuple tuple;
-  PyObject *items = PyMapping_Items(pydict);
   AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
   char * current_value, key;
   char **tup_values;
@@ -332,7 +331,7 @@ pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
   natts = desc->natts;
   tup_values = (char **) palloc(sizeof(char *) * natts);
   for(i = 0; i< natts; i++){
-    tup_values[i] = pyobject_to_cstring(PySequence_GetItem(pydict, i));
+    tup_values[i] = pyobject_to_cstring(PySequence_GetItem(pyseq, i));
   }
   tuple = BuildTupleFromCStrings(attinmeta, tup_values);
   return tuple;
@@ -355,5 +354,7 @@ static char* pyobject_to_cstring(PyObject *pyobject)
         char * result = PyString_AsString(formatted_date);
         return PyString_AsString(formatted_date);
     }
+    Py_DECREF(date_module);
+    Py_DECREF(date_cls);
     return PyString_AsString(pyobject);
 }
