@@ -170,17 +170,22 @@ dummy_begin(ForeignScanState *node, int eflags)
     /* PyTuple_SetItem(pArgs, 0, pObj); */
     pMethod = PyObject_GetAttrString(pObj, "execute");
     pValue = PyObject_CallObject(pMethod, pArgs);
+    if (PyErr_Occurred()) {
+        /* Stop iteration */
+        PyErr_Print();
+        elog(ERROR, "Error in python, see the logs");
+    }else{
+        state->pIterator = PyObject_GetIter(pValue);
 
-    state->pIterator = PyObject_GetIter(pValue);
-
-    Py_DECREF(pValue);
-    Py_DECREF(pArgs);
-    Py_DECREF(pModule);
-    /* if (!(state->pFunc && PyCallable_Check(state->pFunc))) { */
-      /* if (PyErr_Occurred()) */
-        /* PyErr_Print(); */
-      /* elog(ERROR, "Cannot find function 'get'"); */
-    /* } */
+        Py_DECREF(pValue);
+        Py_DECREF(pArgs);
+        Py_DECREF(pModule);
+        /* if (!(state->pFunc && PyCallable_Check(state->pFunc))) { */
+          /* if (PyErr_Occurred()) */
+            /* PyErr_Print(); */
+          /* elog(ERROR, "Cannot find function 'get'"); */
+        /* } */
+    }
   }
   else {
     PyErr_Print();
@@ -216,9 +221,6 @@ dummy_iterate(ForeignScanState *node)
   pArgs = PyTuple_New(0);
   pIterator = state->pIterator;
   Py_DECREF(pArgs);
-  if (pValue != NULL) {
-    Py_DECREF(pValue);
-  }
   if (pIterator == NULL) {
       /* propagate error */
   }
@@ -231,7 +233,6 @@ dummy_iterate(ForeignScanState *node)
   if (pValue == NULL){
     return slot;
   }
-
   oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
   MemoryContextSwitchTo(oldcontext);
   if(PyMapping_Check(pValue)){
@@ -329,11 +330,15 @@ pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
   char **tup_values;
   Py_ssize_t i, natts;
   natts = desc->natts;
-  tup_values = (char **) palloc(sizeof(char *) * natts);
-  for(i = 0; i< natts; i++){
-    tup_values[i] = pyobject_to_cstring(PySequence_GetItem(pyseq, i));
+  if (PySequence_Size(pyseq) != natts){
+    elog(ERROR, "The python backend did not return a valid sequence");
+  }else{
+      tup_values = (char **) palloc(sizeof(char *) * natts);
+      for(i = 0; i< natts; i++){
+        tup_values[i] = pyobject_to_cstring(PySequence_GetItem(pyseq, i));
+      }
+      tuple = BuildTupleFromCStrings(attinmeta, tup_values);
   }
-  tuple = BuildTupleFromCStrings(attinmeta, tup_values);
   return tuple;
 }
 
