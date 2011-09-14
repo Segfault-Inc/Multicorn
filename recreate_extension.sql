@@ -9,8 +9,13 @@ select * from test;
 drop extension dummy_fdw cascade;
 create extension dummy_fdw;
 create server dummy foreign data wrapper dummy_fdw;
-create foreign table ldaptest (cn character varying, sn character varying, givenName character varying)
+create foreign table ldaptest (
+       cn character varying,
+       sn character varying,
+       uid character varying,
+       o character varying,
+       mail character varying)
 server dummy
-options (wrapper 'fdw.ldapfdw.LdapFdw', address 'ldap.keleos.fr', "path" 'ou=People,dc=keleos,dc=fr', objectclass 'inetOrgPerson');
+options (wrapper 'fdw.ldapfdw.LdapFdw', address 'ldap.keleos.fr', "path" 'ou=People,dc=keleos,dc=fr', objectclass 'inetOrgPerson', field_list 'cn,sn,uid,o,mail');
 select * from ldaptest;
 

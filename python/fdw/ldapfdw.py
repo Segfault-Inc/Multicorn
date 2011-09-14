@@ -10,9 +10,12 @@ class LdapFdw(ForeignDataWrapper):
         self.ldap = ldap.open(fdw_options["address"])
         self.path = fdw_options["path"]
         self.objectClass = fdw_options["objectclass"]
+        self.field_list = fdw_options["field_list"].split(',')
 
     def execute(self):
         for _, item in self.ldap.search_s(
             self.path, ldap.SCOPE_ONELEVEL,
             "(objectClass=%s)" % self.objectClass):
-            yield item["cn"][0], item["sn"][0], item["givenName"][0]
+            yield tuple(
+                item.get(field, [None])[0]
+                for field in self.field_list)
