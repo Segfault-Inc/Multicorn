@@ -40,6 +40,7 @@ typedef struct DummyState
   AttInMetadata *attinmeta;
   int rownum;
   PyObject *pFunc;
+  PyObject *pIterator;
 } DummyState;
 
 extern Datum dummy_fdw_handler(PG_FUNCTION_ARGS);
@@ -122,7 +123,7 @@ dummy_begin(ForeignScanState *node, int eflags)
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
   DummyState      *state;
-  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict;
+  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pIterator;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
   state = (DummyState *) palloc(sizeof(DummyState));
@@ -133,6 +134,7 @@ dummy_begin(ForeignScanState *node, int eflags)
   elog(INFO, "Initialising python");
   Py_Initialize();
   elog(INFO, "Getting options");
+  options_dict = PyDict_New();
   dummy_get_options(RelationGetRelid(node->ss.ss_currentRelation),
                     options_dict);
 
@@ -143,14 +145,16 @@ dummy_begin(ForeignScanState *node, int eflags)
 
   if (pModule != NULL) {
     elog(INFO, "Prepare Calling func");
-    pArgs = PyTuple_New(0);
+    pArgs = PyTuple_New(1);
     elog(INFO, "Setting dict");
-    /* PyTuple_SetItem(pArgs, 1, options_dict); */
+    PyTuple_SetItem(pArgs, 0, options_dict); 
     elog(INFO, "Getting func");
     state->pFunc = PyObject_GetAttrString(pModule, "prnt");
     elog(INFO, "Calling func");
     pValue = PyObject_CallObject(state->pFunc, pArgs);
-    elog(INFO, "Func called");
+    state->pIterator = pValue;
+    elog(INFO, "Func calledo");
+    elog(INFO, pValue);
 
     Py_DECREF(pArgs);
     Py_DECREF(pModule);
@@ -193,9 +197,7 @@ dummy_iterate(ForeignScanState *node)
   }
 
   pArgs = PyTuple_New(0);
-  elog(INFO, "Calling func");
-  pValue = PyObject_CallObject(state->pFunc, pArgs);
-  elog(INFO, "Func called");
+  pValue = state->pIterator; 
   Py_DECREF(pArgs);
   if (pValue != NULL) {
     Py_DECREF(pValue);
@@ -237,8 +239,8 @@ static void
 dummy_end(ForeignScanState *node)
 {
   DummyState *state = (DummyState *) node->fdw_state;
-  Py_XDECREF(state->pFunc);
-  Py_Finalize();
+/*  Py_XDECREF(state->pFunc); */
+/*  Py_Finalize(); */
 }
 
 
@@ -257,7 +259,6 @@ dummy_get_options(Oid foreign_table_id, PyObject *options_dict)
   options = list_concat(options, f_table->options);
   options = list_concat(options, f_server->options);
 
-  options_dict = PyDict_New();
   foreach(lc, options) {
     DefElem *def = (DefElem *) lfirst(lc);
     elog(INFO, "Option %s ", def->defname);

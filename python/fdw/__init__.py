@@ -1,6 +1,5 @@
-def prnt(options_dict):
-    print options_dict
-    return 1
+def prnt(optdict):
+    return optdict['filename']
 
 
 class ForeignDataWrapper(object):
@@ -9,5 +8,4 @@ class ForeignDataWrapper(object):
         pass
 
     def execute(self, options):
-        # yield element
         pass
