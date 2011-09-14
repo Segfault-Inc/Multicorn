@@ -141,13 +141,22 @@ dummy_begin(ForeignScanState *node, int eflags)
 
   pName = PyUnicode_FromString("fdw");
   pModule = PyImport_Import(pName);
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  }
   Py_DECREF(pName);
 
   if (pModule != NULL) {
     pArgs = PyTuple_New(1);
     PyTuple_SetItem(pArgs, 0, PyString_FromString(module));
     pFunc = PyObject_GetAttrString(pModule, "getClass");
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
     pClass = PyObject_CallObject(pFunc, pArgs);
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
     Py_DECREF(pArgs);
     Py_DECREF(pFunc);
     pArgs = PyTuple_New(1);
