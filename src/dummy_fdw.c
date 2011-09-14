@@ -64,6 +64,7 @@ static void dummy_end(ForeignScanState *node);
   Helpers
 */
 static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
+static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static char* pyobject_to_cstring(PyObject *pyobject);
 
@@ -233,8 +234,15 @@ dummy_iterate(ForeignScanState *node)
 
   oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
   MemoryContextSwitchTo(oldcontext);
-  tuple = pydict_to_postgres_tuple(node->ss.ss_currentRelation->rd_att
+  if(PyMapping_Check(pValue)){
+      tuple = pydict_to_postgres_tuple(node->ss.ss_currentRelation->rd_att
           , pValue);
+  }else if (PySequence_Check(pValue)){
+      tuple = pysequence_to_postgres_tuple(node->ss.ss_currentRelation->rd_att
+          , pValue);
+  }else{
+    elog(ERROR, "Cannot transform anything else than mappings and sequences to rows");
+  }
   ExecStoreTuple(tuple, slot, InvalidBuffer, false);
   elog(INFO, "Returning slot");
   Py_DECREF(pValue);
@@ -311,6 +319,25 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
   tuple = BuildTupleFromCStrings(attinmeta, tup_values);
   return tuple;
 }
+
+static HeapTuple
+pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
+{
+  HeapTuple tuple;
+  PyObject *items = PyMapping_Items(pydict);
+  AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
+  char * current_value, key;
+  char **tup_values;
+  Py_ssize_t i, natts;
+  natts = desc->natts;
+  tup_values = (char **) palloc(sizeof(char *) * natts);
+  for(i = 0; i< natts; i++){
+    tup_values[i] = pyobject_to_cstring(PySequence_GetItem(pydict, i));
+  }
+  tuple = BuildTupleFromCStrings(attinmeta, tup_values);
+  return tuple;
+}
+
 
 static char* pyobject_to_cstring(PyObject *pyobject)
 {
