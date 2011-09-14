@@ -8,10 +8,10 @@ class CsvFdw(ForeignDataWrapper):
         super(CsvFdw, self).__init__(fdw_options)
         print "Csv: %r" % fdw_options
         self.filename = fdw_options["filename"]
-        # self.filename = fdw_options["filename"]
+        self.delimiter = fdw_options["delimiter"]
 
     def execute(self):
         with open(self.filename) as fd:
-            reader = csv.reader(fd)
+            reader = csv.reader(fd, delimiter=self.delimiter)
             for line in reader:
                 yield line
