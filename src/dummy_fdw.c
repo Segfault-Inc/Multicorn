@@ -185,38 +185,42 @@ dummy_iterate(ForeignScanState *node)
   int                total_attributes, i;
   char            **tup_values;
   MemoryContext        oldcontext;
-  PyObject *pValue, *pArgs;
+  PyObject *pValue, *pArgs, *pIterator;
 
   elog(INFO, "Iterate");
   ExecClearTuple(slot);
   total_attributes = relation->rd_att->natts;
   tup_values = (char **) palloc(sizeof(char *) * total_attributes);
 
-  if (state->rownum > 10) {
-    return slot;
-  }
 
   pArgs = PyTuple_New(0);
-  pValue = state->pIterator; 
+  pIterator = state->pIterator; 
   Py_DECREF(pArgs);
   if (pValue != NULL) {
     Py_DECREF(pValue);
   }
 
-  /*
-   * FIXME
-   *
-   * actually i'm using a query that fetches all object class, but there
-   * some objects that don't have attibute, this must be handled.
-   *
-   * TODO
-   * the attribute fecthing could be improve to not loops every dummy_iterate call.
-   */
+
+
+  pIterator = PyObject_GetIter(pIterator);
+
+  if (pIterator == NULL) {
+      /* propagate error */
+  }
+  pValue = PyIter_Next(pIterator);
+
+  Py_DECREF(pIterator);
+  if (PyErr_Occurred()) {
+    /* Stop iteration */
+    return slot;
+  }
+  if (pValue == NULL){
+    return slot;
+  }
   for (i=0; i < total_attributes; i++)
     {
       tup_values[i] = PyString_AsString(pValue);
     }
-
   /* TODO: needs a switch context here? */
   oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
   tuple = BuildTupleFromCStrings(state->attinmeta, tup_values);

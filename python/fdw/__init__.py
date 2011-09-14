@@ -1,5 +1,5 @@
 def prnt(optdict):
-    return optdict['filename']
+    return ["1", "2", "3"]
 
 
 class ForeignDataWrapper(object):
