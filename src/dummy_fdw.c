@@ -63,7 +63,7 @@ static void dummy_end(ForeignScanState *node);
 /*
   Helpers
 */
-static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict);
+static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
 
 
 Datum
@@ -123,7 +123,8 @@ dummy_begin(ForeignScanState *node, int eflags)
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
   DummyState      *state;
-  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pIterator;
+  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pIterator, *pFunc, *pClass;
+  char *module;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
   state = (DummyState *) palloc(sizeof(DummyState));
@@ -136,34 +137,40 @@ dummy_begin(ForeignScanState *node, int eflags)
   elog(INFO, "Getting options");
   options_dict = PyDict_New();
   dummy_get_options(RelationGetRelid(node->ss.ss_currentRelation),
-                    options_dict);
+                    options_dict, &module);
 
-  elog(INFO, "Getting Module");
+  elog(INFO, "Getting Root Module fdw");
   pName = PyUnicode_FromString("fdw");
   pModule = PyImport_Import(pName);
   Py_DECREF(pName);
 
   if (pModule != NULL) {
+    elog(INFO, "Getting Module %s", module);
+    pArgs = PyTuple_New(1);
+    PyTuple_SetItem(pArgs, 0, PyString_FromString(module));
+    pFunc = PyObject_GetAttrString(pModule, "getClass");
+    elog(INFO, "Calling getClass");
+    pClass = PyObject_CallObject(pFunc, pArgs);
+    Py_DECREF(pArgs);
+    Py_DECREF(pFunc);
+
     elog(INFO, "Prepare Calling func");
     pArgs = PyTuple_New(1);
-    elog(INFO, "Setting dict");
 
+    elog(INFO, "Setting dict");
     PyTuple_SetItem(pArgs, 0, options_dict);
-    elog(INFO, "Getting class");
-    state->pFunc = PyObject_GetAttrString(pModule, "ForeignDataWrapper");
     elog(INFO, "Instantiating class");
-    pValue = PyObject_CallObject(state->pFunc, pArgs);
+    pValue = PyObject_CallObject(pClass, pArgs);
     elog(INFO, "Func called val %d", pValue);
     state->pIterator = pValue;
 
-
     Py_DECREF(pArgs);
     Py_DECREF(pModule);
-    if (!(state->pFunc && PyCallable_Check(state->pFunc))) {
-      if (PyErr_Occurred())
-        PyErr_Print();
-      elog(ERROR, "Cannot find function 'get'");
-    }
+    /* if (!(state->pFunc && PyCallable_Check(state->pFunc))) { */
+      /* if (PyErr_Occurred()) */
+        /* PyErr_Print(); */
+      /* elog(ERROR, "Cannot find function 'get'"); */
+    /* } */
   }
   else {
     PyErr_Print();
@@ -247,7 +254,7 @@ dummy_end(ForeignScanState *node)
 
 
 static void
-dummy_get_options(Oid foreign_table_id, PyObject *options_dict)
+dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module)
 {
   ForeignTable    *f_table;
   ForeignServer    *f_server;
@@ -262,10 +269,15 @@ dummy_get_options(Oid foreign_table_id, PyObject *options_dict)
   options = list_concat(options, f_server->options);
 
   foreach(lc, options) {
+
     DefElem *def = (DefElem *) lfirst(lc);
-    elog(INFO, "Option %s ", def->defname);
-    PyDict_SetItemString(options_dict, def->defname,
-                         PyString_FromString(defGetString(def)));
+
+    if (strcmp(def->defname, "wrapper") == 0) {
+      *module = defGetString(def);
+    } else {
+      PyDict_SetItemString(options_dict, def->defname,
+                           PyString_FromString(defGetString(def)));
+    }
   }
 }
 
