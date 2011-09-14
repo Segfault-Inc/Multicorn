@@ -1,11 +1,10 @@
 def prnt(optdict):
     return ["1", "2", "3"]
 
-
 class ForeignDataWrapper(object):
 
     def __init__(self, fdw_options):
-        pass
+        print "Initializing fdw"
 
     def execute(self, options):
         pass

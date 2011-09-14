@@ -147,15 +147,14 @@ dummy_begin(ForeignScanState *node, int eflags)
     elog(INFO, "Prepare Calling func");
     pArgs = PyTuple_New(1);
     elog(INFO, "Setting dict");
-    PyTuple_SetItem(pArgs, 0, options_dict); 
-    elog(INFO, "Getting func");
-    state->pFunc = PyObject_GetAttrString(pModule, "prnt");
-    elog(INFO, "Calling func");
-    pValue = PyObject_CallObject(state->pFunc, pArgs);
-    state->pIterator = pValue;
-    elog(INFO, "Func calledo");
-    elog(INFO, pValue);
 
+    PyTuple_SetItem(pArgs, 0, options_dict);
+    elog(INFO, "Getting class");
+    state->pFunc = PyObject_GetAttrString(pModule, "prnt");
+    elog(INFO, "Instantiating class");
+    pValue = PyObject_CallObject(state->pFunc, pArgs);
+    elog(INFO, "Func called val %d", pValue);
+    state->pIterator = PyObject_GetIter(pValue);
     Py_DECREF(pArgs);
     Py_DECREF(pModule);
     if (!(state->pFunc && PyCallable_Check(state->pFunc))) {
@@ -192,34 +191,30 @@ dummy_iterate(ForeignScanState *node)
   total_attributes = relation->rd_att->natts;
   tup_values = (char **) palloc(sizeof(char *) * total_attributes);
 
-
+  if(state->rownum > 10){
+    return slot;
+  }
   pArgs = PyTuple_New(0);
   pIterator = state->pIterator; 
   Py_DECREF(pArgs);
   if (pValue != NULL) {
     Py_DECREF(pValue);
   }
-
-
-
-  pIterator = PyObject_GetIter(pIterator);
-
   if (pIterator == NULL) {
       /* propagate error */
   }
   pValue = PyIter_Next(pIterator);
-
-  Py_DECREF(pIterator);
   if (PyErr_Occurred()) {
     /* Stop iteration */
+    PyErr_Print();
     return slot;
-  }
+  }   
   if (pValue == NULL){
     return slot;
   }
   for (i=0; i < total_attributes; i++)
     {
-      tup_values[i] = PyString_AsString(pValue);
+      tup_values[i] =  PyString_AsString(pValue);
     }
   /* TODO: needs a switch context here? */
   oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
