@@ -157,11 +157,16 @@ dummy_begin(ForeignScanState *node, int eflags)
     if (PyErr_Occurred()) {
       PyErr_Print();
     }
+    pClass = PyObject_CallObject(pFunc, pArgs);
+
     Py_DECREF(pArgs);
     Py_DECREF(pFunc);
     pArgs = PyTuple_New(1);
     PyTuple_SetItem(pArgs, 0, options_dict);
     pObj = PyObject_CallObject(pClass, pArgs);
+    if (PyErr_Occurred()) {
+      PyErr_Print();
+    }
     Py_DECREF(pArgs);
     pArgs = PyTuple_New(0);
     /* PyTuple_SetItem(pArgs, 0, pObj); */
@@ -204,9 +209,6 @@ dummy_iterate(ForeignScanState *node)
 
   ExecClearTuple(slot);
 
-  if(state->rownum > 10){
-    return slot;
-  }
   pArgs = PyTuple_New(0);
   pIterator = state->pIterator;
   Py_DECREF(pArgs);
