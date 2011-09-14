@@ -186,18 +186,14 @@ static TupleTableSlot *
 dummy_iterate(ForeignScanState *node)
 {
   TupleTableSlot            *slot = node->ss.ss_ScanTupleSlot;
-  Relation                relation = node->ss.ss_currentRelation;
-
   DummyState      *state = (DummyState *) node->fdw_state;
 
   HeapTuple        tuple;
 
-  int                total_attributes;
   MemoryContext        oldcontext;
   PyObject *pValue, *pArgs, *pIterator;
 
   ExecClearTuple(slot);
-  total_attributes = relation->rd_att->natts;
 
   if(state->rownum > 10){
     return slot;
@@ -335,9 +331,8 @@ static char* pyobject_to_cstring(PyObject *pyobject)
     if(PyObject_IsInstance(pyobject, date_cls)){
         PyObject * date_format_method = PyObject_GetAttrString(pyobject, "strftime");
         PyObject * pArgs = PyTuple_New(1);
-        PyTuple_SetItem(pArgs, 0, PyString_FromString(DATE_FORMAT_STRING));
         PyObject * formatted_date = PyObject_CallObject(date_format_method, pArgs);
-        char * result = PyString_AsString(formatted_date);
+        PyTuple_SetItem(pArgs, 0, PyString_FromString(DATE_FORMAT_STRING));
         return PyString_AsString(formatted_date);
     }
     Py_DECREF(date_module);
