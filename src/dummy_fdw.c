@@ -213,7 +213,7 @@ dummy_iterate(ForeignScanState *node)
     return slot;
   }
   pArgs = PyTuple_New(0);
-  pIterator = state->pIterator; 
+  pIterator = state->pIterator;
   Py_DECREF(pArgs);
   if (pValue != NULL) {
     Py_DECREF(pValue);
@@ -226,7 +226,7 @@ dummy_iterate(ForeignScanState *node)
     /* Stop iteration */
     PyErr_Print();
     return slot;
-  }   
+  }
   if (pValue == NULL){
     return slot;
   }
@@ -265,7 +265,7 @@ dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module)
   ForeignServer    *f_server;
   List            *options;
   ListCell        *lc;
-
+  bool got_module = false;
   f_table = GetForeignTable(foreign_table_id);
   f_server = GetForeignServer(f_table->serverid);
 
@@ -279,10 +279,17 @@ dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module)
 
     if (strcmp(def->defname, "wrapper") == 0) {
       *module = defGetString(def);
+      got_module = true;
     } else {
       PyDict_SetItemString(options_dict, def->defname,
                            PyString_FromString(defGetString(def)));
     }
+  }
+  if (!got_module) {
+    ereport(ERROR,
+            (errcode(ERRCODE_FDW_OPTION_NAME_NOT_FOUND),
+             errmsg("wrapper option not found"),
+             errhint("You must set wrapper option to a ForeignDataWrapper python class, for example fdw.csv.CsvFdw")));
   }
 }
 
@@ -323,4 +330,3 @@ static char* pyobject_to_cstring(PyObject *pyobject)
     }
     return PyString_AsString(pyobject);
 }
-
