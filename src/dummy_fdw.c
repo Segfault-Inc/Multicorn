@@ -123,7 +123,7 @@ dummy_begin(ForeignScanState *node, int eflags)
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
   DummyState      *state;
-  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pIterator, *pFunc, *pClass;
+  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pIterator, *pFunc, *pClass, *pObj, *pMethod;
   char *module;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
@@ -154,16 +154,23 @@ dummy_begin(ForeignScanState *node, int eflags)
     Py_DECREF(pArgs);
     Py_DECREF(pFunc);
 
-    elog(INFO, "Prepare Calling func");
-    pArgs = PyTuple_New(1);
+    elog(INFO, "Prepare Class __init__");
 
+    pArgs = PyTuple_New(1);
     elog(INFO, "Setting dict");
     PyTuple_SetItem(pArgs, 0, options_dict);
     elog(INFO, "Instantiating class");
-    pValue = PyObject_CallObject(pClass, pArgs);
-    elog(INFO, "Func called val %d", pValue);
-    state->pIterator = pValue;
+    pObj = PyObject_CallObject(pClass, pArgs);
+    elog(INFO, "Object created %d", pObj);
+    Py_DECREF(pArgs);
+    pArgs = PyTuple_New(0);
+    /* PyTuple_SetItem(pArgs, 0, pObj); */
+    pMethod = PyObject_GetAttrString(pObj, "execute");
+    pValue = PyObject_CallObject(pMethod, pArgs);
 
+    state->pIterator = PyObject_GetIter(pValue);
+
+    Py_DECREF(pValue);
     Py_DECREF(pArgs);
     Py_DECREF(pModule);
     /* if (!(state->pFunc && PyCallable_Check(state->pFunc))) { */
@@ -193,39 +200,38 @@ dummy_iterate(ForeignScanState *node)
   int                total_attributes, i;
   char            **tup_values;
   MemoryContext        oldcontext;
-  PyObject *pValue, *pArgs;
+  PyObject *pValue, *pArgs, *pIterator;
 
   elog(INFO, "Iterate");
   ExecClearTuple(slot);
   total_attributes = relation->rd_att->natts;
   tup_values = (char **) palloc(sizeof(char *) * total_attributes);
 
-  if (state->rownum > 10) {
+  if(state->rownum > 10){
     return slot;
   }
-
   pArgs = PyTuple_New(0);
-  pValue = state->pIterator;
+  pIterator = state->pIterator; 
   Py_DECREF(pArgs);
   if (pValue != NULL) {
     Py_DECREF(pValue);
   }
-
-
-  /*
-   * FIXME
-   *
-   * actually i'm using a query that fetches all object class, but there
-   * some objects that don't have attibute, this must be handled.
-   *
-   * TODO
-   * the attribute fecthing could be improve to not loops every dummy_iterate call.
-   */
+  if (pIterator == NULL) {
+      /* propagate error */
+  }
+  pValue = PyIter_Next(pIterator);
+  if (PyErr_Occurred()) {
+    /* Stop iteration */
+    PyErr_Print();
+    return slot;
+  }   
+  if (pValue == NULL){
+    return slot;
+  }
   for (i=0; i < total_attributes; i++)
     {
-      tup_values[i] = "0"; /*PyString_AsString(pValue);*/
+      tup_values[i] =  PyString_AsString(pValue);
     }
-
   /* TODO: needs a switch context here? */
   oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
   tuple = BuildTupleFromCStrings(state->attinmeta, tup_values);

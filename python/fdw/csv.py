@@ -8,8 +8,8 @@ class CsvFdw(ForeignDataWrapper):
         print "Csv"
         # self.filename = fdw_options["filename"]
 
-    def execute(self, options):
-        pass
+    def execute(self):
+        return ["1337", "42"]
         # with open(self.filename) as csv:
             # for line in csv.readLine():
                 # yield line
