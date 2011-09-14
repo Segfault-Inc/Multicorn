@@ -10,7 +10,7 @@ class CsvFdw(ForeignDataWrapper):
 
     def execute(self):
         for i in (1337, 42, 1, -23, 0.235):
-            yield str(i)
+            yield {'field1': str(i)}
         # with open(self.filename) as csv:
             # for line in csv.readLine():
                 # yield line

@@ -64,7 +64,8 @@ static void dummy_end(ForeignScanState *node);
   Helpers
 */
 static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
-
+static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
+static char* pyobject_to_cstring(PyObject *pyobject);
 
 Datum
 dummy_fdw_handler(PG_FUNCTION_ARGS)
@@ -228,17 +229,14 @@ dummy_iterate(ForeignScanState *node)
   if (pValue == NULL){
     return slot;
   }
-  for (i=0; i < total_attributes; i++)
-    {
-      tup_values[i] =  PyString_AsString(pValue);
-    }
-  /* TODO: needs a switch context here? */
-  oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
-  tuple = BuildTupleFromCStrings(state->attinmeta, tup_values);
-  MemoryContextSwitchTo(oldcontext);
-  ExecStoreTuple(tuple, slot, InvalidBuffer, false);
 
+  oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
+  MemoryContextSwitchTo(oldcontext);
+  tuple = pydict_to_postgres_tuple(node->ss.ss_currentRelation->rd_att
+          , pValue);
+  ExecStoreTuple(tuple, slot, InvalidBuffer, false);
   elog(INFO, "Returning slot");
+  Py_DECREF(pValue);
   state->rownum++;
   return slot;
 }
@@ -285,5 +283,30 @@ dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module)
                            PyString_FromString(defGetString(def)));
     }
   }
+}
+
+static HeapTuple
+pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
+{
+  HeapTuple tuple;
+  PyObject *items = PyMapping_Items(pydict);
+  AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
+  char * current_value, key;
+  char **tup_values;
+  int i, natts;
+  natts = desc->natts;
+  tup_values = (char **) palloc(sizeof(char *) * natts);
+  for(i = 0; i< natts; i++){
+    key = NameStr(desc->attrs[i]->attname);
+    tup_values[i] = pyobject_to_cstring(PyMapping_GetItemString(pydict, key));
+  }
+  elog(INFO, tup_values[0]);
+  tuple = BuildTupleFromCStrings(attinmeta, tup_values);
+  return tuple;
+}
+
+static char* pyobject_to_cstring(PyObject *pyobject)
+{
+    return PyString_AsString(pyobject);
 }
 
