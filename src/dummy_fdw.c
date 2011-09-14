@@ -253,8 +253,8 @@ static void
 dummy_end(ForeignScanState *node)
 {
   DummyState *state = (DummyState *) node->fdw_state;
-/*  Py_XDECREF(state->pFunc); */
-/*  Py_Finalize(); */
+  Py_DECREF(state->pIterator);
+  Py_Finalize();
 }
 
 
