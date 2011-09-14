@@ -4,10 +4,11 @@ import csv
 
 class CsvFdw(ForeignDataWrapper):
 
-    def __init__(self, fdw_options):
+    def __init__(self, fdw_options, fdw_columns):
         super(CsvFdw, self).__init__(fdw_options)
         self.filename = fdw_options["filename"]
         self.delimiter = fdw_options["delimiter"]
+        print fdw_columns
 
     def execute(self):
         with open(self.filename) as fd:

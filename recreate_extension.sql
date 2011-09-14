@@ -16,7 +16,7 @@ create foreign table ldaptest (
        o character varying,
        mail character varying)
 server dummy
-options (wrapper 'fdw.ldapfdw.LdapFdw', address 'ldap.keleos.fr', "path" 'ou=People,dc=keleos,dc=fr', objectclass 'inetOrgPerson', field_list 'cn,sn,uid,o,mail');
+options (wrapper 'fdw.ldapfdw.LdapFdw', address 'ldap.keleos.fr', "path" 'ou=People,dc=keleos,dc=fr', objectclass 'inetOrgPerson');
 select * from ldaptest;
 
 drop extension dummy_fdw cascade;

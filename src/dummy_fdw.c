@@ -62,6 +62,7 @@ static void dummy_end(ForeignScanState *node);
   Helpers
 */
 static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
+static PyObject * dummy_get_attributes_name(TupleDesc desc);
 static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static char* pyobject_to_cstring(PyObject *pyobject);
@@ -125,7 +126,7 @@ dummy_begin(ForeignScanState *node, int eflags)
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
   DummyState      *state;
-  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pFunc, *pClass, *pObj, *pMethod;
+  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pFunc, *pClass, *pObj, *pMethod, *pColumns;
   char *module;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
@@ -138,7 +139,6 @@ dummy_begin(ForeignScanState *node, int eflags)
   options_dict = PyDict_New();
   dummy_get_options(RelationGetRelid(node->ss.ss_currentRelation),
                     options_dict, &module);
-
   pName = PyUnicode_FromString("fdw");
   pModule = PyImport_Import(pName);
   if (PyErr_Occurred()) {
@@ -161,8 +161,10 @@ dummy_begin(ForeignScanState *node, int eflags)
 
     Py_DECREF(pArgs);
     Py_DECREF(pFunc);
-    pArgs = PyTuple_New(1);
+    pArgs = PyTuple_New(2);
+    pColumns = dummy_get_attributes_name(node->ss.ss_currentRelation->rd_att); 
     PyTuple_SetItem(pArgs, 0, options_dict);
+    PyTuple_SetItem(pArgs, 1, pColumns);
     pObj = PyObject_CallObject(pClass, pArgs);
     if (PyErr_Occurred()) {
       PyErr_Print();
@@ -349,4 +351,17 @@ static char* pyobject_to_cstring(PyObject *pyobject)
     Py_DECREF(date_module);
     Py_DECREF(date_cls);
     return PyString_AsString(pyobject);
+}
+
+static PyObject * dummy_get_attributes_name(TupleDesc desc)
+{
+    char * key;
+    Py_ssize_t i, natts;
+    natts = desc->natts;
+    PyObject * list = PyList_New(natts);
+    for(i = 0; i< natts; i++){
+        key = NameStr(desc->attrs[i]->attname);
+        PyList_Append(list, PyString_FromString(key));
+    }
+    return list;
 }
