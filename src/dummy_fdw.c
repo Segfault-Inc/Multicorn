@@ -37,9 +37,9 @@ PG_MODULE_MAGIC;
 
 typedef struct DummyState
 {
-    AttInMetadata *attinmeta;
-    int rownum;
-    PyObject *pFunc;
+  AttInMetadata *attinmeta;
+  int rownum;
+  PyObject *pFunc;
 } DummyState;
 
 extern Datum dummy_fdw_handler(PG_FUNCTION_ARGS);
@@ -59,53 +59,58 @@ static TupleTableSlot *dummy_iterate(ForeignScanState *node);
 static void dummy_rescan(ForeignScanState *node);
 static void dummy_end(ForeignScanState *node);
 
+/*
+  Helpers
+*/
+static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict);
+
 
 Datum
 dummy_fdw_handler(PG_FUNCTION_ARGS)
 {
-    FdwRoutine *fdw_routine = makeNode(FdwRoutine);
+  FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
-    fdw_routine->PlanForeignScan = dummy_plan;
-    fdw_routine->ExplainForeignScan = dummy_explain;
-    fdw_routine->BeginForeignScan = dummy_begin;
-    fdw_routine->IterateForeignScan = dummy_iterate;
-    fdw_routine->ReScanForeignScan = dummy_rescan;
-    fdw_routine->EndForeignScan = dummy_end;
+  fdw_routine->PlanForeignScan = dummy_plan;
+  fdw_routine->ExplainForeignScan = dummy_explain;
+  fdw_routine->BeginForeignScan = dummy_begin;
+  fdw_routine->IterateForeignScan = dummy_iterate;
+  fdw_routine->ReScanForeignScan = dummy_rescan;
+  fdw_routine->EndForeignScan = dummy_end;
 
-    PG_RETURN_POINTER(fdw_routine);
+  PG_RETURN_POINTER(fdw_routine);
 }
 
 Datum
 dummy_fdw_validator(PG_FUNCTION_ARGS)
 {
-    PG_RETURN_BOOL(true);
+  PG_RETURN_BOOL(true);
 }
 
 static FdwPlan *
 dummy_plan( Oid foreign_table_id,
-           PlannerInfo *root,
-           RelOptInfo  *base_relation)
+            PlannerInfo *root,
+            RelOptInfo  *base_relation)
 {
-    FdwPlan *fdw_plan;
+  FdwPlan *fdw_plan;
 
-    fdw_plan = makeNode(FdwPlan);
+  fdw_plan = makeNode(FdwPlan);
 
-    fdw_plan->startup_cost = 10;
-    base_relation->rows = 1;
-    fdw_plan->total_cost = 15;
+  fdw_plan->startup_cost = 10;
+  base_relation->rows = 1;
+  fdw_plan->total_cost = 15;
 
-    return fdw_plan;
+  return fdw_plan;
 }
 
 static void
 dummy_explain(ForeignScanState *node, ExplainState *es)
 {
-    /* TODO: calculate real values */
-    ExplainPropertyText("Foreign dummy", "dummy", es);
+  /* TODO: calculate real values */
+  ExplainPropertyText("Foreign dummy", "dummy", es);
 
-    if (es->costs)
+  if (es->costs)
     {
-        ExplainPropertyLong("Foreign dummy cost", 10.5, es);
+      ExplainPropertyLong("Foreign dummy cost", 10.5, es);
     }
 }
 
@@ -113,107 +118,151 @@ dummy_explain(ForeignScanState *node, ExplainState *es)
 static void
 dummy_begin(ForeignScanState *node, int eflags)
 {
-    /*  TODO: do things if necessary */
-    AttInMetadata  *attinmeta;
-    Relation        rel = node->ss.ss_currentRelation;
-    DummyState      *state;
-    PyObject *pName, *pModule, *pValue;
+  /*  TODO: do things if necessary */
+  AttInMetadata  *attinmeta;
+  Relation        rel = node->ss.ss_currentRelation;
+  DummyState      *state;
+  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict;
 
-    attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
-    state = (DummyState *) palloc(sizeof(DummyState));
-    state->rownum = 0;
-    state->attinmeta = attinmeta;
-    node->fdw_state = (void *) state;
+  attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
+  state = (DummyState *) palloc(sizeof(DummyState));
+  state->rownum = 0;
+  state->attinmeta = attinmeta;
+  node->fdw_state = (void *) state;
 
-    Py_Initialize();
+  elog(INFO, "Initialising python");
+  Py_Initialize();
+  elog(INFO, "Getting options");
+  dummy_get_options(RelationGetRelid(node->ss.ss_currentRelation),
+                    options_dict);
 
-    pName = PyUnicode_FromString("py_fdw");
-    pModule = PyImport_Import(pName);
-    Py_DECREF(pName);
+  elog(INFO, "Getting Module");
+  pName = PyUnicode_FromString("fdw");
+  pModule = PyImport_Import(pName);
+  Py_DECREF(pName);
 
-    if (pModule != NULL) {
-      state->pFunc = PyObject_GetAttrString(pModule, "get");
-      Py_DECREF(pModule);
-      if (!(state->pFunc && PyCallable_Check(state->pFunc))) {
-        if (PyErr_Occurred())
-          PyErr_Print();
-        fprintf(stderr, "Cannot find function \"%s\"\n", "get");
-      }
-    }
-    else {
+  if (pModule != NULL) {
+    elog(INFO, "Prepare Calling func");
+    pArgs = PyTuple_New(0);
+    elog(INFO, "Setting dict");
+    /* PyTuple_SetItem(pArgs, 1, options_dict); */
+    elog(INFO, "Getting func");
+    state->pFunc = PyObject_GetAttrString(pModule, "prnt");
+    elog(INFO, "Calling func");
+    pValue = PyObject_CallObject(state->pFunc, pArgs);
+    elog(INFO, "Func called");
+
+    Py_DECREF(pArgs);
+    Py_DECREF(pModule);
+    if (!(state->pFunc && PyCallable_Check(state->pFunc))) {
+      if (PyErr_Occurred())
         PyErr_Print();
-        fprintf(stderr, "Failed to load \"%s\"\n", "py_fdw");
+      elog(ERROR, "Cannot find function 'get'");
     }
+  }
+  else {
+    PyErr_Print();
+    elog(ERROR, "Failed to load module");
+  }
+  elog(INFO, "End begin");
 }
 
 
 static TupleTableSlot *
 dummy_iterate(ForeignScanState *node)
 {
-    TupleTableSlot            *slot = node->ss.ss_ScanTupleSlot;
-    Relation                relation = node->ss.ss_currentRelation;
+  TupleTableSlot            *slot = node->ss.ss_ScanTupleSlot;
+  Relation                relation = node->ss.ss_currentRelation;
 
-    DummyState      *state = (DummyState *) node->fdw_state;
+  DummyState      *state = (DummyState *) node->fdw_state;
 
-    HeapTuple        tuple;
+  HeapTuple        tuple;
 
-    int                total_attributes, i;
-    char            **tup_values;
-    MemoryContext        oldcontext;
-    PyObject *pValue, *pArgs;
+  int                total_attributes, i;
+  char            **tup_values;
+  MemoryContext        oldcontext;
+  PyObject *pValue, *pArgs;
 
-    ExecClearTuple(slot);
-    total_attributes = relation->rd_att->natts;
-    tup_values = (char **) palloc(sizeof(char *) * total_attributes);
+  elog(INFO, "Iterate");
+  ExecClearTuple(slot);
+  total_attributes = relation->rd_att->natts;
+  tup_values = (char **) palloc(sizeof(char *) * total_attributes);
 
-    if (state->rownum > 10) {
-      return slot;
-    }
-
-    pArgs = PyTuple_New(0);
-    pValue = PyObject_CallObject(state->pFunc, pArgs);
-    Py_DECREF(pArgs);
-    if (pValue != NULL) {
-      Py_DECREF(pValue);
-    }
-
-    /*
-     * FIXME
-     *
-     * actually i'm using a query that fetches all object class, but there
-     * some objects that don't have attibute, this must be handled.
-     *
-     * TODO
-     * the attribute fecthing could be improve to not loops every dummy_iterate call.
-     */
-    for (i=0; i < total_attributes; i++)
-    {
-        tup_values[i] = PyString_AsString(pValue);
-    }
-
-    /* TODO: needs a switch context here? */
-    oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
-    tuple = BuildTupleFromCStrings(state->attinmeta, tup_values);
-    MemoryContextSwitchTo(oldcontext);
-    ExecStoreTuple(tuple, slot, InvalidBuffer, false);
-
-    state->rownum++;
+  if (state->rownum > 10) {
     return slot;
+  }
+
+  pArgs = PyTuple_New(0);
+  elog(INFO, "Calling func");
+  pValue = PyObject_CallObject(state->pFunc, pArgs);
+  elog(INFO, "Func called");
+  Py_DECREF(pArgs);
+  if (pValue != NULL) {
+    Py_DECREF(pValue);
+  }
+
+  /*
+   * FIXME
+   *
+   * actually i'm using a query that fetches all object class, but there
+   * some objects that don't have attibute, this must be handled.
+   *
+   * TODO
+   * the attribute fecthing could be improve to not loops every dummy_iterate call.
+   */
+  for (i=0; i < total_attributes; i++)
+    {
+      tup_values[i] = PyString_AsString(pValue);
+    }
+
+  /* TODO: needs a switch context here? */
+  oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
+  tuple = BuildTupleFromCStrings(state->attinmeta, tup_values);
+  MemoryContextSwitchTo(oldcontext);
+  ExecStoreTuple(tuple, slot, InvalidBuffer, false);
+
+  elog(INFO, "Returning slot");
+  state->rownum++;
+  return slot;
 }
 
 static void
 dummy_rescan(ForeignScanState *node)
 {
-    DummyState *state = (DummyState *) node->fdw_state;
-    state->rownum = 0;
+  DummyState *state = (DummyState *) node->fdw_state;
+  state->rownum = 0;
 }
 
 static void
 dummy_end(ForeignScanState *node)
 {
-    DummyState *state = (DummyState *) node->fdw_state;
-    Py_XDECREF(state->pFunc);
-    Py_Finalize();
+  DummyState *state = (DummyState *) node->fdw_state;
+  Py_XDECREF(state->pFunc);
+  Py_Finalize();
 }
 
+
+static void
+dummy_get_options(Oid foreign_table_id, PyObject *options_dict)
+{
+  ForeignTable    *f_table;
+  ForeignServer    *f_server;
+  List            *options;
+  ListCell        *lc;
+
+  f_table = GetForeignTable(foreign_table_id);
+  f_server = GetForeignServer(f_table->serverid);
+
+  options = NIL;
+  options = list_concat(options, f_table->options);
+  options = list_concat(options, f_server->options);
+
+  options_dict = PyDict_New();
+  foreach(lc, options) {
+    DefElem *def = (DefElem *) lfirst(lc);
+    elog(INFO, "Option %s ", def->defname);
+    PyDict_SetItemString(options_dict, def->defname,
+                         PyString_FromString(defGetString(def)));
+  }
+}
 
