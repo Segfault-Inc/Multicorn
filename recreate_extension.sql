@@ -11,6 +11,6 @@ create extension dummy_fdw;
 create server dummy foreign data wrapper dummy_fdw;
 create foreign table ldaptest (cn character varying, sn character varying, givenName character varying)
 server dummy
-options (wrapper 'fdw.ldapfdw.LdapFdw', address 'ldap.keleos.fr');
+options (wrapper 'fdw.ldapfdw.LdapFdw', address 'ldap.keleos.fr', "path" 'ou=People,dc=keleos,dc=fr', objectclass 'inetOrgPerson');
 select * from ldaptest;
 
