@@ -14,3 +14,11 @@ server dummy
 options (wrapper 'fdw.ldapfdw.LdapFdw', address 'ldap.keleos.fr');
 select * from ldaptest;
 
+drop extension dummy_fdw cascade;
+create extension dummy_fdw;
+create server dummy foreign data wrapper dummy_fdw;
+create foreign table test (field1 character varying, field2 character varying, field3 character varying)
+server dummy
+options (wrapper 'fdw.fsfdw.FilesystemFdw', root_dir '/tmp/data', pattern '{field1}/{field2}/{field3}/style.css');
+select * from test;
+
