@@ -32,6 +32,7 @@ create foreign table ldaptest (
 select * from ldaptest;
 select * from ldaptest where uid = 'gayoub';
 select * from ldaptest where "uidNumber" = 1022;
+select * from ldaptest where cn like '%y%';
 
 drop extension multicorn cascade;
 create extension multicorn;
