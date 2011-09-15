@@ -1,12 +1,5 @@
-*~
-*.pyc
-*.pyo
-*.egg
-/.coverage
-/.noseids
-/build
-/dist
-/Multicorn.egg-info
-/profile_results
-*.swp
-/.tox
+*.sw?
+tags
+*.so
+*egg-info
+sql/multicorn--0.0.2.sql

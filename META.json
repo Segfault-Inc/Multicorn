@@ -1,0 +1,40 @@
+{
+    "name": "multicorn",
+    "abstract": "Multicorn Python Wrapper for Postgres 9.1+ Foreign Data Wrapper",
+    "description": "The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL",
+    "version": "0.0.2",
+    "maintainer": "Kozea",
+    "license": {
+        "PostgreSQL": "http://www.postgresql.org/about/licence"
+    },
+    "resources": {
+        "repository": {
+            "url":  "git://github.com/Kozea/multicorn.git",
+            "type": "git"
+        }
+    },
+    "provides": {
+        "multicorn": {
+            "abstract": "Multicorn Python Wrapper for Postgres 9.1+ Foreign Data Wrapper",
+            "file": "sql/multicorn.sql",
+            "docfile": "doc/multicorn.md",
+            "version": "0.0.2"
+        }
+    },
+    "release_status": "stable",
+    "generated_by": "Kozea",
+    "meta-spec": {
+        "version": "1.0.0",
+        "url": "http://pgxn.org/meta/spec.txt"
+    },
+    "tags": [
+        "multicorn",
+        "python",
+        "csv",
+        "ldap",
+        "filesystem",
+        "SQL MED",
+        "foreign data wrapper",
+        "external data"
+    ]
+}
