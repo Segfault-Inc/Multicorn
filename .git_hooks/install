@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cd $(git rev-parse --show-toplevel)/.git/hooks 
+ln -vs ../../.git_hooks/pre-commit
+cd $(git rev-parse --show-toplevel)
