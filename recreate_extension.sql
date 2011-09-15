@@ -31,7 +31,7 @@ create foreign table ldaptest (
        objectclass 'inetOrgPerson');
 select * from ldaptest;
 select * from ldaptest where uid = 'gayoub';
-select * from ldaptest where uidNumber = 10;
+select * from ldaptest where "uidNumber" = 1022;
 
 drop extension multicorn cascade;
 create extension multicorn;
