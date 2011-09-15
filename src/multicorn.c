@@ -477,6 +477,10 @@ static PyObject* multicorn_constant_to_python(Const* constant)
         char*  number;
         number = DirectFunctionCall1(numeric_out, DatumGetNumeric(constant->constvalue));
         result = PyFloat_FromString(PyString_FromString(number), NULL);
+    } else if (constant->consttype == 23){
+        long number;
+        number = DatumGetInt32(constant->constvalue);
+        result = PyInt_FromLong(number);
     }
     return result;
 }
