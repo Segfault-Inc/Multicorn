@@ -1,12 +1,23 @@
 from importlib import import_module
 
 
+class Qual(object):
+
+    def __init__(self, field_name, operator, value):
+        self.field_name = field_name
+        self.operator = operator
+        self.value = value
+
+    def __repr__(self):
+        return "%s %s %s" % (self.field_name, self.operator, self.value)
+
+
 class ForeignDataWrapper(object):
 
     def __init__(self, fdw_options):
         print "Initializing fdw"
 
-    def execute(self, options):
+    def execute(self, quals):
         pass
 
 

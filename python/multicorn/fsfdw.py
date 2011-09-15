@@ -10,5 +10,5 @@ class FilesystemFdw(ForeignDataWrapper):
         pattern = options.get('pattern')
         self.sd = StructuredDirectory(root_dir, pattern)
 
-    def execute(self):
+    def execute(self, quals):
         return self.sd.get_items()

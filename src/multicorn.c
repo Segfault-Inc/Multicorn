@@ -17,6 +17,7 @@
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_user_mapping.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_operator.h"
 #include "commands/defrem.h"
 #include "commands/explain.h"
 #include "foreign/fdwapi.h"
@@ -26,8 +27,10 @@
 #include "nodes/makefuncs.h"
 #include "optimizer/cost.h"
 #include "utils/rel.h"
+#include "utils/numeric.h"
 #include "utils/builtins.h"
 #include "utils/syscache.h"
+#include "utils/formatting.h"
 #include <Python.h>
 
 PG_MODULE_MAGIC;
@@ -62,6 +65,10 @@ static void multicorn_end(ForeignScanState *node);
 */
 static void multicorn_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
 static void multicorn_get_attributes_name(TupleDesc desc, PyObject* list);
+static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list, PyObject* multicorn_module);
+static PyObject* multicorn_constant_to_python(Const* constant);
+
+
 static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute);
@@ -125,7 +132,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
   MulticornState      *state;
-  PyObject *pName, *pModule, *pArgs, *pValue, *pOptions, *pFunc, *pClass, *pObj, *pMethod, *pColumns;
+  PyObject *pName, *pModule, *pArgs, *pValue, *pOptions, *pFunc, *pClass, *pObj, *pMethod, *pColumns, *pConds;
   char *module;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
@@ -175,12 +182,15 @@ multicorn_begin(ForeignScanState *node, int eflags)
     if (PyErr_Occurred()) {
       PyErr_Print();
       elog(ERROR, "Error in python, see the logs");
-    }
+    } 
     Py_DECREF(pArgs);
     Py_DECREF(pOptions);
     Py_DECREF(pClass);
 
-    pArgs = PyTuple_New(0);
+    pArgs = PyTuple_New(1);
+    pConds = PyList_New(0);
+    multicorn_extract_conditions(node, pConds, pModule);
+    PyTuple_SetItem(pArgs, 0, pColumns);
     pMethod = PyObject_GetAttrString(pObj, "execute");
     pValue = PyObject_CallObject(pMethod, pArgs);
     if (PyErr_Occurred()) {
@@ -404,3 +414,77 @@ static void multicorn_get_attributes_name(TupleDesc desc, PyObject * list)
         PyList_Append(list, PyString_FromString(key));
     }
 }
+
+
+static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list, PyObject* multicorn_module)
+{
+    if (node->ss.ps.plan->qual) {
+        ListCell   *lc;
+        PyObject *qual_class = PyObject_GetAttrString(multicorn_module, "Qual");
+        PyObject *args;
+        List  *quals = list_copy(node->ss.ps.qual);
+        TupleDesc  tupdesc = node->ss.ss_currentRelation->rd_att;
+        foreach (lc, quals) {
+            ExprState   *xpstate = lfirst(lc);
+            Node        *nodexp = (Node *) xpstate->expr;
+            if (nodexp != NULL && IsA(nodexp, OpExpr)) {
+              OpExpr   *op = (OpExpr *) nodexp;
+              Node     *left, *right;
+              Index    varattno;
+              char     *key;
+              PyObject *val;
+              HeapTuple tp;
+              Form_pg_operator  operator_tup;
+              if (list_length(op->args) == 2) {
+                elog(INFO, "With 2 args");
+                left = list_nth(op->args, 0);
+                right = list_nth(op->args, 1);
+                elog(INFO, nodeToString(right));
+                if (IsA(right, RelabelType)){
+                    right = ((RelabelType *) right)->arg;
+                }
+                if (IsA(left, RelabelType)){
+                    left = ((RelabelType *) left)->arg;
+                }
+                if (IsA(left, Var)) {
+                  varattno = ((Var *) left)->varattno;
+                  Assert(0 < varattno && varattno <= tupdesc->natts);
+                  key = NameStr(tupdesc->attrs[varattno - 1]->attname);
+                  tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+                  if (!HeapTupleIsValid(tp))
+                    elog(ERROR, "cache lookup failed for operator %u", op->opno);
+                  operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+                  ReleaseSysCache(tp);
+                  if (IsA(right, Const)) {
+                    val = multicorn_constant_to_python((Const *) right);
+                    args = PyTuple_New(3);
+                    PyTuple_SetItem(args, 0, PyString_FromString(key));
+                    PyTuple_SetItem(args, 1, PyString_FromString(NameStr(operator_tup->oprname)));
+                    PyTuple_SetItem(args, 2, val);
+                    PyList_Append(list, PyObject_CallObject(qual_class, args));
+                  }
+                    }
+                }
+            }
+        }   
+    }
+}
+
+static PyObject* multicorn_constant_to_python(Const* constant)
+{
+    PyObject* result;
+    result = PyString_FromString("grou");
+    if(constant->consttype == 25){
+        /* Its a string */
+        result = PyString_FromString(TextDatumGetCString(constant->constvalue));
+    } else if (constant->consttype == 1700) {
+        /* Its a numeric */
+        Datum * number;
+        number = DirectFunctionCall2(numeric_to_char, constant->constvalue, CStringGetDatum(""));
+        elog(INFO, TextDatumGetCString(number));
+        result = PyString_FromString(number);
+    }
+    elog(INFO, "TYPE: %d", constant->consttype);
+    return result;
+}
+

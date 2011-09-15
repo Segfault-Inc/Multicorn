@@ -11,7 +11,7 @@ class LdapFdw(ForeignDataWrapper):
         self.objectClass = fdw_options["objectclass"]
         self.field_list = fdw_columns
 
-    def execute(self):
+    def execute(self, quals):
         for _, item in self.ldap.search_s(
             self.path, ldap.SCOPE_ONELEVEL,
             "(objectClass=%s)" % self.objectClass):
