@@ -1,8 +1,9 @@
 /*-------------------------------------------------------------------------
  *
- *          foreign-data wrapper for dummy
+ * The Multicorn Foreign Data Wrapper allows you to fetch foreign data in
+ * Python in your PostgreSQL
  *
- * this software is released under the postgresql licence
+ * This software is released under the postgresql licence
  *
  * author: Kozea
  *
@@ -29,40 +30,36 @@
 
 PG_MODULE_MAGIC;
 
-/*
- * Options for the dummy wrapper
- */
-
-typedef struct DummyState
+typedef struct MulticornState
 {
   AttInMetadata *attinmeta;
   int rownum;
   PyObject *pFunc;
   PyObject *pIterator;
-} DummyState;
+} MulticornState;
 
-extern Datum dummy_fdw_handler(PG_FUNCTION_ARGS);
-extern Datum dummy_fdw_validator(PG_FUNCTION_ARGS);
+extern Datum multicorn_fdw_handler(PG_FUNCTION_ARGS);
+extern Datum multicorn_fdw_validator(PG_FUNCTION_ARGS);
 
 
-PG_FUNCTION_INFO_V1(dummy_fdw_handler);
-PG_FUNCTION_INFO_V1(dummy_fdw_validator);
+PG_FUNCTION_INFO_V1(multicorn_fdw_handler);
+PG_FUNCTION_INFO_V1(multicorn_fdw_validator);
 
 /*
  * FDW functions declarations
  */
-static FdwPlan *dummy_plan(Oid foreign_table_id, PlannerInfo *root, RelOptInfo *base_relation);
-static void dummy_explain(ForeignScanState *node, ExplainState *es);
-static void dummy_begin(ForeignScanState *node, int eflags);
-static TupleTableSlot *dummy_iterate(ForeignScanState *node);
-static void dummy_rescan(ForeignScanState *node);
-static void dummy_end(ForeignScanState *node);
+static FdwPlan *multicorn_plan(Oid foreign_table_id, PlannerInfo *root, RelOptInfo *base_relation);
+static void multicorn_explain(ForeignScanState *node, ExplainState *es);
+static void multicorn_begin(ForeignScanState *node, int eflags);
+static TupleTableSlot *multicorn_iterate(ForeignScanState *node);
+static void multicorn_rescan(ForeignScanState *node);
+static void multicorn_end(ForeignScanState *node);
 
 /*
   Helpers
 */
-static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
-static void dummy_get_attributes_name(TupleDesc desc, PyObject* list);
+static void multicorn_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
+static void multicorn_get_attributes_name(TupleDesc desc, PyObject* list);
 static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static char* pyobject_to_cstring(PyObject *pyobject);
@@ -70,28 +67,28 @@ static char* pyobject_to_cstring(PyObject *pyobject);
 const char* DATE_FORMAT_STRING = "%Y-%m-%d";
 
 Datum
-dummy_fdw_handler(PG_FUNCTION_ARGS)
+multicorn_fdw_handler(PG_FUNCTION_ARGS)
 {
   FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
-  fdw_routine->PlanForeignScan = dummy_plan;
-  fdw_routine->ExplainForeignScan = dummy_explain;
-  fdw_routine->BeginForeignScan = dummy_begin;
-  fdw_routine->IterateForeignScan = dummy_iterate;
-  fdw_routine->ReScanForeignScan = dummy_rescan;
-  fdw_routine->EndForeignScan = dummy_end;
+  fdw_routine->PlanForeignScan = multicorn_plan;
+  fdw_routine->ExplainForeignScan = multicorn_explain;
+  fdw_routine->BeginForeignScan = multicorn_begin;
+  fdw_routine->IterateForeignScan = multicorn_iterate;
+  fdw_routine->ReScanForeignScan = multicorn_rescan;
+  fdw_routine->EndForeignScan = multicorn_end;
 
   PG_RETURN_POINTER(fdw_routine);
 }
 
 Datum
-dummy_fdw_validator(PG_FUNCTION_ARGS)
+multicorn_fdw_validator(PG_FUNCTION_ARGS)
 {
   PG_RETURN_BOOL(true);
 }
 
 static FdwPlan *
-dummy_plan( Oid foreign_table_id,
+multicorn_plan( Oid foreign_table_id,
             PlannerInfo *root,
             RelOptInfo  *base_relation)
 {
@@ -107,37 +104,37 @@ dummy_plan( Oid foreign_table_id,
 }
 
 static void
-dummy_explain(ForeignScanState *node, ExplainState *es)
+multicorn_explain(ForeignScanState *node, ExplainState *es)
 {
   /* TODO: calculate real values */
-  ExplainPropertyText("Foreign dummy", "dummy", es);
+  ExplainPropertyText("Foreign multicorn", "multicorn", es);
 
   if (es->costs)
     {
-      ExplainPropertyLong("Foreign dummy cost", 10.5, es);
+      ExplainPropertyLong("Foreign multicorn cost", 10.5, es);
     }
 }
 
 
 static void
-dummy_begin(ForeignScanState *node, int eflags)
+multicorn_begin(ForeignScanState *node, int eflags)
 {
   /*  TODO: do things if necessary */
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
-  DummyState      *state;
+  MulticornState      *state;
   PyObject *pName, *pModule, *pArgs, *pValue, *pOptions, *pFunc, *pClass, *pObj, *pMethod, *pColumns;
   char *module;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
-  state = (DummyState *) palloc(sizeof(DummyState));
+  state = (MulticornState *) palloc(sizeof(MulticornState));
   state->rownum = 0;
   state->attinmeta = attinmeta;
   node->fdw_state = (void *) state;
 
   Py_Initialize();
   pOptions = PyDict_New();
-  dummy_get_options(RelationGetRelid(node->ss.ss_currentRelation),
+  multicorn_get_options(RelationGetRelid(node->ss.ss_currentRelation),
                     pOptions, &module);
   pName = PyUnicode_FromString("fdw");
   pModule = PyImport_Import(pName);
@@ -168,7 +165,7 @@ dummy_begin(ForeignScanState *node, int eflags)
     Py_DECREF(pFunc);
     pArgs = PyTuple_New(2);
     pColumns = PyList_New(0);
-    dummy_get_attributes_name(node->ss.ss_currentRelation->rd_att, pColumns);
+    multicorn_get_attributes_name(node->ss.ss_currentRelation->rd_att, pColumns);
     PyTuple_SetItem(pArgs, 0, pOptions);
     PyTuple_SetItem(pArgs, 1, pColumns);
     /* Py_DECREF(pName); -> Make the pg crash -> ??*/
@@ -201,10 +198,10 @@ dummy_begin(ForeignScanState *node, int eflags)
 
 
 static TupleTableSlot *
-dummy_iterate(ForeignScanState *node)
+multicorn_iterate(ForeignScanState *node)
 {
   TupleTableSlot  *slot = node->ss.ss_ScanTupleSlot;
-  DummyState      *state = (DummyState *) node->fdw_state;
+  MulticornState      *state = (MulticornState *) node->fdw_state;
   HeapTuple        tuple;
   MemoryContext    oldcontext;
   PyObject        *pValue, *pArgs, *pIterator;
@@ -244,23 +241,23 @@ dummy_iterate(ForeignScanState *node)
 }
 
 static void
-dummy_rescan(ForeignScanState *node)
+multicorn_rescan(ForeignScanState *node)
 {
-  DummyState *state = (DummyState *) node->fdw_state;
+  MulticornState *state = (MulticornState *) node->fdw_state;
   state->rownum = 0;
 }
 
 static void
-dummy_end(ForeignScanState *node)
+multicorn_end(ForeignScanState *node)
 {
-  DummyState *state = (DummyState *) node->fdw_state;
+  MulticornState *state = (MulticornState *) node->fdw_state;
   Py_DECREF(state->pIterator);
   Py_Finalize();
 }
 
 
 static void
-dummy_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
+multicorn_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
 {
   ForeignTable    *f_table;
   ForeignServer   *f_server;
@@ -293,9 +290,10 @@ dummy_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
     ereport(ERROR,
             (errcode(ERRCODE_FDW_OPTION_NAME_NOT_FOUND),
              errmsg("wrapper option not found"),
-             errhint("You must set wrapper option to a ForeignDataWrapper python class, for example fdw.csv.CsvFdw")));
+             errhint("You must set wrapper option to a ForeignDataWrapper python class, for example multicorn.csv.CsvFdw")));
   }
 }
+
 
 static HeapTuple
 pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
@@ -378,7 +376,7 @@ static char* pyobject_to_cstring(PyObject *pyobject)
     return PyString_AsString(pyobject);
 }
 
-static void dummy_get_attributes_name(TupleDesc desc, PyObject * list)
+static void multicorn_get_attributes_name(TupleDesc desc, PyObject * list)
 {
     char * key;
     Py_ssize_t i, natts;

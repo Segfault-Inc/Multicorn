@@ -1,7 +1,9 @@
-Dummy FDW
+Multicorn
 =========
 
-This is a dummy FDW which returns an infinite number of rows containing the
-numeric value 1 in every column.
+Multicorn Python Wrapper for Postgres 9.1+ Foreign Data Wrapper
 
-Based on ldap_fdw by Dickson S. Guedes
+The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in your PostgreSQL
+
+
+Kozea 2011
