@@ -15,6 +15,6 @@ class LdapFdw(ForeignDataWrapper):
         for _, item in self.ldap.search_s(
             self.path, ldap.SCOPE_ONELEVEL,
             "(objectClass=%s)" % self.objectClass):
-           yield [
+            yield [
                item.get(field, [None])[0]
                for field in self.field_list]

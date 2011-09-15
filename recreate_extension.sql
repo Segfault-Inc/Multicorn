@@ -33,9 +33,9 @@ drop extension multicorn cascade;
 create extension multicorn;
 create server multicorn_srv foreign data wrapper multicorn;
 create foreign table fstest (
-       field1 character varying,
-       field2 character varying,
-       field3 character varying
+       field1 character varying collate "fr_FR.utf8",
+       field2 character varying collate "fr_FR.utf8",
+       field3 character varying collate "fr_FR.utf8"   
 ) server multicorn_srv options (
        wrapper 'multicorn.fsfdw.FilesystemFdw',
        root_dir '/tmp/data',

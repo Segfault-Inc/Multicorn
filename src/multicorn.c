@@ -16,6 +16,7 @@
 #include "catalog/pg_foreign_table.h"
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_user_mapping.h"
+#include "catalog/pg_collation.h"
 #include "commands/defrem.h"
 #include "commands/explain.h"
 #include "foreign/fdwapi.h"
@@ -26,6 +27,7 @@
 #include "optimizer/cost.h"
 #include "utils/rel.h"
 #include "utils/builtins.h"
+#include "utils/syscache.h"
 #include <Python.h>
 
 PG_MODULE_MAGIC;
@@ -62,7 +64,7 @@ static void multicorn_get_options(Oid foreign_table_id, PyObject *options_dict, 
 static void multicorn_get_attributes_name(TupleDesc desc, PyObject* list);
 static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
-static char* pyobject_to_cstring(PyObject *pyobject);
+static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute);
 
 const char* DATE_FORMAT_STRING = "%Y-%m-%d";
 
@@ -308,9 +310,8 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
   tup_values = (char **) palloc(sizeof(char *) * natts);
   for(i = 0; i< natts; i++){
     key = NameStr(desc->attrs[i]->attname);
-
     pStr = PyMapping_GetItemString(pydict, key);
-    tup_values[i] = pyobject_to_cstring(pStr);
+    tup_values[i] = pyobject_to_cstring(pStr, desc->attrs[i]);
     Py_DECREF(pStr);
   }
   tuple = BuildTupleFromCStrings(attinmeta, tup_values);
@@ -333,7 +334,7 @@ pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
       tup_values = (char **) palloc(sizeof(char *) * natts);
       for(i = 0; i< natts; i++){
         pStr = PySequence_GetItem(pyseq, i);
-        tup_values[i] = pyobject_to_cstring(pStr);
+        tup_values[i] = pyobject_to_cstring(pStr, desc->attrs[i]);
         Py_DECREF(pStr);
       }
       tuple = BuildTupleFromCStrings(attinmeta, tup_values);
@@ -342,13 +343,16 @@ pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
 }
 
 
-static char* pyobject_to_cstring(PyObject *pyobject)
+static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute)
 {
     PyObject * date_module = PyImport_Import(
                 PyUnicode_FromString("datetime"));
-    Py_ssize_t unicode_size;
     PyObject * date_cls = PyObject_GetAttrString(date_module, "date");
     PyObject *pStr;
+
+
+
+
     if(PyNumber_Check(pyobject)){
         return PyString_AsString(PyObject_Str(pyobject));
     }
@@ -356,9 +360,23 @@ static char* pyobject_to_cstring(PyObject *pyobject)
         return NULL;
     }
     if(PyUnicode_Check(pyobject)){
+        Py_ssize_t unicode_size;
+        HeapTuple	tp;
+        Form_pg_collation colltup;
+        char * encoding_name;
         unicode_size = PyUnicode_GET_SIZE(pyobject);
-        elog(INFO, "Unicode object");
-        return PyString_AsString(PyUnicode_Encode(pyobject, unicode_size, "utf8", NULL));
+        tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));
+        if (!HeapTupleIsValid(tp))
+            elog(ERROR, "cache lookup failed for collation %u", attribute->attcollation);
+        colltup = (Form_pg_collation) GETSTRUCT(tp);
+        ReleaseSysCache(tp);
+        if(colltup->collencoding == -1){    
+            /* No encoding information, do stupid things */
+            return PyString_AsString(pyobject);
+        } else {
+            encoding_name = pg_encoding_to_char(colltup->collencoding);
+            return PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, encoding_name, NULL));
+        }
     }
     if(PyObject_IsInstance(pyobject, date_cls)){
         PyObject * date_format_method = PyObject_GetAttrString(pyobject, "strftime");
