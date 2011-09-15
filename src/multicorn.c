@@ -38,12 +38,12 @@ typedef struct MulticornState
   PyObject *pIterator;
 } MulticornState;
 
-extern Datum multicorn_fdw_handler(PG_FUNCTION_ARGS);
-extern Datum multicorn_fdw_validator(PG_FUNCTION_ARGS);
+extern Datum multicorn_handler(PG_FUNCTION_ARGS);
+extern Datum multicorn_validator(PG_FUNCTION_ARGS);
 
 
-PG_FUNCTION_INFO_V1(multicorn_fdw_handler);
-PG_FUNCTION_INFO_V1(multicorn_fdw_validator);
+PG_FUNCTION_INFO_V1(multicorn_handler);
+PG_FUNCTION_INFO_V1(multicorn_validator);
 
 /*
  * FDW functions declarations
@@ -67,7 +67,7 @@ static char* pyobject_to_cstring(PyObject *pyobject);
 const char* DATE_FORMAT_STRING = "%Y-%m-%d";
 
 Datum
-multicorn_fdw_handler(PG_FUNCTION_ARGS)
+multicorn_handler(PG_FUNCTION_ARGS)
 {
   FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
@@ -82,7 +82,7 @@ multicorn_fdw_handler(PG_FUNCTION_ARGS)
 }
 
 Datum
-multicorn_fdw_validator(PG_FUNCTION_ARGS)
+multicorn_validator(PG_FUNCTION_ARGS)
 {
   PG_RETURN_BOOL(true);
 }
@@ -136,7 +136,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
   pOptions = PyDict_New();
   multicorn_get_options(RelationGetRelid(node->ss.ss_currentRelation),
                     pOptions, &module);
-  pName = PyUnicode_FromString("fdw");
+  pName = PyUnicode_FromString("multicorn");
   pModule = PyImport_Import(pName);
   if (PyErr_Occurred()) {
     PyErr_Print();
