@@ -477,6 +477,9 @@ static PyObject* multicorn_constant_to_python(Const* constant)
         char*  number;
         number = DirectFunctionCall1(numeric_out, DatumGetNumeric(constant->constvalue));
         result = PyFloat_FromString(PyString_FromString(number), NULL);
+    } else {
+      elog(INFO,"Not supported type : %ld",  constant->consttype);
+      result = PyString_FromString("NA");
     }
     return result;
 }
