@@ -13,9 +13,13 @@ class LdapFdw(ForeignDataWrapper):
 
     def execute(self, quals):
         request = "(objectClass=%s)" % self.objectClass
+        print quals
         for qual in quals:
-            request = "(&%s(%s%s%s))" % (
-                request, qual.field_name, qual.operator, qual.value)
+            if qual.operator in ("=", "~~"):
+                val = (qual.value.replace("%", "*")
+                       if qual.operator == "~~" else qual.value)
+                request = "(&%s(%s=%s))" % (
+                    request, qual.field_name, val)
         print request
         for _, item in self.ldap.search_s(
             self.path, ldap.SCOPE_ONELEVEL, request):
