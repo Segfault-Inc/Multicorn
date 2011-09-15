@@ -182,7 +182,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
     if (PyErr_Occurred()) {
       PyErr_Print();
       elog(ERROR, "Error in python, see the logs");
-    } 
+    }
     Py_DECREF(pArgs);
     Py_DECREF(pOptions);
     Py_DECREF(pClass);
@@ -190,7 +190,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
     pArgs = PyTuple_New(1);
     pConds = PyList_New(0);
     multicorn_extract_conditions(node, pConds, pModule);
-    PyTuple_SetItem(pArgs, 0, pColumns);
+    PyTuple_SetItem(pArgs, 0, pConds);
     pMethod = PyObject_GetAttrString(pObj, "execute");
     pValue = PyObject_CallObject(pMethod, pArgs);
     if (PyErr_Occurred()) {
@@ -360,9 +360,6 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
     PyObject * date_cls = PyObject_GetAttrString(date_module, "date");
     PyObject *pStr;
 
-
-
-
     if(PyNumber_Check(pyobject)){
         return PyString_AsString(PyObject_Str(pyobject));
     }
@@ -380,7 +377,7 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
             elog(ERROR, "cache lookup failed for collation %u", attribute->attcollation);
         colltup = (Form_pg_collation) GETSTRUCT(tp);
         ReleaseSysCache(tp);
-        if(colltup->collencoding == -1){    
+        if(colltup->collencoding == -1){
             /* No encoding information, do stupid things */
             return PyString_AsString(pyobject);
         } else {
@@ -462,18 +459,18 @@ static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list
                     PyTuple_SetItem(args, 1, PyString_FromString(NameStr(operator_tup->oprname)));
                     PyTuple_SetItem(args, 2, val);
                     PyList_Append(list, PyObject_CallObject(qual_class, args));
+                    Py_DECREF(args);
                   }
-                    }
                 }
+              }
             }
-        }   
+        }
     }
 }
 
 static PyObject* multicorn_constant_to_python(Const* constant)
 {
     PyObject* result;
-    result = PyString_FromString("grou");
     if(constant->consttype == 25){
         /* Its a string */
         result = PyString_FromString(TextDatumGetCString(constant->constvalue));
@@ -481,7 +478,6 @@ static PyObject* multicorn_constant_to_python(Const* constant)
         /* Its a numeric */
         Datum * number;
         number = DirectFunctionCall2(numeric_to_char, constant->constvalue, CStringGetDatum(""));
-        elog(INFO, TextDatumGetCString(number));
         result = PyString_FromString(number);
     }
     elog(INFO, "TYPE: %d", constant->consttype);

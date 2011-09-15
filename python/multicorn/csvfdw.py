@@ -10,7 +10,6 @@ class CsvFdw(ForeignDataWrapper):
         self.delimiter = fdw_options["delimiter"]
 
     def execute(self, quals):
-        print quals
         with open(self.filename) as fd:
             reader = csv.reader(fd, delimiter=self.delimiter)
             for line in reader:

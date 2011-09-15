@@ -12,9 +12,13 @@ class LdapFdw(ForeignDataWrapper):
         self.field_list = fdw_columns
 
     def execute(self, quals):
+        request = "(objectClass=%s)" % self.objectClass
+        for qual in quals:
+            request = "(&%s(%s%s%s))" % (
+                request, qual.field_name, qual.operator, qual.value)
+        print request
         for _, item in self.ldap.search_s(
-            self.path, ldap.SCOPE_ONELEVEL,
-            "(objectClass=%s)" % self.objectClass):
+            self.path, ldap.SCOPE_ONELEVEL, request):
             yield [
                item.get(field, [None])[0]
                for field in self.field_list]
