@@ -263,10 +263,12 @@ static void
 dummy_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
 {
   ForeignTable    *f_table;
-  ForeignServer    *f_server;
+  ForeignServer   *f_server;
   List            *options;
   ListCell        *lc;
-  bool got_module = false;
+  bool             got_module = false;
+  PyObject        *pStr;
+
   f_table = GetForeignTable(foreign_table_id);
   f_server = GetForeignServer(f_table->serverid);
 
@@ -282,8 +284,9 @@ dummy_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
       *module = defGetString(def);
       got_module = true;
     } else {
-      PyDict_SetItemString(pOptions, def->defname,
-                           PyString_FromString(defGetString(def)));
+      pStr = PyString_FromString(defGetString(def));
+      PyDict_SetItemString(pOptions, def->defname, pStr);
+      Py_DECREF(pStr);
     }
   }
   if (!got_module) {
@@ -297,16 +300,20 @@ dummy_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
 static HeapTuple
 pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
 {
-  HeapTuple tuple;
+  HeapTuple      tuple;
   AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
-  char * key;
-  char **tup_values;
-  int i, natts;
+  PyObject      *pStr;
+  char          *key;
+  char         **tup_values;
+  int            i, natts;
   natts = desc->natts;
   tup_values = (char **) palloc(sizeof(char *) * natts);
   for(i = 0; i< natts; i++){
     key = NameStr(desc->attrs[i]->attname);
-    tup_values[i] = pyobject_to_cstring(PyMapping_GetItemString(pydict, key));
+
+    pStr = PyMapping_GetItemString(pydict, key);
+    tup_values[i] = pyobject_to_cstring(pStr);
+    Py_DECREF(pStr);
   }
   tuple = BuildTupleFromCStrings(attinmeta, tup_values);
   return tuple;
@@ -315,17 +322,21 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
 static HeapTuple
 pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
 {
-  HeapTuple tuple;
+  HeapTuple      tuple;
   AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
-  char **tup_values;
-  Py_ssize_t i, natts;
+  char         **tup_values;
+  Py_ssize_t     i, natts;
+  PyObject      *pStr;
+
   natts = desc->natts;
-  if (PySequence_Size(pyseq) != natts){
+  if (PySequence_Size(pyseq) != natts) {
     elog(ERROR, "The python backend did not return a valid sequence");
-  }else{
+  } else {
       tup_values = (char **) palloc(sizeof(char *) * natts);
       for(i = 0; i< natts; i++){
-        tup_values[i] = pyobject_to_cstring(PySequence_GetItem(pyseq, i));
+        pStr = PySequence_GetItem(pyseq, i);
+        tup_values[i] = pyobject_to_cstring(pStr);
+        Py_DECREF(pStr);
       }
       tuple = BuildTupleFromCStrings(attinmeta, tup_values);
   }
@@ -339,6 +350,7 @@ static char* pyobject_to_cstring(PyObject *pyobject)
                 PyUnicode_FromString("datetime"));
     Py_ssize_t unicode_size;
     PyObject * date_cls = PyObject_GetAttrString(date_module, "date");
+    PyObject *pStr;
     if(PyNumber_Check(pyobject)){
         return PyString_AsString(PyObject_Str(pyobject));
     }
@@ -354,7 +366,11 @@ static char* pyobject_to_cstring(PyObject *pyobject)
         PyObject * date_format_method = PyObject_GetAttrString(pyobject, "strftime");
         PyObject * pArgs = PyTuple_New(1);
         PyObject * formatted_date = PyObject_CallObject(date_format_method, pArgs);
-        PyTuple_SetItem(pArgs, 0, PyString_FromString(DATE_FORMAT_STRING));
+        Py_DECREF(pArgs);
+        Py_DECREF(date_format_method);
+        pStr = PyString_FromString(DATE_FORMAT_STRING);
+        PyTuple_SetItem(pArgs, 0, pStr);
+        Py_DECREF(pStr);
         return PyString_AsString(formatted_date);
     }
     Py_DECREF(date_module);
