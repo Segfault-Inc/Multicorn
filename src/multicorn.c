@@ -481,6 +481,9 @@ static PyObject* multicorn_constant_to_python(Const* constant)
         long number;
         number = DatumGetInt32(constant->constvalue);
         result = PyInt_FromLong(number);
+    } else {
+      elog(INFO,"Not supported type : %ld",  constant->consttype);
+      result = PyString_FromString("NA");
     }
     return result;
 }
