@@ -248,7 +248,7 @@ for operator in BOOL_OPERATORS:
 
 
 @RequestWrapper.register_wrapper(requests.NotRequest)
-class NotOperationWrapper(OperationWrapper):
+class NotWrapper(OperationWrapper):
     def return_type(self, contexts=()):
         return Type(type=bool)
 

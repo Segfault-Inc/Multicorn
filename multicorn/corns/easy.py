@@ -18,6 +18,9 @@ class EasyFilter():
     def attribute(self, value):
         return value
 
+    def not_(self, value):
+        return value
+
 
 def easy(maybe_easy, *args):
     if hasattr(maybe_easy, 'to_easy'):
@@ -39,8 +42,8 @@ FILTER_OPERATORS = {
     'ne': 'not_equal',
     'lt': 'lesser_than',
     'gt': 'greater_than',
-    'le': 'lesser_or_equal',
-    'ge': 'greater_or_equal',
+    'le': 'lesser_or_equal_than',
+    'ge': 'greater_or_equal_than',
     'regex': 'matches',
     'in': 'is_in'}
 
@@ -98,6 +101,13 @@ class AttributeWrapper(wrappers.AttributeWrapper, EasyWrapper):
         return easy_filter.attribute(self.attr_name)
 
 
+@EasyWrapper.register_wrapper(requests.NotRequest)
+class NotWrapper(wrappers.NotWrapper, EasyWrapper):
+
+    def to_easy(self, easy_filter):
+        return easy_filter.not_(easy(self.subject, easy_filter))
+
+
 class EasyCorn(AbstractCorn):
     """
     This is an helper for creating corns with simple optimizations.
@@ -108,16 +118,21 @@ class EasyCorn(AbstractCorn):
         self.properties[name] = type
 
     def execute(self, request):
+        self.log.debug("Executing %s" % request)
         chain = requests.as_chain(request)
+        if len(chain) == 1:
+            return self._all()
         if (self.EasyFilter and
             len(chain) > 1 and
             isinstance(chain[1], requests.FilterRequest)):
             filter, other = cut_on_index(request, 1)
             easy_wrapped_filter = EasyWrapper.from_request(filter)
             try:
+                self.log.debug("Filtering %s" % filter)
                 results = self.filter(easy_wrapped_filter
-                                          .to_easy(self.EasyFilter()))
+                                      .to_easy(self.EasyFilter()))
 
+                self.log.debug("Got results %s" % results)
                 return self.RequestWrapper.from_request(
                         other).execute((results,))
 

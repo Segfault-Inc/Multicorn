@@ -47,11 +47,13 @@ else:
             PATH, ldap.SCOPE_ONELEVEL, "objectClass=*", ["dn"])
 
         for item in all:
+            from logging import getLogger
+            getLogger("multicorn.ldap").warning("Deleting %s" % item[0])
             corn.ldap.delete_s(item[0])
 
-    data = lambda: tuple([{'cn': 'fb', 'sn': 'foo', 'l': 'bar'},
-                          {'cn': 'bb', 'sn': 'baz', 'l': 'bar'},
-                          {'cn': 'fbz', 'sn': 'foo', 'l': 'baz'}])
+    data = lambda: tuple([{'cn': '1', 'sn': '4', 'l': 'bar'},
+                          {'cn': '2', 'sn': '2', 'l': 'bar'},
+                          {'cn': '3', 'sn': '0', 'l': 'baz'}])
     emptysuite, fullsuite = make_test_suite(make_corn, 'ldap', data=data,
                                             teardown=teardown)
 
@@ -78,10 +80,9 @@ def test_optimization_ldap():
 
     item.delete()
     assert Corn.all.len()() == 0
-    Corn.create({'cn': ('foo',), 'sn': ('bar',), 'l': ('5', '_')}).save()
+    Corn.create({'cn': ('foo',), 'sn': ('bar',), 'l': ('10', '_')}).save()
     Corn.create({'cn': 'bar', 'sn': 'bat', 'l': ('5', '_', "!")}).save()
     Corn.create({'cn': ('baz',), 'sn': 'bat', 'l': ('6',)}).save()
-
     assert Corn.all.len()() == 3
 
     class NotOptimizedError(Exception):
@@ -91,18 +92,26 @@ def test_optimization_ldap():
         raise NotOptimizedError
 
     Corn._all = error
+    items = list(Corn.all.filter(c.cn == 'foo')())
+    assert len(items) == 1
 
-    items = Corn.all.filter(c.cn == 'foo').execute()
+    items = Corn.all.filter(c.cn != 'bar')()
+    assert len(list(items)) == 2
+
+    items = Corn.all.filter(c.l == '5')()
     assert len(list(items)) == 1
 
-    # items = Corn.all.filter(c.cn != 'bar')()
-    # assert len(list(items)) == 2
+    items = Corn.all.filter(c.l >= '1')()
+    assert len(list(items)) == 3
 
-    # items == Corn.all.filter(c.cn == 'nf')()
-    # assert len(list(items)) == 0
+    items = Corn.all.filter(c.l <= "7")()
+    assert len(list(items)) == 2
 
-    # items = Corn.all.filter(c.sn == 'bat')()
-    # assert len(list(items)) == 2
+    items = Corn.all.filter(c.l <= "6")()
+    assert len(list(items)) == 2
 
-    # items = Corn.all.filter(c.sn != 'bar')()
-    # assert len(list(items)) == 2
+    items = Corn.all.filter(c.l < "6")()
+    assert len(list(items)) == 1
+
+    items = Corn.all.filter(c.sn != 'bar')()
+    assert len(list(items)) == 2

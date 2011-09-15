@@ -31,6 +31,34 @@ class LdapFilter(EasyFilter):
     def equal(self, first_operand, second_operand):
         return "(%s=%s)" % (first_operand, second_operand)
 
+    def lesser_or_equal_than(self, first_operand, second_operand):
+        return "(%s<=%s)" % (first_operand, second_operand)
+
+    def greater_or_equal_than(self, first_operand, second_operand):
+        return "(%s>=%s)" % (first_operand, second_operand)
+
+    def and_(self, first_operand, second_operand):
+        return "(&%s%s)" % (first_operand, second_operand)
+
+    def or_(self, first_operand, second_operand):
+        return "(|%s%s)" % (first_operand, second_operand)
+
+    def not_(self, value):
+        return "(!%s)" % value
+
+    def not_equal(self, first_operand, second_operand):
+        return self.not_(self.equal(first_operand, second_operand))
+
+    def lesser_than(self, first_operand, second_operand):
+        return self.and_(
+            self.lesser_or_equal_than(first_operand, second_operand),
+            self.not_equal(first_operand, second_operand))
+
+    def greater_than(self, first_operand, second_operand):
+        return self.and_(
+            self.greater_or_equal_than(first_operand, second_operand),
+            self.not_equal(first_operand, second_operand))
+
 
 class Ldap(EasyCorn):
 
@@ -78,6 +106,7 @@ class Ldap(EasyCorn):
         return self.filter("(cn=*)")
 
     def filter(self, request):
+        self.log.info(request)
         for _, item in self.ldap.search_s(
             self.path, ldap.SCOPE_ONELEVEL,
             "(&(objectClass=%s)%s)" % (self.objectClass, request),
