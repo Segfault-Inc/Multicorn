@@ -436,10 +436,8 @@ static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list
               HeapTuple tp;
               Form_pg_operator  operator_tup;
               if (list_length(op->args) == 2) {
-                elog(INFO, "With 2 args");
                 left = list_nth(op->args, 0);
                 right = list_nth(op->args, 1);
-                elog(INFO, nodeToString(right));
                 if (IsA(right, RelabelType)){
                     right = ((RelabelType *) right)->arg;
                 }
@@ -479,12 +477,10 @@ static PyObject* multicorn_constant_to_python(Const* constant)
         result = PyString_FromString(TextDatumGetCString(constant->constvalue));
     } else if (constant->consttype == 1700) {
         /* Its a numeric */
-        Datum * number;
-        number = DirectFunctionCall2(numeric_to_char, constant->constvalue, CStringGetDatum(""));
-        elog(INFO, TextDatumGetCString(number));
+        char*  number;
+        number = DirectFunctionCall1(numeric_out, DatumGetNumeric(constant->constvalue));
         result = PyString_FromString(number);
     }
-    elog(INFO, "TYPE: %d", constant->consttype);
     return result;
 }
 

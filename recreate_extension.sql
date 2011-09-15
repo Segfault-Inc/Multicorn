@@ -11,6 +11,7 @@ create foreign table csvtest (
        format 'csv',
        delimiter ',');
 select * from csvtest;
+select * from csvtest where field1 = 1;
 
 drop extension multicorn cascade;
 create extension multicorn;
