@@ -1,5 +1,6 @@
 *.sw?
 tags
 *.so
-sql/dummy_fdw--0.0.1.sql
 *egg-info
+sql/multicorn--0.0.2.sql
+
