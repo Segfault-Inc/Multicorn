@@ -21,7 +21,7 @@ create foreign table ldaptest (
        cn character varying,
        sn character varying,
        uid character varying,
-       uidNumber int,
+       "uidNumber" int,
        o character varying,
        mail character varying
 ) server multicorn_srv options (
