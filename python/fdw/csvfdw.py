@@ -8,7 +8,6 @@ class CsvFdw(ForeignDataWrapper):
         super(CsvFdw, self).__init__(fdw_options)
         self.filename = fdw_options["filename"]
         self.delimiter = fdw_options["delimiter"]
-        print fdw_columns
 
     def execute(self):
         with open(self.filename) as fd:

@@ -62,7 +62,7 @@ static void dummy_end(ForeignScanState *node);
   Helpers
 */
 static void dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
-static PyObject * dummy_get_attributes_name(TupleDesc desc);
+static void dummy_get_attributes_name(TupleDesc desc, PyObject* list);
 static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
 static HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
 static char* pyobject_to_cstring(PyObject *pyobject);
@@ -126,7 +126,7 @@ dummy_begin(ForeignScanState *node, int eflags)
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
   DummyState      *state;
-  PyObject *pName, *pModule, *pArgs, *pValue, *options_dict, *pFunc, *pClass, *pObj, *pMethod, *pColumns;
+  PyObject *pName, *pModule, *pArgs, *pValue, *pOptions, *pFunc, *pClass, *pObj, *pMethod, *pColumns;
   char *module;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
@@ -136,9 +136,9 @@ dummy_begin(ForeignScanState *node, int eflags)
   node->fdw_state = (void *) state;
 
   Py_Initialize();
-  options_dict = PyDict_New();
+  pOptions = PyDict_New();
   dummy_get_options(RelationGetRelid(node->ss.ss_currentRelation),
-                    options_dict, &module);
+                    pOptions, &module);
   pName = PyUnicode_FromString("fdw");
   pModule = PyImport_Import(pName);
   if (PyErr_Occurred()) {
@@ -147,51 +147,53 @@ dummy_begin(ForeignScanState *node, int eflags)
   Py_DECREF(pName);
 
   if (pModule != NULL) {
-    pArgs = PyTuple_New(1);
-    PyTuple_SetItem(pArgs, 0, PyString_FromString(module));
     pFunc = PyObject_GetAttrString(pModule, "getClass");
     if (PyErr_Occurred()) {
       PyErr_Print();
+      elog(ERROR, "Error in python, see the logs");
     }
+    Py_DECREF(pModule);
+
+    pArgs = PyTuple_New(1);
+    pName = PyString_FromString(module);
+    PyTuple_SetItem(pArgs, 0, pName);
+
     pClass = PyObject_CallObject(pFunc, pArgs);
     if (PyErr_Occurred()) {
       PyErr_Print();
+      elog(ERROR, "Error in python, see the logs");
     }
-    pClass = PyObject_CallObject(pFunc, pArgs);
 
     Py_DECREF(pArgs);
     Py_DECREF(pFunc);
     pArgs = PyTuple_New(2);
-    pColumns = dummy_get_attributes_name(node->ss.ss_currentRelation->rd_att); 
-    PyTuple_SetItem(pArgs, 0, options_dict);
+    pColumns = PyList_New(0);
+    dummy_get_attributes_name(node->ss.ss_currentRelation->rd_att, pColumns);
+    PyTuple_SetItem(pArgs, 0, pOptions);
     PyTuple_SetItem(pArgs, 1, pColumns);
+    /* Py_DECREF(pName); -> Make the pg crash -> ??*/
     pObj = PyObject_CallObject(pClass, pArgs);
     if (PyErr_Occurred()) {
       PyErr_Print();
+      elog(ERROR, "Error in python, see the logs");
     }
     Py_DECREF(pArgs);
+    Py_DECREF(pOptions);
+    Py_DECREF(pClass);
+
     pArgs = PyTuple_New(0);
-    /* PyTuple_SetItem(pArgs, 0, pObj); */
     pMethod = PyObject_GetAttrString(pObj, "execute");
     pValue = PyObject_CallObject(pMethod, pArgs);
     if (PyErr_Occurred()) {
-        /* Stop iteration */
         PyErr_Print();
         elog(ERROR, "Error in python, see the logs");
-    }else{
-        state->pIterator = PyObject_GetIter(pValue);
-
-        Py_DECREF(pValue);
-        Py_DECREF(pArgs);
-        Py_DECREF(pModule);
-        /* if (!(state->pFunc && PyCallable_Check(state->pFunc))) { */
-          /* if (PyErr_Occurred()) */
-            /* PyErr_Print(); */
-          /* elog(ERROR, "Cannot find function 'get'"); */
-        /* } */
     }
-  }
-  else {
+    state->pIterator = PyObject_GetIter(pValue);
+    Py_DECREF(pValue);
+    Py_DECREF(pObj);
+    Py_DECREF(pMethod);
+    Py_DECREF(pArgs);
+  } else {
     PyErr_Print();
     elog(ERROR, "Failed to load module");
   }
@@ -201,13 +203,11 @@ dummy_begin(ForeignScanState *node, int eflags)
 static TupleTableSlot *
 dummy_iterate(ForeignScanState *node)
 {
-  TupleTableSlot            *slot = node->ss.ss_ScanTupleSlot;
+  TupleTableSlot  *slot = node->ss.ss_ScanTupleSlot;
   DummyState      *state = (DummyState *) node->fdw_state;
-
   HeapTuple        tuple;
-
-  MemoryContext        oldcontext;
-  PyObject *pValue, *pArgs, *pIterator;
+  MemoryContext    oldcontext;
+  PyObject        *pValue, *pArgs, *pIterator;
 
   ExecClearTuple(slot);
 
@@ -237,8 +237,8 @@ dummy_iterate(ForeignScanState *node)
   }else{
     elog(ERROR, "Cannot transform anything else than mappings and sequences to rows");
   }
-  ExecStoreTuple(tuple, slot, InvalidBuffer, false);
   Py_DECREF(pValue);
+  ExecStoreTuple(tuple, slot, InvalidBuffer, false);
   state->rownum++;
   return slot;
 }
@@ -260,7 +260,7 @@ dummy_end(ForeignScanState *node)
 
 
 static void
-dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module)
+dummy_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
 {
   ForeignTable    *f_table;
   ForeignServer    *f_server;
@@ -282,7 +282,7 @@ dummy_get_options(Oid foreign_table_id, PyObject *options_dict, char **module)
       *module = defGetString(def);
       got_module = true;
     } else {
-      PyDict_SetItemString(options_dict, def->defname,
+      PyDict_SetItemString(pOptions, def->defname,
                            PyString_FromString(defGetString(def)));
     }
   }
@@ -337,9 +337,18 @@ static char* pyobject_to_cstring(PyObject *pyobject)
 {
     PyObject * date_module = PyImport_Import(
                 PyUnicode_FromString("datetime"));
+    Py_ssize_t unicode_size;
     PyObject * date_cls = PyObject_GetAttrString(date_module, "date");
     if(PyNumber_Check(pyobject)){
         return PyString_AsString(PyObject_Str(pyobject));
+    }
+    if(pyobject == Py_None){
+        return NULL;
+    }
+    if(PyUnicode_Check(pyobject)){
+        unicode_size = PyUnicode_GET_SIZE(pyobject);
+        elog(INFO, "Unicode object");
+        return PyString_AsString(PyUnicode_Encode(pyobject, unicode_size, "utf8", NULL));
     }
     if(PyObject_IsInstance(pyobject, date_cls)){
         PyObject * date_format_method = PyObject_GetAttrString(pyobject, "strftime");
@@ -353,15 +362,13 @@ static char* pyobject_to_cstring(PyObject *pyobject)
     return PyString_AsString(pyobject);
 }
 
-static PyObject * dummy_get_attributes_name(TupleDesc desc)
+static void dummy_get_attributes_name(TupleDesc desc, PyObject * list)
 {
     char * key;
     Py_ssize_t i, natts;
     natts = desc->natts;
-    PyObject * list = PyList_New(natts);
     for(i = 0; i< natts; i++){
         key = NameStr(desc->attrs[i]->attname);
         PyList_Append(list, PyString_FromString(key));
     }
-    return list;
 }
