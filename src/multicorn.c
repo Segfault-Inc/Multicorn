@@ -71,7 +71,7 @@ static void multicorn_end(ForeignScanState *node);
 static void multicorn_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
 static void multicorn_get_attributes_name(TupleDesc desc, PyObject* list);
 static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list, PyObject* multicorn_module);
-static PyObject* multicorn_constant_to_python(Const* constant);
+static PyObject* multicorn_constant_to_python(Const* constant, Form_pg_attribute attribute);
 
 
 static HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
@@ -347,6 +347,25 @@ pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
   return tuple;
 }
 
+static char* get_encoding_from_attribute(Form_pg_attribute attribute)
+{
+    HeapTuple          tp;
+    Form_pg_collation  colltup;
+    char              *encoding_name;
+    tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));
+    if (!HeapTupleIsValid(tp))
+        elog(ERROR, "cache lookup failed for collation %u", attribute->attcollation);
+    colltup = (Form_pg_collation) GETSTRUCT(tp);
+    ReleaseSysCache(tp);
+    if(colltup->collencoding == -1){
+        /* No encoding information, do stupid things */
+        return "ascii";
+    } else {
+        encoding_name = pg_encoding_to_char(colltup->collencoding);
+        return encoding_name;
+    }
+
+}
 
 static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute)
 {
@@ -362,22 +381,9 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
     }
     if(PyUnicode_Check(pyobject)){
         Py_ssize_t         unicode_size;
-        HeapTuple          tp;
-        Form_pg_collation  colltup;
-        char              *encoding_name;
         unicode_size = PyUnicode_GET_SIZE(pyobject);
-        tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));
-        if (!HeapTupleIsValid(tp))
-            elog(ERROR, "cache lookup failed for collation %u", attribute->attcollation);
-        colltup = (Form_pg_collation) GETSTRUCT(tp);
-        ReleaseSysCache(tp);
-        if(colltup->collencoding == -1){
-            /* No encoding information, do stupid things */
-            return PyString_AsString(pyobject);
-        } else {
-            encoding_name = pg_encoding_to_char(colltup->collencoding);
-            return PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, encoding_name, NULL));
-        }
+        return PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
+                    get_encoding_from_attribute(attribute), NULL));
     }
     if(PyObject_IsInstance(pyobject, date_cls)){
         PyObject *date_format_method = PyObject_GetAttrString(pyobject, "strftime");
@@ -445,7 +451,7 @@ static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list
                   operator_tup = (Form_pg_operator) GETSTRUCT(tp);
                   ReleaseSysCache(tp);
                   if (IsA(right, Const)) {
-                    val = multicorn_constant_to_python((Const *) right);
+                    val = multicorn_constant_to_python((Const *) right, tupdesc->attrs[varattno -1]);
                     args = PyTuple_New(3);
                     PyTuple_SetItem(args, 0, PyString_FromString(key));
                     PyTuple_SetItem(args, 1, PyString_FromString(NameStr(operator_tup->oprname)));
@@ -460,12 +466,18 @@ static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list
     }
 }
 
-static PyObject* multicorn_constant_to_python(Const* constant)
+static PyObject* multicorn_constant_to_python(Const* constant, Form_pg_attribute attribute)
 {
     PyObject* result;
     if(constant->consttype == 25){
         /* Its a string */
-        result = PyString_FromString(TextDatumGetCString(constant->constvalue));
+        char * encoding_name;
+        char * value;
+        Py_ssize_t size;
+        value = TextDatumGetCString(constant->constvalue);
+        size = strlen(value);
+        encoding_name = get_encoding_from_attribute(attribute);
+        result = PyUnicode_Decode(value, size, encoding_name, NULL);
     } else if (constant->consttype == 1700) {
         /* Its a numeric */
         char*  number;
