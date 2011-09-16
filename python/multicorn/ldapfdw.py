@@ -5,7 +5,7 @@ import ldap
 class LdapFdw(ForeignDataWrapper):
 
     def __init__(self, fdw_options, fdw_columns):
-        super(LdapFdw, self).__init__(fdw_options)
+        super(LdapFdw, self).__init__(fdw_options, fdw_columns)
         self.ldap = ldap.open(fdw_options["address"])
         self.path = fdw_options["path"]
         self.objectClass = fdw_options["objectclass"]

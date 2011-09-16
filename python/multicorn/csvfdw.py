@@ -5,7 +5,7 @@ import csv
 class CsvFdw(ForeignDataWrapper):
 
     def __init__(self, fdw_options, fdw_columns):
-        super(CsvFdw, self).__init__(fdw_options)
+        super(CsvFdw, self).__init__(fdw_options, fdw_columns)
         self.filename = fdw_options["filename"]
         self.delimiter = fdw_options["delimiter"]
 
