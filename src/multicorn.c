@@ -32,6 +32,11 @@
 #include "utils/syscache.h"
 #include "utils/formatting.h"
 #include <Python.h>
+#define PYERR()\
+if (PyErr_Occurred()) {\
+  PyErr_Print();\
+  elog(ERROR, "Error in python, see the logs");\
+ }
 
 PG_MODULE_MAGIC;
 
@@ -131,9 +136,10 @@ multicorn_begin(ForeignScanState *node, int eflags)
   /*  TODO: do things if necessary */
   AttInMetadata  *attinmeta;
   Relation        rel = node->ss.ss_currentRelation;
-  MulticornState      *state;
-  PyObject *pName, *pModule, *pArgs, *pValue, *pOptions, *pFunc, *pClass, *pObj, *pMethod, *pColumns, *pConds;
-  char *module;
+  MulticornState *state;
+  PyObject       *pName, *pModule, *pArgs, *pValue, *pOptions,
+                 *pFunc, *pClass, *pObj, *pMethod, *pColumns, *pConds;
+  char           *module;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
   state = (MulticornState *) palloc(sizeof(MulticornState));
@@ -147,17 +153,12 @@ multicorn_begin(ForeignScanState *node, int eflags)
                     pOptions, &module);
   pName = PyUnicode_FromString("multicorn");
   pModule = PyImport_Import(pName);
-  if (PyErr_Occurred()) {
-    PyErr_Print();
-  }
+  PYERR();
   Py_DECREF(pName);
 
   if (pModule != NULL) {
     pFunc = PyObject_GetAttrString(pModule, "getClass");
-    if (PyErr_Occurred()) {
-      PyErr_Print();
-      elog(ERROR, "Error in python, see the logs");
-    }
+    PYERR();
     Py_DECREF(pModule);
 
     pArgs = PyTuple_New(1);
@@ -165,10 +166,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
     PyTuple_SetItem(pArgs, 0, pName);
 
     pClass = PyObject_CallObject(pFunc, pArgs);
-    if (PyErr_Occurred()) {
-      PyErr_Print();
-      elog(ERROR, "Error in python, see the logs");
-    }
+    PYERR();
 
     Py_DECREF(pArgs);
     Py_DECREF(pFunc);
@@ -179,10 +177,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
     PyTuple_SetItem(pArgs, 1, pColumns);
     /* Py_DECREF(pName); -> Make the pg crash -> ??*/
     pObj = PyObject_CallObject(pClass, pArgs);
-    if (PyErr_Occurred()) {
-      PyErr_Print();
-      elog(ERROR, "Error in python, see the logs");
-    }
+    PYERR();
     Py_DECREF(pArgs);
     Py_DECREF(pOptions);
     Py_DECREF(pClass);
@@ -193,10 +188,8 @@ multicorn_begin(ForeignScanState *node, int eflags)
     PyTuple_SetItem(pArgs, 0, pConds);
     pMethod = PyObject_GetAttrString(pObj, "execute");
     pValue = PyObject_CallObject(pMethod, pArgs);
-    if (PyErr_Occurred()) {
-        PyErr_Print();
-        elog(ERROR, "Error in python, see the logs");
-    }
+    PYERR();
+
     state->pIterator = PyObject_GetIter(pValue);
     Py_DECREF(pValue);
     Py_DECREF(pObj);
@@ -213,7 +206,7 @@ static TupleTableSlot *
 multicorn_iterate(ForeignScanState *node)
 {
   TupleTableSlot  *slot = node->ss.ss_ScanTupleSlot;
-  MulticornState      *state = (MulticornState *) node->fdw_state;
+  MulticornState  *state = (MulticornState *) node->fdw_state;
   HeapTuple        tuple;
   MemoryContext    oldcontext;
   PyObject        *pValue, *pArgs, *pIterator;
@@ -224,8 +217,10 @@ multicorn_iterate(ForeignScanState *node)
   pIterator = state->pIterator;
   Py_DECREF(pArgs);
   if (pIterator == NULL) {
-      /* propagate error */
+    PyErr_Print();
+    return slot;
   }
+
   pValue = PyIter_Next(pIterator);
   if (PyErr_Occurred()) {
     /* Stop iteration */
@@ -355,9 +350,8 @@ pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
 
 static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute)
 {
-    PyObject * date_module = PyImport_Import(
-                PyUnicode_FromString("datetime"));
-    PyObject * date_cls = PyObject_GetAttrString(date_module, "date");
+    PyObject *date_module = PyImport_Import(PyUnicode_FromString("datetime"));
+    PyObject *date_cls = PyObject_GetAttrString(date_module, "date");
     PyObject *pStr;
 
     if(PyNumber_Check(pyobject)){
@@ -367,10 +361,10 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
         return NULL;
     }
     if(PyUnicode_Check(pyobject)){
-        Py_ssize_t unicode_size;
-        HeapTuple	tp;
-        Form_pg_collation colltup;
-        char * encoding_name;
+        Py_ssize_t         unicode_size;
+        HeapTuple          tp;
+        Form_pg_collation  colltup;
+        char              *encoding_name;
         unicode_size = PyUnicode_GET_SIZE(pyobject);
         tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));
         if (!HeapTupleIsValid(tp))
@@ -386,9 +380,9 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
         }
     }
     if(PyObject_IsInstance(pyobject, date_cls)){
-        PyObject * date_format_method = PyObject_GetAttrString(pyobject, "strftime");
-        PyObject * pArgs = PyTuple_New(1);
-        PyObject * formatted_date = PyObject_CallObject(date_format_method, pArgs);
+        PyObject *date_format_method = PyObject_GetAttrString(pyobject, "strftime");
+        PyObject *pArgs = PyTuple_New(1);
+        PyObject *formatted_date = PyObject_CallObject(date_format_method, pArgs);
         Py_DECREF(pArgs);
         Py_DECREF(date_format_method);
         pStr = PyString_FromString(DATE_FORMAT_STRING);
@@ -403,8 +397,8 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
 
 static void multicorn_get_attributes_name(TupleDesc desc, PyObject * list)
 {
-    char * key;
-    Py_ssize_t i, natts;
+    char       *key;
+    Py_ssize_t  i, natts;
     natts = desc->natts;
     for(i = 0; i< natts; i++){
         key = NameStr(desc->attrs[i]->attname);
@@ -417,21 +411,21 @@ static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list
 {
     if (node->ss.ps.plan->qual) {
         ListCell   *lc;
-        PyObject *qual_class = PyObject_GetAttrString(multicorn_module, "Qual");
-        PyObject *args;
-        List  *quals = list_copy(node->ss.ps.qual);
+        PyObject   *qual_class = PyObject_GetAttrString(multicorn_module, "Qual");
+        PyObject   *args;
+        List       *quals = list_copy(node->ss.ps.qual);
         TupleDesc  tupdesc = node->ss.ss_currentRelation->rd_att;
         foreach (lc, quals) {
             ExprState   *xpstate = lfirst(lc);
             Node        *nodexp = (Node *) xpstate->expr;
             if (nodexp != NULL && IsA(nodexp, OpExpr)) {
-              OpExpr   *op = (OpExpr *) nodexp;
-              Node     *left, *right;
-              Index    varattno;
-              char     *key;
-              PyObject *val;
-              HeapTuple tp;
-              Form_pg_operator  operator_tup;
+              OpExpr          *op = (OpExpr *) nodexp;
+              Node            *left, *right;
+              Index            varattno;
+              char            *key;
+              PyObject        *val;
+              HeapTuple        tp;
+              Form_pg_operator operator_tup;
               if (list_length(op->args) == 2) {
                 left = list_nth(op->args, 0);
                 right = list_nth(op->args, 1);
