@@ -5,7 +5,7 @@ from sqlite3 import connect
 class SqliteFdw(ForeignDataWrapper):
 
     def __init__(self, fdw_options, fdw_columns):
-        super(SqliteFdw, self).__init__(fdw_options)
+        super(SqliteFdw, self).__init__(fdw_options, fdw_columns)
         self.connection = connect(fdw_options["filename"])
         self.tablename = fdw_options["tablename"]
 

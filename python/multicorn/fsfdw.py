@@ -5,7 +5,7 @@ from structuredfs import StructuredDirectory
 class FilesystemFdw(ForeignDataWrapper):
 
     def __init__(self, options, columns):
-        super(FilesystemFdw, self).__init__(options)
+        super(FilesystemFdw, self).__init__(options, columns)
         root_dir = options.get('root_dir')
         pattern = options.get('pattern')
         self.content_property = options.get('content_property', None)

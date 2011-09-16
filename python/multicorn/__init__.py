@@ -14,7 +14,7 @@ class Qual(object):
 
 class ForeignDataWrapper(object):
 
-    def __init__(self, fdw_options):
+    def __init__(self, fdw_options, fdw_columns):
         print "Initializing fdw"
 
     def execute(self, quals):

@@ -64,3 +64,16 @@ select * from sqlitetest;
 select * from sqlitetest where field1 = 'test';
 
 
+drop extension multicorn cascade;
+create extension multicorn;
+create server multicorn_srv foreign data wrapper multicorn;
+create foreign table proctest (
+       process_name character varying,
+       pid character varying
+) server multicorn_srv options (
+       wrapper 'multicorn.processfdw.ProcessFdw');
+select * from proctest;
+
+
+
+
