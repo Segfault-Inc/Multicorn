@@ -382,8 +382,12 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
     if(PyUnicode_Check(pyobject)){
         Py_ssize_t         unicode_size;
         unicode_size = PyUnicode_GET_SIZE(pyobject);
+        char * encoding_name = get_encoding_from_attribute(attribute);
         return PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
-                    get_encoding_from_attribute(attribute), NULL));
+                    encoding_name, NULL));
+    }
+    if(PyString_Check(pyobject)){
+        return PyString_AsString(pyobject);
     }
     if(PyObject_IsInstance(pyobject, date_cls)){
         PyObject *date_format_method = PyObject_GetAttrString(pyobject, "strftime");
