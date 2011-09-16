@@ -62,6 +62,27 @@ create foreign table proctest (
        wrapper 'multicorn.processfdw.ProcessFdw');
 select * from proctest;
 
+create foreign table statetest (
+       state integer
+) server multicorn_srv options (
+       wrapper 'multicorn.statefdw.StateFdw');
+select state from statetest;
+select state from statetest;
+select state from statetest;
+select state from statetest;
+
+create foreign table rsstest (
+    title character varying,
+    link character varying,
+    "pubDate" timestamp
+) server multicorn_srv options (
+       wrapper 'multicorn.rssfdw.RssFdw',
+       url 'http://www.reddit.com/.rss'
+);
+
+select * from rsstest;
+
+
 create foreign table googletest (
        url character varying,
        title character varying,
