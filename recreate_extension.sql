@@ -1,6 +1,8 @@
 drop extension multicorn cascade;
 create extension multicorn;
 create server multicorn_srv foreign data wrapper multicorn;
+
+
 create foreign table csvtest (
        field1 numeric,
        field2 character varying,
@@ -14,9 +16,6 @@ select * from csvtest;
 select * from csvtest where field1 = 1;
 select * from csvtest where field2 = 'test';
 
-drop extension multicorn cascade;
-create extension multicorn;
-create server multicorn_srv foreign data wrapper multicorn;
 create foreign table ldaptest (
        cn character varying,
        sn character varying,
@@ -34,9 +33,6 @@ select * from ldaptest where uid = 'gayoub';
 select * from ldaptest where "uidNumber" = 1022;
 select * from ldaptest where cn like '%y%';
 
-drop extension multicorn cascade;
-create extension multicorn;
-create server multicorn_srv foreign data wrapper multicorn;
 create foreign table fstest (
        field1 character varying collate "fr_FR.utf8",
        field2 character varying collate "fr_FR.utf8",
@@ -48,10 +44,6 @@ create foreign table fstest (
 select * from fstest;
 select * from fstest where field2 = 'test';
 
-
-drop extension multicorn cascade;
-create extension multicorn;
-create server multicorn_srv foreign data wrapper multicorn;
 create foreign table sqlitetest (
        field1 character varying,
        field2 int,
@@ -63,10 +55,6 @@ create foreign table sqlitetest (
 select * from sqlitetest;
 select * from sqlitetest where field1 = 'test';
 
-
-drop extension multicorn cascade;
-create extension multicorn;
-create server multicorn_srv foreign data wrapper multicorn;
 create foreign table proctest (
        process_name character varying,
        pid character varying
@@ -74,10 +62,6 @@ create foreign table proctest (
        wrapper 'multicorn.processfdw.ProcessFdw');
 select * from proctest;
 
-
-drop extension multicorn cascade;
-create extension multicorn;
-create server multicorn_srv foreign data wrapper multicorn;
 create foreign table gittest (
        author_name character varying,
        author_email character varying,
