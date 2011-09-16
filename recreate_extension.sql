@@ -75,5 +75,20 @@ create foreign table proctest (
 select * from proctest;
 
 
+drop extension multicorn cascade;
+create extension multicorn;
+create server multicorn_srv foreign data wrapper multicorn;
+create foreign table gittest (
+       author_name character varying,
+       author_email character varying,
+       message character varying,
+       "date" date,
+       hash character varying
+) server multicorn_srv options (
+       wrapper 'multicorn.gitfdw.GitFdw',
+       "path" '/tmp/multicorn' );
+select * from gittest;
+
+
 
 
