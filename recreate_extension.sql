@@ -58,21 +58,14 @@ select * from sqlitetest where field1 = 'test';
 create foreign table proctest (
        process_name character varying,
        pid character varying
-) server multicorn_srv options (
+ ) server multicorn_srv options (
        wrapper 'multicorn.processfdw.ProcessFdw');
 select * from proctest;
 
-create foreign table gittest (
-       author_name character varying,
-       author_email character varying,
-       message character varying,
-       "date" date,
-       hash character varying
+create foreign table googletest (
+       url character varying,
+       title character varying,
+       "search" character varying
 ) server multicorn_srv options (
-       wrapper 'multicorn.gitfdw.GitFdw',
-       "path" '/tmp/multicorn' );
-select * from gittest;
-
-
-
-
+       wrapper 'multicorn.googlefdw.GoogleFdw');
+select * from googletest where "search" = 'multicorn';
