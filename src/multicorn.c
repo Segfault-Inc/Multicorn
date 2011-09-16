@@ -80,6 +80,8 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
 
 const char* DATE_FORMAT_STRING = "%Y-%m-%d";
 
+PyObject* TABLES_DICT;
+
 Datum
 multicorn_handler(PG_FUNCTION_ARGS)
 {
@@ -138,67 +140,77 @@ multicorn_begin(ForeignScanState *node, int eflags)
   Relation        rel = node->ss.ss_currentRelation;
   MulticornState *state;
   PyObject       *pName, *pModule, *pArgs, *pValue, *pOptions,
-                 *pFunc, *pClass, *pObj, *pMethod, *pColumns, *pConds;
+                 *pFunc, *pClass, *pObj, *pMethod, *pColumns, *pConds,
+                 *pTableId;
   char           *module;
+  Oid            tablerelid;
 
   attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
   state = (MulticornState *) palloc(sizeof(MulticornState));
   state->rownum = 0;
   state->attinmeta = attinmeta;
   node->fdw_state = (void *) state;
-
-  Py_Initialize();
-  pOptions = PyDict_New();
-  multicorn_get_options(RelationGetRelid(node->ss.ss_currentRelation),
-                    pOptions, &module);
+  if (TABLES_DICT == NULL){
+    /* TODO: managed locks and things */
+    Py_Initialize();
+    TABLES_DICT = PyDict_New();
+  }
+  tablerelid = RelationGetRelid(node->ss.ss_currentRelation);
+  pTableId = PyInt_FromSsize_t(tablerelid);
   pName = PyUnicode_FromString("multicorn");
   pModule = PyImport_Import(pName);
   PYERR();
   Py_DECREF(pName);
 
-  if (pModule != NULL) {
-    pFunc = PyObject_GetAttrString(pModule, "getClass");
-    PYERR();
-    Py_DECREF(pModule);
-
-    pArgs = PyTuple_New(1);
-    pName = PyString_FromString(module);
-    PyTuple_SetItem(pArgs, 0, pName);
-
-    pClass = PyObject_CallObject(pFunc, pArgs);
-    PYERR();
-
-    Py_DECREF(pArgs);
-    Py_DECREF(pFunc);
-    pArgs = PyTuple_New(2);
-    pColumns = PyList_New(0);
-    multicorn_get_attributes_name(node->ss.ss_currentRelation->rd_att, pColumns);
-    PyTuple_SetItem(pArgs, 0, pOptions);
-    PyTuple_SetItem(pArgs, 1, pColumns);
-    /* Py_DECREF(pName); -> Make the pg crash -> ??*/
-    pObj = PyObject_CallObject(pClass, pArgs);
-    PYERR();
-    Py_DECREF(pArgs);
-    Py_DECREF(pOptions);
-    Py_DECREF(pClass);
-
-    pArgs = PyTuple_New(1);
-    pConds = PyList_New(0);
-    multicorn_extract_conditions(node, pConds, pModule);
-    PyTuple_SetItem(pArgs, 0, pConds);
-    pMethod = PyObject_GetAttrString(pObj, "execute");
-    pValue = PyObject_CallObject(pMethod, pArgs);
-    PYERR();
-
-    state->pIterator = PyObject_GetIter(pValue);
-    Py_DECREF(pValue);
-    Py_DECREF(pObj);
-    Py_DECREF(pMethod);
-    Py_DECREF(pArgs);
+  if (PyMapping_HasKey(TABLES_DICT, pTableId)){
+    pObj = PyDict_GetItem(TABLES_DICT, pTableId);
   } else {
-    PyErr_Print();
-    elog(ERROR, "Failed to load module");
+    pOptions = PyDict_New();
+    multicorn_get_options(tablerelid, pOptions, &module);
+
+    if (pModule != NULL) {
+      pFunc = PyObject_GetAttrString(pModule, "getClass");
+      PYERR();
+      Py_DECREF(pModule);
+
+      pArgs = PyTuple_New(1);
+      pName = PyString_FromString(module);
+      PyTuple_SetItem(pArgs, 0, pName);
+
+      pClass = PyObject_CallObject(pFunc, pArgs);
+      PYERR();
+
+      Py_DECREF(pArgs);
+      Py_DECREF(pFunc);
+      pArgs = PyTuple_New(2);
+      pColumns = PyList_New(0);
+      multicorn_get_attributes_name(node->ss.ss_currentRelation->rd_att, pColumns);
+      PyTuple_SetItem(pArgs, 0, pOptions);
+      PyTuple_SetItem(pArgs, 1, pColumns);
+      /* Py_DECREF(pName); -> Make the pg crash -> ??*/
+      pObj = PyObject_CallObject(pClass, pArgs);
+      PyDict_SetItem(TABLES_DICT, pTableId, pObj);
+      PYERR();
+      Py_DECREF(pArgs);
+      Py_DECREF(pOptions);
+      Py_DECREF(pClass);
+    } else {
+      PyErr_Print();
+      elog(ERROR, "Failed to load module");
+    }
   }
+  pArgs = PyTuple_New(1);
+  pConds = PyList_New(0);
+  multicorn_extract_conditions(node, pConds, pModule);
+  PyTuple_SetItem(pArgs, 0, pConds);
+  pMethod = PyObject_GetAttrString(pObj, "execute");
+  pValue = PyObject_CallObject(pMethod, pArgs);
+  //Py_DECREF(pValue);
+  //Py_DECREF(pObj);
+  Py_DECREF(pMethod);
+  Py_DECREF(pArgs);
+  PYERR();
+  state->pIterator = PyObject_GetIter(pValue);
 }
 
 
@@ -259,7 +271,7 @@ multicorn_end(ForeignScanState *node)
 {
   MulticornState *state = (MulticornState *) node->fdw_state;
   Py_DECREF(state->pIterator);
-  Py_Finalize();
+//  Py_Finalize();
 }
 
 
