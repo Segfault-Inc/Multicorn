@@ -14,9 +14,9 @@ def google(search):
     data = results['responseData']
     hits = data['results']
     for hit in hits:
-        yield {'url': hit['url'],
-               'title': hit["titleNoFormatting"],
-               'search': search}
+        yield {'url': hit['url'].encode("utf-8"),
+               'title': hit["titleNoFormatting"].encode("utf-8"),
+               'search': search.encode("utf-8")}
 
 
 class GoogleFdw(ForeignDataWrapper):
