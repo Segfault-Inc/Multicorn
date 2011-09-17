@@ -32,11 +32,15 @@
 #include "utils/syscache.h"
 #include "utils/formatting.h"
 #include <Python.h>
-#define PYERR()\
+#define PYERR(ERR_MSG)\
 if (PyErr_Occurred()) {\
   PyErr_Print();\
-  elog(ERROR, "Error in python, see the logs");\
- }
+  if(ERR_MSG != NULL){\
+    elog(ERROR, ERR_MSG);\
+  } else {\
+      elog(ERROR, "Error in python, see the logs");\
+  }\
+}
 
 PG_MODULE_MAGIC;
 
@@ -159,7 +163,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
   pTableId = PyInt_FromSsize_t(tablerelid);
   pName = PyUnicode_FromString("multicorn");
   pModule = PyImport_Import(pName);
-  PYERR();
+  PYERR(NULL);
   Py_DECREF(pName);
 
   if (PyMapping_HasKey(TABLES_DICT, pTableId)){
@@ -170,7 +174,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
 
     if (pModule != NULL) {
       pFunc = PyObject_GetAttrString(pModule, "getClass");
-      PYERR();
+      PYERR(NULL);
       Py_DECREF(pModule);
 
       pArgs = PyTuple_New(1);
@@ -178,7 +182,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
       PyTuple_SetItem(pArgs, 0, pName);
 
       pClass = PyObject_CallObject(pFunc, pArgs);
-      PYERR();
+      PYERR(NULL);
 
       Py_DECREF(pArgs);
       Py_DECREF(pFunc);
@@ -190,7 +194,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
       /* Py_DECREF(pName); -> Make the pg crash -> ??*/
       pObj = PyObject_CallObject(pClass, pArgs);
       PyDict_SetItem(TABLES_DICT, pTableId, pObj);
-      PYERR();
+      PYERR(NULL);
       Py_DECREF(pArgs);
       Py_DECREF(pOptions);
       Py_DECREF(pClass);
@@ -209,7 +213,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
   //Py_DECREF(pObj);
   Py_DECREF(pMethod);
   Py_DECREF(pArgs);
-  PYERR();
+  PYERR(NULL);
   state->pIterator = PyObject_GetIter(pValue);
 }
 
@@ -397,16 +401,17 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
         unicode_size = PyUnicode_GET_SIZE(pyobject);
         char * encoding_name = get_encoding_from_attribute(attribute);
         if(!encoding_name){
-            encoding_name = "ascii";
-        }
-        result = PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
+            result = PyString_AsString(pyobject);
+        }else{
+            result = PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
                     encoding_name, NULL));
-        PYERR(); 
+        }
+        PYERR("The python backend passed a unicode not decodable to the database encoding."); 
         return result;
     }
     if(PyString_Check(pyobject)){
         result = PyString_AsString(pyobject);
-        PYERR();
+        PYERR("The python backend passed a string not decodable as ASCII. Use unicode instead!");
         return result;
     }
     if(PyObject_IsInstance(pyobject, date_cls)){
@@ -503,10 +508,10 @@ static PyObject* multicorn_constant_to_python(Const* constant, Form_pg_attribute
         encoding_name = get_encoding_from_attribute(attribute);
         if(!encoding_name){
             result = PyString_FromString(value);
-            PYERR();
+            PYERR(NULL);
         }else{
             result = PyUnicode_Decode(value, size, encoding_name, NULL);
-            PYERR();
+            PYERR(NULL);
         }
     } else if (constant->consttype == 1700) {
         /* Its a numeric */
