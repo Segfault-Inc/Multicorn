@@ -62,6 +62,17 @@ create foreign table proctest (
        wrapper 'multicorn.processfdw.ProcessFdw');
 select * from proctest;
 
+create foreign table gittest (
+       author_name character varying,
+       author_email character varying,
+       message character varying,
+       "date" date,
+       hash character varying
+) server multicorn_srv options (
+       wrapper 'multicorn.gitfdw.GitFdw',
+       "path" '/tmp/multicorn' );
+select * from gittest;
+
 create foreign table googletest (
        url character varying,
        title character varying,
