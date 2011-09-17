@@ -371,7 +371,7 @@ static char* get_encoding_from_attribute(Form_pg_attribute attribute)
     ReleaseSysCache(tp);
     if(colltup->collencoding == -1){
         /* No encoding information, do stupid things */
-        return "ascii";
+        return NULL;
     } else {
         encoding_name = pg_encoding_to_char(colltup->collencoding);
         return encoding_name;
@@ -383,7 +383,8 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
 {
     PyObject *date_module = PyImport_Import(PyUnicode_FromString("datetime"));
     PyObject *date_cls = PyObject_GetAttrString(date_module, "date");
-    PyObject *pStr;
+    PyObject *pStr, *result;
+
 
     if(PyNumber_Check(pyobject)){
         return PyString_AsString(PyObject_Str(pyobject));
@@ -395,11 +396,18 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
         Py_ssize_t         unicode_size;
         unicode_size = PyUnicode_GET_SIZE(pyobject);
         char * encoding_name = get_encoding_from_attribute(attribute);
-        return PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
+        if(!encoding_name){
+            encoding_name = "ascii";
+        }
+        result = PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
                     encoding_name, NULL));
+        PYERR(); 
+        return result;
     }
     if(PyString_Check(pyobject)){
-        return PyString_AsString(pyobject);
+        result = PyString_AsString(pyobject);
+        PYERR();
+        return result;
     }
     if(PyObject_IsInstance(pyobject, date_cls)){
         PyObject *date_format_method = PyObject_GetAttrString(pyobject, "strftime");
@@ -493,7 +501,13 @@ static PyObject* multicorn_constant_to_python(Const* constant, Form_pg_attribute
         value = TextDatumGetCString(constant->constvalue);
         size = strlen(value);
         encoding_name = get_encoding_from_attribute(attribute);
-        result = PyUnicode_Decode(value, size, encoding_name, NULL);
+        if(!encoding_name){
+            result = PyString_FromString(value);
+            PYERR();
+        }else{
+            result = PyUnicode_Decode(value, size, encoding_name, NULL);
+            PYERR();
+        }
     } else if (constant->consttype == 1700) {
         /* Its a numeric */
         char*  number;
