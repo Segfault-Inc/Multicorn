@@ -12,25 +12,20 @@
  */
 
 #include "postgres.h"
-#include "access/reloptions.h"
-#include "catalog/pg_foreign_table.h"
-#include "catalog/pg_foreign_server.h"
-#include "catalog/pg_user_mapping.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_foreign_server.h"
+#include "catalog/pg_foreign_table.h"
 #include "catalog/pg_operator.h"
-#include "commands/defrem.h"
+#include "catalog/pg_user_mapping.h"
 #include "commands/explain.h"
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
 #include "funcapi.h"
-#include "miscadmin.h"
-#include "nodes/makefuncs.h"
-#include "optimizer/cost.h"
-#include "utils/rel.h"
-#include "utils/numeric.h"
 #include "utils/builtins.h"
-#include "utils/syscache.h"
 #include "utils/formatting.h"
+#include "utils/numeric.h"
+#include "utils/rel.h"
+#include "utils/syscache.h"
 #include <Python.h>
 #define PYERR()\
 if (PyErr_Occurred()) {\
@@ -509,4 +504,3 @@ static PyObject* multicorn_constant_to_python(Const* constant, Form_pg_attribute
     }
     return result;
 }
-
