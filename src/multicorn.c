@@ -43,7 +43,6 @@ typedef struct MulticornState
 {
   AttInMetadata *attinmeta;
   int rownum;
-  PyObject *pFunc;
   PyObject *pIterator;
 } MulticornState;
 
@@ -170,7 +169,6 @@ multicorn_begin(ForeignScanState *node, int eflags)
     if (pModule != NULL) {
       pFunc = PyObject_GetAttrString(pModule, "getClass");
       PYERR(NULL);
-      Py_DECREF(pModule);
 
       pArgs = PyTuple_New(1);
       pName = PyString_FromString(module);
@@ -193,6 +191,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
       Py_DECREF(pArgs);
       Py_DECREF(pOptions);
       Py_DECREF(pClass);
+      Py_DECREF(pObj);
     } else {
       PyErr_Print();
       elog(ERROR, "Failed to load module");
@@ -204,12 +203,12 @@ multicorn_begin(ForeignScanState *node, int eflags)
   PyTuple_SetItem(pArgs, 0, pConds);
   pMethod = PyObject_GetAttrString(pObj, "execute");
   pValue = PyObject_CallObject(pMethod, pArgs);
-  //Py_DECREF(pValue);
-  //Py_DECREF(pObj);
   Py_DECREF(pMethod);
   Py_DECREF(pArgs);
   PYERR(NULL);
   state->pIterator = PyObject_GetIter(pValue);
+  Py_DECREF(pValue);
+  Py_DECREF(pModule);
 }
 
 
