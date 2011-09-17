@@ -82,6 +82,16 @@ create foreign table rsstest (
 
 select * from rsstest;
 
+create foreign table gittest (
+       author_name character varying,
+       author_email character varying,
+       message character varying,
+       "date" date,
+       hash character varying
+) server multicorn_srv options (
+       wrapper 'multicorn.gitfdw.GitFdw',
+       "path" '/tmp/multicorn' );
+select * from gittest;
 
 create foreign table googletest (
        url character varying,
