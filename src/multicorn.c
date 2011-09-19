@@ -167,7 +167,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
     multicorn_get_options(tablerelid, pOptions, &module);
 
     if (pModule != NULL) {
-      pFunc = PyObject_GetAttrString(pModule, "getClass");
+      pFunc = PyObject_GetAttrString(pModule, "get_class");
       PYERR(NULL);
 
       pArgs = PyTuple_New(1);

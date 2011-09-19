@@ -100,3 +100,12 @@ create foreign table googletest (
 ) server multicorn_srv options (
        wrapper 'multicorn.googlefdw.GoogleFdw');
 select * from googletest where "search" = 'multicorn';
+
+create foreign table enterprisetest(
+    phone character varying,
+    postcode character varying
+) server multicorn_srv options (
+       filename '/tmp/extraction_101018.xls'
+       wrapper 'enterpriseMulticorn.EnterpriseMulticorn');
+select * from googletest where "search" = 'multicorn';
+
