@@ -16,7 +16,8 @@ class Qual(object):
     """A Qual describes a postgresql qual.
 
     Attributes
-    field_name      -- The name of the column as defined in the postgresql table
+    field_name      -- The name of the column as defined in the postgresql
+                       table.
     operator_name   -- The name of the operator.
                        Example: =, <=, ~~ (for a like clause)
 
@@ -26,8 +27,8 @@ class Qual(object):
     def __init__(self, field_name, operator, value):
         """Constructs a qual object.
 
-        Instantiated from the C extension with the field name, operator and value
-        extracted from the postgresql where clause.
+        Instantiated from the C extension with the field name, operator and
+        value extracted from the postgresql where clause.
 
         """
         self.field_name = field_name

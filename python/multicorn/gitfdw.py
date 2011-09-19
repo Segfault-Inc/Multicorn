@@ -12,8 +12,8 @@ class GitFdw(ForeignDataWrapper):
 
     The git foreign data wrapper accepts the following options:
 
-    path        --  the absolute path to the git repo. It must be readable by the
-                    user running postgresql (usually, postgres).
+    path        --  the absolute path to the git repo. It must be readable by
+                    the user running postgresql (usually, postgres).
     encoding    --  the file encoding. Defaults to "utf-8".
 
     """

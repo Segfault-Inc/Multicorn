@@ -1,6 +1,8 @@
 """A dummy foreign data wrapper"""
 
+
 from . import ForeignDataWrapper
+
 
 class StateFdw(ForeignDataWrapper):
     """A dummy foreign data wrapper.
@@ -18,4 +20,3 @@ class StateFdw(ForeignDataWrapper):
     def execute(self, quals):
         self.state += 1
         yield [self.state]
-

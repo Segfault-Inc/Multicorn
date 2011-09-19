@@ -4,6 +4,7 @@ from . import ForeignDataWrapper
 from lxml import etree
 import urllib
 
+
 class RssFdw(ForeignDataWrapper):
     """An rss foreign data wrapper.
 
@@ -22,7 +23,6 @@ class RssFdw(ForeignDataWrapper):
         self.url = options['url']
         self.columns = columns
 
-
     def make_item_from_xml(self, xml_elem):
         """Internal method used for parsing item xml element from the
         columns definition."""
@@ -30,7 +30,6 @@ class RssFdw(ForeignDataWrapper):
             (prop, xml_elem.xpath(prop)[0].text)
             for prop in self.columns)
         return properties
-
 
     def execute(self, quals):
         """Quals are ignored."""
@@ -41,4 +40,3 @@ class RssFdw(ForeignDataWrapper):
         except etree.ParseError:
             print("Malformed xml, returning nothing")
             return
-

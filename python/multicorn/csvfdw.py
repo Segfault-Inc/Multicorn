@@ -4,7 +4,6 @@ A CSV Foreign Data Wrapper
 """
 
 
-
 from . import ForeignDataWrapper
 import csv
 
