@@ -25,7 +25,7 @@ class CsvFdw(ForeignDataWrapper):
         self.delimiter = fdw_options.get("delimiter", ",")
 
     def execute(self, quals):
-        with open(self.filename) as fd:
-            reader = csv.reader(fd, delimiter=self.delimiter)
+        with open(self.filename) as stream:
+            reader = csv.reader(stream, delimiter=self.delimiter)
             for line in reader:
                 yield line
