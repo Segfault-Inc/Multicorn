@@ -5,5 +5,5 @@ setup(
  author='Kozea',
  license='Postgresql',
  package_dir={'': 'python'},
- packages=find_packages(),
+ packages=["multicorn"],
 )
