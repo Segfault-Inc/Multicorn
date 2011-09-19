@@ -1,6 +1,15 @@
+"""A dummy foreign data wrapper"""
+
 from . import ForeignDataWrapper
 
 class StateFdw(ForeignDataWrapper):
+    """A dummy foreign data wrapper.
+
+    This dummy foreign data wrapper is intended as a proof of concept of state
+    keeping foreign data wrappers.
+
+    It keeps an internal state as an integer, auto-incremented at each request.
+    """
 
     def __init__(self, *args):
         super(StateFdw, self).__init__(*args)

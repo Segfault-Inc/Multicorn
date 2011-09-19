@@ -30,7 +30,7 @@
 #define PYERR(ERR_MSG)\
 if (PyErr_Occurred()) {\
   PyErr_Print();\
-  if(ERR_MSG != NULL){\
+  if (ERR_MSG != NULL) {\
     elog(ERROR, ERR_MSG);\
   } else {\
       elog(ERROR, "Error in python, see the logs");\
@@ -148,7 +148,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
   state->rownum = 0;
   state->attinmeta = attinmeta;
   node->fdw_state = (void *) state;
-  if (TABLES_DICT == NULL){
+  if (TABLES_DICT == NULL) {
     /* TODO: managed locks and things */
     Py_Initialize();
     TABLES_DICT = PyDict_New();
@@ -160,7 +160,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
   PYERR(NULL);
   Py_DECREF(pName);
 
-  if (PyMapping_HasKey(TABLES_DICT, pTableId)){
+  if (PyMapping_HasKey(TABLES_DICT, pTableId)) {
     pObj = PyDict_GetItem(TABLES_DICT, pTableId);
   } else {
     pOptions = PyDict_New();
@@ -195,6 +195,7 @@ multicorn_begin(ForeignScanState *node, int eflags)
     } else {
       PyErr_Print();
       elog(ERROR, "Failed to load module");
+      return;
     }
   }
   pArgs = PyTuple_New(1);
@@ -237,19 +238,20 @@ multicorn_iterate(ForeignScanState *node)
     PyErr_Print();
     return slot;
   }
-  if (pValue == NULL){
+  if (pValue == NULL) {
     return slot;
   }
   oldcontext = MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
   MemoryContextSwitchTo(oldcontext);
-  if(PyMapping_Check(pValue)){
-      tuple = pydict_to_postgres_tuple(node->ss.ss_currentRelation->rd_att
-          , pValue);
-  }else if (PySequence_Check(pValue)){
-      tuple = pysequence_to_postgres_tuple(node->ss.ss_currentRelation->rd_att
-          , pValue);
-  }else{
-    elog(ERROR, "Cannot transform anything else than mappings and sequences to rows");
+  if (PyMapping_Check(pValue) ) {
+      tuple = pydict_to_postgres_tuple(node->ss.ss_currentRelation->rd_att, pValue);
+  } else { 
+      if (PySequence_Check(pValue)) {
+          tuple = pysequence_to_postgres_tuple(node->ss.ss_currentRelation->rd_att, pValue);
+      } else {
+          elog(ERROR, "Cannot transform anything else than mappings and sequences to rows");
+          return slot;
+      }
   }
   Py_DECREF(pValue);
   ExecStoreTuple(tuple, slot, InvalidBuffer, false);
@@ -269,7 +271,6 @@ multicorn_end(ForeignScanState *node)
 {
   MulticornState *state = (MulticornState *) node->fdw_state;
   Py_DECREF(state->pIterator);
-//  Py_Finalize();
 }
 
 
@@ -295,10 +296,10 @@ multicorn_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
     DefElem *def = (DefElem *) lfirst(lc);
 
     if (strcmp(def->defname, "wrapper") == 0) {
-      *module = defGetString(def);
+      *module = (char*)defGetString(def);
       got_module = true;
     } else {
-      pStr = PyString_FromString(defGetString(def));
+      pStr = PyString_FromString((char*)defGetString(def));
       PyDict_SetItemString(pOptions, def->defname, pStr);
       Py_DECREF(pStr);
     }
@@ -323,7 +324,7 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
   int            i, natts;
   natts = desc->natts;
   tup_values = (char **) palloc(sizeof(char *) * natts);
-  for(i = 0; i< natts; i++){
+  for(i = 0; i< natts; i++) {
     key = NameStr(desc->attrs[i]->attname);
     pStr = PyMapping_GetItemString(pydict, key);
     tup_values[i] = pyobject_to_cstring(pStr, desc->attrs[i]);
@@ -347,7 +348,7 @@ pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
     elog(ERROR, "The python backend did not return a valid sequence");
   } else {
       tup_values = (char **) palloc(sizeof(char *) * natts);
-      for(i = 0; i< natts; i++){
+      for(i = 0; i< natts; i++) {
         pStr = PySequence_GetItem(pyseq, i);
         tup_values[i] = pyobject_to_cstring(pStr, desc->attrs[i]);
         Py_DECREF(pStr);
@@ -367,11 +368,11 @@ static char* get_encoding_from_attribute(Form_pg_attribute attribute)
         elog(ERROR, "cache lookup failed for collation %u", attribute->attcollation);
     colltup = (Form_pg_collation) GETSTRUCT(tp);
     ReleaseSysCache(tp);
-    if(colltup->collencoding == -1){
+    if (colltup->collencoding == -1) {
         /* No encoding information, do stupid things */
         return NULL;
     } else {
-        encoding_name = pg_encoding_to_char(colltup->collencoding);
+        encoding_name = (char*) pg_encoding_to_char(colltup->collencoding);
         return encoding_name;
     }
 
@@ -381,34 +382,34 @@ static char* pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute
 {
     PyObject *date_module = PyImport_Import(PyUnicode_FromString("datetime"));
     PyObject *date_cls = PyObject_GetAttrString(date_module, "date");
-    PyObject *pStr, *result;
+    PyObject *pStr;
+    char     *result;
 
-
-    if(PyNumber_Check(pyobject)){
+    if (PyNumber_Check(pyobject)) {
         return PyString_AsString(PyObject_Str(pyobject));
     }
-    if(pyobject == Py_None){
+    if (pyobject == Py_None) {
         return NULL;
     }
-    if(PyUnicode_Check(pyobject)){
+    if (PyUnicode_Check(pyobject)) {
         Py_ssize_t         unicode_size;
-        unicode_size = PyUnicode_GET_SIZE(pyobject);
         char * encoding_name = get_encoding_from_attribute(attribute);
-        if(!encoding_name){
+        unicode_size = PyUnicode_GET_SIZE(pyobject);
+        if (!encoding_name) {
             result = PyString_AsString(pyobject);
-        }else{
+        } else {
             result = PyString_AsString(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
                     encoding_name, NULL));
         }
         PYERR("The python backend passed a unicode not decodable to the database encoding."); 
         return result;
     }
-    if(PyString_Check(pyobject)){
+    if (PyString_Check(pyobject)) {
         result = PyString_AsString(pyobject);
         PYERR("The python backend passed a string not decodable as ASCII. Use unicode instead!");
         return result;
     }
-    if(PyObject_IsInstance(pyobject, date_cls)){
+    if (PyObject_IsInstance(pyobject, date_cls)) {
         PyObject *date_format_method = PyObject_GetAttrString(pyobject, "strftime");
         PyObject *pArgs = PyTuple_New(1);
         PyObject *formatted_date = PyObject_CallObject(date_format_method, pArgs);
@@ -429,7 +430,7 @@ static void multicorn_get_attributes_name(TupleDesc desc, PyObject * list)
     char       *key;
     Py_ssize_t  i, natts;
     natts = desc->natts;
-    for(i = 0; i< natts; i++){
+    for(i = 0; i< natts; i++) {
         key = NameStr(desc->attrs[i]->attname);
         PyList_Append(list, PyString_FromString(key));
     }
@@ -458,11 +459,11 @@ static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list
               if (list_length(op->args) == 2) {
                 left = list_nth(op->args, 0);
                 right = list_nth(op->args, 1);
-                if (IsA(right, RelabelType)){
-                    right = ((RelabelType *) right)->arg;
+                if (IsA(right, RelabelType)) {
+                    right = (Node*) ((RelabelType *) right)->arg;
                 }
-                if (IsA(left, RelabelType)){
-                    left = ((RelabelType *) left)->arg;
+                if (IsA(left, RelabelType)) {
+                    left = (Node*) ((RelabelType *) left)->arg;
                 }
                 if (IsA(left, Var)) {
                   varattno = ((Var *) left)->varattno;
@@ -492,7 +493,7 @@ static void multicorn_extract_conditions(ForeignScanState * node, PyObject* list
 static PyObject* multicorn_constant_to_python(Const* constant, Form_pg_attribute attribute)
 {
     PyObject* result;
-    if(constant->consttype == 25){
+    if (constant->consttype == 25) {
         /* Its a string */
         char * encoding_name;
         char * value;
@@ -500,19 +501,19 @@ static PyObject* multicorn_constant_to_python(Const* constant, Form_pg_attribute
         value = TextDatumGetCString(constant->constvalue);
         size = strlen(value);
         encoding_name = get_encoding_from_attribute(attribute);
-        if(!encoding_name){
+        if (!encoding_name) {
             result = PyString_FromString(value);
             PYERR(NULL);
-        }else{
+        } else {
             result = PyUnicode_Decode(value, size, encoding_name, NULL);
             PYERR(NULL);
         }
     } else if (constant->consttype == 1700) {
         /* Its a numeric */
         char*  number;
-        number = DirectFunctionCall1(numeric_out, DatumGetNumeric(constant->constvalue));
+        number = (char*) DirectFunctionCall1(numeric_out, DatumGetNumeric(constant->constvalue));
         result = PyFloat_FromString(PyString_FromString(number), NULL);
-    } else if (constant->consttype == 23){
+    } else if (constant->consttype == 23) {
         long number;
         number = DatumGetInt32(constant->constvalue);
         result = PyInt_FromLong(number);
