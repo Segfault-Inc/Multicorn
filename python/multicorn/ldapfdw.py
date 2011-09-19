@@ -1,18 +1,32 @@
+"""
+An LDAP foreign data wrapper.
+
+"""
+
 from . import ForeignDataWrapper
 import ldap
 
 
 class LdapFdw(ForeignDataWrapper):
+    """An Ldap Foreign Wrapper.
+
+    The following options are required:
+
+    address     -- the ldap host to connect.
+    path        -- the ldap path (ex: ou=People,dc=example,dc=com)
+    objectClass -- the ldap object class (ex: 'inetOrgPerson')
+
+    """
 
     def __init__(self, fdw_options, fdw_columns):
         super(LdapFdw, self).__init__(fdw_options, fdw_columns)
         self.ldap = ldap.open(fdw_options["address"])
         self.path = fdw_options["path"]
-        self.objectClass = fdw_options["objectclass"]
+        self.object_class = fdw_options["objectclass"]
         self.field_list = fdw_columns
 
     def execute(self, quals):
-        request = "(objectClass=%s)" % self.objectClass
+        request = "(objectClass=%s)" % self.object_class
         for qual in quals:
             if qual.operator in ("=", "~~"):
                 val = (qual.value.replace("%", "*")
