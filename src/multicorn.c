@@ -27,15 +27,6 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 #include <Python.h>
-#define PYERR( ERR_MSG )\
-if ( PyErr_Occurred(  )) {\
-  PyErr_Print(  );\
-  if ( ERR_MSG != NULL ) {\
-    elog( ERROR, ERR_MSG );\
-  } else {\
-      elog( ERROR, "Error in python, see the logs" );\
-  }\
-}
 
 
 PG_MODULE_MAGIC;
@@ -71,11 +62,13 @@ static void multicorn_get_options( Oid foreign_table_id, PyObject *options_dict,
 static void multicorn_get_attributes_name( TupleDesc desc, PyObject* list );
 static void multicorn_extract_conditions( ForeignScanState * node, PyObject* list, PyObject* multicorn_module );
 static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute );
+static void report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback);
 
 
 static HeapTuple pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq );
 static HeapTuple pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict );
 static char* pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute );
+static void error_check();
 
 const char* DATE_FORMAT_STRING = "%Y-%m-%d";
 
@@ -158,7 +151,7 @@ multicorn_begin( ForeignScanState *node, int eflags)
   pTableId = PyInt_FromSsize_t( tablerelid );
   pName = PyUnicode_FromString( "multicorn" );
   pModule = PyImport_Import( pName );
-  PYERR( NULL );
+  error_check();
   Py_DECREF( pName );
 
   if ( PyMapping_HasKey( TABLES_DICT, pTableId )) {
@@ -169,14 +162,14 @@ multicorn_begin( ForeignScanState *node, int eflags)
 
     if ( pModule != NULL ) {
       pFunc = PyObject_GetAttrString( pModule, "get_class" );
-      PYERR( NULL );
+      error_check();
 
       pArgs = PyTuple_New( 1 );
       pName = PyString_FromString( module );
       PyTuple_SetItem( pArgs, 0, pName );
 
       pClass = PyObject_CallObject( pFunc, pArgs);
-      PYERR( NULL );
+      error_check();
 
       Py_DECREF( pArgs);
       Py_DECREF( pFunc );
@@ -188,7 +181,7 @@ multicorn_begin( ForeignScanState *node, int eflags)
       /* Py_DECREF( pName ); -> Make the pg crash -> ??*/
       pObj = PyObject_CallObject( pClass, pArgs);
       PyDict_SetItem( TABLES_DICT, pTableId, pObj );
-      PYERR( NULL );
+      error_check();
       Py_DECREF( pArgs);
       Py_DECREF( pOptions);
       Py_DECREF( pClass);
@@ -207,7 +200,7 @@ multicorn_begin( ForeignScanState *node, int eflags)
   pValue = PyObject_CallObject( pMethod, pArgs);
   Py_DECREF( pMethod );
   Py_DECREF( pArgs);
-  PYERR( NULL );
+  error_check();
   state->pIterator = PyObject_GetIter( pValue );
   Py_DECREF( pValue );
   Py_DECREF( pModule );
@@ -243,15 +236,8 @@ multicorn_iterate( ForeignScanState *node )
         /* "Normal" stop iteration */
         return slot;
     } else {
-
-        if ( PyErr_Occurred()){
-            elog(NOTICE, "ERROR");
-        }
-        PyErr_NormalizeException(&pErrType, &pErrValue, &pErrTraceback);
-        ereport(ERROR, (errmsg("Error in python: %s", PyString_AsString(PyObject_GetAttrString(pErrType, "__name__"))),
-            errdetail(PyString_AsString(PyObject_Str(pErrValue)))));
+        report_exception(pErrType, pErrValue, pErrTraceback);
     }
-    PyErr_Clear();
   }
   if ( pValue == NULL ) {
     return slot;
@@ -416,12 +402,12 @@ static char* pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribut
             result = PyString_AsString( PyUnicode_Encode( PyUnicode_AsUnicode( pyobject ), unicode_size, 
                     encoding_name, NULL ));
         }
-        PYERR( "The python backend passed a unicode not decodable to the database encoding." ); 
+        error_check();
         return result;
     }
     if ( PyString_Check( pyobject )) {
         result = PyString_AsString( pyobject );
-        PYERR( "The python backend passed a string not decodable as ASCII. Use unicode instead!" );
+        error_check();
         return result;
     }
     if ( PyObject_IsInstance( pyobject, date_cls) ) {
@@ -519,10 +505,10 @@ static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribut
         encoding_name = get_encoding_from_attribute( attribute );
         if ( !encoding_name ) {
             result = PyString_FromString( value );
-            PYERR( NULL );
+            error_check();
         } else {
             result = PyUnicode_Decode( value, size, encoding_name, NULL );
-            PYERR( NULL );
+            error_check();
         }
     } else if ( constant->consttype == 1700 ) {
         /* Its a numeric */
@@ -539,3 +525,20 @@ static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribut
     }
     return result;
 }
+
+static void report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback)
+{
+        PyErr_NormalizeException(&pErrType, &pErrValue, &pErrTraceback);
+        ereport(ERROR, (errmsg("Error in python: %s", PyString_AsString(PyObject_GetAttrString(pErrType, "__name__"))),
+            errdetail(PyString_AsString(PyObject_Str(pErrValue)))));
+}
+
+static void error_check(){
+    PyObject *pErrType, *pErrValue, *pErrTraceback;
+    PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
+    if ( pErrType ) {
+      PyErr_Print();
+      report_exception(pErrType, pErrValue, pErrTraceback);
+    }
+}
+
