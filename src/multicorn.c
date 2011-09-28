@@ -363,7 +363,7 @@ static char* get_encoding_from_attribute( Form_pg_attribute attribute )
 {
     HeapTuple          tp;
     Form_pg_collation  colltup;
-    char              *encoding_name;
+    char               *encoding_name;
     tp = SearchSysCache1( COLLOID, ObjectIdGetDatum( attribute->attcollation ));
     if ( !HeapTupleIsValid( tp ))
         elog( ERROR, "cache lookup failed for collation %u", attribute->attcollation );
@@ -371,11 +371,14 @@ static char* get_encoding_from_attribute( Form_pg_attribute attribute )
     ReleaseSysCache( tp );
     if ( colltup->collencoding == -1 ) {
         /* No encoding information, do stupid things */
-        return GetDatabaseEncodingName();
+        encoding_name = GetDatabaseEncodingName();
     } else {
         encoding_name = ( char* ) pg_encoding_to_char( colltup->collencoding );
-        return encoding_name;
     }
+    if(strcmp(encoding_name, "SQL_ASCII") == 0){
+        encoding_name = "ascii";
+    }
+    return encoding_name;
 
 }
 
@@ -541,4 +544,3 @@ static void error_check(){
       report_exception(pErrType, pErrValue, pErrTraceback);
     }
 }
-
