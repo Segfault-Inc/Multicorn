@@ -12,7 +12,9 @@ PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\.| 9\.0" && echo no
 PG_CPPFLAGS  = $(python_includespec) $(CPPFLAGS)
 PROFILE =  -lpython2.7
 ifeq ($(PG91),yes)
-all: sql/$(EXTENSION)--$(EXTVERSION).sql python_code
+all: sql/$(EXTENSION)--$(EXTVERSION).sql
+
+install: python_code
 
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
@@ -20,6 +22,9 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 
 python_code: setup.py
 	python2 ./setup.py install
+
+release-zip: all
+	git archive --format zip --prefix=multicorn-$(EXTVERSION) --output ./multicorn-$(EXTVERSION).zip master
 
 DATA = $(wildcard sql/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
 EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql
