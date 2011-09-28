@@ -425,6 +425,7 @@ static char* pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribut
     return PyString_AsString( pyobject );
 }
 
+// Appends the columns names as python strings to the given python list
 static void multicorn_get_attributes_name( TupleDesc desc, PyObject * list )
 {
     char       *key;
