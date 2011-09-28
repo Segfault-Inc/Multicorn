@@ -37,6 +37,7 @@ if ( PyErr_Occurred(  )) {\
   }\
 }
 
+
 PG_MODULE_MAGIC;
 
 typedef struct MulticornState
@@ -220,9 +221,10 @@ multicorn_iterate( ForeignScanState *node )
   MulticornState  *state = ( MulticornState * ) node->fdw_state;
   HeapTuple        tuple;
   MemoryContext    oldcontext;
-  PyObject        *pValue, *pArgs, *pIterator;
+  PyObject        *pValue, *pArgs, *pIterator, *pyStopIteration,
+                  *pErrType, *pErrValue, *pErrTraceback;
 
-  ExecClearTuple(slot );
+  ExecClearTuple( slot );
 
   pArgs = PyTuple_New( 0 );
   pIterator = state->pIterator;
@@ -233,10 +235,23 @@ multicorn_iterate( ForeignScanState *node )
   }
 
   pValue = PyIter_Next( pIterator );
-  if ( PyErr_Occurred(  )) {
-    /* Stop iteration */
-    PyErr_Print(  );
-    return slot;
+  PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
+  if ( pErrType ) {
+    pyStopIteration = PyObject_GetAttrString(PyImport_Import( PyUnicode_FromString("exceptions")),
+                                             "StopIteration");
+    if ( PyErr_GivenExceptionMatches(pErrType, pyStopIteration) ){
+        /* "Normal" stop iteration */
+        return slot;
+    } else {
+
+        if ( PyErr_Occurred()){
+            elog(NOTICE, "ERROR");
+        }
+        PyErr_NormalizeException(&pErrType, &pErrValue, &pErrTraceback);
+        ereport(ERROR, (errmsg("Error in python: %s", PyString_AsString(PyObject_GetAttrString(pErrType, "__name__"))),
+            errdetail(PyString_AsString(PyObject_Str(pErrValue)))));
+    }
+    PyErr_Clear();
   }
   if ( pValue == NULL ) {
     return slot;

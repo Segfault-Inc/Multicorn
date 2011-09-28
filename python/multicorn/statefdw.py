@@ -2,6 +2,8 @@
 
 
 from . import ForeignDataWrapper
+from .utils import log_to_postgres
+from logging import ERROR, DEBUG, INFO, WARNING
 
 
 class StateFdw(ForeignDataWrapper):
