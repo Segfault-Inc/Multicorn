@@ -40,13 +40,11 @@ h2, h3, h4, h5, h6 {
   color: #d0272b;
   font-family: "title";
   font-weight: normal;
-  letter-spacing: 0.2em;
 }
 
 h2 a, h3 a, h4 a, h5 a, h6 a {
   color: #d0272b;
   font-family: "title";
-  letter-spacing: 0.1em;
 }
 
 a {
@@ -65,9 +63,26 @@ section a:visited {
   color: #901b1e;
 }
 
-pre {
-  border-radius: 0;
-  box-shadow:0px 0px 5px #8f8f8f;
+pre, .contents {
+  background: rgba(0, 0, 0, 0.03);
+  box-shadow: 0 0 5px #8f8f8f;
+  padding: 1em;
+}
+
+.contents {
+  margin: 1em auto;
+  width: 80%;
+}
+
+.contents .topic-title {
+  color: #d0272b;
+  font-family: "title";
+  font-size: 1.2em;
+  margin: 0.8em;
+}
+
+.contents ul {
+  padding: 0.2em 2em;
 }
 
 /*
