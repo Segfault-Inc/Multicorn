@@ -19,7 +19,7 @@ class SqliteFdw(ForeignDataWrapper):
 
     def __init__(self, fdw_options, fdw_columns):
         super(SqliteFdw, self).__init__(fdw_options, fdw_columns)
-        self.connection = connect(fdw_options["filename"])
+        self.connection = connect(fdw_options["database"])
         self.tablename = fdw_options["tablename"]
 
     def execute(self, quals):

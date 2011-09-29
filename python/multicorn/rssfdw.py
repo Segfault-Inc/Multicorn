@@ -3,6 +3,8 @@
 from . import ForeignDataWrapper
 from lxml import etree
 import urllib
+from logging import ERROR
+from multicorn.utils import log_to_postgres
 
 
 class RssFdw(ForeignDataWrapper):
@@ -20,7 +22,9 @@ class RssFdw(ForeignDataWrapper):
 
     def __init__(self, options, columns):
         super(RssFdw, self).__init__(options, columns)
-        self.url = options['url']
+        self.url = options.get('url', None)
+        if self.url is None:
+            log_to_postgres("You MUST set an url when creating the table!", ERROR)
         self.columns = columns
 
     def make_item_from_xml(self, xml_elem):
