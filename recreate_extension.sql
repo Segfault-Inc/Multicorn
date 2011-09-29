@@ -2,7 +2,6 @@ drop extension multicorn cascade;
 create extension multicorn;
 create server multicorn_srv foreign data wrapper multicorn;
 
-drop foreign table csvtest;
 create foreign table csvtest (
        year numeric,
        make character varying,
@@ -13,8 +12,6 @@ create foreign table csvtest (
        skip_header '1',
        delimiter ',');
 select * from csvtest;
-select * from csvtest where field1 = 1;
-select * from csvtest where field2 = 'test';
 
 create foreign table ldaptest (
        cn character varying,
@@ -40,26 +37,10 @@ create foreign table fstest (
 ) server multicorn_srv options (
        wrapper 'multicorn.fsfdw.FilesystemFdw',
        root_dir '/tmp/data',
-       content_column 'content'
-
+       content_column 'content',
        pattern '{field1}/{field2}/{field3}/style.css');
-    DROP FOREIGN TABLE musicfilesystem;
-    CREATE FOREIGN TABLE musicfilesystem (
-        artist  character varying,
-        album   character varying,
-        track   integer,
-        title   character varying,
-        content bytea,
-        filename character varying
-    ) server multicorn_srv options(
-        wrapper     'multicorn.fsfdw.FilesystemFdw',
-        root_dir    '/tmp/base_dir',
-        pattern     '{artist}/{album}/{track} - {title}.ogg',
-        content_column  'contentaa',
-        filename_column 'filename');
 
 
-select * from musicfilesystem;
 
 select * from fstest where field2 = 'test';
 
@@ -69,7 +50,7 @@ create foreign table sqlitetest (
        field3 numeric
 ) server multicorn_srv options (
        wrapper 'multicorn.sqlitefdw.SqliteFdw',
-       filename '/tmp/test.sqlite3',
+       database '/tmp/test.sqlite3',
        tablename 'test');
 select * from sqlitetest;
 select * from sqlitetest where field1 = 'test';
@@ -96,10 +77,9 @@ create foreign table rsstest (
     "pubDate" timestamp
 ) server multicorn_srv options (
        wrapper 'multicorn.rssfdw.RssFdw',
-       url 'http://www.reddit.com/.rss'
+       url 'http://reddit.com/.rss'
 );
 
-select * from rsstest;
 
 create foreign table gittest (
        author_name character varying,
