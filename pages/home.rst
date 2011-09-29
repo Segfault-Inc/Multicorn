@@ -3,11 +3,7 @@
 Presentation
 ============
 
-<<<<<<< HEAD
-Multicorn is a PostgreSQL extension which goal is to make `Foreign Data Wrapper`_.
-=======
-Multicorn is a PostgreSQL extension which goal is to make `Foreign Data Wrapper`_. 
->>>>>>> 28aac72fb6f24efc747e0216f16e566b441e49bf
+Multicorn is a PostgreSQL extension which goal is to make `Foreign Data Wrapper`_
 development easy, by allowing the programmer to use the Python programming
 language.
 
@@ -52,7 +48,7 @@ wrappers.
 
 To use it, you have to:
 
-- Create the extension in the target database. 
+- Create the extension in the target database.
   As a PostgreSQL super user, run the following SQL:
 
   .. code-block:: sql
