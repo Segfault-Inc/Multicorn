@@ -3,3 +3,4 @@ tags
 *.so
 *egg-info
 sql/multicorn--0.0.2.sql
+*.pyc

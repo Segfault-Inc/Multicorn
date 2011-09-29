@@ -2,15 +2,15 @@ drop extension multicorn cascade;
 create extension multicorn;
 create server multicorn_srv foreign data wrapper multicorn;
 
-
+drop foreign table csvtest;
 create foreign table csvtest (
-       field1 numeric,
-       field2 character varying,
-       field3 date
+       year numeric,
+       make character varying,
+       model character varying
 ) server multicorn_srv options (
        wrapper 'multicorn.csvfdw.CsvFdw',
        filename '/tmp/test.csv',
-       format 'csv',
+       skip_header '1',
        delimiter ',');
 select * from csvtest;
 select * from csvtest where field1 = 1;
@@ -40,8 +40,27 @@ create foreign table fstest (
 ) server multicorn_srv options (
        wrapper 'multicorn.fsfdw.FilesystemFdw',
        root_dir '/tmp/data',
+       content_column 'content'
+
        pattern '{field1}/{field2}/{field3}/style.css');
-select * from fstest;
+    DROP FOREIGN TABLE musicfilesystem;
+    CREATE FOREIGN TABLE musicfilesystem (
+        artist  character varying,
+        album   character varying,
+        track   integer,
+        title   character varying,
+        content bytea,
+        filename character varying
+    ) server multicorn_srv options(
+        wrapper     'multicorn.fsfdw.FilesystemFdw',
+        root_dir    '/tmp/base_dir',
+        pattern     '{artist}/{album}/{track} - {title}.ogg',
+        content_column  'contentaa',
+        filename_column 'filename');
+
+
+select * from musicfilesystem;
+
 select * from fstest where field2 = 'test';
 
 create foreign table sqlitetest (

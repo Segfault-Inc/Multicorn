@@ -163,11 +163,9 @@ multicorn_begin( ForeignScanState *node, int eflags)
     if ( pModule != NULL ) {
       pFunc = PyObject_GetAttrString( pModule, "get_class" );
       error_check();
-
       pArgs = PyTuple_New( 1 );
       pName = PyString_FromString( module );
       PyTuple_SetItem( pArgs, 0, pName );
-
       pClass = PyObject_CallObject( pFunc, pArgs);
       error_check();
 
@@ -180,6 +178,7 @@ multicorn_begin( ForeignScanState *node, int eflags)
       PyTuple_SetItem( pArgs, 1, pColumns);
       /* Py_DECREF( pName ); -> Make the pg crash -> ??*/
       pObj = PyObject_CallObject( pClass, pArgs);
+      error_check();
       PyDict_SetItem( TABLES_DICT, pTableId, pObj );
       error_check();
       Py_DECREF( pArgs);
@@ -242,8 +241,10 @@ multicorn_iterate( ForeignScanState *node )
   if ( pValue == NULL ) {
     return slot;
   }
+
   oldcontext = MemoryContextSwitchTo( node->ss.ps.ps_ExprContext->ecxt_per_query_memory );
   MemoryContextSwitchTo( oldcontext );
+
   if ( PyMapping_Check( pValue )) {
       tuple = pydict_to_postgres_tuple( node->ss.ss_currentRelation->rd_att, pValue );
   } else { 
@@ -325,11 +326,18 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
   int            i, natts;
   natts = desc->natts;
   tup_values = ( char ** ) palloc(sizeof( char * ) * natts);
-  for( i = 0; i< natts; i++ ) {
+  for ( i = 0; i< natts; i++ ) {
     key = NameStr( desc->attrs[i]->attname );
-    pStr = PyMapping_GetItemString( pydict, key );
-    tup_values[i] = pyobject_to_cstring( pStr, desc->attrs[i] );
-    Py_DECREF( pStr );
+    if ( PyMapping_HasKeyString( pydict, key) ) {
+        pStr = PyMapping_GetItemString( pydict, key );
+        error_check();
+        tup_values[i] = pyobject_to_cstring( pStr, desc->attrs[i] );
+        error_check();
+        Py_DECREF( pStr );
+    } else {
+        elog(WARNING, "The backend did not provide a value for key %s", key);
+        tup_values[i] = "";
+    }
   }
   tuple = BuildTupleFromCStrings( attinmeta, tup_values);
   return tuple;
@@ -351,7 +359,9 @@ pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
       tup_values = ( char ** ) palloc(sizeof( char * ) * natts);
       for( i = 0; i< natts; i++ ) {
         pStr = PySequence_GetItem( pyseq, i );
+        error_check();
         tup_values[i] = pyobject_to_cstring( pStr, desc->attrs[i] );
+        error_check();
         Py_DECREF( pStr );
       }
       tuple = BuildTupleFromCStrings( attinmeta, tup_values);
@@ -366,7 +376,7 @@ static char* get_encoding_from_attribute( Form_pg_attribute attribute )
     char               *encoding_name;
     tp = SearchSysCache1( COLLOID, ObjectIdGetDatum( attribute->attcollation ));
     if ( !HeapTupleIsValid( tp ))
-        elog( ERROR, "cache lookup failed for collation %u", attribute->attcollation );
+        return "ascii";
     colltup = ( Form_pg_collation ) GETSTRUCT( tp );
     ReleaseSysCache( tp );
     if ( colltup->collencoding == -1 ) {
@@ -531,16 +541,24 @@ static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribut
 
 static void report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback)
 {
-        PyErr_NormalizeException(&pErrType, &pErrValue, &pErrTraceback);
-        ereport(ERROR, (errmsg("Error in python: %s", PyString_AsString(PyObject_GetAttrString(pErrType, "__name__"))),
-            errdetail(PyString_AsString(PyObject_Str(pErrValue)))));
+    char    *errName, *errValue;
+    PyObject *traceback_list;
+    PyObject *tracebackModule = PyImport_Import(PyString_FromString("traceback"));
+    PyObject *format_exception = PyObject_GetAttrString(tracebackModule, "format_exception");
+    PyObject *newline = PyString_FromString("\n");
+    PyErr_NormalizeException(&pErrType, &pErrValue, &pErrTraceback);
+    errName = PyString_AsString(PyObject_GetAttrString(pErrType, "__name__"));
+    errValue = PyString_AsString(PyObject_Str(pErrValue));
+    traceback_list = PyObject_CallObject(format_exception, Py_BuildValue("(O,O,O)", pErrType, pErrValue, pErrTraceback));
+    ereport(ERROR, (errmsg("Error in python: %s", errName),
+        errdetail(errValue),
+        errdetail_log(PyString_AsString(PyObject_CallObject(PyObject_GetAttrString(newline, "join"), Py_BuildValue("(O)", traceback_list))))));
 }
 
 static void error_check(){
     PyObject *pErrType, *pErrValue, *pErrTraceback;
     PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
     if ( pErrType ) {
-      PyErr_Print();
       report_exception(pErrType, pErrValue, pErrTraceback);
     }
 }
