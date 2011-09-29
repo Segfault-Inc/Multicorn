@@ -3,14 +3,14 @@
 Presentation
 ============
 
-Multicorn is a Postgresql extension which goal is to make `Foreign Data Wrapper`_. 
+Multicorn is a PostgreSQL extension which goal is to make `Foreign Data Wrapper`_.
 development easy, by allowing the programmer to use the Python programming
 language.
 
 Ok, but why should I care ?
 ---------------------------
 
-- Multicorn allows you to access any data source from your postgresql database.
+- Multicorn allows you to access any data source in your PostgreSQL database.
 - You can leverage the full power of sql to query your data sources
 - Every tool you use for SQL can be reused with those datasources (think about
   an ORM, BI tool...)
@@ -23,7 +23,7 @@ With the `pgxn client`_:
 
 .. code-block:: bash
 
-    pgxn install multicorn    
+    pgxn install multicorn
 
 From pgxn:
 
@@ -34,7 +34,7 @@ From pgxn:
     cd multicorn-0.0.2/
     make && sudo make install
 
-    
+
 
 
 From source:
@@ -56,10 +56,10 @@ Usage
 The multicorn foreign data wrapper is not different from other foreign data
 wrappers.
 
-To use it, you have to: 
+To use it, you have to:
 
-- Create the extension in the target database. 
-  As a postgresql super user, run the following sql:
+- Create the extension in the target database.
+  As a PostgreSQL super user, run the following sql:
 
     .. code-block:: sql
 
@@ -93,7 +93,7 @@ it like this:
 Each foreign data wrapper supports its own set of options, and may interpret the
 columns definitions differently.
 
-Please look at the documentation for the available `foreign data wrappers`_
+Please look at the documentation for the available `foreign data wrappers`_.
 
 .. _foreign data wrappers: /foreign-data-wrappers/
 

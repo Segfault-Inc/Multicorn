@@ -90,7 +90,7 @@ Required options
 ----------------
 
 root_dir:   (string) the base dir from which the pattern is evaluated. The files
-in this directory should be readable by the postgresql user.
+in this directory should be readable by the PostgreSQL user.
 Ex: /var/www/
 
 pattern:    (string) a pattern defining which files to match, and wich parts of the
@@ -122,7 +122,7 @@ Supposing you want to access files in a directory structured like this:
             album2/
                 01 - title1.ogg
                 02 - title2.ogg
-        artist1/
+        artist2/
             album1/
                 01 - title1.ogg
                 02 - title2.ogg
@@ -156,7 +156,7 @@ Example:
 
 .. code-block:: bash
 
-     count | artist  | album  
+     count | artist  | album
     -------+---------+--------
          2 | artist1 | album2
          2 | artist1 | album1
@@ -182,7 +182,7 @@ No dependency outside the standard python distribution
 Required options
 ----------------
 
-database:   (string) the sqlite database to connect to. 
+database:   (string) the sqlite database to connect to.
             Examples: '/tmp/mydatabase.db', ':memory:'
 
 tablename:  (string) the name of the mapped table
@@ -214,7 +214,7 @@ Class: multicorn.rssfdw.RssFdw
 Purpose
 -------
 
-This fdw can be used tgo access items from an rss feed. 
+This fdw can be used tgo access items from an rss feed.
 The column names are mapped to the elements inside an item.
 An rss item has the following strcture:
 
