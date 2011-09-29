@@ -3,14 +3,13 @@
 Foreign Data Wrappers
 =====================
 
-
 Multicorn is bundled with a small set of Foreign Data Wrappers, which you can
 use or customize for your needs.
 
 CSV Foreign Data Wrapper
 ========================
 
-Class : multicorn.csvfdw.CsvFdw
+Class: ``multicorn.csvfdw.CsvFdw``
 
 Source code: `multicorn/csvfdw.py`_
 
@@ -19,38 +18,39 @@ Source code: `multicorn/csvfdw.py`_
 Purpose
 -------
 
-This fdw can be used to access data stored in `CSV files`.
-Each column defined in the table will be mapped, in order, against columns in
-the csv file.
+This fdw can be used to access data stored in `CSV files`_. Each column defined
+in the table will be mapped, in order, against columns in the CSV file.
 
 .. _CSV files: http://en.wikipedia.org/wiki/Comma-separated_values
 
 Dependencies
 ------------
 
-No dependency outside the standard python distribution
+No dependency outside the standard python distribution.
 
 Required options
 ----------------
 
-filename: the full path to the csv file containing the data. This file must be
-readable to the postgres user.
+``filename`` (string)
+  The full path to the CSV file containing the data. This file must be readable
+  to the postgres user.
 
 Allowed options
 ---------------
 
-delimiter:  (character) the CSV delimiter (defaults to  ',').
+``delimiter`` (character)
+  The CSV delimiter (defaults to  ``,``).
 
-quotechar:  (character) the CSV quote character (defaults to '"').
+``quotechar`` (character)
+  The CSV quote character (defaults to ``"``).
 
-skip_header:    (integer) the number of lines to skip (defaults to 0).
+``skip_header`` (integer)
+  The number of lines to skip (defaults to ``0``).
 
 Usage example
 -------------
 
-Supposing you want to parse the following csv file, located in /tmp/test.csv:
-
-.. code-block:: bash
+Supposing you want to parse the following CSV file, located in ``/tmp/test.csv``::
 
     Year,Make,Model,Length
     1997,Ford,E350,2.34
@@ -75,7 +75,7 @@ You can declare the following table:
 FileSystem Foreign Data Wrapper
 ===============================
 
-Class: multicorn.fsfdw.FilesystemFdw
+Class: ``multicorn.fsfdw.FilesystemFdw``
 
 Source code: `multicorn/fsfdw/__init__.py`_
 
@@ -91,36 +91,34 @@ mapped to various columns, as well as the file's content itself.
 Dependencies
 ------------
 
-No dependency outside the standard python distribution
+No dependency outside the standard python distribution.
 
 
 Required options
 ----------------
 
-root_dir:   (string) the base dir from which the pattern is evaluated. The files
-in this directory should be readable by the PostgreSQL user.
-Ex: /var/www/
+``root_dir`` (string)
+  The base directory from which the pattern is evaluated. The files in this
+  directory should be readable by the PostgreSQL user. Ex: ``/var/www/``.
 
-pattern:    (string) a pattern defining which files to match, and wich parts of the
-file path are used as columns. A column name between braces defines a mapping
-from a path part to a column.
-Ex: '{artist}/{album}/{trackno} - {trackname}.ogg'
+``pattern`` (string)
+  A pattern defining which files to match, and wich parts of the file path are
+  used as columns. A column name between braces defines a mapping from a path
+  part to a column. Ex: ``{artist}/{album}/{trackno} - {trackname}.ogg``.
 
 Allowed options
 ---------------
 
-content_column:   (string) If set, defines which column will contain the actual
-file content.
+``content_column`` (string)
+  If set, defines which column will contain the actual file content.
 
-filename_column:    (string) If set, defines which column will contain the full
-filename.
+``filename_column`` (string)
+  If set, defines which column will contain the full filename.
 
 Usage Example
 -------------
 
-Supposing you want to access files in a directory structured like this:
-
-.. code-block:: bash
+Supposing you want to access files in a directory structured like this::
 
     base_dir/
         artist1/
@@ -162,7 +160,7 @@ Example:
 
     SELECT count(track), artist, album from musicfilesystem group by artist, album;
 
-.. code-block:: bash
+::
 
      count | artist  | album
     -------+---------+--------
@@ -175,7 +173,7 @@ Example:
 SQLite Foreign Data Wrapper
 ===========================
 
-Class: multicorn.sqlitefdw.SqliteFdw
+Class: ``multicorn.sqlitefdw.SqliteFdw``
 
 Source code: `multicorn/sqlitefdw.py`_
 
@@ -189,20 +187,22 @@ This fdw can be used to access data stored in tables in a sqlite database.
 Dependencies
 ------------
 
-No dependency outside the standard python distribution
+No dependency outside the standard python distribution.
 
 Required options
 ----------------
 
-database:   (string) the sqlite database to connect to.
-            Examples: '/tmp/mydatabase.db', ':memory:'
+``database`` (string)
+  The sqlite database to connect to. Examples: ``/tmp/mydatabase.db``,
+  ``:memory:``
 
-tablename:  (string) the name of the mapped table
+``tablename`` (string)
+  The name of the mapped table.
 
 Usage Example
 -------------
 
-Let's suppose you want to access an sqlite3 database located at /tmp/data.db
+Let's suppose you want to access an sqlite3 database located at ``/tmp/data.db``.
 
 .. code-block:: sql
 
@@ -221,7 +221,7 @@ Let's suppose you want to access an sqlite3 database located at /tmp/data.db
 RSS Foreign Data Wrapper
 ========================
 
-Class: multicorn.rssfdw.RssFdw
+Class: ``multicorn.rssfdw.RssFdw``
 
 Source code: `multicorn/rssfdw.py`_
 
@@ -236,22 +236,23 @@ An rss item has the following strcture:
 
 .. code-block:: xml
 
- <item>
-    <title>Title</title>
-    <pubDate>2011-01-02</pubDate>
-    <link>http://example.com/test</link>
-    <guid>http://example.com/test</link>
-    <description>Small description</description>
- </item>
+    <item>
+      <title>Title</title>
+      <pubDate>2011-01-02</pubDate>
+      <link>http://example.com/test</link>
+      <guid>http://example.com/test</link>
+      <description>Small description</description>
+    </item>
 
-You can access every element by defining a column with the same name.
-Be careful to match the case ! Example: pubDate should be quoted like this:
-"pubDate" to preserve the uppercased 'D'.
+You can access every element by defining a column with the same name. Be
+careful to match the case! Example: pubDate should be quoted like this:
+``pubDate`` to preserve the uppercased ``D``.
 
 Required options
 -----------------
 
-url:    (string) The rss feed url
+``url`` (string)
+  The RSS feed URL.
 
 Usage Example
 -------------
@@ -274,7 +275,7 @@ definition:
 GIT Foreign Data Wrapper
 ========================
 
-Class: multicorn.gitfdw.GitFdw
+Class: ``multicorn.gitfdw.GitFdw``
 
 Source code: `multicorn/gitfdw.py`_
 
