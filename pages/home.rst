@@ -97,7 +97,8 @@ Please look at the documentation for the available `foreign data wrappers`_.
 
 .. _foreign data wrappers: /foreign-data-wrappers/
 
-If you want to write your own foreign data wrapper, go read the `implementor's
-guide`_
+.. XXX disabled until the page is created
+.. If you want to write your own foreign data wrapper, go read the `implementor's
+.. guide`_.
 
-.. _implementor's guide: /implementing-a-fdw
+.. _implementor's guide: /implementing-a-fdw/
