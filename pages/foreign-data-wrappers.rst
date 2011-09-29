@@ -12,6 +12,10 @@ CSV Foreign Data Wrapper
 
 Class : multicorn.csvfdw.CsvFdw
 
+Source code: `multicorn/csvfdw.py`_
+
+.. _multicorn/csvfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/csvfdw.py
+
 Purpose
 -------
 
@@ -72,6 +76,10 @@ FileSystem Foreign Data Wrapper
 ===============================
 
 Class: multicorn.fsfdw.FilesystemFdw
+
+Source code: `multicorn/fsfdw/__init__.py`_
+
+.. _multicorn/fsfdw/__init__.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/fsfdw/__init__.py
 
 Purpose
 -------
@@ -169,6 +177,10 @@ SQLite Foreign Data Wrapper
 
 Class: multicorn.sqlitefdw.SqliteFdw
 
+Source code: `multicorn/sqlitefdw.py`_
+
+.. _multicorn/sqlitefdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/sqlitefdw.py
+
 Purpose
 -------
 
@@ -210,6 +222,10 @@ RSS Foreign Data Wrapper
 ========================
 
 Class: multicorn.rssfdw.RssFdw
+
+Source code: `multicorn/rssfdw.py`_
+
+.. _multicorn/rssfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/rssfdw.py
 
 Purpose
 -------
@@ -259,6 +275,10 @@ GIT Foreign Data Wrapper
 ========================
 
 Class: multicorn.gitfdw.GitFdw
+
+Source code: `multicorn/gitfdw.py`_
+
+.. _multicorn/gitfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/gitfdw.py
 
 Purpose
 -------
