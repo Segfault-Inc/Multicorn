@@ -89,6 +89,22 @@ it like this:
     ) server multicorn_srv options (
            wrapper 'multicorn.googlefdw.GoogleFdw');
 
+    select url, link from googletest where search = 'Multicorn';
+
+.. code-block:: bash
+
+
+                          url                       |        link         
+    ------------------------------------------------+-------------------------
+     http://wiki.answers.com/Q/What_is_a_multi-corn | What is a multi-corn...
+     http://www.myspace.com/multicorn               | Multicorn | Free Mus...
+     http://multicorn.org/                          | Multicorn - Unified ...
+     http://www.reddit.com/user/Multicorn           | overview for Multico...
+    (4 lignes)
+
+
+
+
 
 Each foreign data wrapper supports its own set of options, and may interpret the
 columns definitions differently.
