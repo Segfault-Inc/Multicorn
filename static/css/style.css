@@ -9,7 +9,7 @@
 }
 
 @font-face {
-  font-family: "text";
+  font-family: "title";
   src: url(CaviarDreams.ttf);
 }
 
@@ -38,14 +38,14 @@ body {
 */
 h2, h3, h4, h5, h6 {
   color: #d0272b;
-  font-family: "arual";
+  font-family: "title";
   font-weight: normal;
   letter-spacing: 0.2em;
 }
 
 h2 a, h3 a, h4 a, h5 a, h6 a {
   color: #d0272b;
-  font-family: "arual";
+  font-family: "title";
   letter-spacing: 0.1em;
 }
 
@@ -123,7 +123,7 @@ nav li {
 nav li a {
   color: #b62226;
   display: inline-block;
-  font-family: "arual";
+  font-family: "title";
   padding: 0.5em 0.5em 0.25em 0.5em;
 }
 
@@ -149,7 +149,7 @@ body > section {
 article {
   border-bottom: 1px solid #dadada;
   color: #a7a7a7;
-  font-family: "text";
+  font-family: sans-serif;
 }
 
 article section {
@@ -169,7 +169,7 @@ article h2 {
 */
 footer {
   background: url(img/horse.jpg) no-repeat 100% 0;  
-  font-family: "text";    
+  font-family: sans-serif;
   margin-top: 50px;
   padding: 3px 0 0 0;
   text-align: center;
