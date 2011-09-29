@@ -1,8 +1,5 @@
 .. contents::
 
-Foreign Data Wrappers
-=====================
-
 
 Multicorn is bundled with a small set of Foreign Data Wrappers, which you can
 use or customize for your needs.
