@@ -99,12 +99,4 @@ it like this:
 Each foreign data wrapper supports its own set of options, and may interpret the
 columns definitions differently.
 
-Please look at the documentation for the available `foreign data wrappers`_.
-
-.. _foreign data wrappers: /foreign-data-wrappers/
-
-.. XXX disabled until the page is created
-If you want to write your own foreign data wrapper, go read the `implementor's
-guide`_.
-
-.. _implementor's guide: /implementing-an-fdw/
+You should take a look to the `documentation </documentation/`_.
