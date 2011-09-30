@@ -99,4 +99,4 @@ it like this:
 Each foreign data wrapper supports its own set of options, and may interpret the
 columns definitions differently.
 
-You should take a look to the `documentation </documentation/`_.
+You should take a look to the `documentation </documentation/>`_.
