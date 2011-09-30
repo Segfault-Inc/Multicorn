@@ -1,0 +1,33 @@
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn;
+CREATE foreign table testmulticorn (
+    test1 character varying,
+    test2 character varying
+) server multicorn_srv options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+select * from testmulticorn;
+  test1   |  test2   
+----------+----------
+ test1 0  | test2 0
+ test1 1  | test2 1
+ test1 2  | test2 2
+ test1 3  | test2 3
+ test1 4  | test2 4
+ test1 5  | test2 5
+ test1 6  | test2 6
+ test1 7  | test2 7
+ test1 8  | test2 8
+ test1 9  | test2 9
+ test1 10 | test2 10
+ test1 11 | test2 11
+ test1 12 | test2 12
+ test1 13 | test2 13
+ test1 14 | test2 14
+ test1 15 | test2 15
+ test1 16 | test2 16
+ test1 17 | test2 17
+ test1 18 | test2 18
+ test1 19 | test2 19
+(20 rows)
+

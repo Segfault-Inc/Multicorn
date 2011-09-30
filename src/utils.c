@@ -32,7 +32,7 @@ static PyObject* log_to_postgres(PyObject* self, PyObject *args, PyObject* kwarg
             break;
         case 2:
             severity = WARNING;
-            break;  
+            break;
         case 3:
             severity = ERROR;
             break;
