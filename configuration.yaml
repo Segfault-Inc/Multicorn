@@ -7,8 +7,9 @@ url: http://www.multicorn.org/
 menu:
   - Overview:
       link: /
-  - Demo:
-      link: http://trymulticorn.org/
+  # Not online yet
+#  - Demo:
+#      link: http://trymulticorn.org/
   - FDW Documentation:
       link: /foreign-data-wrappers
   - Issues:

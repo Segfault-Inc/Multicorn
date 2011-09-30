@@ -1,17 +1,17 @@
-.. contents:: Table of Contents
+.. contents::
 
 Presentation
 ============
 
-Multicorn is a Postgresql extension which goal is to make `Foreign Data Wrapper`_. 
+Multicorn is a PostgreSQL extension which goal is to make `Foreign Data Wrapper`_
 development easy, by allowing the programmer to use the Python programming
 language.
 
 Ok, but why should I care ?
 ---------------------------
 
-- Multicorn allows you to access any data source from your postgresql database.
-- You can leverage the full power of sql to query your data sources
+- Multicorn allows you to access any data source in your PostgreSQL database.
+- You can leverage the full power of SQL to query your data sources
 - Every tool you use for SQL can be reused with those datasources (think about
   an ORM, BI tool...)
 
@@ -19,34 +19,24 @@ Ok, but why should I care ?
 Installation
 ============
 
-With the `pgxn client`_:
+With the `pgxn client`_::
 
-.. code-block:: bash
+    pgxn install multicorn
 
-    pgxn install multicorn    
-
-From pgxn:
-
-.. code-block:: bash
+From pgxn::
 
     wget http://pgxn.org/dist/multicorn/0.0.2/ ./
     unzip multicorn-0.0.2.zip
     cd multicorn-0.0.2/
     make && sudo make install
 
-    
-
-
-From source:
-
-.. code-block:: bash
+From source::
 
     git clone git://github.com/Kozea/Multicorn.git
     cd Multicorn
     make && make install
 
 .. _Foreign Data Wrapper: http://people.planetpostgresql.org/andrew/uploads/fdw2.pdf
-
 .. _pgxn client: http://pgxnclient.projects.postgresql.org/
 
 
@@ -56,26 +46,26 @@ Usage
 The multicorn foreign data wrapper is not different from other foreign data
 wrappers.
 
-To use it, you have to: 
+To use it, you have to:
 
-- Create the extension in the target database. 
-  As a postgresql super user, run the following sql:
+- Create the extension in the target database.
+  As a PostgreSQL super user, run the following SQL:
 
-    .. code-block:: sql
+  .. code-block:: sql
 
-        CREATE EXTENSION multicorn;
+      CREATE EXTENSION multicorn;
 
 - Create a "foreign server":
 
-    .. code-block:: sql
+  .. code-block:: sql
 
-        CREATE SERVER multicorn_srv FOREIGN DATA WRAPPER multicorn;
+      CREATE SERVER multicorn_srv FOREIGN DATA WRAPPER multicorn;
 
 You can then proceed on with the actual foreign tables creation.
 
-In the sql OPTIONS clause, you must provide an options named wrapper, containing
-the fully-qualified class name of the concrete python foreign data wrapper you
-wish to use.
+In the SQL ``OPTIONS`` clause, you must provide an options named wrapper,
+containing the fully-qualified class name of the concrete python foreign data
+wrapper you wish to use.
 
 For example, if you want to use the google foreign data wrapper, you can define
 it like this:
@@ -109,11 +99,12 @@ it like this:
 Each foreign data wrapper supports its own set of options, and may interpret the
 columns definitions differently.
 
-Please look at the documentation for the available `foreign data wrappers`_
+Please look at the documentation for the available `foreign data wrappers`_.
 
 .. _foreign data wrappers: /foreign-data-wrappers/
 
-If you want to write your own foreign data wrapper, go read the `implementor's
-guide`_
+.. XXX disabled until the page is created
+.. If you want to write your own foreign data wrapper, go read the `implementor's
+.. guide`_.
 
-.. _implementor's guide: /implementing-a-fdw
+.. _implementor's guide: /implementing-a-fdw/
