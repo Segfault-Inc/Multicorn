@@ -12,6 +12,8 @@ menu:
 #      link: http://trymulticorn.org/
   - FDW Documentation:
       link: /foreign-data-wrappers
+  - Implementor's guide:
+      link: /implementing-an-fdw
   - Issues:
       link: http://redmine.kozea.fr/projects/multicorn/issues
 
