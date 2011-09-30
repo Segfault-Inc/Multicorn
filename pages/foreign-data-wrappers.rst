@@ -269,7 +269,7 @@ If you want to parse the `radicale`_ rss feed, you can use the following
 definition:
 
 .. code-block:: sql
-    drop foreign table radicalerss;
+    
     CREATE FOREIGN TABLE radicalerss (
         "pubDate" timestamp,
         description character varying,
