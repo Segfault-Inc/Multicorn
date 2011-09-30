@@ -19,7 +19,7 @@
   ---------------
 */
 html {
-  background: url(img/background.jpg) repeat top left;
+  background: url(img/background.jpg) repeat top left fixed;
   border-top: 15px solid black;
 }
 
