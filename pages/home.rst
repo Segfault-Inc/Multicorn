@@ -18,17 +18,17 @@ Ok, but why should I care ?
 
 Installation
 ============
+.. # TODO: uncomment this when released to pgxn!
+.. With the `pgxn client`_::
 
-With the `pgxn client`_::
+..    pgxn install multicorn
 
-    pgxn install multicorn
+.. From pgxn::
 
-From pgxn::
-
-    wget http://pgxn.org/dist/multicorn/0.0.2/ ./
-    unzip multicorn-0.0.2.zip
-    cd multicorn-0.0.2/
-    make && sudo make install
+..    wget http://pgxn.org/dist/multicorn/0.0.2/ ./
+..    unzip multicorn-0.0.2.zip
+..    cd multicorn-0.0.2/
+..    make && sudo make install
 
 From source::
 
