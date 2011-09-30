@@ -256,6 +256,14 @@ You can access every element by defining a column with the same name. Be
 careful to match the case! Example: pubDate should be quoted like this:
 ``pubDate`` to preserve the uppercased ``D``.
 
+
+Dependencies
+------------
+
+You will need the `lxml`_ library.
+
+.. _lxml: http://lxml.de/
+
 Required options
 -----------------
 
