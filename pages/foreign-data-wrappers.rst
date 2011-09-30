@@ -52,7 +52,7 @@ Supposing you want to parse the following csv file, located in /tmp/test.csv:
 You can declare the following table:
 
 .. code-block:: sql
-
+    
     create foreign table csvtest (
            year numeric,
            make character varying,
@@ -63,6 +63,17 @@ You can declare the following table:
            filename '/tmp/test.csv',
            skip_header '1',
            delimiter ',');
+
+    select * from csvtest;
+
+.. code-block:: bash
+
+     year |  make   | model  | length 
+    ------+---------+--------+--------
+     1997 | Ford    | E350   |   2.34
+     2000 | Mercury | Cougar |   2.38
+    (2 lines)
+
 
 
 FileSystem Foreign Data Wrapper
@@ -241,14 +252,35 @@ If you want to parse the `radicale`_ rss feed, you can use the following
 definition:
 
 .. code-block:: sql
-
+    drop foreign table radicalerss;
     CREATE FOREIGN TABLE radicalerss (
         "pubDate" timestamp,
         description character varying,
+        title character varying,
         link character varying
     ) server multicorn_srv options (
-        wrapper 'multicorn.rssfdw.RssFdw'
+        wrapper 'multicorn.rssfdw.RssFdw',
+        url     'http://radicale.org/rss/'
     );
+
+    select "pubDate", title, link from radicalerss limit 10;
+
+.. code-block:: bash
+
+           pubDate       |              title               |                     link                     
+    ---------------------+----------------------------------+----------------------------------------------
+     2011-09-27 06:07:42 | Radicale 0.6.2                   | http://radicale.org/news#2011-09-27@06:07:42
+     2011-08-28 13:20:46 | Radicale 0.6.1, Changes, Future  | http://radicale.org/news#2011-08-28@13:20:46
+     2011-08-01 08:54:43 | Radicale 0.6 Released            | http://radicale.org/news#2011-08-01@08:54:43
+     2011-07-02 20:13:29 | Feature Freeze for 0.6           | http://radicale.org/news#2011-07-02@20:13:29
+     2011-05-01 17:24:33 | Ready for WSGI                   | http://radicale.org/news#2011-05-01@17:24:33
+     2011-04-30 10:21:12 | Apple iCal Support               | http://radicale.org/news#2011-04-30@10:21:12
+     2011-04-25 22:10:59 | Two Features and One New Roadmap | http://radicale.org/news#2011-04-25@22:10:59
+     2011-04-10 20:04:33 | New Features                     | http://radicale.org/news#2011-04-10@20:04:33
+     2011-04-02 12:11:37 | Radicale 0.5 Released            | http://radicale.org/news#2011-04-02@12:11:37
+     2011-02-03 23:35:55 | Jabber Room and iPhone Support   | http://radicale.org/news#2011-02-03@23:35:55
+    (10 lignes)
+
 
 .. _radicale: http://radicale.org/
 
