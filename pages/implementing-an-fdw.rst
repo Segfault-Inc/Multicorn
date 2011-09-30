@@ -69,8 +69,6 @@ system-wide python distribution.
 
     from multicorn import ForeignDataWrapper
 
-    # The class must extend ForeignDataWrapper, or at least conform to its
-    # interface
     class ConstantForeignDataWrapper(ForeignDataWrapper):
         
         def __init__(self, options, columns):
@@ -79,9 +77,6 @@ system-wide python distribution.
 
         def execute(self, quals):
             for index in range(20):
-                # Here, we chose to build a dictionary.
-                # Each column contains the concatenation of the column name and
-                # the line index.
                 line = {}
                 for column_name in self.columns:
                     line[column_name] = '%s %s' % (column_name, index)
