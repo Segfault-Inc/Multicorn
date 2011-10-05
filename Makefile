@@ -24,7 +24,7 @@ python_code: setup.py
 	python2 ./setup.py install
 
 release-zip: all
-	git archive --format zip --prefix=multicorn-$(EXTVERSION) --output ./multicorn-$(EXTVERSION).zip master
+	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip master
 
 DATA = $(wildcard sql/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
 EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql
