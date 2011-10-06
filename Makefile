@@ -15,7 +15,7 @@ PROFILE      = -lpython$(PYVERSION)
 ifeq ($(PG91),yes)
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
-install_python: python_code
+install: python_code
 
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
