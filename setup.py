@@ -11,6 +11,6 @@ setup(
  author='Kozea',
  license='Postgresql',
  package_dir={'': 'python'},
- packages=["multicorn"],
+ packages=['multicorn', 'multicorn.fsfdw'],
  ext_modules = [multicorn_utils_module]
 )
