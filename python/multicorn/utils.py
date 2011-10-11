@@ -3,9 +3,12 @@ try:
     from ._utils import _log_to_postgres
 except ImportError:
     from warnings import warn
-    warn("Not executed in a postgresql server, disabling log_to_postgres", ImportWarning)
-    def _log_to_postgres(message, level=0):
+    warn("Not executed in a postgresql server,"
+         " disabling log_to_postgres", ImportWarning)
+
+    def _log_to_postgres(message, level=0, hint=None):
         pass
+
 
 REPORT_CODES = {
         DEBUG: 0,
@@ -14,6 +17,7 @@ REPORT_CODES = {
         ERROR: 3,
         CRITICAL: 4
 }
+
 
 def log_to_postgres(message, level=INFO, hint=None):
     code = REPORT_CODES.get(level, None)
