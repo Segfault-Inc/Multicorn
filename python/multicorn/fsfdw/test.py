@@ -168,7 +168,7 @@ def test_items(tempdir):
 
 
 @SUITE.test
-def test_get_item(tempdir):
+def test_get_items(tempdir):
     """
     Test the results of :meth:`StructuredDirectory.get_items`
     """
@@ -188,6 +188,22 @@ def test_get_item(tempdir):
 
     with assert_raises(ValueError, 'Unknown properties'):
         filenames(fiz='5')
+
+@SUITE.test
+def test_from_filename(tempdir):
+    """
+    Test the results of :meth:`StructuredDirectory.from_filename`
+    """
+    text = StructuredDirectory(tempdir, '{category}/{num}_{name}.txt')
+
+    assert text.from_filename('lipsum/4_foo.txt/bar') is None
+    assert text.from_filename('lipsum') is None
+    assert text.from_filename('lipsum/4') is None
+    assert text.from_filename('lipsum/4_foo.bin') is None
+    matching = text.from_filename('lipsum/4_foo.txt')
+    assert dict(matching) == dict(category='lipsum', num='4', name='foo')
+    assert matching.filename == 'lipsum/4_foo.txt'
+
 
 
 @SUITE.test

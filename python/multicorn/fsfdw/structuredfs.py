@@ -285,8 +285,36 @@ class StructuredDirectory(object):
     def create(self, **values):
         """
         Return a new ``Item`` associated to this directory with the given
-        ``values``. The file for this item may or may not exist.
+        ``values``.
+
+        The file for this item may or may not exist.
+
         """
+        return Item(self, values)
+
+    def from_filename(self, filename):
+        """
+        Return an ``Item`` from a slash-separated ``filename`` relative
+        to the root. Return ``None`` if ``filename`` does not match
+        ``pattern``.
+
+        Assuming a matching filename::
+
+            f = 'a/b/c'
+            directory.from_filename(f).filename == f
+
+        The file for this item may or may not exist.
+
+        """
+        values = {}
+        parts = filename.split(u'/')
+        if len(parts) != len(self._path_parts_re):
+            return None
+        for part, part_re in zip(parts, self._path_parts_re):
+            match = part_re.match(part)
+            if match is None:
+                return None
+            values.update(match.groupdict())
         return Item(self, values)
 
     def get_items(self, **fixed_values):
