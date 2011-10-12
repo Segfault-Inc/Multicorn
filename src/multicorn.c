@@ -16,6 +16,7 @@
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
 #include "catalog/pg_operator.h"
+#include "catalog/pg_type.h"
 #include "catalog/pg_user_mapping.h"
 #include "commands/explain.h"
 #include "foreign/fdwapi.h"
@@ -64,11 +65,13 @@ static void multicorn_extract_conditions( ForeignScanState * node, PyObject* lis
 static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute );
 static void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback);
 static PyObject* multicorn_get_instance(Relation rel);
+static HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* sizes);
+
 
 
 static HeapTuple pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq );
 static HeapTuple pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict );
-static char* pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute );
+static size_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char** buffer );
 static void multicorn_error_check();
 static void init_if_needed();
 
@@ -286,14 +289,19 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
   char          *key;
   char         **tup_values;
   int            i, natts;
+  size_t* sizes;
+  char * buffer;
   natts = desc->natts;
   tup_values = ( char ** ) palloc(sizeof( char * ) * natts);
+  sizes = (int*) palloc(sizeof(int) * natts);
   for ( i = 0; i< natts; i++ ) {
     key = NameStr( desc->attrs[i]->attname );
     if ( PyMapping_HasKeyString( pydict, key) ) {
         pStr = PyMapping_GetItemString( pydict, key );
         multicorn_error_check();
-        tup_values[i] = pyobject_to_cstring( pStr, desc->attrs[i] );
+        sizes[i] = pyobject_to_cstring( pStr, desc->attrs[i], &buffer );
+        tup_values[i] = (char *) malloc(sizeof (char) * (sizes[i]+ 1));
+        memcpy(tup_values[i], buffer, sizes[i] + 1);
         multicorn_error_check();
         Py_DECREF( pStr );
     } else {
@@ -301,7 +309,7 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
         tup_values[i] = "";
     }
   }
-  tuple = BuildTupleFromCStrings( attinmeta, tup_values);
+  tuple = BuildTupleFromCStringsWithSize( attinmeta, tup_values, sizes);
   return tuple;
 }
 
@@ -311,10 +319,13 @@ pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
   HeapTuple      tuple;
   AttInMetadata *attinmeta = TupleDescGetAttInMetadata( desc );
   char         **tup_values;
-  Py_ssize_t     i, natts;
+  int i, natts;
   PyObject      *pStr;
+  size_t* sizes;
+  char * buffer;
 
   natts = desc->natts;
+  sizes = (int*) palloc(sizeof(int) * natts);
   if ( PySequence_Size( pyseq ) != natts) {
     elog( ERROR, "The python backend did not return a valid sequence" );
   } else {
@@ -322,11 +333,13 @@ pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
       for( i = 0; i< natts; i++ ) {
         pStr = PySequence_GetItem( pyseq, i );
         multicorn_error_check();
-        tup_values[i] = pyobject_to_cstring( pStr, desc->attrs[i] );
+        sizes[i] = pyobject_to_cstring( pStr, desc->attrs[i], &buffer );
+        tup_values[i] = (char *) malloc(sizeof (char) * (sizes[i]+ 1));
+        memcpy(tup_values[i], buffer, sizes[i] + 1);
         multicorn_error_check();
         Py_DECREF( pStr );
       }
-      tuple = BuildTupleFromCStrings( attinmeta, tup_values);
+      tuple = BuildTupleFromCStringsWithSize( attinmeta, tup_values, sizes);
   }
   return tuple;
 }
@@ -351,18 +364,19 @@ static char* get_encoding_from_attribute( Form_pg_attribute attribute )
         encoding_name = "ascii";
     }
     return encoding_name;
-
 }
 
-static char* pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute )
+static size_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buffer )
 {
     PyObject *date_module = PyImport_Import( PyUnicode_FromString( "datetime" ));
     PyObject *date_cls = PyObject_GetAttrString( date_module, "date" );
     PyObject *pStr;
-    char     *result;
+    size_t strlength;
+
 
     if ( PyNumber_Check( pyobject )) {
-        return PyString_AsString( PyObject_Str( pyobject ));
+        PyString_AsStringAndSize( PyObject_Str( pyobject ), buffer, &strlength);
+        return strlength;
     }
     if ( pyobject == Py_None ) {
         return NULL;
@@ -372,18 +386,18 @@ static char* pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribut
         char * encoding_name = get_encoding_from_attribute( attribute );
         unicode_size = PyUnicode_GET_SIZE( pyobject );
         if ( !encoding_name ) {
-            result = PyString_AsString( pyobject );
+            PyString_AsStringAndSize( pyobject, buffer, &strlength );
         } else {
-            result = PyString_AsString( PyUnicode_Encode( PyUnicode_AsUnicode( pyobject ), unicode_size, 
-                    encoding_name, NULL ));
+            PyString_AsStringAndSize( PyUnicode_Encode( PyUnicode_AsUnicode( pyobject ), unicode_size, 
+                    encoding_name, NULL ), buffer, &strlength);
         }
         multicorn_error_check();
-        return result;
+        return strlength;
     }
     if ( PyString_Check( pyobject )) {
-        result = PyString_AsString( pyobject );
+        PyString_AsStringAndSize( pyobject, buffer, &strlength);
         multicorn_error_check();
-        return result;
+        return strlength;
     }
     if ( PyObject_IsInstance( pyobject, date_cls) ) {
         PyObject *date_format_method = PyObject_GetAttrString( pyobject, "strftime" );
@@ -394,11 +408,13 @@ static char* pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribut
         pStr = PyString_FromString( DATE_FORMAT_STRING );
         PyTuple_SetItem( pArgs, 0, pStr );
         Py_DECREF( pStr );
-        return PyString_AsString( formatted_date );
+        PyString_AsStringAndSize( formatted_date , buffer, &strlength);
+        return strlength;
     }
     Py_DECREF( date_module );
     Py_DECREF( date_cls);
-    return PyString_AsString( pyobject );
+    PyString_AsStringAndSize( pyobject, buffer, &strlength);
+    return strlength;
 }
 
 // Appends the columns names as python strings to the given python list
@@ -577,4 +593,74 @@ static PyObject* multicorn_get_instance(Relation rel)
     }
   }
   return pObj;
+}
+
+
+static HeapTuple
+BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* sizes)
+{
+	TupleDesc	tupdesc = attinmeta->tupdesc;
+	int			natts = tupdesc->natts;
+	Datum	   *dvalues;
+	bool	   *nulls;
+	int			i;
+	HeapTuple	tuple, typeTuple;
+    Oid typeoid;
+    Oid element_type;
+
+	dvalues = (Datum *) palloc(natts * sizeof(Datum));
+	nulls = (bool *) palloc(natts * sizeof(bool));
+
+	/* Call the "in" function for each non-dropped attribute */
+	for (i = 0; i < natts; i++)
+	{
+		if (!tupdesc->attrs[i]->attisdropped)
+		{
+			/* Non-dropped attributes */
+
+            typeoid = attinmeta->tupdesc->attrs[i]->atttypid;
+            typeTuple = SearchSysCache1(TYPEOID,
+                                      ObjectIdGetDatum(typeoid));
+            if (!HeapTupleIsValid(typeTuple))
+                elog(ERROR, "lookup failed for type %u",
+                     typeoid);
+            ReleaseSysCache(typeTuple);
+            typeoid = HeapTupleGetOid(typeTuple);
+            element_type = get_element_type(typeoid);
+            typeoid = getBaseType(element_type ? element_type : typeoid);
+            if (typeoid == BYTEAOID){
+                /* special case for text */ 
+                dvalues[i] = cstring_to_text_with_len(values[i], sizes[i]);
+            } else {
+    			dvalues[i] = InputFunctionCall(&attinmeta->attinfuncs[i],
+										   values[i],
+										   attinmeta->attioparams[i],
+										   attinmeta->atttypmods[i]);
+            }
+			if (values[i] != NULL)
+				nulls[i] = false;
+			else
+				nulls[i] = true;
+		}
+		else
+		{
+			/* Handle dropped attributes by setting to NULL */
+			dvalues[i] = (Datum) 0;
+			nulls[i] = true;
+		}
+	}
+
+	/*
+	 * Form a tuple
+	 */
+	tuple = heap_form_tuple(tupdesc, dvalues, nulls);
+
+	/*
+	 * Release locally palloc'd space.  XXX would probably be good to pfree
+	 * values of pass-by-reference datums, as well.
+	 */
+	pfree(dvalues);
+	pfree(nulls);
+
+	return tuple;
 }
