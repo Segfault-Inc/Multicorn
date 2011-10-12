@@ -460,6 +460,7 @@ static void multicorn_extract_conditions( ForeignScanState * node, PyObject* lis
                 }
                 if ( IsA( left, Var )) {
                   varattno = ( (Var * ) left )->varattno;
+                  multicorn_error_check();
                   Assert( 0 < varattno && varattno <= tupdesc->natts);
                   key = NameStr( tupdesc->attrs[varattno - 1]->attname );
                   tp = SearchSysCache1( OPEROID, ObjectIdGetDatum( op->opno ));
@@ -473,7 +474,9 @@ static void multicorn_extract_conditions( ForeignScanState * node, PyObject* lis
                     PyTuple_SetItem( args, 0, PyString_FromString( key ));
                     PyTuple_SetItem( args, 1, PyString_FromString( NameStr( operator_tup->oprname )) );
                     PyTuple_SetItem( args, 2, val );
+                    multicorn_error_check();
                     PyList_Append( list, PyObject_CallObject( qual_class, args) );
+                    multicorn_error_check();
                     Py_DECREF( args);
                   }
                 }
@@ -529,8 +532,8 @@ static void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, 
     errValue = PyString_AsString(PyObject_Str(pErrValue));
     traceback_list = PyObject_CallObject(format_exception, Py_BuildValue("(O,O,O)", pErrType, pErrValue, pErrTraceback));
     ereport(ERROR, (errmsg("Error in python: %s", errName),
-        errdetail(errValue),
-        errdetail_log(PyString_AsString(PyObject_CallObject(PyObject_GetAttrString(newline, "join"), Py_BuildValue("(O)", traceback_list))))));
+        errdetail("%s", errValue),
+        errdetail_log("%s", PyString_AsString(PyObject_CallObject(PyObject_GetAttrString(newline, "join"), Py_BuildValue("(O)", traceback_list))))));
 }
 
 
