@@ -37,6 +37,18 @@ else:
         """
         return string.isidentifier()
 
+try:
+    unicode_ = unicode
+except NameError:
+    # Python3
+    unicode_ = str
+
+try:
+    basestring_ = basestring
+except NameError:
+    # Python3
+    basestring_ = str
+
 
 def _tokenize_pattern(pattern):
     """
@@ -151,10 +163,10 @@ def strict_unicode(value):
     Make sure that value is either unicode or (on Py 2.x) an ASCII string,
     and return it in unicode. Raise otherwise.
     """
-    if not isinstance(value, basestring):
+    if not isinstance(value, basestring_):
         raise TypeError('Filename property values must be of type '
                         'unicode, got %r.' % value)
-    return unicode(value)
+    return unicode_(value)
 
 
 class Item(collections.Mapping):
@@ -261,8 +273,8 @@ class StructuredDirectory(object):
                     eg. '{category}/{number}_{name}.txt'
     """
     def __init__(self, root_dir, pattern):
-        self.root_dir = unicode(root_dir)
-        self.pattern = unicode(pattern)
+        self.root_dir = unicode_(root_dir)
+        self.pattern = unicode_(pattern)
 
         parts_re, parts_properties = _parse_pattern(self.pattern)
         self._path_parts_re = parts_re
@@ -339,7 +351,7 @@ class StructuredDirectory(object):
 
         try:
             names = self._listdir(previous_path_parts)
-        except OSError, exc:
+        except OSError as exc:
             if depth > 0 and exc.errno in [errno.ENOENT, errno.ENOTDIR]:
                 # Does not exist or is not a directory, just return
                 # without yielding any name.
