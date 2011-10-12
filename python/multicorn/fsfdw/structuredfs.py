@@ -282,6 +282,13 @@ class StructuredDirectory(object):
         self.properties = set(prop for part in parts_properties
                                    for prop in part)
 
+    def create(self, **values):
+        """
+        Return a new ``Item`` associated to this directory with the given
+        ``values``. The file for this item may or may not exist.
+        """
+        return Item(self, values)
+
     def get_items(self, **fixed_values):
         """
         Return an iterable of :class:`Item` objects for all files
