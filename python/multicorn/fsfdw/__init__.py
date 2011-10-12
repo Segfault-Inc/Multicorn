@@ -33,18 +33,24 @@ class FilesystemFdw(ForeignDataWrapper):
         self.content_column = options.get('content_column', None)
         self.filename_column = options.get('filename_column', None)
         self.structured_directory = StructuredDirectory(root_dir, pattern)
-        if self.filename_column and self.filename_column not in columns:
-            log_to_postgres("The filename column (%s) does not exist"
-                            "in the column list" % self.filename_column, ERROR,
-                            "You should try to create your table with an "
-                            "additional column: \n"
-                            "%s character varying" % self.filename_column)
-        if self.content_column and self.content_column not in columns:
-            log_to_postgres("The content column (%s) does not exist"
-                            "in the column list" % self.content_column, ERROR,
-                            "You should try to create your table with an "
-                            "additional column: \n"
-                            "%s bytea" % self.content_column)
+        if self.filename_column:
+            if self.filename_column not in columns:
+                log_to_postgres("The filename column (%s) does not exist"
+                                "in the column list" % self.filename_column, ERROR,
+                                "You should try to create your table with an "
+                                "additional column: \n"
+                                "%s character varying" % self.filename_column)
+            else:
+                columns.remove(self.filename_column)
+        if self.content_column:
+            if self.content_column not in columns:
+                log_to_postgres("The content column (%s) does not exist"
+                                "in the column list" % self.content_column, ERROR,
+                                "You should try to create your table with an "
+                                "additional column: \n"
+                                "%s bytea" % self.content_column)
+            else:
+                columns.remove(self.content_column)
         if len(self.structured_directory.properties) < len(columns):
             missing_columns = set(columns).difference(
                     self.structured_directory.properties)
