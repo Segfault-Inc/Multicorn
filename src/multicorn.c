@@ -71,7 +71,7 @@ static HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char *
 
 static HeapTuple pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq );
 static HeapTuple pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict );
-static size_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char** buffer );
+static ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char** buffer );
 static void multicorn_error_check();
 static void init_if_needed();
 
@@ -289,11 +289,11 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
   char          *key;
   char         **tup_values;
   int            i, natts;
-  size_t* sizes;
+  ssize_t* sizes;
   char * buffer;
   natts = desc->natts;
   tup_values = ( char ** ) palloc(sizeof( char * ) * natts);
-  sizes = (int*) palloc(sizeof(int) * natts);
+  sizes = (ssize_t*) palloc(sizeof(ssize_t) * natts);
   for ( i = 0; i< natts; i++ ) {
     key = NameStr( desc->attrs[i]->attname );
     if ( PyMapping_HasKeyString( pydict, key) ) {
@@ -321,11 +321,11 @@ pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
   char         **tup_values;
   int i, natts;
   PyObject      *pStr;
-  size_t* sizes;
+  ssize_t* sizes;
   char * buffer;
 
   natts = desc->natts;
-  sizes = (int*) palloc(sizeof(int) * natts);
+  sizes = (ssize_t*) palloc(sizeof(ssize_t) * natts);
   if ( PySequence_Size( pyseq ) != natts) {
     elog( ERROR, "The python backend did not return a valid sequence" );
   } else {
@@ -366,12 +366,12 @@ static char* get_encoding_from_attribute( Form_pg_attribute attribute )
     return encoding_name;
 }
 
-static size_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buffer )
+static ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buffer )
 {
     PyObject *date_module = PyImport_Import( PyUnicode_FromString( "datetime" ));
     PyObject *date_cls = PyObject_GetAttrString( date_module, "date" );
     PyObject *pStr;
-    size_t strlength;
+    Py_ssize_t strlength;
 
 
     if ( PyNumber_Check( pyobject )) {
