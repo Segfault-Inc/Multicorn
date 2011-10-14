@@ -28,7 +28,7 @@ class CsvFdw(ForeignDataWrapper):
         self.skip_header = int(fdw_options.get('skip_header', 0))
         self.columns = fdw_columns
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         with open(self.filename) as stream:
             reader = csv.reader(stream, delimiter=self.delimiter)
             count = 0

@@ -13,6 +13,6 @@ class ProcessFdw(ForeignDataWrapper):
 
     """
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         """quals are ignored."""
         return statgrab.sg_get_process_stats()

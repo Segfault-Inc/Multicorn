@@ -23,7 +23,7 @@ class GitFdw(ForeignDataWrapper):
         self.path = fdw_options["path"]
         self.encoding = fdw_options.get("encoding", "utf-8")
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         def enc(unicode_str):
             """Encode the string in the self given encoding."""
             return unicode_str.encode(self.encoding)

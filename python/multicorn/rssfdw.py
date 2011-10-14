@@ -35,7 +35,7 @@ class RssFdw(ForeignDataWrapper):
             for prop in self.columns)
         return properties
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         """Quals are ignored."""
         try:
             xml = etree.fromstring(urllib.urlopen(self.url).read())

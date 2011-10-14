@@ -35,6 +35,7 @@ PG_MODULE_MAGIC;
 typedef struct MulticornState
 {
   AttInMetadata *attinmeta;
+  PyObject *columns_list;
   int rownum;
   PyObject *pIterator;
 } MulticornState;
@@ -59,21 +60,22 @@ static void multicorn_end( ForeignScanState *node );
 /*
   Helpers
 */
-static void multicorn_get_options( Oid foreign_table_id, PyObject *options_dict, char **module );
-static void multicorn_get_attributes_name( TupleDesc desc, PyObject* list );
-static void multicorn_extract_conditions( ForeignScanState * node, PyObject* list, PyObject* multicorn_module );
-static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute );
-static void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback);
-static PyObject* multicorn_get_instance(Relation rel);
-static HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* sizes);
+void multicorn_get_options( Oid foreign_table_id, PyObject *options_dict, char **module );
+void multicorn_get_attributes_name( TupleDesc desc, PyObject* list );
+void multicorn_extract_conditions( ForeignScanState * node, PyObject* list, PyObject* multicorn_module );
+PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute );
+void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback);
+PyObject* multicorn_get_instance(Relation rel);
+HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* sizes);
+void  multicorn_get_columns(List *columnlist, TupleDesc desc, PyObject *);
+void  multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list);
 
 
-
-static HeapTuple pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq );
-static HeapTuple pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict );
-static ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char** buffer );
-static void multicorn_error_check();
-static void init_if_needed();
+HeapTuple pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq );
+HeapTuple pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict );
+ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char** buffer );
+void multicorn_error_check();
+void init_if_needed();
 
 const char* DATE_FORMAT_STRING = "%Y-%m-%d";
 
@@ -100,7 +102,7 @@ multicorn_validator( PG_FUNCTION_ARGS)
   PG_RETURN_BOOL( true );
 }
 
-static void multicorn_error_check(){
+void multicorn_error_check(){
     PyObject *pErrType, *pErrValue, *pErrTraceback;
     PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
     if ( pErrType ) {
@@ -121,7 +123,7 @@ multicorn_plan(  Oid foreign_table_id,
   fdw_plan->startup_cost = 10;
   base_relation->rows = 1;
   fdw_plan->total_cost = 15;
-
+  
   return fdw_plan;
 }
 
@@ -146,7 +148,8 @@ multicorn_begin( ForeignScanState *node, int eflags)
   Relation        rel = node->ss.ss_currentRelation;
   MulticornState *state;
   PyObject       *pModule, *pArgs, *pValue, 
-                 *pObj, *pMethod, *pConds, *pName;
+                 *pObj, *pMethod, *pConds, *pName,
+                 *colList;
   init_if_needed();
   pName = PyUnicode_FromString( "multicorn" );
   pModule = PyImport_Import( pName );
@@ -156,16 +159,23 @@ multicorn_begin( ForeignScanState *node, int eflags)
   state->rownum = 0;
   state->attinmeta = attinmeta;
   node->fdw_state = ( void * ) state;
-  pArgs = PyTuple_New( 1 );
+  pArgs = PyTuple_New( 2 );
   pConds = PyList_New( 0 );
   multicorn_extract_conditions( node, pConds, pModule );
   PyTuple_SetItem( pArgs, 0, pConds);
+  colList = PyList_New(0);
+  Py_INCREF(colList);
+  multicorn_get_columns(node->ss.ps.targetlist, rel->rd_att, colList);
+  multicorn_get_columns(node->ss.ps.qual, rel->rd_att, colList);
+  PyTuple_SetItem( pArgs, 1, colList);
+  multicorn_error_check();
   pMethod = PyObject_GetAttrString( pObj, "execute" );
   pValue = PyObject_CallObject( pMethod, pArgs);
   Py_DECREF( pMethod );
   Py_DECREF( pArgs);
   multicorn_error_check();
   state->pIterator = PyObject_GetIter( pValue );
+  multicorn_error_check();
   Py_DECREF( pValue );
   Py_DECREF( pModule );
 }
@@ -203,7 +213,7 @@ multicorn_iterate( ForeignScanState *node )
         multicorn_report_exception(pErrType, pErrValue, pErrTraceback);
     }
   }
-  if ( pValue == NULL ) {
+  if ( pValue == NULL || pValue == Py_None) {
     return slot;
   }
 
@@ -241,7 +251,7 @@ multicorn_end( ForeignScanState *node )
 }
 
 
-static void
+void
 multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
 {
   ForeignTable    *f_table;
@@ -280,7 +290,7 @@ multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
 }
 
 
-static HeapTuple
+HeapTuple
 pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
 {
   HeapTuple      tuple;
@@ -305,7 +315,7 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
         multicorn_error_check();
         Py_DECREF( pStr );
     } else {
-        elog(WARNING, "The backend did not provide a value for key %s", key);
+        elog(DEBUG1, "The backend did not provide a value for key %s", key);
         tup_values[i] = "";
     }
   }
@@ -313,7 +323,7 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
   return tuple;
 }
 
-static HeapTuple
+HeapTuple
 pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
 {
   HeapTuple      tuple;
@@ -344,7 +354,7 @@ pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
   return tuple;
 }
 
-static char* get_encoding_from_attribute( Form_pg_attribute attribute )
+char* get_encoding_from_attribute( Form_pg_attribute attribute )
 {
     HeapTuple          tp;
     Form_pg_collation  colltup;
@@ -366,7 +376,7 @@ static char* get_encoding_from_attribute( Form_pg_attribute attribute )
     return encoding_name;
 }
 
-static ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buffer )
+ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buffer )
 {
     PyObject *date_module = PyImport_Import( PyUnicode_FromString( "datetime" ));
     PyObject *date_cls = PyObject_GetAttrString( date_module, "date" );
@@ -418,7 +428,7 @@ static ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attrib
 }
 
 // Appends the columns names as python strings to the given python list
-static void multicorn_get_attributes_name( TupleDesc desc, PyObject * list )
+void multicorn_get_attributes_name( TupleDesc desc, PyObject * list )
 {
     char       *key;
     Py_ssize_t  i, natts;
@@ -430,7 +440,7 @@ static void multicorn_get_attributes_name( TupleDesc desc, PyObject * list )
 }
 
 
-static void multicorn_extract_conditions( ForeignScanState * node, PyObject* list, PyObject* multicorn_module )
+void multicorn_extract_conditions( ForeignScanState * node, PyObject* list, PyObject* multicorn_module )
 {
     if ( node->ss.ps.plan->qual ) {
         ListCell   *lc;
@@ -486,7 +496,7 @@ static void multicorn_extract_conditions( ForeignScanState * node, PyObject* lis
     }
 }
 
-static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute )
+PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute )
 {
     PyObject* result;
     if ( constant->consttype == 25 ) {
@@ -520,7 +530,7 @@ static PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribut
     return result;
 }
 
-static void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback)
+void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback)
 {
     char    *errName, *errValue;
     PyObject *traceback_list;
@@ -537,7 +547,7 @@ static void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, 
 }
 
 
-static void init_if_needed(){
+void init_if_needed(){
   if ( TABLES_DICT == NULL ) {
     /* TODO: managed locks and things */
     Py_Initialize(  );
@@ -545,7 +555,7 @@ static void init_if_needed(){
   }
 }
 
-static PyObject* multicorn_get_instance(Relation rel)
+PyObject* multicorn_get_instance(Relation rel)
 {
   PyObject       *pName, *pModule, *pArgs, *pOptions,
                  *pFunc, *pClass, *pObj, *pColumns,
@@ -599,7 +609,7 @@ static PyObject* multicorn_get_instance(Relation rel)
 }
 
 
-static HeapTuple
+HeapTuple
 BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* sizes)
 {
 	TupleDesc	tupdesc = attinmeta->tupdesc;
@@ -666,4 +676,223 @@ BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* siz
 	pfree(nulls);
 
 	return tuple;
+}
+
+void 
+multicorn_get_columns(List *columnslist, TupleDesc desc, PyObject *result){
+    Expr *current_expr;
+    ListCell *cell;
+    char * key;
+    foreach(cell, columnslist){
+        current_expr = (Expr*) lfirst(cell);
+        multicorn_get_column(current_expr, desc, result);
+    }
+}
+
+void
+multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
+  ListCell *cell;
+  char * key;
+  if ( expr == NULL) {
+    return ;
+  }
+  switch ( expr->type ) {
+  
+    case T_ExprState:
+      multicorn_get_column(((ExprState *) expr)->expr, desc, list);
+      break;
+
+    case T_GenericExprState:
+      multicorn_get_column(((GenericExprState*) expr)->xprstate.expr, desc, list);
+      break;
+
+    case T_FuncExprState:
+      foreach(cell, ((FuncExprState*) expr)->args){
+        multicorn_get_column((Expr *)lfirst(cell), desc, list);
+      }
+      break;
+
+    case T_Var:
+      key = NameStr( desc->attrs[((Var *)expr)->varattno-1]->attname );
+      if (key != NULL){
+        PyList_Append(list, PyString_FromString(key));
+      }
+      break;
+
+    case T_OpExpr:
+    case T_DistinctExpr:
+    case T_NullIfExpr:
+    case T_ScalarArrayOpExpr:
+    case T_FuncExpr:
+      foreach(cell, ((OpExpr*) expr)->args){
+        multicorn_get_column((Expr*)lfirst(cell), desc, list);
+      }
+      break;
+
+    case T_Const:
+    case T_Param:
+    case T_CaseTestExpr:
+    case T_CoerceToDomainValue:
+    case T_CurrentOfExpr:
+      break;
+
+    case T_TargetEntry:
+      if (((TargetEntry *)expr)->resorigcol == 0){
+          multicorn_get_column(((TargetEntry *)expr)->expr, desc, list);
+      } else {
+        key = NameStr( desc->attrs[((TargetEntry *)expr)->resorigcol-1]->attname );
+        if (key != NULL) {
+            PyList_Append(list, PyString_FromString(key));
+        }
+      }
+      break;
+
+    case T_RelabelType:
+        multicorn_get_column(((RelabelType *)expr)->arg, desc, list);
+        break;
+
+    case T_RestrictInfo:
+        multicorn_get_column(((RestrictInfo *)expr)->clause, desc, list);
+        break;
+
+    case T_Aggref:
+        foreach(cell, ((Aggref *)expr)->args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        foreach(cell, ((Aggref *)expr)->aggorder){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        foreach(cell, ((Aggref *)expr)->aggdistinct){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_WindowFunc:
+        foreach(cell, ((WindowFunc *)expr)->args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_ArrayRef:
+        foreach(cell, ((ArrayRef *)expr)-> refupperindexpr){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        foreach(cell, ((ArrayRef *)expr)-> reflowerindexpr){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        multicorn_get_column(((ArrayRef *)expr)->refexpr, desc, list);
+        multicorn_get_column(((ArrayRef *)expr)->refassgnexpr, desc, list);
+        break;
+
+    case T_BoolExpr:
+        foreach(cell, ((BoolExpr *)expr)->args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_SubPlan:
+        foreach(cell, ((SubPlan *)expr)->args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_AlternativeSubPlan:
+        // Do not really know what to do
+        break;
+
+    case T_NamedArgExpr:
+        multicorn_get_column(((NamedArgExpr *)expr)->arg, desc, list);
+        break;
+
+    case T_FieldSelect:
+        multicorn_get_column(((FieldSelect *)expr)->arg, desc, list);
+        break;
+
+    case T_CoerceViaIO:
+        multicorn_get_column(((CoerceViaIO *)expr)->arg, desc, list);
+        break;
+
+    case T_ArrayCoerceExpr:
+        multicorn_get_column(((ArrayCoerceExpr *)expr)->arg, desc, list);
+        break;
+
+    case T_ConvertRowtypeExpr:
+        multicorn_get_column(((ConvertRowtypeExpr *)expr)->arg, desc, list);
+        break;
+
+    case T_CollateExpr:
+        multicorn_get_column(((CollateExpr *)expr)->arg, desc, list);
+        break;
+
+    case T_CaseExpr:
+        foreach(cell, ((CaseExpr *)expr)-> args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        multicorn_get_column(((CaseExpr *)expr)->arg, desc, list);
+        multicorn_get_column(((CaseExpr *)expr)->defresult, desc, list);
+        break;
+
+    case T_CaseWhen:
+        multicorn_get_column(((CaseWhen *)expr)->expr, desc, list);
+        multicorn_get_column(((CaseWhen *)expr)->result, desc, list);
+        break;
+         
+    case T_ArrayExpr:
+        foreach(cell, ((ArrayExpr *)expr)->elements){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_RowExpr:
+        foreach(cell, ((RowExpr *)expr)->args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_RowCompareExpr:
+        foreach(cell, ((RowCompareExpr *)expr)->largs){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        foreach(cell, ((RowCompareExpr *)expr)->rargs){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_CoalesceExpr:
+        foreach(cell, ((CoalesceExpr *)expr)->args ){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_MinMaxExpr:
+        foreach(cell, ((MinMaxExpr *)expr)->args ){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_XmlExpr:
+        foreach(cell, ((XmlExpr *)expr)->args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        foreach(cell, ((XmlExpr *)expr)->named_args){
+            multicorn_get_column((Expr *)lfirst(cell), desc, list);
+        }
+        break;
+
+    case T_NullTest:
+        multicorn_get_column(((NullTest *)expr)->arg, desc, list);
+        break;
+
+    case T_BooleanTest:
+        multicorn_get_column(((BooleanTest *)expr)->arg, desc, list);
+        break;
+
+    case T_CoerceToDomain:
+        multicorn_get_column(((CoerceToDomain *)expr)->arg, desc, list);
+        break;
+
+    default:
+        ereport(ERROR, 
+                (errmsg("Unknown node type %d")));
+  }
 }

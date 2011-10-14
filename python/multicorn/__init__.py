@@ -57,7 +57,7 @@ class ForeignDataWrapper(object):
         """
         pass
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         """Execute a query in the foreign data wrapper.
 
         Arguments
@@ -68,6 +68,11 @@ class ForeignDataWrapper(object):
                        For an exemple of quals management, see the concrete
                        subclass :class:`multicorn.ldapfdw.LdapFdw`
 
+        columns     -- A list of columns that postgresql is going to need.
+                    You should return AT LEAST those columns when returning a
+                    dict. If returning a sequence, every column from the table
+                    should be in
+                    the sequence.
 
         """
         pass

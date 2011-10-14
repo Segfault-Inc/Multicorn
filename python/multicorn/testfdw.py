@@ -6,7 +6,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         super(TestForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         for index in range(20):
             line = {}
             for column_name in self.columns:

@@ -22,7 +22,7 @@ class SqliteFdw(ForeignDataWrapper):
         self.connection = connect(fdw_options["database"])
         self.tablename = fdw_options["tablename"]
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         """Execute the query against the sqlite3 database.
 
         The quals are turned into an and'ed where clause.

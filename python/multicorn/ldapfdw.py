@@ -25,7 +25,7 @@ class LdapFdw(ForeignDataWrapper):
         self.object_class = fdw_options["objectclass"]
         self.field_list = fdw_columns
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         request = "(objectClass=%s)" % self.object_class
         for qual in quals:
             if qual.operator in ("=", "~~"):

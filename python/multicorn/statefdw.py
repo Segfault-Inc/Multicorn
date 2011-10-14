@@ -19,6 +19,6 @@ class StateFdw(ForeignDataWrapper):
         super(StateFdw, self).__init__(*args)
         self.state = 0
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         self.state += 1
         yield [self.state]

@@ -60,7 +60,7 @@ class FilesystemFdw(ForeignDataWrapper):
 
 
 
-    def execute(self, quals):
+    def execute(self, quals, columns):
         """Execute method.
 
         The FilesystemFdw performs some optimizations based on the filesystem
@@ -83,8 +83,8 @@ class FilesystemFdw(ForeignDataWrapper):
         cond.pop(self.content_column, None)
         for item in self.structured_directory.get_items(**cond):
             new_item = dict(item)
-            if self.content_column:
+            if self.content_column and self.content_column in columns:
                 new_item[self.content_column] = item.read()
-            if self.filename_column:
+            if self.filename_column and self.filename_column in columns:
                 new_item[self.filename_column] = item.filename
             yield new_item
