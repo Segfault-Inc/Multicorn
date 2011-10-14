@@ -4,6 +4,7 @@ An LDAP foreign data wrapper.
 """
 
 from . import ForeignDataWrapper
+from .utils import log_to_postgres, WARNING
 import ldap
 
 

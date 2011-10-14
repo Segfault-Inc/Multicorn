@@ -37,7 +37,6 @@ create foreign table fstest (
 ) server multicorn_srv options (
        wrapper 'multicorn.fsfdw.FilesystemFdw',
        root_dir '/tmp/data',
-       content_column 'content',
        pattern '{field1}/{field2}/{field3}/style.css');
 
 

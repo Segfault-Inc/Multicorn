@@ -45,9 +45,9 @@ static PyObject* log_to_postgres(PyObject* self, PyObject *args, PyObject* kwarg
     }
     hint = PyDict_GetItemString(kwargs, "hint");
     if(hint != NULL && hint != Py_None){
-        ereport(severity, (errmsg(message), errhint(PyString_AsString(hint))));
+        ereport(severity, (errmsg("%s", message), errhint("%s", PyString_AsString(hint))));
     } else {
-        ereport(severity, (errmsg(message)));
+        ereport(severity, (errmsg("%s", message)));
     }
     return Py_None;
 }
