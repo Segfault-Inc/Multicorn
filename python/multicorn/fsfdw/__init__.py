@@ -73,7 +73,7 @@ class FilesystemFdw(ForeignDataWrapper):
         if self.filename_column in cond:
             item = self.structured_directory.from_filename(
                     cond[self.filename_column])
-            if item is not None:
+            if item is not None and item.exists():
                 new_item = dict(item)
                 if self.content_column:
                     new_item[self.content_column] = item.read()
