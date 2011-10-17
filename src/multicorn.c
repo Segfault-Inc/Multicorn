@@ -71,7 +71,7 @@ void multicorn_extract_conditions( ForeignScanState * node, PyObject* list, PyOb
 PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute );
 void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback);
 PyObject* multicorn_get_instance(Relation rel);
-HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* sizes);
+HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t* sizes);
 void  multicorn_get_columns(List *columnlist, TupleDesc desc, PyObject *);
 void  multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list);
 const char* get_encoding_from_attribute( Form_pg_attribute attribute );
@@ -529,7 +529,7 @@ multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute )
     } else if ( constant->consttype == 1700 ) {
         /* Its a numeric */
         char*  number;
-        number = ( char* ) DirectFunctionCall1( numeric_out, (int) DatumGetNumeric( constant->constvalue ));
+        number = ( char* ) DirectFunctionCall1( numeric_out, (ssize_t) DatumGetNumeric( constant->constvalue ));
         result = PyFloat_FromString( PyString_FromString( number ), NULL );
     } else if ( constant->consttype == 23 ) {
         long number;
