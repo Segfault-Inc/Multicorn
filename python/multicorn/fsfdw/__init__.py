@@ -80,11 +80,12 @@ class FilesystemFdw(ForeignDataWrapper):
                     new_item[self.filename_column] = item.filename
                 yield new_item
                 return
-        cond.pop(self.content_column, None)
-        for item in self.structured_directory.get_items(**cond):
-            new_item = dict(item)
-            if self.content_column and self.content_column in columns:
-                new_item[self.content_column] = item.read()
-            if self.filename_column and self.filename_column in columns:
-                new_item[self.filename_column] = item.filename
-            yield new_item
+        else:
+            cond.pop(self.content_column, None)
+            for item in self.structured_directory.get_items(**cond):
+                new_item = dict(item)
+                if self.content_column and self.content_column in columns:
+                    new_item[self.content_column] = item.read()
+                if self.filename_column and self.filename_column in columns:
+                    new_item[self.filename_column] = item.filename
+                yield new_item
