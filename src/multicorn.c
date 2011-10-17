@@ -658,7 +658,7 @@ BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t*
             typeoid = getBaseType(element_type ? element_type : typeoid);
             if (typeoid == BYTEAOID || typeoid == TEXTOID){
                 dvalues[i] = PointerGetDatum(cstring_to_text_with_len(values[i], sizes[i]));
-                SET_VARSIZE(dvalues[i], sizes[i] + sizeof(ssize_t));
+                SET_VARSIZE(dvalues[i], sizes[i] + sizeof(char));
             } else {
                 dvalues[i] = InputFunctionCall(&attinmeta->attinfuncs[i],
                         values[i],
