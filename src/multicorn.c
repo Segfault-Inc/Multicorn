@@ -624,7 +624,7 @@ multicorn_get_instance(Relation rel)
 
 
 HeapTuple
-BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, int* sizes)
+BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t* sizes)
 {
     TupleDesc	tupdesc = attinmeta->tupdesc;
     int			natts = tupdesc->natts;
