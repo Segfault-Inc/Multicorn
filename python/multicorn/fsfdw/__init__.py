@@ -67,7 +67,6 @@ class FilesystemFdw(ForeignDataWrapper):
         structure.
 
         """
-        log_to_postgres(str(columns), WARNING);
         cond = dict((qual.field_name, qual.value) for
                 qual in quals if qual.operator == '=')
         if self.filename_column in cond:
