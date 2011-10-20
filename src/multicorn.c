@@ -905,6 +905,13 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
             multicorn_get_column(((CoerceToDomain *)expr)->arg, desc, list);
             break;
 
+        case T_SubPlanState:
+            multicorn_get_column(((Expr *)((SubPlanState *)expr)->testexpr), desc, list);
+            foreach(cell, ((SubPlanState *)expr)->args ){
+                multicorn_get_column((Expr *)lfirst(cell), desc, list);
+            }
+            break;
+
         default:
             ereport(ERROR, 
                     (errmsg("Unknown node type %d", expr->type)));
