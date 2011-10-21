@@ -36,7 +36,8 @@ class Qual(object):
         self.value = value
 
     def __repr__(self):
-        return "%s %s %s" % (self.field_name, self.operator, self.value)
+        return (u"%s %s %s" % (self.field_name, self.operator, self.value))\
+                .encode('utf8')
 
 
 class ForeignDataWrapper(object):

@@ -12,6 +12,7 @@
  */
 
 #include "postgres.h"
+#include "access/relscan.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
@@ -26,11 +27,14 @@
 #include "utils/builtins.h"
 #include "utils/formatting.h"
 #include "utils/numeric.h"
+#include "utils/date.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
 #include "utils/lsyscache.h"
+#include "pgtime.h"
 #include "mb/pg_wchar.h"
 #include "Python.h"
+#include "datetime.h"
 
 
 PG_MODULE_MAGIC;
@@ -38,7 +42,6 @@ PG_MODULE_MAGIC;
 typedef struct MulticornState
 {
     AttInMetadata *attinmeta;
-    PyObject *columns_list;
     PyObject *quals;
     int rownum;
     PyObject *pIterator;
@@ -69,7 +72,7 @@ static void init_if_needed(void);
 void multicorn_get_options( Oid foreign_table_id, PyObject *options_dict, char **module );
 void multicorn_get_attributes_name( TupleDesc desc, PyObject* list );
 void multicorn_extract_conditions( ForeignScanState * node, PyObject* list);
-PyObject* multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute );
+PyObject* multicorn_datum_to_python( Datum datumvalue, Oid type, Form_pg_attribute attribute );
 void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback);
 PyObject* multicorn_get_instance(Relation rel);
 HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t* sizes);
@@ -144,8 +147,8 @@ multicorn_begin( ForeignScanState *node, int eflags)
     state = ( MulticornState * ) palloc(sizeof( MulticornState ));
     state->rownum = 0;
     state->attinmeta = attinmeta;
+    state->pIterator = NULL;
     node->fdw_state = ( void * ) state;
-    multicorn_execute(node);
 }
 
 void
@@ -153,6 +156,7 @@ multicorn_execute(ForeignScanState *node){
     PyObject       *pArgs, *pValue, 
                    *pObj, *pMethod, *pConds, 
                    *colList;
+
     MulticornState *state = node->fdw_state;
     Relation        rel = node->ss.ss_currentRelation;
     pObj = multicorn_get_instance(rel);
@@ -164,8 +168,6 @@ multicorn_execute(ForeignScanState *node){
     Py_INCREF(colList);
     multicorn_get_columns(node->ss.ps.targetlist, rel->rd_att, colList);
     multicorn_get_columns(node->ss.ps.qual, rel->rd_att, colList);
-    state->columns_list = colList;
-    state->quals = pConds;
     PyTuple_SetItem( pArgs, 1, colList);
     multicorn_error_check();
     pMethod = PyObject_GetAttrString( pObj, "execute" );
@@ -188,16 +190,14 @@ multicorn_iterate( ForeignScanState *node )
     PyObject        *pValue, *pArgs, *pIterator, *pyStopIteration,
                     *pErrType, *pErrValue, *pErrTraceback;
 
-    ExecClearTuple( slot );
 
     pArgs = PyTuple_New( 0 );
-    pIterator = state->pIterator;
     Py_DECREF( pArgs);
-    if ( pIterator == NULL ) {
-        PyErr_Print(  );
-        return slot;
+    if ( state->pIterator == NULL ) {
+        multicorn_execute(node);
     }
-
+    ExecClearTuple( slot );
+    pIterator = state->pIterator;
     pValue = PyIter_Next( pIterator );
     PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
     if ( pErrType ) {
@@ -213,7 +213,6 @@ multicorn_iterate( ForeignScanState *node )
     if ( pValue == NULL || pValue == Py_None) {
         return slot;
     }
-
     if ( PyMapping_Check( pValue )) {
         tuple = pydict_to_postgres_tuple( node->ss.ss_currentRelation->rd_att, pValue );
     } else { 
@@ -232,9 +231,8 @@ multicorn_iterate( ForeignScanState *node )
 
 static void
 multicorn_rescan( ForeignScanState *node )
-{
+{  
     multicorn_clean_state((MulticornState *) node->fdw_state);
-    multicorn_execute( node );
 }
 
 static void
@@ -466,6 +464,8 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
         PyObject   *args;
         List       *quals = list_copy( node->ss.ps.qual );
         TupleDesc  tupdesc = node->ss.ss_currentRelation->rd_att;
+        Datum exprvalue;
+        bool isnull;
         foreach ( lc, quals) {
             ExprState   *xpstate = lfirst( lc );
             Node        *nodexp = ( Node * ) xpstate->expr;
@@ -474,8 +474,9 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
                 Node            *left, *right;
                 Index            varattno;
                 char            *key;
-                PyObject        *val;
+                PyObject        *val = NULL;
                 HeapTuple        tp;
+                ExprState       *exprstate;
                 Form_pg_operator operator_tup;
                 if ( list_length( op->args) == 2 ) {
                     left = list_nth( op->args, 0 );
@@ -485,6 +486,12 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
                     }
                     if ( IsA( left, RelabelType )) {
                         left = ( Node* ) ( (RelabelType * ) left )->arg;
+                    }
+                    if (IsA(right, Var) && !IsA(left, Var)){
+                        // Switch the operands
+                        Node * temp = left;
+                        left = right;
+                        right = temp;
                     }
                     if ( IsA( left, Var )) {
                         varattno = ( (Var * ) left )->varattno;
@@ -498,22 +505,26 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
                         ReleaseSysCache( tp );
                         switch ( right->type){
                             case T_Var:
-                                val = multicorn_constant_to_python( (Const * ) right, tupdesc->attrs[varattno -1] );
-                                args = PyTuple_New( 3 );
-                                PyTuple_SetItem( args, 0, PyString_FromString( key ));
-                                PyTuple_SetItem( args, 1, PyString_FromString( NameStr( operator_tup->oprname )) );
-                                PyTuple_SetItem( args, 2, val );
-                                multicorn_error_check();
-                                PyList_Append( list, PyObject_CallObject( qual_class, args) );
-                                multicorn_error_check();
-                                Py_DECREF( args);
+                                val = multicorn_datum_to_python( ((Const * ) right)->constvalue, ((Const *) right)->consttype, tupdesc->attrs[varattno -1] );
                                 break;
                             case T_Param:
+                                exprstate = ExecInitExpr((Expr*)right, &(node->ss.ps));
+                                exprvalue = ExecEvalExpr(exprstate, node->ss.ps.ps_ExprContext, &isnull, NULL);
+                                val = multicorn_datum_to_python(exprvalue, ((Param *)right)->paramtype, tupdesc->attrs[varattno -1]);
                                 break;
                             default:
                                 break;
                         }
-
+                        if (val) {
+                            args = PyTuple_New( 3 );
+                            PyTuple_SetItem( args, 0, PyString_FromString( key ));
+                            PyTuple_SetItem( args, 1, PyString_FromString( NameStr( operator_tup->oprname )) );
+                            PyTuple_SetItem( args, 2, val );
+                            multicorn_error_check();
+                            PyList_Append( list, PyObject_CallObject( qual_class, args) );
+                            multicorn_error_check();
+                            Py_DECREF( args);
+                        }
                     }
                 }
             }
@@ -522,15 +533,15 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
 }
 
 PyObject*
-multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute )
+multicorn_datum_to_python( Datum datumvalue, Oid type, Form_pg_attribute attribute )
 {
     PyObject* result;
-    if ( constant->consttype == 25 ) {
+    if ( type == TEXTOID || type == VARCHAROID) {
         /* Its a string */
         const char * encoding_name;
         char * value;
         Py_ssize_t size;
-        value = TextDatumGetCString( constant->constvalue );
+        value = TextDatumGetCString( datumvalue );
         size = strlen( value );
         encoding_name = get_encoding_from_attribute( attribute );
         if ( !encoding_name ) {
@@ -540,17 +551,25 @@ multicorn_constant_to_python( Const* constant, Form_pg_attribute attribute )
             result = PyUnicode_Decode( value, size, encoding_name, NULL );
             multicorn_error_check();
         }
-    } else if ( constant->consttype == 1700 ) {
+    } else if ( type == NUMERICOID ) {
         /* Its a numeric */
         char*  number;
-        number = ( char* ) DirectFunctionCall1( numeric_out, (ssize_t) DatumGetNumeric( constant->constvalue ));
+        number = ( char* ) DirectFunctionCall1( numeric_out, (ssize_t) DatumGetNumeric( datumvalue ));
         result = PyFloat_FromString( PyString_FromString( number ), NULL );
-    } else if ( constant->consttype == 23 ) {
+    } else if ( type == INT4OID ) {
         long number;
-        number = DatumGetInt32( constant->constvalue );
+        number = DatumGetInt32( datumvalue );
         result = PyInt_FromLong( number );
+    } else if ( type == DATEOID ) {
+        result = PyDate_FromTimestamp(Py_BuildValue("(i)", DatumGetDateADT(datumvalue)));
+    } else if ( type == TIMESTAMPOID) {
+        fsec_t fsec;
+        struct pg_tm *value = palloc(sizeof(struct pg_tm));
+        // TODO: see what could go wrong
+        timestamp2tm(DatumGetTimestamp(datumvalue), NULL, value, &fsec, NULL, NULL); 
+        result = PyDateTime_FromDateAndTime(value->tm_year, value->tm_mon, value->tm_mday, value->tm_hour, value->tm_min, value->tm_sec, 0);
     } else {
-        result = PyString_FromString( "NA" );
+        return NULL;
     }
     return result;
 }
@@ -572,12 +591,12 @@ multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pE
                 errdetail_log("%s", PyString_AsString(PyObject_CallObject(PyObject_GetAttrString(newline, "join"), Py_BuildValue("(O)", traceback_list))))));
 }
 
-
 static void
 init_if_needed(){
     if ( TABLES_DICT == NULL ) {
         /* TODO: managed locks and things */
         Py_Initialize(  );
+        PyDateTime_IMPORT;
         TABLES_DICT = PyDict_New(  );
     }
 }
@@ -934,11 +953,9 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
 
 void
 multicorn_clean_state(MulticornState *state){
-    Py_DECREF(state->columns_list);
-    Py_DECREF(state->quals);
-    Py_DECREF(state->pIterator);
-    state->columns_list = NULL;
-    state->quals = NULL;
-    state->pIterator = NULL;
+    if (state->pIterator){
+        Py_DECREF(state->pIterator);
+        state->pIterator = NULL;
+    }
 }
 

@@ -16,7 +16,7 @@ ifeq ($(PG91),yes)
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
 ifndef NO_PYTHON
-install: python_code
+#install: python_code
 endif
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
