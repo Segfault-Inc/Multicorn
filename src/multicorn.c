@@ -504,7 +504,7 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
                         operator_tup = ( Form_pg_operator ) GETSTRUCT( tp );
                         ReleaseSysCache( tp );
                         switch ( right->type){
-                            case T_Var:
+                            case T_Const:
                                 val = multicorn_datum_to_python( ((Const * ) right)->constvalue, ((Const *) right)->consttype, tupdesc->attrs[varattno -1] );
                                 break;
                             case T_Param:
