@@ -115,7 +115,7 @@ multicorn_validator( PG_FUNCTION_ARGS)
 	Oid			 catalog = PG_GETARG_OID(1);
     char * className = NULL;
     ListCell    *cell;
-    PyObject    *pOptions, *pStr, *pClass;
+    PyObject    *pOptions, *pStr;
     init_if_needed();
     pOptions = PyDict_New();
     foreach(cell, options_list){
@@ -139,6 +139,8 @@ multicorn_validator( PG_FUNCTION_ARGS)
         if (className == NULL){
             ereport(ERROR, (errmsg("%s", "The wrapper parameter is mandatory, specify a valid class name")));
         }
+        multicorn_get_class(className);
+        multicorn_error_check();
     }
     PG_RETURN_VOID();
 }
