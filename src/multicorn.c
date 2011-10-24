@@ -82,6 +82,8 @@ void  multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list);
 const char* get_encoding_from_attribute( Form_pg_attribute attribute );
 void multicorn_execute(ForeignScanState *node);
 void multicorn_clean_state(MulticornState *state);
+PyObject * multicorn_get_class(char * className);
+PyObject * multicorn_get_multicorn(void);
 
 HeapTuple pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq );
 HeapTuple pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict );
@@ -111,7 +113,11 @@ multicorn_validator( PG_FUNCTION_ARGS)
 {
 	List    	*options_list = untransformRelOptions(PG_GETARG_DATUM(0));
 	Oid			 catalog = PG_GETARG_OID(1);
+    char * className = NULL;
     ListCell    *cell;
+    PyObject    *pOptions, *pStr, *pClass;
+    init_if_needed();
+    pOptions = PyDict_New();
     foreach(cell, options_list){
         DefElem *def = (DefElem *) lfirst(cell);
         if (strcmp(def->defname, "wrapper") == 0){
@@ -120,10 +126,21 @@ multicorn_validator( PG_FUNCTION_ARGS)
             if (catalog == ForeignTableRelationId){
                 ereport(ERROR, (errmsg("%s", "Cannot set the wrapper class on the table"),
                             errhint("%s", "Set it on the server")));
+            } else {
+                className = (char*) defGetString(def);
             }
+        } else {
+            pStr = PyString_FromString( (char* )defGetString( def ));
+            PyDict_SetItemString(pOptions, def->defname, pStr);
         }
     }
-    return true;
+
+    if (catalog == ForeignServerRelationId){
+        if (className == NULL){
+            ereport(ERROR, (errmsg("%s", "The wrapper parameter is mandatory, specify a valid class name")));
+        }
+    }
+    PG_RETURN_VOID();
 }
 
 static FdwPlan *
@@ -171,10 +188,11 @@ multicorn_execute(ForeignScanState *node){
     PyObject       *pArgs, *pValue, 
                    *pObj, *pMethod, *pConds, 
                    *colList;
-
+    
     MulticornState *state = node->fdw_state;
     Relation        rel = node->ss.ss_currentRelation;
     pObj = multicorn_get_instance(rel);
+    Py_INCREF(pObj);
     pArgs = PyTuple_New( 2 );
     pConds = PyList_New( 0 );
     multicorn_extract_conditions( node, pConds );
@@ -202,12 +220,8 @@ multicorn_iterate( ForeignScanState *node )
     TupleTableSlot  *slot = node->ss.ss_ScanTupleSlot;
     MulticornState  *state = ( MulticornState * ) node->fdw_state;
     HeapTuple        tuple;
-    PyObject        *pValue, *pArgs, *pIterator, *pyStopIteration,
+    PyObject        *pValue, *pIterator, *pyStopIteration,
                     *pErrType, *pErrValue, *pErrTraceback;
-
-
-    pArgs = PyTuple_New( 0 );
-    Py_DECREF( pArgs);
     if ( state->pIterator == NULL ) {
         multicorn_execute(node);
     }
@@ -617,55 +631,45 @@ init_if_needed(){
 }
 
 PyObject*
+multicorn_get_multicorn(){
+    return PyImport_Import(PyUnicode_FromString("multicorn"));
+}
+
+PyObject*
+multicorn_get_class(char * classname){
+    return PyObject_CallObject(PyObject_GetAttrString(multicorn_get_multicorn(),
+            "get_class"),
+            Py_BuildValue("(s)", classname));
+}
+
+PyObject*
 multicorn_get_instance(Relation rel)
 {
-    PyObject       *pName, *pModule, *pArgs, *pOptions,
-                   *pFunc, *pClass, *pObj, *pColumns,
+    PyObject       *pOptions,
+                   *pClass, *pObj, *pColumns,
                    *pTableId;
     Oid            tablerelid;
     char           *module;
     init_if_needed();
     tablerelid = RelationGetRelid( rel );
     pTableId = PyInt_FromSsize_t( tablerelid );
-    pName = PyUnicode_FromString( "multicorn" );
-    pModule = PyImport_Import( pName );
     multicorn_error_check();
-    Py_DECREF( pName );
     if ( PyMapping_HasKey( TABLES_DICT, pTableId )) {
         pObj = PyDict_GetItem( TABLES_DICT, pTableId );
     } else {
-        pOptions = PyDict_New(  );
+        pOptions = PyDict_New();
         multicorn_get_options( tablerelid, pOptions, &module );
-        if ( pModule != NULL ) {
-            pFunc = PyObject_GetAttrString( pModule, "get_class" );
-            multicorn_error_check();
-            pArgs = PyTuple_New( 1 );
-            pName = PyString_FromString( module );
-            PyTuple_SetItem( pArgs, 0, pName );
-            pClass = PyObject_CallObject( pFunc, pArgs);
-            multicorn_error_check();
-
-            Py_DECREF( pArgs);
-            Py_DECREF( pFunc );
-            pArgs = PyTuple_New( 2 );
-            pColumns = PyList_New( 0 );
-            multicorn_get_attributes_name( rel->rd_att, pColumns);
-            PyTuple_SetItem( pArgs, 0, pOptions);
-            PyTuple_SetItem( pArgs, 1, pColumns);
-            /* Py_DECREF( pName ); -> Make the pg crash -> ??*/
-            pObj = PyObject_CallObject( pClass, pArgs);
-            multicorn_error_check();
-            PyDict_SetItem( TABLES_DICT, pTableId, pObj );
-            multicorn_error_check();
-            Py_DECREF( pArgs);
-            Py_DECREF( pOptions);
-            Py_DECREF( pClass);
-            Py_DECREF( pObj );
-        } else {
-            PyErr_Print(  );
-            elog( ERROR, "Failed to load module" );
-            return NULL;
-        }
+        pClass = multicorn_get_class(module);
+        multicorn_error_check();
+        pColumns = PyList_New( 0 );
+        multicorn_get_attributes_name( rel->rd_att, pColumns);
+        pObj = PyObject_CallObject( pClass, Py_BuildValue("(O,O)", pOptions, pColumns));
+        multicorn_error_check();
+        PyDict_SetItem( TABLES_DICT, pTableId, pObj );
+        multicorn_error_check();
+        Py_DECREF( pOptions);
+        Py_DECREF( pClass);
+        Py_DECREF( pObj );
     }
     return pObj;
 }

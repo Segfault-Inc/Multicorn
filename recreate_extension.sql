@@ -1,13 +1,12 @@
 drop extension multicorn cascade;
 create extension multicorn;
-create server multicorn_srv foreign data wrapper multicorn;
+create server multicorn_srv foreign data wrapper multicorn options (wrapper 'multicorn.csvfdw.CsvFdw');
 
 create foreign table csvtest (
        year numeric,
        make character varying,
        model character varying
 ) server multicorn_srv options (
-       wrapper 'multicorn.csvfdw.CsvFdw',
        filename '/tmp/test.csv',
        skip_header '1',
        delimiter ',');
