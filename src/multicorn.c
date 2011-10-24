@@ -13,6 +13,7 @@
 
 #include "postgres.h"
 #include "access/relscan.h"
+#include "access/reloptions.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
@@ -108,7 +109,21 @@ multicorn_handler( PG_FUNCTION_ARGS)
 Datum
 multicorn_validator( PG_FUNCTION_ARGS)
 {
-    PG_RETURN_BOOL( true );
+	List    	*options_list = untransformRelOptions(PG_GETARG_DATUM(0));
+	Oid			 catalog = PG_GETARG_OID(1);
+    ListCell    *cell;
+    foreach(cell, options_list){
+        DefElem *def = (DefElem *) lfirst(cell);
+        if (strcmp(def->defname, "wrapper") == 0){
+            // Only at server creation can we set the wrapper, 
+            // for security issues.
+            if (catalog == ForeignTableRelationId){
+                ereport(ERROR, (errmsg("%s", "Cannot set the wrapper class on the table"),
+                            errhint("%s", "Set it on the server")));
+            }
+        }
+    }
+    return true;
 }
 
 static FdwPlan *
