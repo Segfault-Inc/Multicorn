@@ -25,6 +25,7 @@
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
 #include "funcapi.h"
+#include "miscadmin.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
 #include "utils/numeric.h"
@@ -287,6 +288,7 @@ multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
 {
     ForeignTable    *f_table;
     ForeignServer   *f_server;
+    UserMapping     *mapping;
     List            *options;
     ListCell        *lc;
     bool             got_module = false;
@@ -294,10 +296,12 @@ multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
 
     f_table = GetForeignTable( foreign_table_id );
     f_server = GetForeignServer( f_table->serverid );
+    mapping = GetUserMapping(GetUserId(), f_table->serverid);
 
     options = NIL;
     options = list_concat( options, f_table->options);
     options = list_concat( options, f_server->options);
+    options = list_concat( options, mapping->options);
 
     foreach( lc, options) {
 
@@ -949,6 +953,14 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
 
         case T_NullTest:
             multicorn_get_column(((NullTest *)expr)->arg, desc, list);
+            break;
+
+        case T_NullTestState:
+            multicorn_get_column(((NullTestState *)expr)->arg, desc, list);
+            break;
+
+        case T_CoerceViaIOState:
+            multicorn_get_column(((CoerceViaIOState*)expr)->arg, desc, list);
             break;
 
         case T_BooleanTest:
