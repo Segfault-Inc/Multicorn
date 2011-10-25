@@ -10,6 +10,7 @@ from multicorn import ForeignDataWrapper
 from multicorn.fsfdw.structuredfs import StructuredDirectory
 from multicorn.utils import log_to_postgres
 from logging import ERROR, WARNING
+import os
 
 
 class FilesystemFdw(ForeignDataWrapper):
@@ -36,7 +37,8 @@ class FilesystemFdw(ForeignDataWrapper):
         if self.filename_column:
             if self.filename_column not in columns:
                 log_to_postgres("The filename column (%s) does not exist"
-                                "in the column list" % self.filename_column, ERROR,
+                                "in the column list" % self.filename_column,
+                                ERROR,
                                 "You should try to create your table with an "
                                 "additional column: \n"
                                 "%s character varying" % self.filename_column)
@@ -45,7 +47,8 @@ class FilesystemFdw(ForeignDataWrapper):
         if self.content_column:
             if self.content_column not in columns:
                 log_to_postgres("The content column (%s) does not exist"
-                                "in the column list" % self.content_column, ERROR,
+                                "in the column list" % self.content_column,
+                                ERROR,
                                 "You should try to create your table with an "
                                 "additional column: \n"
                                 "%s bytea" % self.content_column)
@@ -57,8 +60,6 @@ class FilesystemFdw(ForeignDataWrapper):
             log_to_postgres("Some columns are not mapped in the structured fs",
                     WARNING, "Remove the following columns: %s "
                     % missing_columns)
-
-
 
     def execute(self, quals, columns):
         """Execute method.
@@ -72,7 +73,7 @@ class FilesystemFdw(ForeignDataWrapper):
         if self.filename_column in cond:
             item = self.structured_directory.from_filename(
                     cond[self.filename_column])
-            if item is not None and item.exists():
+            if item is not None and os.path.exists(item.full_filename):
                 new_item = dict(item)
                 if self.content_column:
                     new_item[self.content_column] = item.read()
