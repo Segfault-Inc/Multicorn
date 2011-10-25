@@ -779,6 +779,7 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
             break;
 
         case T_FuncExprState:
+        case T_ScalarArrayOpExprState:
             foreach(cell, ((FuncExprState*) expr)->args){
                 multicorn_get_column((Expr *)lfirst(cell), desc, list);
             }
@@ -956,11 +957,11 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
             break;
 
         case T_NullTestState:
-            multicorn_get_column(((NullTestState *)expr)->arg, desc, list);
+            multicorn_get_column((Expr*)(((NullTestState *)expr)->arg), desc, list);
             break;
 
         case T_CoerceViaIOState:
-            multicorn_get_column(((CoerceViaIOState*)expr)->arg, desc, list);
+            multicorn_get_column((Expr*)(((CoerceViaIOState*)expr)->arg), desc, list);
             break;
 
         case T_BooleanTest:
