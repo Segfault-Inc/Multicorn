@@ -26,6 +26,7 @@
 #include "foreign/foreign.h"
 #include "funcapi.h"
 #include "miscadmin.h"
+#include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
 #include "utils/numeric.h"
@@ -83,6 +84,7 @@ void  multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list);
 const char* get_encoding_from_attribute( Form_pg_attribute attribute );
 void multicorn_execute(ForeignScanState *node);
 void multicorn_clean_state(MulticornState *state);
+void multicorn_get_param( Node* left, Node* right, ForeignScanState * fss, char * operator_name, PyObject** result);
 PyObject * multicorn_get_class(char * className);
 PyObject * multicorn_get_multicorn(void);
 
@@ -112,8 +114,8 @@ multicorn_handler( PG_FUNCTION_ARGS)
 Datum
 multicorn_validator( PG_FUNCTION_ARGS)
 {
-	List    	*options_list = untransformRelOptions(PG_GETARG_DATUM(0));
-	Oid			 catalog = PG_GETARG_OID(1);
+    List        *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
+    Oid             catalog = PG_GETARG_OID(1);
     char * className = NULL;
     ListCell    *cell;
     PyObject    *pOptions, *pStr;
@@ -296,12 +298,22 @@ multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
 
     f_table = GetForeignTable( foreign_table_id );
     f_server = GetForeignServer( f_table->serverid );
-    mapping = GetUserMapping(GetUserId(), f_table->serverid);
 
     options = NIL;
     options = list_concat( options, f_table->options);
     options = list_concat( options, f_server->options);
-    options = list_concat( options, mapping->options);
+    // An error might occur if no user mapping is defined.
+    // In that case, just ignore it
+    PG_TRY();
+    {
+        mapping = GetUserMapping(GetUserId(), f_table->serverid);
+        options = list_concat( options, mapping->options);
+    }
+    PG_CATCH();
+    {
+        // DO NOTHING HERE
+    }
+    PG_END_TRY();
 
     foreach( lc, options) {
 
@@ -458,15 +470,30 @@ pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buff
         return strlength;
     }
     if ( PyObject_IsInstance( pyobject, date_cls) ) {
-        PyObject *date_format_method = PyObject_GetAttrString( pyobject, "strftime" );
-        PyObject *pArgs = PyTuple_New( 1 );
-        PyObject *formatted_date = PyObject_CallObject( date_format_method, pArgs);
-        Py_DECREF( pArgs);
-        Py_DECREF( date_format_method );
-        pStr = PyString_FromString( DATE_FORMAT_STRING );
-        PyTuple_SetItem( pArgs, 0, pStr );
-        Py_DECREF( pStr );
+        PyObject *formatted_date;
+        formatted_date = PyObject_CallMethod(pyobject, "strftime", "(s)", DATE_FORMAT_STRING);
+        multicorn_error_check();
         PyString_AsStringAndSize( formatted_date , buffer, &strlength);
+        multicorn_error_check();
+        return strlength;
+    }
+    if (PyList_Check( pyobject )){
+        // Its an array
+        Py_ssize_t i;
+        Py_ssize_t size = PyList_Size(pyobject);
+        char *tempbuffer;
+        PyObject *delimiter = PyString_FromString(", ");
+        PyObject *mapped_list = PyList_New(0);
+        for(i = 0; i < size; i++){
+            pyobject_to_cstring(PyList_GET_ITEM(pyobject, i), attribute, &tempbuffer);
+            PyList_Append(mapped_list, PyString_FromString(tempbuffer));
+        }
+        pStr = PyString_Format(PyString_FromString("{%s}"), PyObject_CallMethod(delimiter, "join", "(O)", mapped_list));
+        multicorn_error_check();
+        PyString_AsStringAndSize(pStr, buffer, &strlength);
+        Py_DECREF(mapped_list);
+        Py_DECREF(delimiter);
+        Py_DECREF(pStr);
         return strlength;
     }
     Py_DECREF( date_module );
@@ -488,81 +515,121 @@ multicorn_get_attributes_name( TupleDesc desc, PyObject * list )
     }
 }
 
+void
+multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * operator_name, PyObject ** result){
+    ExprState   *exprstate;
+    Form_pg_attribute attr;
+    char * key;
+    bool isnull;
+    TupleDesc  tupdesc = fss->ss.ss_currentRelation->rd_att;
+    PyObject * value = NULL;
+    PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
+    Datum exprvalue;
+    multicorn_error_check();
+    if ( IsA( right, RelabelType )) {
+        right = ( Node* ) ( (RelabelType * ) right )->arg;
+    }
+    if ( IsA( left, RelabelType )) {
+        left = ( Node* ) ( (RelabelType * ) left )->arg;
+    }
+    if (IsA(right, Var) && !IsA(left, Var)){
+        // Switch the operands
+        Node * temp = left;
+        left = right;
+        right = temp;
+    }
+    if ( IsA( left, Var )) {
+        multicorn_error_check();
+        attr = tupdesc->attrs[((Var *) left)->varattno- 1];
+        key = NameStr(attr->attname);
+        multicorn_error_check();
+        switch ( right->type){
+            case T_Const:
+                value = multicorn_datum_to_python( ((Const * ) right)->constvalue, ((Const *) right)->consttype, attr);
+                break;
+            case T_Param:
+                exprstate = ExecInitExpr((Expr*)right, &(fss->ss.ps));
+                exprvalue = ExecEvalExpr(exprstate, fss->ss.ps.ps_ExprContext, &isnull, NULL);
+                if(isnull){
+                    value = Py_None;
+                } else {
+                    value = multicorn_datum_to_python(exprvalue, ((Param *)right)->paramtype, attr);
+                }
+                break;
+            default:
+                elog(WARNING, "Cant manage type %i", right->type);
+                break;
+        }
+    }
+    if (value) {
+        *result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,O)", key, operator_name, value));
+        multicorn_error_check();
+    }
+}
 
 void
 multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
 {
     if ( node->ss.ps.plan->qual ) {
         ListCell   *lc;
-        PyObject   *multicorn_module = PyImport_Import( PyUnicode_FromString( "multicorn" ) );
-        PyObject   *qual_class = PyObject_GetAttrString( multicorn_module, "Qual" );
-        PyObject   *args;
         List       *quals = list_copy( node->ss.ps.qual );
-        TupleDesc  tupdesc = node->ss.ss_currentRelation->rd_att;
-        Datum exprvalue;
-        bool isnull;
+        PyObject   *tempqual;
+        HeapTuple tp;
+        Node *left, *right;
+        Form_pg_operator operator_tup;
         foreach ( lc, quals) {
-            ExprState   *xpstate = lfirst( lc );
-            Node        *nodexp = ( Node * ) xpstate->expr;
-            if ( nodexp != NULL && IsA( nodexp, OpExpr )) {
-                OpExpr          *op = ( OpExpr * ) nodexp;
-                Node            *left, *right;
-                Index            varattno;
-                char            *key;
-                PyObject        *val = NULL;
-                HeapTuple        tp;
-                ExprState       *exprstate;
-                Form_pg_operator operator_tup;
-                if ( list_length( op->args) == 2 ) {
-                    left = list_nth( op->args, 0 );
-                    right = list_nth( op->args, 1 );
-                    if ( IsA( right, RelabelType )) {
-                        right = ( Node* ) ( (RelabelType * ) right )->arg;
-                    }
-                    if ( IsA( left, RelabelType )) {
-                        left = ( Node* ) ( (RelabelType * ) left )->arg;
-                    }
-                    if (IsA(right, Var) && !IsA(left, Var)){
-                        // Switch the operands
-                        Node * temp = left;
-                        left = right;
-                        right = temp;
-                    }
-                    if ( IsA( left, Var )) {
-                        varattno = ( (Var * ) left )->varattno;
-                        multicorn_error_check();
-                        Assert( 0 < varattno && varattno <= tupdesc->natts);
-                        key = NameStr( tupdesc->attrs[varattno - 1]->attname );
-                        tp = SearchSysCache1( OPEROID, ObjectIdGetDatum( op->opno ));
-                        if ( !HeapTupleIsValid( tp ))
-                            elog( ERROR, "cache lookup failed for operator %u", op->opno );
-                        operator_tup = ( Form_pg_operator ) GETSTRUCT( tp );
-                        ReleaseSysCache( tp );
-                        switch ( right->type){
-                            case T_Const:
-                                val = multicorn_datum_to_python( ((Const * ) right)->constvalue, ((Const *) right)->consttype, tupdesc->attrs[varattno -1] );
-                                break;
-                            case T_Param:
-                                exprstate = ExecInitExpr((Expr*)right, &(node->ss.ps));
-                                exprvalue = ExecEvalExpr(exprstate, node->ss.ps.ps_ExprContext, &isnull, NULL);
-                                val = multicorn_datum_to_python(exprvalue, ((Param *)right)->paramtype, tupdesc->attrs[varattno -1]);
-                                break;
-                            default:
-                                break;
+            Node        *nodexp = (Node *) ((ExprState *) lfirst(lc))->expr;
+            tempqual = NULL;
+            if ( nodexp != NULL ){
+                switch(nodexp->type){
+                    case T_OpExpr:
+                        if ( list_length( ((OpExpr *) nodexp)->args) == 2 ) {
+                            OpExpr *op = (OpExpr *) nodexp;
+                            left = list_nth(op->args, 0);
+                            right = list_nth(op->args, 1);
+                            tp = SearchSysCache1( OPEROID, ObjectIdGetDatum(op->opno));
+                            if ( !HeapTupleIsValid( tp ))
+                                elog( ERROR, "cache lookup failed for operator %u", op->opno );
+                            operator_tup = ( Form_pg_operator ) GETSTRUCT( tp );
+                            ReleaseSysCache( tp );
+                            multicorn_get_param(left, right, node, NameStr(operator_tup->oprname), &tempqual);
+                            if(tempqual){
+                                PyList_Append(list, tempqual);
+                            }
                         }
-                        if (val) {
-                            args = PyTuple_New( 3 );
-                            PyTuple_SetItem( args, 0, PyString_FromString( key ));
-                            PyTuple_SetItem( args, 1, PyString_FromString( NameStr( operator_tup->oprname )) );
-                            PyTuple_SetItem( args, 2, val );
-                            multicorn_error_check();
-                            PyList_Append( list, PyObject_CallObject( qual_class, args) );
-                            multicorn_error_check();
-                            Py_DECREF( args);
+                        break;
+                    case T_ScalarArrayOpExpr:
+                        if ( list_length( ((ScalarArrayOpExpr *) nodexp)->args) == 2 ) {
+                            ScalarArrayOpExpr *op = (ScalarArrayOpExpr *) nodexp;
+                            left = list_nth(op->args, 0);
+                            right = list_nth(op->args, 1);
+                            tp = SearchSysCache1( OPEROID, ObjectIdGetDatum(op->opno ));
+                            if ( !HeapTupleIsValid( tp ))
+                                elog( ERROR, "cache lookup failed for operator %u", op->opno );
+                            operator_tup = ( Form_pg_operator ) GETSTRUCT( tp );
+                            ReleaseSysCache( tp );
+                            // Only manage in and not in for now
+                            if(op->useOr){
+                                // ANY clause on the array + "=" -> IN
+                                if(strcmp(NameStr(operator_tup->oprname), "=") == 0){
+                                    multicorn_get_param(left, right, node, "IN", &tempqual);
+                                }
+                            } else {
+                                // ALL clause on the array + "<>"  -> NOT IN
+                                if(strcmp(NameStr(operator_tup->oprname), "<>") == 0){
+                                    multicorn_get_param(left, right, node, "NOT IN", &tempqual);
+                                }
+                            }
+                            if(tempqual){
+                                PyList_Append(list, tempqual);
+                            }
                         }
-                    }
+                        break;
+                    default:
+                        elog(WARNING, "GOT AN UNEXPECTED TYPE: %i", nodexp->type);
+                        break;
                 }
-            }
+            } 
         }
     }
 }
@@ -571,6 +638,8 @@ PyObject*
 multicorn_datum_to_python( Datum datumvalue, Oid type, Form_pg_attribute attribute )
 {
     PyObject* result;
+    HeapTuple typeTuple;
+    Form_pg_type typeStruct;
     if ( type == TEXTOID || type == VARCHAROID) {
         /* Its a string */
         const char * encoding_name;
@@ -604,7 +673,40 @@ multicorn_datum_to_python( Datum datumvalue, Oid type, Form_pg_attribute attribu
         timestamp2tm(DatumGetTimestamp(datumvalue), NULL, value, &fsec, NULL, NULL); 
         result = PyDateTime_FromDateAndTime(value->tm_year, value->tm_mon, value->tm_mday, value->tm_hour, value->tm_min, value->tm_sec, 0);
     } else {
-        return NULL;
+        // Try to manage array types
+        typeTuple = SearchSysCache1(TYPEOID,
+                    ObjectIdGetDatum(type));
+        if (!HeapTupleIsValid(typeTuple))
+            elog(ERROR, "lookup failed for type %u",
+                    type);
+        typeStruct = (Form_pg_type) GETSTRUCT(typeTuple);
+        ReleaseSysCache(typeTuple);
+        if ((typeStruct->typelem != 0) && (typeStruct->typlen == -1)){
+            // Its an array
+            bool isnull;
+            Datum buffer;
+            PyObject *listelem;
+            ArrayIterator iterator;
+            result = PyList_New(0);
+            iterator = array_create_iterator(DatumGetArrayTypeP(datumvalue), 0);
+            while(array_iterate(iterator, &buffer, &isnull)){
+                if(isnull){
+                    PyList_Append(result, Py_None);
+                } else {
+                    listelem = multicorn_datum_to_python(buffer, typeStruct->typelem, attribute);
+                    if(listelem == NULL){
+                        result = NULL;
+                        break;
+                    } else {
+                        PyList_Append(result, listelem);
+                    }
+                }
+            }
+            array_free_iterator(iterator);
+        } else {
+            // NOT AN ARRAY, nor a known type, not managed
+            return NULL;
+        }
     }
     return result;
 }
@@ -684,12 +786,12 @@ multicorn_get_instance(Relation rel)
 HeapTuple
 BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t* sizes)
 {
-    TupleDesc	tupdesc = attinmeta->tupdesc;
-    int			natts = tupdesc->natts;
-    Datum	   *dvalues;
-    bool	   *nulls;
-    int			i;
-    HeapTuple	tuple, typeTuple;
+    TupleDesc    tupdesc = attinmeta->tupdesc;
+    int            natts = tupdesc->natts;
+    Datum       *dvalues;
+    bool       *nulls;
+    int            i;
+    HeapTuple    tuple, typeTuple;
     Oid typeoid;
     Oid element_type;
 
