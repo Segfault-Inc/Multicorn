@@ -50,56 +50,56 @@ typedef struct MulticornState
     PyObject *pIterator;
 } MulticornState;
 
-extern Datum multicorn_handler( PG_FUNCTION_ARGS);
-extern Datum multicorn_validator( PG_FUNCTION_ARGS);
+extern Datum multicorn_handler(PG_FUNCTION_ARGS);
+extern Datum multicorn_validator(PG_FUNCTION_ARGS);
 
 
-PG_FUNCTION_INFO_V1( multicorn_handler );
-PG_FUNCTION_INFO_V1( multicorn_validator );
+PG_FUNCTION_INFO_V1(multicorn_handler);
+PG_FUNCTION_INFO_V1(multicorn_validator);
 
 /*
  * FDW functions declarations
  */
-static FdwPlan *multicorn_plan( Oid foreign_table_id, PlannerInfo *root, RelOptInfo *base_relation );
-static void multicorn_explain( ForeignScanState *node, ExplainState *es);
-static void multicorn_begin( ForeignScanState *node, int eflags);
-static TupleTableSlot *multicorn_iterate( ForeignScanState *node );
-static void multicorn_rescan( ForeignScanState *node );
-static void multicorn_end( ForeignScanState *node );
+static FdwPlan *multicorn_plan(Oid foreign_table_id, PlannerInfo *root, RelOptInfo *base_relation);
+static void multicorn_explain(ForeignScanState *node, ExplainState *es);
+static void multicorn_begin(ForeignScanState *node, int eflags);
+static TupleTableSlot *multicorn_iterate(ForeignScanState *node);
+static void multicorn_rescan(ForeignScanState *node);
+static void multicorn_end(ForeignScanState *node);
 
 /*
    Helpers
    */
 static void multicorn_error_check(void);
 static void init_if_needed(void);
-void multicorn_get_options( Oid foreign_table_id, PyObject *options_dict, char **module );
-void multicorn_get_attributes_name( TupleDesc desc, PyObject* list );
-void multicorn_extract_conditions( ForeignScanState * node, PyObject* list);
-PyObject* multicorn_datum_to_python( Datum datumvalue, Oid type, Form_pg_attribute attribute );
+void multicorn_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
+void multicorn_get_attributes_name(TupleDesc desc, PyObject* list);
+void multicorn_extract_conditions(ForeignScanState * node, PyObject* list);
+PyObject* multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribute);
 void multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pErrTraceback);
 PyObject* multicorn_get_instance(Relation rel);
 HeapTuple BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t* sizes);
 void  multicorn_get_columns(List *columnlist, TupleDesc desc, PyObject *);
 void  multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list);
-const char* get_encoding_from_attribute( Form_pg_attribute attribute );
+const char* get_encoding_from_attribute(Form_pg_attribute attribute);
 void multicorn_execute(ForeignScanState *node);
 void multicorn_clean_state(MulticornState *state);
-void multicorn_get_param( Node* left, Node* right, ForeignScanState * fss, char * operator_name, PyObject** result);
+void multicorn_get_param(Node* left, Node* right, ForeignScanState * fss, char * operator_name, PyObject** result);
 PyObject * multicorn_get_class(char * className);
 PyObject * multicorn_get_multicorn(void);
 
-HeapTuple pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq );
-HeapTuple pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict );
-ssize_t pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char** buffer );
+HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
+HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
+ssize_t pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char** buffer);
 
 const char* DATE_FORMAT_STRING = "%Y-%m-%d";
 
 PyObject* TABLES_DICT;
 
 Datum
-multicorn_handler( PG_FUNCTION_ARGS)
+multicorn_handler(PG_FUNCTION_ARGS)
 {
-    FdwRoutine *fdw_routine = makeNode( FdwRoutine );
+    FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
     fdw_routine->PlanForeignScan = multicorn_plan;
     fdw_routine->ExplainForeignScan = multicorn_explain;
@@ -108,11 +108,11 @@ multicorn_handler( PG_FUNCTION_ARGS)
     fdw_routine->ReScanForeignScan = multicorn_rescan;
     fdw_routine->EndForeignScan = multicorn_end;
 
-    PG_RETURN_POINTER( fdw_routine );
+    PG_RETURN_POINTER(fdw_routine);
 }
 
 Datum
-multicorn_validator( PG_FUNCTION_ARGS)
+multicorn_validator(PG_FUNCTION_ARGS)
 {
     List        *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
     Oid             catalog = PG_GETARG_OID(1);
@@ -133,7 +133,7 @@ multicorn_validator( PG_FUNCTION_ARGS)
                 className = (char*) defGetString(def);
             }
         } else {
-            pStr = PyString_FromString( (char* )defGetString( def ));
+            pStr = PyString_FromString((char*)defGetString(def));
             PyDict_SetItemString(pOptions, def->defname, pStr);
         }
     }
@@ -149,12 +149,12 @@ multicorn_validator( PG_FUNCTION_ARGS)
 }
 
 static FdwPlan *
-multicorn_plan(  Oid foreign_table_id,
+multicorn_plan( Oid foreign_table_id,
         PlannerInfo *root,
-        RelOptInfo  *base_relation )
+        RelOptInfo  *base_relation)
 {
     FdwPlan *fdw_plan;
-    fdw_plan = makeNode( FdwPlan );
+    fdw_plan = makeNode(FdwPlan);
     fdw_plan->startup_cost = 10;
     base_relation->rows = 9999999;
     fdw_plan->total_cost = 15;
@@ -162,30 +162,30 @@ multicorn_plan(  Oid foreign_table_id,
 }
 
 static void
-multicorn_explain( ForeignScanState *node, ExplainState *es)
+multicorn_explain(ForeignScanState *node, ExplainState *es)
 {
     /* TODO: calculate real values */
-    ExplainPropertyText( "Foreign multicorn", "multicorn", es);
+    ExplainPropertyText("Foreign multicorn", "multicorn", es);
 
-    if ( es->costs)
+    if (es->costs)
     {
-        ExplainPropertyLong( "Foreign multicorn cost", 10.5, es);
+        ExplainPropertyLong("Foreign multicorn cost", 10.5, es);
     }
 }
 
 static void
-multicorn_begin( ForeignScanState *node, int eflags)
+multicorn_begin(ForeignScanState *node, int eflags)
 {
     /*  TODO: do things if necessary */
     AttInMetadata  *attinmeta;
     MulticornState *state;
     init_if_needed();
-    attinmeta = TupleDescGetAttInMetadata( node->ss.ss_currentRelation->rd_att );
-    state = ( MulticornState * ) palloc(sizeof( MulticornState ));
+    attinmeta = TupleDescGetAttInMetadata(node->ss.ss_currentRelation->rd_att);
+    state = (MulticornState *) palloc(sizeof(MulticornState));
     state->rownum = 0;
     state->attinmeta = attinmeta;
     state->pIterator = NULL;
-    node->fdw_state = ( void * ) state;
+    node->fdw_state = (void *) state;
 }
 
 void
@@ -198,79 +198,79 @@ multicorn_execute(ForeignScanState *node){
     Relation        rel = node->ss.ss_currentRelation;
     pObj = multicorn_get_instance(rel);
     Py_INCREF(pObj);
-    pArgs = PyTuple_New( 2 );
-    pConds = PyList_New( 0 );
-    multicorn_extract_conditions( node, pConds );
-    PyTuple_SetItem( pArgs, 0, pConds);
+    pArgs = PyTuple_New(2);
+    pConds = PyList_New(0);
+    multicorn_extract_conditions(node, pConds);
+    PyTuple_SetItem(pArgs, 0, pConds);
     colList = PySet_New(NULL);
     Py_INCREF(colList);
     multicorn_get_columns(node->ss.ps.targetlist, rel->rd_att, colList);
     multicorn_get_columns(node->ss.ps.qual, rel->rd_att, colList);
-    PyTuple_SetItem( pArgs, 1, colList);
+    PyTuple_SetItem(pArgs, 1, colList);
     multicorn_error_check();
-    pMethod = PyObject_GetAttrString( pObj, "execute" );
-    pValue = PyObject_CallObject( pMethod, pArgs);
-    Py_DECREF( pMethod );
-    Py_DECREF( pArgs);
+    pMethod = PyObject_GetAttrString(pObj, "execute");
+    pValue = PyObject_CallObject(pMethod, pArgs);
+    Py_DECREF(pMethod);
+    Py_DECREF(pArgs);
     multicorn_error_check();
-    state->pIterator = PyObject_GetIter( pValue );
+    state->pIterator = PyObject_GetIter(pValue);
     multicorn_error_check();
-    Py_DECREF( pValue );
+    Py_DECREF(pValue);
 }
 
 
 static TupleTableSlot *
-multicorn_iterate( ForeignScanState *node )
+multicorn_iterate(ForeignScanState *node)
 {
     TupleTableSlot  *slot = node->ss.ss_ScanTupleSlot;
-    MulticornState  *state = ( MulticornState * ) node->fdw_state;
+    MulticornState  *state = (MulticornState *) node->fdw_state;
     HeapTuple        tuple;
     PyObject        *pValue, *pIterator, *pyStopIteration,
                     *pErrType, *pErrValue, *pErrTraceback;
-    if ( state->pIterator == NULL ) {
+    if (state->pIterator == NULL) {
         multicorn_execute(node);
     }
-    ExecClearTuple( slot );
+    ExecClearTuple(slot);
     pIterator = state->pIterator;
-    pValue = PyIter_Next( pIterator );
+    pValue = PyIter_Next(pIterator);
     PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
-    if ( pErrType ) {
-        pyStopIteration = PyObject_GetAttrString(PyImport_Import( PyUnicode_FromString("exceptions")),
+    if (pErrType) {
+        pyStopIteration = PyObject_GetAttrString(PyImport_Import(PyUnicode_FromString("exceptions")),
                 "StopIteration");
-        if ( PyErr_GivenExceptionMatches(pErrType, pyStopIteration) ){
+        if (PyErr_GivenExceptionMatches(pErrType, pyStopIteration)){
             /* "Normal" stop iteration */
             return slot;
         } else {
             multicorn_report_exception(pErrType, pErrValue, pErrTraceback);
         }
     }
-    if ( pValue == NULL || pValue == Py_None) {
+    if (pValue == NULL || pValue == Py_None) {
         return slot;
     }
-    if ( PyMapping_Check( pValue )) {
-        tuple = pydict_to_postgres_tuple( node->ss.ss_currentRelation->rd_att, pValue );
+    if (PyMapping_Check(pValue)) {
+        tuple = pydict_to_postgres_tuple(node->ss.ss_currentRelation->rd_att, pValue);
     } else { 
-        if ( PySequence_Check( pValue )) {
-            tuple = pysequence_to_postgres_tuple( node->ss.ss_currentRelation->rd_att, pValue );
+        if (PySequence_Check(pValue)) {
+            tuple = pysequence_to_postgres_tuple(node->ss.ss_currentRelation->rd_att, pValue);
         } else {
-            elog( ERROR, "Cannot transform anything else than mappings and sequences to rows" );
+            elog(ERROR, "Cannot transform anything else than mappings and sequences to rows");
             return slot;
         }
     }
-    Py_DECREF( pValue );
-    ExecStoreTuple( tuple, slot, InvalidBuffer, false );
+    Py_DECREF(pValue);
+    ExecStoreTuple(tuple, slot, InvalidBuffer, false);
     state->rownum++;
     return slot;
 }
 
 static void
-multicorn_rescan( ForeignScanState *node )
+multicorn_rescan(ForeignScanState *node)
 {  
     multicorn_clean_state((MulticornState *) node->fdw_state);
 }
 
 static void
-multicorn_end( ForeignScanState *node )
+multicorn_end(ForeignScanState *node)
 {
     multicorn_clean_state((MulticornState *) node->fdw_state);
 }
@@ -280,13 +280,13 @@ multicorn_error_check()
 {
     PyObject *pErrType, *pErrValue, *pErrTraceback;
     PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
-    if ( pErrType ) {
+    if (pErrType) {
         multicorn_report_exception(pErrType, pErrValue, pErrTraceback);
     }
 }
 
 void
-multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
+multicorn_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
 {
     ForeignTable    *f_table;
     ForeignServer   *f_server;
@@ -296,18 +296,18 @@ multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
     bool             got_module = false;
     PyObject        *pStr;
 
-    f_table = GetForeignTable( foreign_table_id );
-    f_server = GetForeignServer( f_table->serverid );
+    f_table = GetForeignTable(foreign_table_id);
+    f_server = GetForeignServer(f_table->serverid);
 
     options = NIL;
-    options = list_concat( options, f_table->options);
-    options = list_concat( options, f_server->options);
+    options = list_concat(options, f_table->options);
+    options = list_concat(options, f_server->options);
     // An error might occur if no user mapping is defined.
     // In that case, just ignore it
     PG_TRY();
     {
         mapping = GetUserMapping(GetUserId(), f_table->serverid);
-        options = list_concat( options, mapping->options);
+        options = list_concat(options, mapping->options);
     }
     PG_CATCH();
     {
@@ -315,33 +315,33 @@ multicorn_get_options( Oid foreign_table_id, PyObject *pOptions, char **module )
     }
     PG_END_TRY();
 
-    foreach( lc, options) {
+    foreach(lc, options) {
 
-        DefElem *def = ( DefElem * ) lfirst( lc );
+        DefElem *def = (DefElem *) lfirst(lc);
 
-        if (strcmp( def->defname, "wrapper" ) == 0 ) {
-            *module = ( char* ) defGetString( def );
+        if (strcmp(def->defname, "wrapper") == 0) {
+            *module = (char*) defGetString(def);
             got_module = true;
         } else {
-            pStr = PyString_FromString( (char* )defGetString( def ));
-            PyDict_SetItemString( pOptions, def->defname, pStr );
-            Py_DECREF( pStr );
+            pStr = PyString_FromString((char*)defGetString(def));
+            PyDict_SetItemString(pOptions, def->defname, pStr);
+            Py_DECREF(pStr);
         }
     }
-    if ( !got_module ) {
-        ereport( ERROR,
-                ( errcode( ERRCODE_FDW_OPTION_NAME_NOT_FOUND ),
-                  errmsg( "wrapper option not found" ),
-                  errhint( "You must set wrapper option to a ForeignDataWrapper python class, for example multicorn.csv.CsvFdw" )) );
+    if (!got_module) {
+        ereport(ERROR,
+                (errcode(ERRCODE_FDW_OPTION_NAME_NOT_FOUND),
+                  errmsg("wrapper option not found"),
+                  errhint("You must set wrapper option to a ForeignDataWrapper python class, for example multicorn.csv.CsvFdw")));
     }
 }
 
 
 HeapTuple
-pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
+pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
 {
     HeapTuple      tuple;
-    AttInMetadata *attinmeta = TupleDescGetAttInMetadata( desc );
+    AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
     PyObject      *pStr;
     char          *key;
     char         **tup_values;
@@ -349,14 +349,14 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
     ssize_t* sizes;
     char * buffer;
     natts = desc->natts;
-    tup_values = ( char ** ) palloc(sizeof( char * ) * natts);
+    tup_values = (char **) palloc(sizeof(char *) * natts);
     sizes = (ssize_t*) palloc(sizeof(ssize_t) * natts);
-    for ( i = 0; i< natts; i++ ) {
-        key = NameStr( desc->attrs[i]->attname );
-        if ( PyMapping_HasKeyString( pydict, key) ) {
-            pStr = PyMapping_GetItemString( pydict, key );
+    for (i = 0; i< natts; i++) {
+        key = NameStr(desc->attrs[i]->attname);
+        if (PyMapping_HasKeyString(pydict, key)) {
+            pStr = PyMapping_GetItemString(pydict, key);
             multicorn_error_check();
-            sizes[i] = pyobject_to_cstring( pStr, desc->attrs[i], &buffer );
+            sizes[i] = pyobject_to_cstring(pStr, desc->attrs[i], &buffer);
             if (sizes[i] < 0){
                 tup_values[i] = NULL;
                 sizes[i] = 0;
@@ -365,21 +365,21 @@ pydict_to_postgres_tuple( TupleDesc desc, PyObject *pydict )
                 memcpy(tup_values[i], buffer, sizes[i] + 1);
             }
             multicorn_error_check();
-            Py_DECREF( pStr );
+            Py_DECREF(pStr);
         } else {
             sizes[i] = 0;
             tup_values[i] = NULL;
         }
     }
-    tuple = BuildTupleFromCStringsWithSize( attinmeta, tup_values, sizes);
+    tuple = BuildTupleFromCStringsWithSize(attinmeta, tup_values, sizes);
     return tuple;
 }
 
 HeapTuple
-pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
+pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
 {
     HeapTuple      tuple;
-    AttInMetadata *attinmeta = TupleDescGetAttInMetadata( desc );
+    AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
     char         **tup_values;
     int i, natts;
     PyObject      *pStr;
@@ -388,15 +388,15 @@ pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
 
     natts = desc->natts;
     sizes = (ssize_t*) palloc(sizeof(ssize_t) * natts);
-    if ( PySequence_Size( pyseq ) != natts) {
-        elog( ERROR, "The python backend did not return a valid sequence" );
+    if (PySequence_Size(pyseq) != natts) {
+        elog(ERROR, "The python backend did not return a valid sequence");
         return NULL;
     } else {
-        tup_values = ( char ** ) palloc(sizeof( char * ) * natts);
-        for( i = 0; i < natts; i++ ) {
-            pStr = PySequence_GetItem( pyseq, i );
+        tup_values = (char **) palloc(sizeof(char *) * natts);
+        for(i = 0; i < natts; i++) {
+            pStr = PySequence_GetItem(pyseq, i);
             multicorn_error_check();
-            sizes[i] = pyobject_to_cstring( pStr, desc->attrs[i], &buffer );
+            sizes[i] = pyobject_to_cstring(pStr, desc->attrs[i], &buffer);
             if (sizes[i] < 0){
                 tup_values[i] = NULL;
                 sizes[i] = 0;
@@ -405,29 +405,29 @@ pysequence_to_postgres_tuple( TupleDesc desc, PyObject *pyseq )
                 memcpy(tup_values[i], buffer, sizes[i] + 1);
             }
             multicorn_error_check();
-            Py_DECREF( pStr );
+            Py_DECREF(pStr);
         }
-        tuple = BuildTupleFromCStringsWithSize( attinmeta, tup_values, sizes);
+        tuple = BuildTupleFromCStringsWithSize(attinmeta, tup_values, sizes);
         return tuple;
     }
 }
 
 const char* 
-get_encoding_from_attribute( Form_pg_attribute attribute )
+get_encoding_from_attribute(Form_pg_attribute attribute)
 {
     HeapTuple          tp;
     Form_pg_collation  colltup;
     const char        *encoding_name;
-    tp = SearchSysCache1( COLLOID, ObjectIdGetDatum( attribute->attcollation ));
-    if ( !HeapTupleIsValid( tp ))
+    tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));
+    if (!HeapTupleIsValid(tp))
         return "ascii";
-    colltup = ( Form_pg_collation ) GETSTRUCT( tp );
-    ReleaseSysCache( tp );
-    if ( colltup->collencoding == -1 ) {
+    colltup = (Form_pg_collation) GETSTRUCT(tp);
+    ReleaseSysCache(tp);
+    if (colltup->collencoding == -1) {
         /* No encoding information, do stupid things */
         encoding_name = GetDatabaseEncodingName();
     } else {
-        encoding_name = ( char* ) pg_encoding_to_char( colltup->collencoding );
+        encoding_name = (char*) pg_encoding_to_char(colltup->collencoding);
     }
     if(strcmp(encoding_name, "SQL_ASCII") == 0){
         encoding_name = "ascii";
@@ -436,48 +436,48 @@ get_encoding_from_attribute( Form_pg_attribute attribute )
 }
 
 ssize_t 
-pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buffer )
+pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char**buffer)
 {
-    PyObject *date_module = PyImport_Import( PyUnicode_FromString( "datetime" ));
-    PyObject *date_cls = PyObject_GetAttrString( date_module, "date" );
+    PyObject *date_module = PyImport_Import(PyUnicode_FromString("datetime"));
+    PyObject *date_cls = PyObject_GetAttrString(date_module, "date");
     PyObject *pStr;
     Py_ssize_t strlength = 0;
     
     
-    if ( PyNumber_Check( pyobject )) {
-        PyString_AsStringAndSize( PyObject_Str( pyobject ), buffer, &strlength);
+    if (PyNumber_Check(pyobject)) {
+        PyString_AsStringAndSize(PyObject_Str(pyobject), buffer, &strlength);
         return strlength;
     }
-    if ( pyobject == NULL || pyobject == Py_None ) {
+    if (pyobject == NULL || pyobject == Py_None) {
         return -1;
     }
-    if ( PyUnicode_Check( pyobject )) {
+    if (PyUnicode_Check(pyobject)) {
         Py_ssize_t         unicode_size;
-        const char * encoding_name = get_encoding_from_attribute( attribute );
-        unicode_size = PyUnicode_GET_SIZE( pyobject );
-        if ( !encoding_name ) {
-            PyString_AsStringAndSize( pyobject, buffer, &strlength );
+        const char * encoding_name = get_encoding_from_attribute(attribute);
+        unicode_size = PyUnicode_GET_SIZE(pyobject);
+        if (!encoding_name) {
+            PyString_AsStringAndSize(pyobject, buffer, &strlength);
         } else {
-            PyString_AsStringAndSize( PyUnicode_Encode( PyUnicode_AsUnicode( pyobject ), unicode_size, 
-                        encoding_name, NULL ), buffer, &strlength);
+            PyString_AsStringAndSize(PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size, 
+                        encoding_name, NULL), buffer, &strlength);
         }
         multicorn_error_check();
         return strlength;
     }
-    if ( PyString_Check( pyobject )) {
-        PyString_AsStringAndSize( pyobject, buffer, &strlength);
+    if (PyString_Check(pyobject)) {
+        PyString_AsStringAndSize(pyobject, buffer, &strlength);
         multicorn_error_check();
         return strlength;
     }
-    if ( PyObject_IsInstance( pyobject, date_cls) ) {
+    if (PyObject_IsInstance(pyobject, date_cls)) {
         PyObject *formatted_date;
         formatted_date = PyObject_CallMethod(pyobject, "strftime", "(s)", DATE_FORMAT_STRING);
         multicorn_error_check();
-        PyString_AsStringAndSize( formatted_date , buffer, &strlength);
+        PyString_AsStringAndSize(formatted_date , buffer, &strlength);
         multicorn_error_check();
         return strlength;
     }
-    if (PyList_Check( pyobject )){
+    if (PyList_Check(pyobject)){
         // Its an array
         Py_ssize_t i;
         Py_ssize_t size = PyList_Size(pyobject);
@@ -496,22 +496,22 @@ pyobject_to_cstring( PyObject *pyobject, Form_pg_attribute attribute, char**buff
         Py_DECREF(pStr);
         return strlength;
     }
-    Py_DECREF( date_module );
-    Py_DECREF( date_cls);
-    PyString_AsStringAndSize( pyobject, buffer, &strlength);
+    Py_DECREF(date_module);
+    Py_DECREF(date_cls);
+    PyString_AsStringAndSize(pyobject, buffer, &strlength);
     return strlength;
 }
 
 // Appends the columns names as python strings to the given python list
 void
-multicorn_get_attributes_name( TupleDesc desc, PyObject * list )
+multicorn_get_attributes_name(TupleDesc desc, PyObject * list)
 {
     char       *key;
     Py_ssize_t  i, natts;
     natts = desc->natts;
-    for( i = 0; i< natts; i++ ) {
-        key = NameStr( desc->attrs[i]->attname );
-        PyList_Append( list, PyString_FromString( key ));
+    for(i = 0; i< natts; i++) {
+        key = NameStr(desc->attrs[i]->attname);
+        PyList_Append(list, PyString_FromString(key));
     }
 }
 
@@ -526,11 +526,11 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * op
     PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
     Datum exprvalue;
     multicorn_error_check();
-    if ( IsA( right, RelabelType )) {
-        right = ( Node* ) ( (RelabelType * ) right )->arg;
+    if (IsA(right, RelabelType)) {
+        right = (Node*) ((RelabelType *) right)->arg;
     }
-    if ( IsA( left, RelabelType )) {
-        left = ( Node* ) ( (RelabelType * ) left )->arg;
+    if (IsA(left, RelabelType)) {
+        left = (Node*) ((RelabelType *) left)->arg;
     }
     if (IsA(right, Var) && !IsA(left, Var)){
         // Switch the operands
@@ -538,14 +538,14 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * op
         left = right;
         right = temp;
     }
-    if ( IsA( left, Var )) {
+    if (IsA(left, Var)) {
         multicorn_error_check();
         attr = tupdesc->attrs[((Var *) left)->varattno- 1];
         key = NameStr(attr->attname);
         multicorn_error_check();
-        switch ( right->type){
+        switch (right->type){
             case T_Const:
-                value = multicorn_datum_to_python( ((Const * ) right)->constvalue, ((Const *) right)->consttype, attr);
+                value = multicorn_datum_to_python(((Const *) right)->constvalue, ((Const *) right)->consttype, attr);
                 break;
             case T_Param:
                 exprstate = ExecInitExpr((Expr*)right, &(fss->ss.ps));
@@ -568,30 +568,30 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * op
 }
 
 void
-multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
+multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
 {
-    if ( node->ss.ps.plan->qual ) {
+    if (node->ss.ps.plan->qual) {
         ListCell   *lc;
-        List       *quals = list_copy( node->ss.ps.qual );
+        List       *quals = list_copy(node->ss.ps.qual);
         PyObject   *tempqual;
         HeapTuple tp;
         Node *left, *right;
         Form_pg_operator operator_tup;
-        foreach ( lc, quals) {
+        foreach (lc, quals) {
             Node        *nodexp = (Node *) ((ExprState *) lfirst(lc))->expr;
             tempqual = NULL;
-            if ( nodexp != NULL ){
+            if (nodexp != NULL){
                 switch(nodexp->type){
                     case T_OpExpr:
-                        if ( list_length( ((OpExpr *) nodexp)->args) == 2 ) {
+                        if (list_length(((OpExpr *) nodexp)->args) == 2) {
                             OpExpr *op = (OpExpr *) nodexp;
                             left = list_nth(op->args, 0);
                             right = list_nth(op->args, 1);
-                            tp = SearchSysCache1( OPEROID, ObjectIdGetDatum(op->opno));
-                            if ( !HeapTupleIsValid( tp ))
-                                elog( ERROR, "cache lookup failed for operator %u", op->opno );
-                            operator_tup = ( Form_pg_operator ) GETSTRUCT( tp );
-                            ReleaseSysCache( tp );
+                            tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+                            if (!HeapTupleIsValid(tp))
+                                elog(ERROR, "cache lookup failed for operator %u", op->opno);
+                            operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+                            ReleaseSysCache(tp);
                             multicorn_get_param(left, right, node, NameStr(operator_tup->oprname), &tempqual);
                             if(tempqual){
                                 PyList_Append(list, tempqual);
@@ -599,15 +599,15 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
                         }
                         break;
                     case T_ScalarArrayOpExpr:
-                        if ( list_length( ((ScalarArrayOpExpr *) nodexp)->args) == 2 ) {
+                        if (list_length(((ScalarArrayOpExpr *) nodexp)->args) == 2) {
                             ScalarArrayOpExpr *op = (ScalarArrayOpExpr *) nodexp;
                             left = list_nth(op->args, 0);
                             right = list_nth(op->args, 1);
-                            tp = SearchSysCache1( OPEROID, ObjectIdGetDatum(op->opno ));
-                            if ( !HeapTupleIsValid( tp ))
-                                elog( ERROR, "cache lookup failed for operator %u", op->opno );
-                            operator_tup = ( Form_pg_operator ) GETSTRUCT( tp );
-                            ReleaseSysCache( tp );
+                            tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+                            if (!HeapTupleIsValid(tp))
+                                elog(ERROR, "cache lookup failed for operator %u", op->opno);
+                            operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+                            ReleaseSysCache(tp);
                             // Only manage in and not in for now
                             if(op->useOr){
                                 // ANY clause on the array + "=" -> IN
@@ -635,38 +635,38 @@ multicorn_extract_conditions( ForeignScanState * node, PyObject* list)
 }
 
 PyObject*
-multicorn_datum_to_python( Datum datumvalue, Oid type, Form_pg_attribute attribute )
+multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribute)
 {
     PyObject* result;
     HeapTuple typeTuple;
     Form_pg_type typeStruct;
-    if ( type == TEXTOID || type == VARCHAROID) {
+    if (type == TEXTOID || type == VARCHAROID) {
         /* Its a string */
         const char * encoding_name;
         char * value;
         Py_ssize_t size;
-        value = TextDatumGetCString( datumvalue );
-        size = strlen( value );
-        encoding_name = get_encoding_from_attribute( attribute );
-        if ( !encoding_name ) {
-            result = PyString_FromString( value );
+        value = TextDatumGetCString(datumvalue);
+        size = strlen(value);
+        encoding_name = get_encoding_from_attribute(attribute);
+        if (!encoding_name) {
+            result = PyString_FromString(value);
             multicorn_error_check();
         } else {
-            result = PyUnicode_Decode( value, size, encoding_name, NULL );
+            result = PyUnicode_Decode(value, size, encoding_name, NULL);
             multicorn_error_check();
         }
-    } else if ( type == NUMERICOID ) {
+    } else if (type == NUMERICOID) {
         /* Its a numeric */
         char*  number;
-        number = ( char* ) DirectFunctionCall1( numeric_out, (ssize_t) DatumGetNumeric( datumvalue ));
-        result = PyFloat_FromString( PyString_FromString( number ), NULL );
-    } else if ( type == INT4OID ) {
+        number = (char*) DirectFunctionCall1(numeric_out, (ssize_t) DatumGetNumeric(datumvalue));
+        result = PyFloat_FromString(PyString_FromString(number), NULL);
+    } else if (type == INT4OID) {
         long number;
-        number = DatumGetInt32( datumvalue );
-        result = PyInt_FromLong( number );
-    } else if ( type == DATEOID ) {
+        number = DatumGetInt32(datumvalue);
+        result = PyInt_FromLong(number);
+    } else if (type == DATEOID) {
         result = PyDate_FromTimestamp(Py_BuildValue("(i)", DatumGetDateADT(datumvalue)));
-    } else if ( type == TIMESTAMPOID) {
+    } else if (type == TIMESTAMPOID) {
         fsec_t fsec;
         struct pg_tm *value = palloc(sizeof(struct pg_tm));
         // TODO: see what could go wrong
@@ -730,11 +730,11 @@ multicorn_report_exception(PyObject* pErrType, PyObject* pErrValue, PyObject* pE
 
 static void
 init_if_needed(){
-    if ( TABLES_DICT == NULL ) {
+    if (TABLES_DICT == NULL) {
         /* TODO: managed locks and things */
-        Py_Initialize(  );
+        Py_Initialize();
         PyDateTime_IMPORT;
-        TABLES_DICT = PyDict_New(  );
+        TABLES_DICT = PyDict_New();
     }
 }
 
@@ -759,25 +759,25 @@ multicorn_get_instance(Relation rel)
     Oid            tablerelid;
     char           *module;
     init_if_needed();
-    tablerelid = RelationGetRelid( rel );
-    pTableId = PyInt_FromSsize_t( tablerelid );
+    tablerelid = RelationGetRelid(rel);
+    pTableId = PyInt_FromSsize_t(tablerelid);
     multicorn_error_check();
-    if ( PyMapping_HasKey( TABLES_DICT, pTableId )) {
-        pObj = PyDict_GetItem( TABLES_DICT, pTableId );
+    if (PyMapping_HasKey(TABLES_DICT, pTableId)) {
+        pObj = PyDict_GetItem(TABLES_DICT, pTableId);
     } else {
         pOptions = PyDict_New();
-        multicorn_get_options( tablerelid, pOptions, &module );
+        multicorn_get_options(tablerelid, pOptions, &module);
         pClass = multicorn_get_class(module);
         multicorn_error_check();
-        pColumns = PyList_New( 0 );
-        multicorn_get_attributes_name( rel->rd_att, pColumns);
-        pObj = PyObject_CallObject( pClass, Py_BuildValue("(O,O)", pOptions, pColumns));
+        pColumns = PyList_New(0);
+        multicorn_get_attributes_name(rel->rd_att, pColumns);
+        pObj = PyObject_CallObject(pClass, Py_BuildValue("(O,O)", pOptions, pColumns));
         multicorn_error_check();
-        PyDict_SetItem( TABLES_DICT, pTableId, pObj );
+        PyDict_SetItem(TABLES_DICT, pTableId, pObj);
         multicorn_error_check();
-        Py_DECREF( pOptions);
-        Py_DECREF( pClass);
-        Py_DECREF( pObj );
+        Py_DECREF(pOptions);
+        Py_DECREF(pClass);
+        Py_DECREF(pObj);
     }
     return pObj;
 }
@@ -867,10 +867,10 @@ void
 multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
     ListCell *cell;
     char * key;
-    if ( expr == NULL) {
+    if (expr == NULL) {
         return ;
     }
-    switch ( expr->type ) {
+    switch (expr->type) {
 
         case T_ExprState:
             multicorn_get_column(((ExprState *) expr)->expr, desc, list);
@@ -888,7 +888,7 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
             break;
 
         case T_Var:
-            key = NameStr( desc->attrs[((Var *)expr)->varattno-1]->attname );
+            key = NameStr(desc->attrs[((Var *)expr)->varattno-1]->attname);
             if (key != NULL){
                 PySet_Add(list, PyString_FromString(key));
             }
@@ -915,7 +915,7 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
             if (((TargetEntry *)expr)->resorigcol == 0){
                 multicorn_get_column(((TargetEntry *)expr)->expr, desc, list);
             } else {
-                key = NameStr( desc->attrs[((TargetEntry *)expr)->resorigcol-1]->attname );
+                key = NameStr(desc->attrs[((TargetEntry *)expr)->resorigcol-1]->attname);
                 if (key != NULL) {
                     PySet_Add(list, PyString_FromString(key));
                 }
@@ -1034,13 +1034,13 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
             break;
 
         case T_CoalesceExpr:
-            foreach(cell, ((CoalesceExpr *)expr)->args ){
+            foreach(cell, ((CoalesceExpr *)expr)->args){
                 multicorn_get_column((Expr *)lfirst(cell), desc, list);
             }
             break;
 
         case T_MinMaxExpr:
-            foreach(cell, ((MinMaxExpr *)expr)->args ){
+            foreach(cell, ((MinMaxExpr *)expr)->args){
                 multicorn_get_column((Expr *)lfirst(cell), desc, list);
             }
             break;
@@ -1076,7 +1076,7 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
 
         case T_SubPlanState:
             multicorn_get_column(((Expr *)((SubPlanState *)expr)->testexpr), desc, list);
-            foreach(cell, ((SubPlanState *)expr)->args ){
+            foreach(cell, ((SubPlanState *)expr)->args){
                 multicorn_get_column((Expr *)lfirst(cell), desc, list);
             }
             break;
