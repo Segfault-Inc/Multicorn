@@ -477,15 +477,15 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char**buffe
         multicorn_error_check();
         return strlength;
     }
-    if (PyList_Check(pyobject)){
+    if (PySequence_Check(pyobject)){
         // Its an array
         Py_ssize_t i;
-        Py_ssize_t size = PyList_Size(pyobject);
+        Py_ssize_t size = PySequence_Size(pyobject);
         char *tempbuffer;
         PyObject *delimiter = PyString_FromString(", ");
         PyObject *mapped_list = PyList_New(0);
         for(i = 0; i < size; i++){
-            pyobject_to_cstring(PyList_GET_ITEM(pyobject, i), attribute, &tempbuffer);
+            pyobject_to_cstring(PySequence_GetItem(pyobject, i), attribute, &tempbuffer);
             PyList_Append(mapped_list, PyString_FromString(tempbuffer));
         }
         pStr = PyString_Format(PyString_FromString("{%s}"), PyObject_CallMethod(delimiter, "join", "(O)", mapped_list));
@@ -496,9 +496,27 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char**buffe
         Py_DECREF(pStr);
         return strlength;
     }
+    if (PyMapping_Check(pyobject)){
+        char *keybuffer;
+        char *valuebuffer;
+        PyObject *mapped_list = PyList_New(0);
+        PyObject *items = PyMapping_Items(pyobject);
+        PyObject *delimiter = PyString_FromString(", ");
+        PyObject *current_tuple;
+        Py_ssize_t i;
+        Py_ssize_t size = PyList_Size(items);
+        for(i=0; i<size; i++){
+            current_tuple = PySequence_GetItem(items, i);
+            pyobject_to_cstring(PyTuple_GetItem(current_tuple, 0), attribute, &keybuffer);
+            pyobject_to_cstring(PyTuple_GetItem(current_tuple, 1), attribute, &valuebuffer);
+            PyList_Append(mapped_list, PyString_FromFormat("%s=>%s", keybuffer, valuebuffer));
+        }
+        PyString_AsStringAndSize(PyObject_CallMethod(delimiter, "join", "(O)", mapped_list), buffer, &strlength);
+        return strlength;
+    }
     Py_DECREF(date_module);
     Py_DECREF(date_cls);
-    PyString_AsStringAndSize(pyobject, buffer, &strlength);
+    PyString_AsStringAndSize(PyObject_Str(pyobject), buffer, &strlength);
     return strlength;
 }
 

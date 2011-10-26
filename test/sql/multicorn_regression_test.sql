@@ -26,3 +26,5 @@ from testmulticorn t1;
 
 select test1, (select max(substr(test1, 9, 1))::int from testmulticorn t2 where t2.test1 = t1.test1)
 from testmulticorn t1;
+
+DROP EXTENSION multicorn cascade;

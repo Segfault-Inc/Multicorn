@@ -1,0 +1,77 @@
+CREATE EXTENSION multicorn;
+CREATE EXTENSION hstore;
+WARNING:  => is deprecated as an operator name
+DETAIL:  This name may be disallowed altogether in future versions of PostgreSQL.
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE foreign table testmulticorn (
+    test1 hstore,
+    test2 hstore
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'dict'
+);
+-- Test "normal" usage
+select * from testmulticorn;
+NOTICE:  {'test_type': 'dict', 'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  ['test1', 'test2']
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+                         test1                          |                         test2                          
+--------------------------------------------------------+--------------------------------------------------------
+ "index"=>"0", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"0", "repeater"=>"2", "column_name"=>"test2"
+ "index"=>"1", "repeater"=>"3", "column_name"=>"test1"  | "index"=>"1", "repeater"=>"1", "column_name"=>"test2"
+ "index"=>"2", "repeater"=>"2", "column_name"=>"test1"  | "index"=>"2", "repeater"=>"3", "column_name"=>"test2"
+ "index"=>"3", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"3", "repeater"=>"2", "column_name"=>"test2"
+ "index"=>"4", "repeater"=>"3", "column_name"=>"test1"  | "index"=>"4", "repeater"=>"1", "column_name"=>"test2"
+ "index"=>"5", "repeater"=>"2", "column_name"=>"test1"  | "index"=>"5", "repeater"=>"3", "column_name"=>"test2"
+ "index"=>"6", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"6", "repeater"=>"2", "column_name"=>"test2"
+ "index"=>"7", "repeater"=>"3", "column_name"=>"test1"  | "index"=>"7", "repeater"=>"1", "column_name"=>"test2"
+ "index"=>"8", "repeater"=>"2", "column_name"=>"test1"  | "index"=>"8", "repeater"=>"3", "column_name"=>"test2"
+ "index"=>"9", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"9", "repeater"=>"2", "column_name"=>"test2"
+ "index"=>"10", "repeater"=>"3", "column_name"=>"test1" | "index"=>"10", "repeater"=>"1", "column_name"=>"test2"
+ "index"=>"11", "repeater"=>"2", "column_name"=>"test1" | "index"=>"11", "repeater"=>"3", "column_name"=>"test2"
+ "index"=>"12", "repeater"=>"1", "column_name"=>"test1" | "index"=>"12", "repeater"=>"2", "column_name"=>"test2"
+ "index"=>"13", "repeater"=>"3", "column_name"=>"test1" | "index"=>"13", "repeater"=>"1", "column_name"=>"test2"
+ "index"=>"14", "repeater"=>"2", "column_name"=>"test1" | "index"=>"14", "repeater"=>"3", "column_name"=>"test2"
+ "index"=>"15", "repeater"=>"1", "column_name"=>"test1" | "index"=>"15", "repeater"=>"2", "column_name"=>"test2"
+ "index"=>"16", "repeater"=>"3", "column_name"=>"test1" | "index"=>"16", "repeater"=>"1", "column_name"=>"test2"
+ "index"=>"17", "repeater"=>"2", "column_name"=>"test1" | "index"=>"17", "repeater"=>"3", "column_name"=>"test2"
+ "index"=>"18", "repeater"=>"1", "column_name"=>"test1" | "index"=>"18", "repeater"=>"2", "column_name"=>"test2"
+ "index"=>"19", "repeater"=>"3", "column_name"=>"test1" | "index"=>"19", "repeater"=>"1", "column_name"=>"test2"
+(20 rows)
+
+select test1 -> 'repeater' from testmulticorn;
+NOTICE:  []
+NOTICE:  set(['test1'])
+ ?column? 
+----------
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+(20 rows)
+
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to user mapping for postgres
+drop cascades to foreign table testmulticorn

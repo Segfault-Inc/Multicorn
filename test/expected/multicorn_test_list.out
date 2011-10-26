@@ -1,0 +1,74 @@
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE foreign table testmulticorn (
+    test1 character varying[],
+    test2 character varying[]
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'list'
+);
+-- Test "normal" usage
+select * from testmulticorn;
+NOTICE:  {'test_type': 'list', 'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  ['test1', 'test2']
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+    test1     |    test2     
+--------------+--------------
+ {test1,1,0}  | {test2,2,0}
+ {test1,3,1}  | {test2,1,1}
+ {test1,2,2}  | {test2,3,2}
+ {test1,1,3}  | {test2,2,3}
+ {test1,3,4}  | {test2,1,4}
+ {test1,2,5}  | {test2,3,5}
+ {test1,1,6}  | {test2,2,6}
+ {test1,3,7}  | {test2,1,7}
+ {test1,2,8}  | {test2,3,8}
+ {test1,1,9}  | {test2,2,9}
+ {test1,3,10} | {test2,1,10}
+ {test1,2,11} | {test2,3,11}
+ {test1,1,12} | {test2,2,12}
+ {test1,3,13} | {test2,1,13}
+ {test1,2,14} | {test2,3,14}
+ {test1,1,15} | {test2,2,15}
+ {test1,3,16} | {test2,1,16}
+ {test1,2,17} | {test2,3,17}
+ {test1,1,18} | {test2,2,18}
+ {test1,3,19} | {test2,1,19}
+(20 rows)
+
+select test1[2] from testmulticorn;
+NOTICE:  []
+NOTICE:  set(['test1'])
+ test1 
+-------
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+ 2
+ 1
+ 3
+(20 rows)
+
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to user mapping for postgres
+drop cascades to foreign table testmulticorn
