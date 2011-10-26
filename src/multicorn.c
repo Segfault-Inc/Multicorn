@@ -643,6 +643,25 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
                             }
                         }
                         break;
+                    case T_NullTest:
+                        //TODO: this code is pretty much duplicated from
+                        //get_param, find a way to share it.
+                        if IsA(((NullTest *) nodexp)->arg, Var){
+                            char * operator_name;
+                            NullTest * nulltest = (NullTest *) nodexp;
+                            TupleDesc  tupdesc = node->ss.ss_currentRelation->rd_att;
+                            PyObject * qual_class = multicorn_get_class("multicorn.Qual");
+                            Form_pg_attribute attr = tupdesc->attrs[((Var *)nulltest->arg)->varattno- 1];
+                            if (nulltest->nulltesttype == IS_NULL){
+                                operator_name = "=";
+                            } else {
+                                operator_name = "<>";
+                            }
+                           PyList_Append(list, PyObject_CallObject(qual_class,
+                                       Py_BuildValue("(s,s,O)", NameStr(attr->attname), operator_name, Py_None)));
+
+                        }
+                        break;
                     default:
                         elog(WARNING, "GOT AN UNEXPECTED TYPE: %i", nodexp->type);
                         break;
