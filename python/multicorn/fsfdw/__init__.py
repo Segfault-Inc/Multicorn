@@ -68,8 +68,9 @@ class FilesystemFdw(ForeignDataWrapper):
         structure.
 
         """
-        cond = dict((qual.field_name, qual.value) for
+        cond = dict((qual.field_name, unicode(qual.value)) for
                 qual in quals if qual.operator == '=')
+        log_to_postgres(str(cond))
         if self.filename_column in cond:
             item = self.structured_directory.from_filename(
                     cond[self.filename_column])

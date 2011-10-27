@@ -704,73 +704,86 @@ multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribut
     PyObject* result;
     HeapTuple typeTuple;
     Form_pg_type typeStruct;
-    if (type == TEXTOID || type == VARCHAROID) {
-        /* Its a string */
-        const char * encoding_name;
-        char * value;
-        Py_ssize_t size;
-        value = TextDatumGetCString(datumvalue);
-        size = strlen(value);
-        encoding_name = get_encoding_from_attribute(attribute);
-        if (!encoding_name) {
-            result = PyString_FromString(value);
-            multicorn_error_check();
-        } else {
-            result = PyUnicode_Decode(value, size, encoding_name, NULL);
-            multicorn_error_check();
-        }
-    } else if (type == NUMERICOID) {
-        /* Its a numeric */
-        char*  number;
-        number = (char*) DirectFunctionCall1(numeric_out, (ssize_t) DatumGetNumeric(datumvalue));
-        result = PyFloat_FromString(PyString_FromString(number), NULL);
-    } else if (type == INT4OID) {
-        long number;
-        number = DatumGetInt32(datumvalue);
-        result = PyInt_FromLong(number);
-    } else if (type == DATEOID) {
-        result = PyDate_FromTimestamp(Py_BuildValue("(i)", DatumGetDateADT(datumvalue)));
-    } else if (type == TIMESTAMPOID) {
-        fsec_t fsec;
-        struct pg_tm *value = palloc(sizeof(struct pg_tm));
-        // TODO: see what could go wrong
-        timestamp2tm(DatumGetTimestamp(datumvalue), NULL, value, &fsec, NULL, NULL); 
-        result = PyDateTime_FromDateAndTime(value->tm_year, value->tm_mon, value->tm_mday, value->tm_hour, value->tm_min, value->tm_sec, 0);
-    } else {
-        // Try to manage array types
-        typeTuple = SearchSysCache1(TYPEOID,
-                    ObjectIdGetDatum(type));
-        if (!HeapTupleIsValid(typeTuple))
-            elog(ERROR, "lookup failed for type %u",
-                    type);
-        typeStruct = (Form_pg_type) GETSTRUCT(typeTuple);
-        ReleaseSysCache(typeTuple);
-        if ((typeStruct->typelem != 0) && (typeStruct->typlen == -1)){
-            // Its an array
-            bool isnull;
-            Datum buffer;
-            PyObject *listelem;
-            ArrayIterator iterator;
-            result = PyList_New(0);
-            iterator = array_create_iterator(DatumGetArrayTypeP(datumvalue), 0);
-            while(array_iterate(iterator, &buffer, &isnull)){
-                if(isnull){
-                    PyList_Append(result, Py_None);
-                } else {
-                    listelem = multicorn_datum_to_python(buffer, typeStruct->typelem, attribute);
-                    if(listelem == NULL){
-                        result = NULL;
-                        break;
+    const char * encoding_name;
+    char * tempvalue;
+    long number;
+    fsec_t fsec;
+    struct pg_tm *pg_tm_value;
+    Py_ssize_t size;
+    switch(type){
+        case TEXTOID:
+        case VARCHAROID:
+            /* Its a string */
+            tempvalue = TextDatumGetCString(datumvalue);
+            size = strlen(tempvalue);
+            encoding_name = get_encoding_from_attribute(attribute);
+            if (!encoding_name) {
+                result = PyString_FromString(tempvalue);
+                multicorn_error_check();
+            } else {
+                result = PyUnicode_Decode(tempvalue, size, encoding_name, NULL);
+                multicorn_error_check();
+            }
+            break;
+        case NUMERICOID:
+            /* Its a numeric */
+            tempvalue = (char*) DirectFunctionCall1(numeric_out, (ssize_t) DatumGetNumeric(datumvalue));
+            result = PyFloat_FromString(PyString_FromString(tempvalue), NULL);
+            break;
+        case INT4OID:
+            number = DatumGetInt32(datumvalue);
+            result = PyInt_FromLong(number);
+            break;
+        case DATEOID:
+            datumvalue = DirectFunctionCall1(date_timestamp, datumvalue);
+            pg_tm_value = palloc(sizeof(struct pg_tm));
+            timestamp2tm(DatumGetTimestamp(datumvalue), NULL, pg_tm_value, &fsec, NULL, NULL); 
+            result = PyDate_FromDate(pg_tm_value->tm_year,
+                    pg_tm_value->tm_mon, pg_tm_value->tm_mday);
+            break;
+        case TIMESTAMPOID:
+            // TODO: see what could go wrong
+            pg_tm_value = palloc(sizeof(struct pg_tm));
+            timestamp2tm(DatumGetTimestamp(datumvalue), NULL, pg_tm_value, &fsec, NULL, NULL); 
+            result = PyDateTime_FromDateAndTime(pg_tm_value->tm_year,
+                    pg_tm_value->tm_mon, pg_tm_value->tm_mday,
+                    pg_tm_value->tm_hour, pg_tm_value->tm_min, pg_tm_value->tm_sec, 0);
+            break;
+        default:
+            // Try to manage array types
+            typeTuple = SearchSysCache1(TYPEOID,
+                        ObjectIdGetDatum(type));
+            if (!HeapTupleIsValid(typeTuple))
+                elog(ERROR, "lookup failed for type %u",
+                        type);
+            typeStruct = (Form_pg_type) GETSTRUCT(typeTuple);
+            ReleaseSysCache(typeTuple);
+            if ((typeStruct->typelem != 0) && (typeStruct->typlen == -1)){
+                // Its an array
+                bool isnull;
+                Datum buffer;
+                PyObject *listelem;
+                ArrayIterator iterator;
+                result = PyList_New(0);
+                iterator = array_create_iterator(DatumGetArrayTypeP(datumvalue), 0);
+                while(array_iterate(iterator, &buffer, &isnull)){
+                    if(isnull){
+                        PyList_Append(result, Py_None);
                     } else {
-                        PyList_Append(result, listelem);
+                        listelem = multicorn_datum_to_python(buffer, typeStruct->typelem, attribute);
+                        if(listelem == NULL){
+                            result = NULL;
+                            break;
+                        } else {
+                            PyList_Append(result, listelem);
+                        }
                     }
                 }
+                array_free_iterator(iterator);
+            } else {
+                // NOT AN ARRAY, nor a known type, not managed
+                return NULL;
             }
-            array_free_iterator(iterator);
-        } else {
-            // NOT AN ARRAY, nor a known type, not managed
-            return NULL;
-        }
     }
     return result;
 }

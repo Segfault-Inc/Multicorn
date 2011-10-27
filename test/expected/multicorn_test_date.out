@@ -1,0 +1,81 @@
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE foreign table testmulticorn (
+    test1 date,
+    test2 timestamp
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'date'
+);
+-- Test "normal" usage
+select * from testmulticorn;
+NOTICE:  {'test_type': 'date', 'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  ['test1', 'test2']
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+   test1    |          test2           
+------------+--------------------------
+ 01-01-2011 | Sun Jan 02 00:00:00 2011
+ 02-03-2011 | Tue Feb 01 00:00:00 2011
+ 03-02-2011 | Thu Mar 03 00:00:00 2011
+ 04-01-2011 | Sat Apr 02 00:00:00 2011
+ 05-03-2011 | Sun May 01 00:00:00 2011
+ 06-02-2011 | Fri Jun 03 00:00:00 2011
+ 07-01-2011 | Sat Jul 02 00:00:00 2011
+ 08-03-2011 | Mon Aug 01 00:00:00 2011
+ 09-02-2011 | Sat Sep 03 00:00:00 2011
+ 10-01-2011 | Sun Oct 02 00:00:00 2011
+ 11-03-2011 | Tue Nov 01 00:00:00 2011
+ 12-02-2011 | Sat Dec 03 00:00:00 2011
+ 01-01-2011 | Sun Jan 02 00:00:00 2011
+ 02-03-2011 | Tue Feb 01 00:00:00 2011
+ 03-02-2011 | Thu Mar 03 00:00:00 2011
+ 04-01-2011 | Sat Apr 02 00:00:00 2011
+ 05-03-2011 | Sun May 01 00:00:00 2011
+ 06-02-2011 | Fri Jun 03 00:00:00 2011
+ 07-01-2011 | Sat Jul 02 00:00:00 2011
+ 08-03-2011 | Mon Aug 01 00:00:00 2011
+(20 rows)
+
+select * from testmulticorn where test1 < '2011-06-01';
+NOTICE:  [test1 < 2011-06-01]
+NOTICE:  set(['test1', 'test2'])
+   test1    |          test2           
+------------+--------------------------
+ 01-01-2011 | Sun Jan 02 00:00:00 2011
+ 02-03-2011 | Tue Feb 01 00:00:00 2011
+ 03-02-2011 | Thu Mar 03 00:00:00 2011
+ 04-01-2011 | Sat Apr 02 00:00:00 2011
+ 05-03-2011 | Sun May 01 00:00:00 2011
+ 01-01-2011 | Sun Jan 02 00:00:00 2011
+ 02-03-2011 | Tue Feb 01 00:00:00 2011
+ 03-02-2011 | Thu Mar 03 00:00:00 2011
+ 04-01-2011 | Sat Apr 02 00:00:00 2011
+ 05-03-2011 | Sun May 01 00:00:00 2011
+(10 rows)
+
+select * from testmulticorn where test2 < '2011-06-01 00:00:00';
+NOTICE:  [test2 < 2011-06-01 00:00:00]
+NOTICE:  set(['test1', 'test2'])
+   test1    |          test2           
+------------+--------------------------
+ 01-01-2011 | Sun Jan 02 00:00:00 2011
+ 02-03-2011 | Tue Feb 01 00:00:00 2011
+ 03-02-2011 | Thu Mar 03 00:00:00 2011
+ 04-01-2011 | Sat Apr 02 00:00:00 2011
+ 05-03-2011 | Sun May 01 00:00:00 2011
+ 01-01-2011 | Sun Jan 02 00:00:00 2011
+ 02-03-2011 | Tue Feb 01 00:00:00 2011
+ 03-02-2011 | Thu Mar 03 00:00:00 2011
+ 04-01-2011 | Sat Apr 02 00:00:00 2011
+ 05-03-2011 | Sun May 01 00:00:00 2011
+(10 rows)
+
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to user mapping for postgres
+drop cascades to foreign table testmulticorn

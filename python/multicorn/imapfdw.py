@@ -39,9 +39,7 @@ class ImapFdw(ForeignDataWrapper):
             return '%s "%s"' % (field_name.upper(), value)
         return ''
 
-    def execute(self, quals, columns):
-        condition = ''
-        log_to_postgres(str(quals))
+    def extract_conditions(self, quals):
         conditions = []
         for qual in quals:
             if qual.field_name == self.payload_column:
@@ -55,6 +53,9 @@ class ImapFdw(ForeignDataWrapper):
                     conditions.append('KEYWORD %s' % qual.value)
                 elif qual.operator == 'NOT CONTAINS':
                     conditions.append('UNKEYWORD %s' % qual.value)
+                elif qual.operator == '=':
+                    for value in qual.value:
+                        conditions.append('KEYWORD %s' % value)
             elif qual.operator == '~~':
                 conditions.append(self.make_like(qual.field_name, qual.value))
             elif qual.operator == '!~~':
@@ -64,6 +65,14 @@ class ImapFdw(ForeignDataWrapper):
             elif qual.operator == '=':
                 conditions.append('%s "%s"' % (qual.field_name.upper(), qual.value))
         condition = '(%s)' % ' '.join(('(%s)' % cond for cond in conditions)) if conditions else 'ALL'
+        return condition
+
+
+
+    def execute(self, quals, columns):
+        condition = ''
+        log_to_postgres(str(quals))
+        log_to_postgres(condition)
         headers = []
         need_flags = False
         need_text = False
@@ -80,6 +89,7 @@ class ImapFdw(ForeignDataWrapper):
                     if headers else '',
                 ' FLAGS' if need_flags else ''
                 )
+        condition = self.extract_conditions(quals)
         matching_mails = ','.join(self.imap_agent.search("UTF8", condition)[1][0].split())
         if matching_mails:
             typ, data = self.imap_agent.fetch(matching_mails, fetch_string)
