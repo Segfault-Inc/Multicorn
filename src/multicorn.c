@@ -87,6 +87,7 @@ void multicorn_clean_state(MulticornState *state);
 void multicorn_get_param(Node* left, Node* right, ForeignScanState * fss, char * operator_name, PyObject** result);
 PyObject * multicorn_get_class(char * className);
 PyObject * multicorn_get_multicorn(void);
+void multicorn_unnest(Node * value, Node ** result);
 
 HeapTuple pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
 HeapTuple pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
@@ -465,7 +466,11 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char**buffe
         return strlength;
     }
     if (PyString_Check(pyobject)) {
-        PyString_AsStringAndSize(pyobject, buffer, &strlength);
+        if(PyString_AsStringAndSize(pyobject, buffer, &strlength) < 0){
+            ereport(WARNING, 
+                    (errmsg("An error occured while decoding the %s column", NameStr(attribute->attname)),
+                    errhint("Hou should maybe return unicode instead?")));
+        }
         multicorn_error_check();
         return strlength;
     }
@@ -534,6 +539,20 @@ multicorn_get_attributes_name(TupleDesc desc, PyObject * list)
 }
 
 void
+multicorn_unnest(Node * node, Node **result){
+    switch(node->type){
+        case T_RelabelType:
+            *result = (Node *)((RelabelType *)node)->arg;
+            break;
+        case T_ArrayCoerceExpr:
+            *result = (Node *)((ArrayCoerceExpr *)node)->arg;
+            break;
+        default:
+            *result = node;
+    }
+}
+
+void
 multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * operator_name, PyObject ** result){
     ExprState   *exprstate;
     Form_pg_attribute attr;
@@ -543,39 +562,38 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * op
     PyObject * value = NULL;
     PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
     Datum exprvalue;
+    Node * normalized_left;
+    Node * normalized_right;
     multicorn_error_check();
-    if (IsA(right, RelabelType)) {
-        right = (Node*) ((RelabelType *) right)->arg;
-    }
-    if (IsA(left, RelabelType)) {
-        left = (Node*) ((RelabelType *) left)->arg;
-    }
-    if (IsA(right, Var) && !IsA(left, Var)){
+    multicorn_unnest(left, &normalized_left);
+    multicorn_unnest(right, &normalized_right);
+    if (IsA(normalized_right, Var) && !IsA(normalized_left, Var)){
         // Switch the operands
-        Node * temp = left;
-        left = right;
-        right = temp;
+        Node * temp = normalized_left;
+        normalized_left = normalized_right;
+        normalized_right = temp;
     }
-    if (IsA(left, Var)) {
+    
+    if (IsA(normalized_left, Var)) {
         multicorn_error_check();
-        attr = tupdesc->attrs[((Var *) left)->varattno- 1];
+        attr = tupdesc->attrs[((Var *) normalized_left)->varattno- 1];
         key = NameStr(attr->attname);
         multicorn_error_check();
-        switch (right->type){
+        switch (normalized_right->type){
             case T_Const:
-                value = multicorn_datum_to_python(((Const *) right)->constvalue, ((Const *) right)->consttype, attr);
+                value = multicorn_datum_to_python(((Const *) normalized_right)->constvalue, ((Const *) normalized_right)->consttype, attr);
                 break;
             case T_Param:
-                exprstate = ExecInitExpr((Expr*)right, &(fss->ss.ps));
+                exprstate = ExecInitExpr((Expr*)normalized_right, &(fss->ss.ps));
                 exprvalue = ExecEvalExpr(exprstate, fss->ss.ps.ps_ExprContext, &isnull, NULL);
                 if(isnull){
                     value = Py_None;
                 } else {
-                    value = multicorn_datum_to_python(exprvalue, ((Param *)right)->paramtype, attr);
+                    value = multicorn_datum_to_python(exprvalue, ((Param *)normalized_right)->paramtype, attr);
                 }
                 break;
             default:
-                elog(WARNING, "Cant manage type %i", right->type);
+                elog(WARNING, "Cant manage type %i", normalized_right->type);
                 break;
         }
     }
@@ -630,7 +648,12 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
                             if(op->useOr){
                                 // ANY clause on the array + "=" -> IN
                                 if(strcmp(NameStr(operator_tup->oprname), "=") == 0){
-                                    multicorn_get_param(left, right, node, "IN", &tempqual);
+                                    if (IsA(left, Const)){
+                                        // Its 'contains'
+                                        multicorn_get_param(left, right, node, "CONTAINS", &tempqual);
+                                    } else {
+                                        multicorn_get_param(left, right, node, "IN", &tempqual);
+                                    }
                                 }
                             } else {
                                 // ALL clause on the array + "<>"  -> NOT IN
@@ -659,7 +682,6 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
                             }
                            PyList_Append(list, PyObject_CallObject(qual_class,
                                        Py_BuildValue("(s,s,O)", NameStr(attr->attname), operator_name, Py_None)));
-
                         }
                         break;
                     default:
@@ -1117,6 +1139,11 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
                 multicorn_get_column((Expr *)lfirst(cell), desc, list);
             }
             break;
+
+        case T_ArrayCoerceExprState:
+            multicorn_get_column(((Expr *)((ArrayCoerceExprState *)expr)->arg), desc, list);
+            break;
+
 
         default:
             ereport(ERROR, 
