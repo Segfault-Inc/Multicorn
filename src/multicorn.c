@@ -658,7 +658,12 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
                             } else {
                                 // ALL clause on the array + "<>"  -> NOT IN
                                 if(strcmp(NameStr(operator_tup->oprname), "<>") == 0){
-                                    multicorn_get_param(left, right, node, "NOT IN", &tempqual);
+                                    if (IsA(left, Const)){
+                                        // Its 'not contains'
+                                        multicorn_get_param(left, right, node, "NOT CONTAINS", &tempqual);
+                                    } else {
+                                        multicorn_get_param(left, right, node, "NOT IN", &tempqual);
+                                    }
                                 }
                             }
                             if(tempqual){
