@@ -51,7 +51,10 @@ class ImapFdw(ForeignDataWrapper):
                 elif qual.operator == '~~':
                     conditions.append(self.make_like("TEXT", qual.value))
             elif qual.field_name == self.flags_column:
-                pass
+                if qual.operator == 'CONTAINS':
+                    conditions.append('KEYWORD %s' % qual.value)
+                elif qual.operator == 'NOT CONTAINS':
+                    conditions.append('UNKEYWORD %s' % qual.value)
             elif qual.operator == '~~':
                 conditions.append(self.make_like(qual.field_name, qual.value))
             elif qual.operator == '!~~':
