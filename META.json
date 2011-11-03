@@ -12,12 +12,12 @@
             "url":  "git://github.com/Kozea/multicorn.git",
             "type": "git"
         },
-        "homepage": "http://multicorn.org",
+        "homepage": "http://multicorn.org"
         "bugtracker": {
             "web": "http://redmine.kozea.fr/projects/multicorn/issues",
             "mailto": "multicorn@librelist.org"
         }
-    }
+    },
     "provides": {
         "multicorn": {
             "abstract": "Multicorn Python bindings for Postgres 9.1+ Foreign Data Wrapper",
