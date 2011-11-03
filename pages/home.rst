@@ -24,9 +24,9 @@ With the `pgxn client`_::
 
 From pgxn::
 
-   wget http://api.pgxn.org/dist/multicorn/0.0.2/multicorn-0.0.2.zip ./
-   unzip multicorn-0.0.2.zip
-   cd multicorn-0.0.2/
+   wget http://api.pgxn.org/dist/multicorn/0.0.2/multicorn-0.0.3.zip ./
+   unzip multicorn-0.0.3.zip
+   cd multicorn-0.0.3/
    make && sudo make install
 
 From source::
