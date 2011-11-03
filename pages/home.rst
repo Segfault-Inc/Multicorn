@@ -54,10 +54,11 @@ To use it, you have to:
 
       CREATE EXTENSION multicorn;
 
+
 - Create a "foreign server".
   In the SQL ``OPTIONS`` clause, you must provide an options named wrapper,
-containing the fully-qualified class name of the concrete python foreign data
-wrapper you wish to use. want to use:
+  containing the fully-qualified class name of the concrete python foreign data
+  wrapper you wish to use. want to use:
 
   .. code-block:: sql
 
@@ -65,6 +66,7 @@ wrapper you wish to use. want to use:
       options (
         wrapper 'multicorn.imapfdw.ImapFdw'
       );
+
 
 You can then proceed on with the actual foreign tables creation, and pass them
 the needed options
