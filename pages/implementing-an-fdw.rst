@@ -75,7 +75,7 @@ system-wide python distribution.
             super(ConstantForeignDataWrapper, self).__init__(options, columns)
             self.columns = columns
 
-        def execute(self, quals):
+        def execute(self, quals, columns):
             for index in range(20):
                 line = {}
                 for column_name in self.columns:
@@ -116,7 +116,7 @@ reference to the columns:
 
 
 The execute method is the core of the API.
-It is called with a list of ``Qual`` objects, which we will ignore 
+It is called with a list of ``Qual`` objects, and a list column names, which we will ignore 
 for now but more on that `later <#optimizations>`_.
 
 This method must return an iterable of the resulting lines.
@@ -176,6 +176,26 @@ postgresql server.
 
 
 .. _multicorn/__init__.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/__init__.py
+
+Similarly, the columns argument contains the list of needed columns.
+You can use this information to reduce the amount of data that has to be
+fetched.
+
+For example, the following query:
+
+.. code-block:: sql
+
+    select test, test2 from constanttable;
+
+would result in the following columns argument:
+
+.. code-block:: python
+
+    ['test', 'test2']
+
+Once again, if you returns more than these columns everything should be fine.
+
+
 
 Error reporting
 ===============

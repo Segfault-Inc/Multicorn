@@ -66,6 +66,7 @@ section a:visited {
 pre, .contents {
   background: #fafafa;
   border-radius: 1px;
+  overflow-x: auto;
   box-shadow: 0 0 5px #8f8f8f;
   padding: 1em;
 }

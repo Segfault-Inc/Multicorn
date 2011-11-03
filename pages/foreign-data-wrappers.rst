@@ -56,14 +56,18 @@ Supposing you want to parse the following CSV file, located in ``/tmp/test.csv``
 You can declare the following table:
 
 .. code-block:: sql
-    
+   
+    CREATE FOREIGN SERVER csv_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.csvfdw.CsvFdw'
+    );
+   
+
     create foreign table csvtest (
            year numeric,
            make character varying,
            model character varying,
            length numeric
-    ) server multicorn_srv options (
-           wrapper 'multicorn.csvfdw.CsvFdw',
+    ) server csv_srv options (
            filename '/tmp/test.csv',
            skip_header '1',
            delimiter ',');
@@ -148,6 +152,11 @@ You can access those files using a foreign table like this:
 
 .. code-block:: sql
 
+    CREATE FOREIGN SERVER filesytem_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.fsfdw.FilesystemFdw'
+    );
+
+
     CREATE FOREIGN TABLE musicfilesystem (
         artist  character varying,
         album   character varying,
@@ -155,8 +164,7 @@ You can access those files using a foreign table like this:
         title   character varying,
         content bytea,
         filename character varying
-    ) server multicorn_srv options(
-        wrapper     'multicorn.fsfdw.FilesystemFdw',
+    ) server filesystem_srv options(
         root_dir    'base_dir',
         pattern     '{artist}/{album}/{track} - {title}.ogg',
         content_column 'content',
@@ -214,13 +222,17 @@ Let's suppose you want to access an sqlite3 database located at ``/tmp/data.db``
 
 .. code-block:: sql
 
+    CREATE FOREIGN SERVER sqlite_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.sqlitefdw.SqliteFdw'
+    );
+
+
     CREATE FOREIGN TABLE sqlitetest (
         column1 integer,
         column2 character varying
         ...etc..
-    ) server multicorn_srv options (
-        wrapper     'multicorn.sqlitefdw.SqliteFdw',
-        database    '/tmp/data.csv',
+    ) server sqlite_srv options (
+        database    '/tmp/data.db',
         tablename   'table1'
     )
 
@@ -277,14 +289,17 @@ If you want to parse the `radicale`_ rss feed, you can use the following
 definition:
 
 .. code-block:: sql
+
+    CREATE FOREIGN SERVER rss_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.rssfdw.RssFdw'
+    );
     
     CREATE FOREIGN TABLE radicalerss (
         "pubDate" timestamp,
         description character varying,
         title character varying,
         link character varying
-    ) server multicorn_srv options (
-        wrapper 'multicorn.rssfdw.RssFdw',
+    ) server rss_srv options (
         url     'http://radicale.org/rss/'
     );
 
@@ -308,17 +323,3 @@ definition:
 
 
 .. _radicale: http://radicale.org/
-
-GIT Foreign Data Wrapper
-========================
-
-Class: ``multicorn.gitfdw.GitFdw``
-
-Source code: `multicorn/gitfdw.py`_
-
-.. _multicorn/gitfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/gitfdw.py
-
-Purpose
--------
-
-This fdw can be used
