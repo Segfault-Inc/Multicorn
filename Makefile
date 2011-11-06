@@ -11,7 +11,7 @@ DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test --load-language=plpgsql
-MODULE_big     = $(patsubst %.c,%,$(wildcard src/multicorn.c))
+MODULE_big     = multicorn
 OBJS = src/multicorn.o
 SHLIB_LINK   = -lpython$(PYVERSION)
 PG_CONFIG    = `which pg_config`
