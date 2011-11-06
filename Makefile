@@ -1,13 +1,19 @@
 EXTENSION    = multicorn
 EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
-
-PYVERSION    = $(shell python2 -V 2>&1 | cut -d " " -f 2  | cut -d "." -f 1,2)
+PYEXEC = python
+PYmajor 		 = $(shell python -V 2>&1 | cut -d " " -f 2  | cut -d "." -f 1)
+ifeq ($(PYmajor), 3)
+	PYEXEC = python2
+endif
+PYVERSION    = $(python_version)
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test --load-language=plpgsql
-MODULES      = $(patsubst %.c,%,$(wildcard src/multicorn.c))
+MODULE_big     = $(patsubst %.c,%,$(wildcard src/multicorn.c))
+OBJS = src/multicorn.o
+SHLIB_LINK   = -lpython$(PYVERSION)
 PG_CONFIG    = `which pg_config`
 PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\.| 9\.0" && echo no || echo yes)
 PG_CPPFLAGS  = -I/usr/include/python$(PYVERSION) $(python_includespec) $(CPPFLAGS)
@@ -16,14 +22,14 @@ ifeq ($(PG91),yes)
 all: sql/$(EXTENSION)--$(EXTVERSION).sql
 
 ifndef NO_PYTHON
-#install: python_code
+install: python_code
 endif
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
 python_code: setup.py
-	python2 ./setup.py install
+	$(PYEXEC) ./setup.py install
 
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip master
