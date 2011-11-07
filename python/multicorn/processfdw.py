@@ -14,5 +14,7 @@ class ProcessFdw(ForeignDataWrapper):
     """
 
     def execute(self, quals, columns):
-        """quals are ignored."""
+        # statgrab already returns its data in a format suitable
+        # for Multicorn: a list (iterable) of dicts.
+        # `quals` is ignored, PostgreSQL will do the filtering itself.
         return statgrab.sg_get_process_stats()
