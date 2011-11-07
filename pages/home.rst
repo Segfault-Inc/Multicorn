@@ -3,7 +3,7 @@
 Presentation
 ============
 
-Multicorn is a PostgreSQL extension which goal is to make `Foreign Data Wrapper`_
+Multicorn is a PostgreSQL 9.1+ extension which goal is to make `Foreign Data Wrapper`_
 development easy, by allowing the programmer to use the Python programming
 language.
 
