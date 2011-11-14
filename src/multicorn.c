@@ -312,6 +312,7 @@ multicorn_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
     }
     PG_CATCH();
     {
+	  	FlushErrorState();
         // DO NOTHING HERE
     }
     PG_END_TRY();
