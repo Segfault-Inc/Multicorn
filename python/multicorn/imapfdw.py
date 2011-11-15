@@ -57,17 +57,23 @@ class ImapFdw(ForeignDataWrapper):
                     for value in qual.value:
                         conditions.append('KEYWORD %s' % value)
             elif qual.operator == '~~':
-                conditions.append(self.make_like(qual.field_name, qual.value))
+                conditions.append(self.make_like(qual.field_name,
+                  qual.value))
             elif qual.operator == '!~~':
-                conditions.append('NOT %s ' % (self.make_like(qual.field_name, qual.value)))
+                conditions.append('NOT %s ' % (self.make_like(
+                  qual.field_name, qual.value)))
             elif qual.operator == '!=':
-                conditions.append('NOT %s "%s"' % (qual.field_name.upper(), qual.value))
+                conditions.append('NOT %s "%s"' %
+                        (qual.field_name.upper(), qual.value))
             elif qual.operator == '=':
-                conditions.append('%s "%s"' % (qual.field_name.upper(), qual.value))
-        condition = '(%s)' % ' '.join(('(%s)' % cond for cond in conditions)) if conditions else 'ALL'
+                conditions.append('%s "%s"' %
+                        (qual.field_name.upper(), qual.value))
+        if conditions:
+            condition = '(%s)' % ' '.join(('(%s)' % cond
+                for cond in conditions))
+        else:
+            condition = 'ALL'
         return condition
-
-
 
     def execute(self, quals, columns):
         condition = ''
@@ -90,7 +96,8 @@ class ImapFdw(ForeignDataWrapper):
                 ' FLAGS' if need_flags else ''
                 )
         condition = self.extract_conditions(quals)
-        matching_mails = ','.join(self.imap_agent.search("UTF8", condition)[1][0].split())
+        matching_mails = ','.join(self.imap_agent.search("UTF8",
+            condition)[1][0].split())
         if matching_mails:
             typ, data = self.imap_agent.fetch(matching_mails, fetch_string)
             data = iter(data)
@@ -112,4 +119,3 @@ class ImapFdw(ForeignDataWrapper):
                         # Its the headers
                         for header in headers:
                             item[header] = mail.get(header)
-
