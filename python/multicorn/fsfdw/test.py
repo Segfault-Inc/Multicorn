@@ -189,6 +189,7 @@ def test_get_items(tempdir):
     with assert_raises(ValueError, 'Unknown properties'):
         filenames(fiz='5')
 
+
 @SUITE.test
 def test_from_filename(tempdir):
     """
@@ -203,7 +204,6 @@ def test_from_filename(tempdir):
     matching = text.from_filename('lipsum/4_foo.txt')
     assert dict(matching) == dict(category='lipsum', num='4', name='foo')
     assert matching.filename == 'lipsum/4_foo.txt'
-
 
 
 @SUITE.test

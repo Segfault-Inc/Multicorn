@@ -31,6 +31,7 @@ class ImapFdw(ForeignDataWrapper):
         self.imap_agent.select(self.folder)
 
     def make_like(self, field_name, value):
+        """Build an imap search criteria corresponding to an sql like"""
         if value.startswith('%'):
             value = value[1:]
         if value.endswith('%'):
@@ -40,6 +41,7 @@ class ImapFdw(ForeignDataWrapper):
         return ''
 
     def extract_conditions(self, quals):
+        """Build an imap search criteria string from a list of quals"""
         conditions = []
         for qual in quals:
             if qual.field_name == self.payload_column:

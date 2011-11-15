@@ -3,6 +3,7 @@ from .utils import log_to_postgres
 from itertools import cycle
 from datetime import datetime
 
+
 class TestForeignDataWrapper(ForeignDataWrapper):
 
     def __init__(self, options, columns):
@@ -20,11 +21,16 @@ class TestForeignDataWrapper(ForeignDataWrapper):
             line = {}
             for column_name in self.columns:
                 if self.test_type == 'list':
-                    line[column_name] = [column_name, next(random_thing), index]
+                    line[column_name] = [column_name, next(random_thing),
+                            index]
                 elif self.test_type == 'dict':
-                    line[column_name] = {"column_name": column_name, "repeater": next(random_thing), "index": index}
+                    line[column_name] = {"column_name": column_name,
+                            "repeater": next(random_thing),
+                            "index": index}
                 elif self.test_type == 'date':
-                    line[column_name] = datetime(2011, (index % 12) + 1, next(random_thing))
+                    line[column_name] = datetime(2011, (index % 12) + 1,
+                            next(random_thing))
                 else:
-                    line[column_name] = '%s %s %s' % (column_name, next(random_thing), index)
+                    line[column_name] = '%s %s %s' % (column_name,
+                            next(random_thing), index)
             yield line
