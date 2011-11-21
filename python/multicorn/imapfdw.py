@@ -1,7 +1,8 @@
 from . import ForeignDataWrapper
 from .utils import log_to_postgres, ERROR
-from imaplib import IMAP4, IMAP4_SSL, ParseFlags
-import email
+import time
+
+from imapclient import IMAPClient
 
 
 class ImapFdw(ForeignDataWrapper):
@@ -22,13 +23,11 @@ class ImapFdw(ForeignDataWrapper):
         self.columns = columns
         self.payload_column = options.get('payload_column', None)
         self.flags_column = options.get('flags_column', None)
-        if self.ssl:
-            self.imap_agent = IMAP4_SSL(self.host)
-        else:
-            self.imap_agent = IMAP4(self.host)
+        self.imap_agent = IMAPClient(self.host, self.port, ssl=self.ssl)
+        self.internaldate_column = options.get('internaldate_column', None)
         if self.login:
             self.imap_agent.login(self.login, self.password)
-        self.imap_agent.select(self.folder)
+        self.imap_agent.select_folder(self.folder)
 
     def make_like(self, field_name, value):
         """Build an imap search criteria corresponding to an sql like"""
@@ -79,45 +78,31 @@ class ImapFdw(ForeignDataWrapper):
 
     def execute(self, quals, columns):
         condition = ''
-        log_to_postgres(str(quals))
-        log_to_postgres(condition)
+        # The header dictionary maps columns to their imap search string
+        col_to_imap = {}
         headers = []
-        need_flags = False
-        need_text = False
         for column in list(columns):
             if column == self.payload_column:
-                need_text = True
+                col_to_imap[column] = 'BODY[TEXT]'
             elif column == self.flags_column:
-                need_flags = True
+                col_to_imap[column] = 'FLAGS'
+            elif column == self.internaldate_column:
+                col_to_imap[column] = 'INTERNALDATE'
             else:
+                col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
+                        column.upper()
                 headers.append(column)
-        fetch_string = "(%s%s%s)" % (
-                'BODY[TEXT] ' if need_text else '',
-                ('BODY[HEADER.fields (%s)]' % (' '.join(headers)))
-                    if headers else '',
-                ' FLAGS' if need_flags else ''
-                )
         condition = self.extract_conditions(quals)
-        matching_mails = ','.join(self.imap_agent.search("UTF8",
-            condition)[1][0].split())
+        matching_mails = self.imap_agent.search(charset="UTF8",
+            criteria=condition)
         if matching_mails:
-            typ, data = self.imap_agent.fetch(matching_mails, fetch_string)
-            data = iter(data)
+            data = self.imap_agent.fetch(matching_mails, col_to_imap.values())
             item = {}
-            for raw in data:
-                if raw == ')':
-                    # End of an item
-                    yield item
-                    item = {}
-                elif isinstance(raw, tuple):
-                    mail = email.message_from_string(raw[1])
-                    if 'BODY[TEXT]' in raw[0]:
-                        # Payload
-                        item[self.payload_column] = mail.get_payload(
-                                decode=True)
-                    if 'FLAGS' in raw[0]:
-                        item[self.flags_column] = ParseFlags(raw[0])
-                    if 'BODY[HEADER.FIELDS' in raw[0]:
-                        # Its the headers
-                        for header in headers:
-                            item[header] = mail.get(header)
+            for msg in data.values():
+                for column, key in col_to_imap.iteritems():
+                    item[column] = msg[key]
+                    if column in headers:
+                        # Values are of the from "Header: value"
+                        item[column] = item[column].replace('%s:' %
+                            column.title(), '', 1)
+                yield item
