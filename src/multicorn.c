@@ -654,15 +654,18 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
 							// Build the qual "normally" and set the operator to a tuple instead
                             multicorn_get_param(left, right, node, operator_tup, &tempqual);
 							if(tempqual){
-							  if(op->useOr){
-								  // ANY clause on the array + "=" -> IN
-							     PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
-									   PyObject_GetAttrString(tempqual, "operator"), Py_True));
-							  } else {
-							     PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
-									   PyObject_GetAttrString(tempqual, "operator"), Py_False));
+							  if (IsA(left, Var)){
+								// Don't add it to the list if the form is constant = ANY(column)
+								if(op->useOr){
+									// ANY clause on the array + "=" -> IN
+								   PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+										 PyObject_GetAttrString(tempqual, "operator"), Py_True));
+								} else {
+								   PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+										 PyObject_GetAttrString(tempqual, "operator"), Py_False));
+								}
+								PyList_Append(list, tempqual);
 							  }
-                                PyList_Append(list, tempqual);
 							}
                         }
                         break;

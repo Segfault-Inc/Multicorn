@@ -1,8 +1,16 @@
-from . import ForeignDataWrapper
+from . import ForeignDataWrapper, ANY, ALL
 from .utils import log_to_postgres, ERROR
 import time
 
 from imapclient import IMAPClient
+
+STANDARD_FLAGS = {
+        'seen': 'Seen',
+        'flagged': 'Flagged',
+        'delete': 'Deleted',
+        'draft': 'Draft',
+        'recent': 'Recent'
+}
 
 
 class ImapFdw(ForeignDataWrapper):
@@ -29,55 +37,70 @@ class ImapFdw(ForeignDataWrapper):
             self.imap_agent.login(self.login, self.password)
         self.imap_agent.select_folder(self.folder)
 
-    def make_like(self, field_name, value):
-        """Build an imap search criteria corresponding to an sql like"""
-        if value.startswith('%'):
-            value = value[1:]
-        if value.endswith('%'):
-            value = value[:-1]
-        if '%' not in value:
-            return '%s "%s"' % (field_name.upper(), value)
-        return ''
-
+    def _make_condition(self, key, operator, value):
+        if operator not in ('~~', '!~~', '=', '!=', '@>', '&&'):
+            # Do not manage special operators
+            return None
+        if operator in ('~~', '!~~') and isinstance(value, basestring):
+            # 'Normalize' the sql like wildcards
+            if value.startswith(('%', '_')):
+                value = value[1:]
+            if value.endswith(('%', '_')):
+                value = value[:-1]
+            if '%' in value or '_' in value:
+                # If any wildcard remains, we cant do anything
+                return None
+        prefix = ''
+        if operator in ('!~~', '!='):
+            if key == self.flags_column:
+                prefix = 'UN'
+            else:
+                prefix = 'NOT '
+            if isinstance(value, basestring):
+                if value.lower() in STANDARD_FLAGS:
+                    prefix = ''
+                    value = value.upper()
+        if key == self.flags_column:
+            if operator == '@>':
+                # Contains on flags
+                return ' '.join(['%s%s' % (prefix, (STANDARD_FLAGS.get(atom.lower(), '%s %s'
+                    % ('KEYWORD', atom))))  for atom in value])
+            elif operator == '&&':
+                # Overlaps on flags => Or 
+                return '(OR %s) ' % ' '.join(['(%s%s)' %
+                    (prefix, (STANDARD_FLAGS.get(atom.lower(), '%s %s' %
+                    ('KEYWORD', atom))))  for atom in value])
+            else:
+                value = '\\\\%s' % value
+        elif key == self.payload_column:
+            value = 'TEXT "%s"' % value
+        else:
+            value = '%s "%s"' % (key, value)
+        return '%s%s' % (prefix, value)
+        
     def extract_conditions(self, quals):
         """Build an imap search criteria string from a list of quals"""
         conditions = []
         for qual in quals:
-            if qual.field_name == self.payload_column:
-                # Its different
-                if qual.operator == '=':
-                    conditions.append('TEXT "%s"' % qual.value)
-                elif qual.operator == '~~':
-                    conditions.append(self.make_like("TEXT", qual.value))
-            elif qual.field_name == self.flags_column:
-                if qual.operator == 'CONTAINS':
-                    conditions.append('KEYWORD %s' % qual.value)
-                elif qual.operator == 'NOT CONTAINS':
-                    conditions.append('UNKEYWORD %s' % qual.value)
-                elif qual.operator == '=':
-                    for value in qual.value:
-                        conditions.append('KEYWORD %s' % value)
-            elif qual.operator == '~~':
-                conditions.append(self.make_like(qual.field_name,
-                  qual.value))
-            elif qual.operator == '!~~':
-                conditions.append('NOT %s ' % (self.make_like(
-                  qual.field_name, qual.value)))
-            elif qual.operator == '!=':
-                conditions.append('NOT %s "%s"' %
-                        (qual.field_name.upper(), qual.value))
-            elif qual.operator == '=':
-                conditions.append('%s "%s"' %
-                        (qual.field_name.upper(), qual.value))
-        if conditions:
-            condition = '(%s)' % ' '.join(('(%s)' % cond
-                for cond in conditions))
-        else:
-            condition = 'ALL'
-        return condition
+            # Its a list, so we must translate ANY to OR, and ALL to AND
+            if qual.list_any_or_all == ANY:
+                conditions.append('( %s )' % ' OR '.join([
+                    self._make_condition(qual.field_name, qual.operator[0], value)
+                    for value in qual.value]))
+            elif qual.list_any_or_all == ALL:
+                conditions.extend([
+                    self._make_condition(qual.field_name, qual.operator[0], value)
+                    for value in qual.value])
+            else:
+                # its not a list, so everything is fine
+                conditions.append(self._make_condition(qual.field_name,
+                    qual.operator, qual.value))
+        conditions = filter(lambda x: x is not None, conditions) or 'ALL'
+        return conditions
 
     def execute(self, quals, columns):
-        condition = ''
+        log_to_postgres(str(quals))
+        conditions = ''
         # The header dictionary maps columns to their imap search string
         col_to_imap = {}
         headers = []
@@ -92,9 +115,11 @@ class ImapFdw(ForeignDataWrapper):
                 col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
                         column.upper()
                 headers.append(column)
-        condition = self.extract_conditions(quals)
+        conditions = self.extract_conditions(quals)
+        log_to_postgres(str(conditions))
         matching_mails = self.imap_agent.search(charset="UTF8",
-            criteria=condition)
+            criteria=conditions)
+        log_to_postgres(str(matching_mails))
         if matching_mails:
             data = self.imap_agent.fetch(matching_mails, col_to_imap.values())
             item = {}

@@ -15,6 +15,7 @@ from importlib import import_module
 ANY = object()
 ALL = object()
 
+
 class Qual(object):
     """A Qual describes a postgresql qual.
 
@@ -51,7 +52,7 @@ class Qual(object):
            Returns ALL if and only if:
             - this is a list operator
             - the operator applies as an 'ALL' clause (eg, > ALL(1, 2, 3))
-           Else, returns None     
+           Else, returns None
         """
         if self.is_list_operator:
             return ANY if self.operator[1] else ALL
@@ -59,7 +60,9 @@ class Qual(object):
 
     def __repr__(self):
         if self.is_list_operator:
-            value = '%s(%s)' % ('ANY' if self.list_any_or_all == ANY else 'ALL',
+            value = '%s(%s)' % (
+                    'ANY' if self.list_any_or_all == ANY
+                          else 'ALL',
                     self.value)
             operator = self.operator[0]
         else:

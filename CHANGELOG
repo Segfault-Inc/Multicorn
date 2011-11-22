@@ -1,3 +1,7 @@
+0.0.6
+	- Fix operand switching, replacing the operator by its commutator
+	- Removed ANY, CONTAINS, IN support for a more general approach
+
 0.0.5
 	- Fix bug on Postgresql exceptions management
 	- Replaced imaplib by imapclient for better server compatibility
