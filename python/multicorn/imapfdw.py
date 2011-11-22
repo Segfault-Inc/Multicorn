@@ -63,10 +63,11 @@ class ImapFdw(ForeignDataWrapper):
         if key == self.flags_column:
             if operator == '@>':
                 # Contains on flags
-                return ' '.join(['%s%s' % (prefix, (STANDARD_FLAGS.get(atom.lower(), '%s %s'
+                return ' '.join(['%s%s' % (prefix,
+                    (STANDARD_FLAGS.get(atom.lower(), '%s %s'
                     % ('KEYWORD', atom))))  for atom in value])
             elif operator == '&&':
-                # Overlaps on flags => Or 
+                # Overlaps on flags => Or
                 return '(OR %s) ' % ' '.join(['(%s%s)' %
                     (prefix, (STANDARD_FLAGS.get(atom.lower(), '%s %s' %
                     ('KEYWORD', atom))))  for atom in value])
@@ -77,7 +78,7 @@ class ImapFdw(ForeignDataWrapper):
         else:
             value = '%s "%s"' % (key, value)
         return '%s%s' % (prefix, value)
-        
+
     def extract_conditions(self, quals):
         """Build an imap search criteria string from a list of quals"""
         conditions = []
@@ -85,11 +86,13 @@ class ImapFdw(ForeignDataWrapper):
             # Its a list, so we must translate ANY to OR, and ALL to AND
             if qual.list_any_or_all == ANY:
                 conditions.append('(OR %s)' % ' '.join([
-                    '(%s)' % self._make_condition(qual.field_name, qual.operator[0], value)
+                    '(%s)' % self._make_condition(qual.field_name,
+                        qual.operator[0], value)
                     for value in qual.value]))
             elif qual.list_any_or_all == ALL:
                 conditions.extend([
-                    self._make_condition(qual.field_name, qual.operator[0], value)
+                    self._make_condition(qual.field_name, qual.operator[0],
+                        value)
                     for value in qual.value])
             else:
                 # its not a list, so everything is fine
