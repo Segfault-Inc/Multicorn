@@ -38,10 +38,10 @@ class ImapFdw(ForeignDataWrapper):
         self.imap_agent.select_folder(self.folder)
 
     def _make_condition(self, key, operator, value):
-        if operator not in ('~~', '!~~', '=', '!=', '@>', '&&'):
+        if operator not in ('~~', '!~~', '=', '!=', '@>', '&&', '~~*', '!~~*'):
             # Do not manage special operators
             return None
-        if operator in ('~~', '!~~') and isinstance(value, basestring):
+        if operator in ('~~', '!~~', '~~*', '!~~*') and isinstance(value, basestring):
             # 'Normalize' the sql like wildcards
             if value.startswith(('%', '_')):
                 value = value[1:]
@@ -51,7 +51,7 @@ class ImapFdw(ForeignDataWrapper):
                 # If any wildcard remains, we cant do anything
                 return None
         prefix = ''
-        if operator in ('!~~', '!='):
+        if operator in ('!~~', '!=', '!~~*'):
             if key == self.flags_column:
                 prefix = 'UN'
             else:
@@ -98,7 +98,7 @@ class ImapFdw(ForeignDataWrapper):
                 # its not a list, so everything is fine
                 conditions.append(self._make_condition(qual.field_name,
                     qual.operator, qual.value))
-        conditions = filter(lambda x: x is not None, conditions) or 'ALL'
+        conditions = filter(lambda x: x is not None, conditions)
         return conditions
 
     def execute(self, quals, columns):
@@ -117,7 +117,7 @@ class ImapFdw(ForeignDataWrapper):
                 col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
                         column.upper()
                 headers.append(column)
-        conditions = self.extract_conditions(quals)
+        conditions = self.extract_conditions(quals) or None
         matching_mails = self.imap_agent.search(charset="UTF8",
             criteria=conditions)
         if matching_mails:
