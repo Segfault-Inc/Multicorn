@@ -654,6 +654,7 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
 							// Build the qual "normally" and set the operator to a tuple instead
                             multicorn_get_param(left, right, node, operator_tup, &tempqual);
 							if(tempqual){
+							  multicorn_unnest(left, &left);
 							  if (IsA(left, Var)){
 								// Don't add it to the list if the form is constant = ANY(column)
 								if(op->useOr){
@@ -1160,6 +1161,11 @@ multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list){
             multicorn_get_column(((Expr *)((ArrayCoerceExprState *)expr)->arg), desc, list);
             break;
 
+		case T_BoolExprState:
+            foreach(cell, ((BoolExprState *) expr)->args){
+                multicorn_get_column((Expr *)lfirst(cell), desc, list);
+            }
+			break;
 
         default:
             ereport(ERROR, 

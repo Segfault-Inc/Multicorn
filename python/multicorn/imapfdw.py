@@ -84,8 +84,8 @@ class ImapFdw(ForeignDataWrapper):
         for qual in quals:
             # Its a list, so we must translate ANY to OR, and ALL to AND
             if qual.list_any_or_all == ANY:
-                conditions.append('( %s )' % ' OR '.join([
-                    self._make_condition(qual.field_name, qual.operator[0], value)
+                conditions.append('(OR %s)' % ' '.join([
+                    '(%s)' % self._make_condition(qual.field_name, qual.operator[0], value)
                     for value in qual.value]))
             elif qual.list_any_or_all == ALL:
                 conditions.extend([
@@ -99,7 +99,6 @@ class ImapFdw(ForeignDataWrapper):
         return conditions
 
     def execute(self, quals, columns):
-        log_to_postgres(str(quals))
         conditions = ''
         # The header dictionary maps columns to their imap search string
         col_to_imap = {}
@@ -116,10 +115,8 @@ class ImapFdw(ForeignDataWrapper):
                         column.upper()
                 headers.append(column)
         conditions = self.extract_conditions(quals)
-        log_to_postgres(str(conditions))
         matching_mails = self.imap_agent.search(charset="UTF8",
             criteria=conditions)
-        log_to_postgres(str(matching_mails))
         if matching_mails:
             data = self.imap_agent.fetch(matching_mails, col_to_imap.values())
             item = {}
