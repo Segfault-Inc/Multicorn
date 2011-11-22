@@ -12,6 +12,9 @@ postgresql (usually, the system wide python installation).
 from importlib import import_module
 
 
+ANY = object()
+ALL = object()
+
 class Qual(object):
     """A Qual describes a postgresql qual.
 
@@ -35,8 +38,34 @@ class Qual(object):
         self.operator = operator
         self.value = value
 
+    @property
+    def is_list_operator(self):
+        """Returns True if this qual represents an array expr"""
+        return isinstance(self.operator, tuple)
+
+    @property
+    def list_any_or_all(self):
+        """Returns ANY if and only if:
+            - this is a list operator
+            - the operator applies as an 'ANY' clause (eg, = ANY(1,2,3))
+           Returns ALL if and only if:
+            - this is a list operator
+            - the operator applies as an 'ALL' clause (eg, > ALL(1, 2, 3))
+           Else, returns None     
+        """
+        if self.is_list_operator:
+            return ANY if self.operator[1] else ALL
+        return None
+
     def __repr__(self):
-        return (u"%s %s %s" % (self.field_name, self.operator, self.value))\
+        if self.is_list_operator:
+            value = '%s(%s)' % ('ANY' if self.list_any_or_all == ANY else 'ALL',
+                    self.value)
+            operator = self.operator[0]
+        else:
+            value = self.value
+            operator = self.operator
+        return (u"%s %s %s" % (self.field_name, operator, value))\
                 .encode('utf8')
 
 

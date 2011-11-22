@@ -84,7 +84,7 @@ void  multicorn_get_column(Expr* expr, TupleDesc desc, PyObject* list);
 const char* get_encoding_from_attribute(Form_pg_attribute attribute);
 void multicorn_execute(ForeignScanState *node);
 void multicorn_clean_state(MulticornState *state);
-void multicorn_get_param(Node* left, Node* right, ForeignScanState * fss, char * operator_name, PyObject** result);
+void multicorn_get_param(Node* left, Node* right, ForeignScanState * fss, Form_pg_operator operator, PyObject** result);
 PyObject * multicorn_get_class(char * className);
 PyObject * multicorn_get_multicorn(void);
 void multicorn_unnest(Node * value, Node ** result);
@@ -554,7 +554,8 @@ multicorn_unnest(Node * node, Node **result){
 }
 
 void
-multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * operator_name, PyObject ** result){
+multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_operator operator, PyObject ** result){
+	HeapTuple tp;
     ExprState   *exprstate;
     Form_pg_attribute attr;
     char * key;
@@ -569,12 +570,17 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * op
     multicorn_unnest(left, &normalized_left);
     multicorn_unnest(right, &normalized_right);
     if (IsA(normalized_right, Var) && !IsA(normalized_left, Var)){
-        // Switch the operands
-        Node * temp = normalized_left;
-        normalized_left = normalized_right;
-        normalized_right = temp;
-    }
-    
+        // Switch the operands if possible
+		// Lookup the inverse operator (eg, <= for > and so on)
+		tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(operator->oprcom));
+		if (HeapTupleIsValid(tp)){
+			Node * temp = normalized_left;
+	        normalized_left = normalized_right;
+        	normalized_right = temp;
+			operator = (Form_pg_operator) GETSTRUCT(tp);
+			ReleaseSysCache(tp);
+		}
+    }     
     if (IsA(normalized_left, Var)) {
         multicorn_error_check();
         attr = tupdesc->attrs[((Var *) normalized_left)->varattno- 1];
@@ -599,7 +605,7 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, char * op
         }
     }
     if (value) {
-        *result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,O)", key, operator_name, value));
+        *result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,O)", key, NameStr(operator->oprname), value));
         multicorn_error_check();
     }
 }
@@ -629,7 +635,7 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
                                 elog(ERROR, "cache lookup failed for operator %u", op->opno);
                             operator_tup = (Form_pg_operator) GETSTRUCT(tp);
                             ReleaseSysCache(tp);
-                            multicorn_get_param(left, right, node, NameStr(operator_tup->oprname), &tempqual);
+                            multicorn_get_param(left, right, node, operator_tup, &tempqual);
                             if(tempqual){
                                 PyList_Append(list, tempqual);
                             }
@@ -645,31 +651,19 @@ multicorn_extract_conditions(ForeignScanState * node, PyObject* list)
                                 elog(ERROR, "cache lookup failed for operator %u", op->opno);
                             operator_tup = (Form_pg_operator) GETSTRUCT(tp);
                             ReleaseSysCache(tp);
-                            // Only manage in and not in for now
-                            if(op->useOr){
-                                // ANY clause on the array + "=" -> IN
-                                if(strcmp(NameStr(operator_tup->oprname), "=") == 0){
-                                    if (IsA(left, Const)){
-                                        // Its 'contains'
-                                        multicorn_get_param(left, right, node, "CONTAINS", &tempqual);
-                                    } else {
-                                        multicorn_get_param(left, right, node, "IN", &tempqual);
-                                    }
-                                }
-                            } else {
-                                // ALL clause on the array + "<>"  -> NOT IN
-                                if(strcmp(NameStr(operator_tup->oprname), "<>") == 0){
-                                    if (IsA(left, Const)){
-                                        // Its 'not contains'
-                                        multicorn_get_param(left, right, node, "NOT CONTAINS", &tempqual);
-                                    } else {
-                                        multicorn_get_param(left, right, node, "NOT IN", &tempqual);
-                                    }
-                                }
-                            }
-                            if(tempqual){
+							// Build the qual "normally" and set the operator to a tuple instead
+                            multicorn_get_param(left, right, node, operator_tup, &tempqual);
+							if(tempqual){
+							  if(op->useOr){
+								  // ANY clause on the array + "=" -> IN
+							     PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+									   PyObject_GetAttrString(tempqual, "operator"), Py_True));
+							  } else {
+							     PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+									   PyObject_GetAttrString(tempqual, "operator"), Py_False));
+							  }
                                 PyList_Append(list, tempqual);
-                            }
+							}
                         }
                         break;
                     case T_NullTest:

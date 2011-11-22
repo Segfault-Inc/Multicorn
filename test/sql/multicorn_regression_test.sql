@@ -31,4 +31,8 @@ select * from testmulticorn where test1 is null;
 
 select * from testmulticorn where test1 is not null;
 
+select * from testmulticorn where 'grou' > test1;
+
+select * from testmulticorn where test1 < ANY(ARRAY['grou', 'MACHIN']);
+
 DROP EXTENSION multicorn cascade;

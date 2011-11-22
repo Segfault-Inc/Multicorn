@@ -248,6 +248,20 @@ NOTICE:  set(['test1', 'test2'])
  test1 3 19 | test2 1 19
 (20 rows)
 
+select * from testmulticorn where 'grou' > test1;
+NOTICE:  [test1 < grou]
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 < ANY(ARRAY['grou', 'MACHIN']);
+NOTICE:  [test1 < ANY([u'grou', u'MACHIN'])]
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
+
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 3 other objects
 DETAIL:  drop cascades to server multicorn_srv
