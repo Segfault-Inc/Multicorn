@@ -45,7 +45,7 @@ class ImapFdw(ForeignDataWrapper):
         self.imap_agent.select_folder(self.folder)
 
     def _make_condition(self, key, operator, value):
-        if operator not in ('~~', '!~~', '=', '!=', '@>', '&&', '~~*', '!~~*'):
+        if operator not in ('~~', '!~~', '=', '<>', '@>', '&&', '~~*', '!~~*'):
             # Do not manage special operators
             return None
         if operator in ('~~', '!~~', '~~*', '!~~*') and\
@@ -59,7 +59,7 @@ class ImapFdw(ForeignDataWrapper):
                 # If any wildcard remains, we cant do anything
                 return None
         prefix = ''
-        if operator in ('!~~', '!=', '!~~*'):
+        if operator in ('!~~', '<>', '!~~*'):
             if key == self.flags_column:
                 prefix = 'UN'
             else:
@@ -127,7 +127,7 @@ class ImapFdw(ForeignDataWrapper):
                 col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
                         column.upper()
                 headers.append(column)
-        conditions = self.extract_conditions(quals) or None
+        conditions = self.extract_conditions(quals) or 'ALL'
         matching_mails = self.imap_agent.search(charset="UTF8",
             criteria=conditions)
         if matching_mails:
