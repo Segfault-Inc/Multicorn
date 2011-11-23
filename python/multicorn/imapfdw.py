@@ -1,5 +1,5 @@
 from . import ForeignDataWrapper, ANY, ALL
-from .utils import log_to_postgres, ERROR
+from .utils import log_to_postgres, ERROR, WARNING
 import time
 
 from email.header import decode_header
@@ -143,7 +143,11 @@ class ImapFdw(ForeignDataWrapper):
                         for decoded_header, charset in values:
                             # Values are of the from "Header: value"
                             if charset:
-                                item[column] = decoded_header.decode(charset)
+                                try:
+                                    item[column] = decoded_header.decode(charset)
+                                except LookupError:
+                                    log_to_postgres('Unknown encoding: %s' %
+                                            charset, WARNING)
                             else:
                                 item[column] = decoded_header
                 yield item
