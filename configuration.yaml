@@ -15,6 +15,10 @@ menu:
   - Issues:
       link: http://redmine.kozea.fr/projects/multicorn/issues
 
+project (git):
+  url: git://github.com/Kozea/Multicorn.git
+  path: multicorn
+
 vcs (git):
   url: git://github.com/Kozea/Multicorn.git
   path: /var/db/git/multicorn.git
