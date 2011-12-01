@@ -12,6 +12,8 @@ menu:
 #      link: http://trymulticorn.org/
   - Documentation:
       link: /documentation/
+  - Contribute:
+      link: /contribute/
   - Issues:
       link: http://redmine.kozea.fr/projects/multicorn/issues
 
@@ -33,3 +35,6 @@ bug tracker (redmine):
 continuous integration (jenkins):
   base url: http://jenkins.kozea.org/
   project name: Multicorn
+
+mailing list (librelist):
+  project name: multicorn
