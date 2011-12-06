@@ -2,6 +2,8 @@ from . import ForeignDataWrapper, ANY, ALL
 from .utils import log_to_postgres, ERROR, WARNING
 import time
 
+from imaplib import IMAP4
+
 from email.header import decode_header
 
 from imapclient import IMAPClient
@@ -26,6 +28,7 @@ class ImapFdw(ForeignDataWrapper):
 
     def __init__(self, options, columns):
         super(ImapFdw, self).__init__(options, columns)
+        self._imap_agent = None
         self.host = options.get('host', None)
         if self.host is None:
             log_to_postgres('You MUST set the imap host',
@@ -38,11 +41,23 @@ class ImapFdw(ForeignDataWrapper):
         self.columns = columns
         self.payload_column = options.get('payload_column', None)
         self.flags_column = options.get('flags_column', None)
-        self.imap_agent = IMAPClient(self.host, self.port, ssl=self.ssl)
         self.internaldate_column = options.get('internaldate_column', None)
-        if self.login:
-            self.imap_agent.login(self.login, self.password)
         self.imap_agent.select_folder(self.folder)
+
+    def _create_agent(self):
+        self._imap_agent = IMAPClient(self.host, self.port, ssl=self.ssl)
+        if self.login:
+            self._imap_agent.login(self.login, self.password)
+
+    @property
+    def imap_agent(self):
+        if self._imap_agent is None:
+            self._create_agent()
+        try:
+            self._imap_agent.select_folder(self.folder)
+        except IMAP4.abort:
+            self._create_agent()
+        return self._imap_agent
 
     def _make_condition(self, key, operator, value):
         if operator not in ('~~', '!~~', '=', '<>', '@>', '&&', '~~*', '!~~*'):
@@ -144,7 +159,8 @@ class ImapFdw(ForeignDataWrapper):
                             # Values are of the from "Header: value"
                             if charset:
                                 try:
-                                    item[column] = decoded_header.decode(charset)
+                                    item[column] = decoded_header.decode(
+                                            charset)
                                 except LookupError:
                                     log_to_postgres('Unknown encoding: %s' %
                                             charset, WARNING)
