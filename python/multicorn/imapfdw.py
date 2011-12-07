@@ -42,12 +42,12 @@ class ImapFdw(ForeignDataWrapper):
         self.payload_column = options.get('payload_column', None)
         self.flags_column = options.get('flags_column', None)
         self.internaldate_column = options.get('internaldate_column', None)
-        self.imap_agent.select_folder(self.folder)
 
     def _create_agent(self):
         self._imap_agent = IMAPClient(self.host, self.port, ssl=self.ssl)
         if self.login:
             self._imap_agent.login(self.login, self.password)
+        self._imap_agent.select_folder(self.folder)
 
     @property
     def imap_agent(self):
