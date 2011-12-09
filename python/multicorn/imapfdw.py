@@ -1,8 +1,9 @@
 from . import ForeignDataWrapper, ANY, ALL
 from .utils import log_to_postgres, ERROR, WARNING
-import time
 
 from imaplib import IMAP4
+
+import re
 
 from email.header import decode_header
 
@@ -62,7 +63,7 @@ class ImapFdw(ForeignDataWrapper):
     def _make_condition(self, key, operator, value):
         if operator not in ('~~', '!~~', '=', '<>', '@>', '&&', '~~*', '!~~*'):
             # Do not manage special operators
-            return None
+            return ''
         if operator in ('~~', '!~~', '~~*', '!~~*') and\
                 isinstance(value, basestring):
             # 'Normalize' the sql like wildcards
@@ -70,9 +71,9 @@ class ImapFdw(ForeignDataWrapper):
                 value = value[1:]
             if value.endswith(('%', '_')):
                 value = value[:-1]
-            if '%' in value or '_' in value:
-                # If any wildcard remains, we cant do anything
-                return None
+            if re.match(r'.*[^\\][_%]', value):
+                return ''
+            value = value.replace('\\%', '%').replace('\\_', '_')
         prefix = ''
         if operator in ('!~~', '<>', '!~~*'):
             if key == self.flags_column:
@@ -113,7 +114,7 @@ class ImapFdw(ForeignDataWrapper):
                     '(%s)' % self._make_condition(qual.field_name,
                         qual.operator[0], value)
                     for value in qual.value]
-                return make_or(values)
+                conditions.append(make_or(values))
             elif qual.list_any_or_all == ALL:
                 conditions.extend([
                     self._make_condition(qual.field_name, qual.operator[0],
@@ -123,11 +124,10 @@ class ImapFdw(ForeignDataWrapper):
                 # its not a list, so everything is fine
                 conditions.append(self._make_condition(qual.field_name,
                     qual.operator, qual.value))
-        conditions = filter(lambda x: x is not None, conditions)
+        conditions = filter(lambda x: x not in (None, '()'), conditions)
         return conditions
 
     def execute(self, quals, columns):
-        conditions = ''
         # The header dictionary maps columns to their imap search string
         col_to_imap = {}
         headers = []
@@ -142,7 +142,7 @@ class ImapFdw(ForeignDataWrapper):
                 col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
                         column.upper()
                 headers.append(column)
-        conditions = self.extract_conditions(quals) or 'ALL'
+        conditions = self.extract_conditions(quals) or ['ALL']
         matching_mails = self.imap_agent.search(charset="UTF8",
             criteria=conditions)
         if matching_mails:
