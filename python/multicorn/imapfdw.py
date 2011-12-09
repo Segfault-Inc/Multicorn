@@ -17,6 +17,8 @@ STANDARD_FLAGS = {
         'recent': 'Recent'
 }
 
+SEARCH_HEADERS = ['BCC', 'CC', 'FROM', 'TO']
+
 
 def make_or(values):
     """Create an imap OR filter based on a list of conditions to be or'ed"""
@@ -105,7 +107,10 @@ class ImapFdw(ForeignDataWrapper):
                 value = '\\\\%s' % value
         elif key == self.payload_column:
             value = 'TEXT "%s"' % value
+        elif key in SEARCH_HEADERS:
+            value = '%s "%s"' % (key, value)
         else:
+            prefix = 'HEADER '
             value = '%s "%s"' % (key, value)
         return '%s%s' % (prefix, value)
 
@@ -158,7 +163,7 @@ class ImapFdw(ForeignDataWrapper):
                     item[column] = msg[key]
                     if column in headers:
                         item[column] = item[column].replace('%s:' %
-                            column.title(), '', 1).strip()
+                            column, '', 1).strip()
                         values = decode_header(item[column])
                         for decoded_header, charset in values:
                             # Values are of the from "Header: value"
