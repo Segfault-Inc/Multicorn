@@ -1,6 +1,7 @@
 0.0.6
 	- Fix operand switching, replacing the operator by its commutator
 	- Removed ANY, CONTAINS, IN support for a more general approach
+    - Fix many bugs in imapfdw
 
 0.0.5
 	- Fix bug on Postgresql exceptions management
