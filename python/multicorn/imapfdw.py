@@ -20,7 +20,12 @@ STANDARD_FLAGS = {
 
 def make_or(values):
     """Create an imap OR filter based on a list of conditions to be or'ed"""
-    return reduce(lambda x, y: '(OR %s %s)' % (x, y), values)
+    values = filter(lambda x: x not in (None, '()'), values)
+    if values:
+        if len(values) > 1:
+            return reduce(lambda x, y: '(OR %s %s)' % (x, y), values)
+        else:
+            return values[0]
 
 
 class ImapFdw(ForeignDataWrapper):
