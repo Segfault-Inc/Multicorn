@@ -367,7 +367,9 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
                 memcpy(tup_values[i], buffer, sizes[i] + 1);
             }
             multicorn_error_check();
-            Py_DECREF(pStr);
+            if ( pStr != Py_None ) {
+              Py_DECREF(pStr);
+            }
         } else {
             sizes[i] = 0;
             tup_values[i] = NULL;
