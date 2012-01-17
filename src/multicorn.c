@@ -33,6 +33,7 @@
 #include "utils/date.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+#include "utils/timestamp.h"
 #include "utils/lsyscache.h"
 #include "pgtime.h"
 #include "mb/pg_wchar.h"
