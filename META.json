@@ -2,7 +2,7 @@
     "name": "multicorn",
     "abstract": "Multicorn Python bindings for Postgres 9.1+ Foreign Data Wrapper",
     "description": "The Multicorn Foreign Data Wrapper allows you to write foreign data wrappers in python.",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "maintainer": "Kozea",
     "license": {
         "PostgreSQL": "http://www.postgresql.org/about/licence"
