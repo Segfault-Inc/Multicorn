@@ -165,3 +165,15 @@ def get_class(module_path):
     module_name = ".".join(module_path.split(".")[:-1])
     module = import_module(module_name)
     return getattr(module, wrapper_class)
+
+
+class ColumnDefinition(object):
+
+    def __init__(self, column_name, type_oid, type_name):
+        self.column_name = column_name
+        self.type_oid = type_oid
+        self.type_name = type_name
+
+    def __repr__(self):
+        return "%s(%s, %i, %s)" % (self.__class__.__name__, self.column_name,
+                self.type_oid, self.type_name)

@@ -11,7 +11,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         self.columns = columns
         self.test_type = options.get('test_type', None)
         log_to_postgres(str(options))
-        log_to_postgres(str(columns))
+        log_to_postgres(str(dict([(key, column.type_name) for key, column in
+            columns.items()])))
 
     def execute(self, quals, columns):
         log_to_postgres(str(quals))

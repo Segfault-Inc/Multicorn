@@ -619,23 +619,19 @@ void
 multicorn_get_attributes_def(TupleDesc desc, PyObject * dict)
 {
 	char	   *key, *typname;
-	HeapTuple	typeTuple;
-	Form_pg_type typeStruct;
+    int typOid;
+    PyObject   *column_class, *column_instance;
 	Py_ssize_t	i,
 				natts;
 	natts = desc->natts;
+    column_class = multicorn_get_class("multicorn.ColumnDefinition");
 	for (i = 0; i < natts; i++)
 	{
-        typeTuple = SearchSysCache1(TYPEOID,
-                                    desc->attrs[i]->atttypid);
-        if (!HeapTupleIsValid(typeTuple))
-            elog(ERROR, "lookup failed for type %u",
-                 desc->attrs[i]->atttypid);
-        typeStruct = (Form_pg_type) GETSTRUCT(typeTuple);
-        ReleaseSysCache(typeTuple);
-        typname = NameStr(typeStruct->typname);
+        typOid = desc->attrs[i]->atttypid;
+        typname = format_type_be(typOid);
 		key = NameStr(desc->attrs[i]->attname);
-		PyDict_SetItem(dict, PyString_FromString(key), PyString_FromString(typname));
+        column_instance = PyObject_CallObject(column_class, Py_BuildValue("(s,i,s)", key, typOid, typname));
+		PyDict_SetItem(dict, PyString_FromString(key), column_instance);
 	}
 }
 
