@@ -1,3 +1,12 @@
+0.0.9
+    - Break backwards compatibily: the column definition to the foreign data
+      wrapper constructor is now a dictionary of column names to their types.
+    - Add python2.6 compatibility
+    - Add sqlalchemy foreign data wrapper
+0.0.8
+    - Added minimal documentation in the doc folder
+0.0.7
+    - Fix bug with 64bits platform on text and bytea types
 0.0.6
 	- Fix operand switching, replacing the operator by its commutator
 	- Removed ANY, CONTAINS, IN support for a more general approach

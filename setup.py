@@ -7,7 +7,7 @@ multicorn_utils_module = Extension('multicorn._utils',
 
 setup(
  name='multicorn',
- version='0.0.2',
+ version='0.0.9',
  author='Kozea',
  license='Postgresql',
  package_dir={'': 'python'},

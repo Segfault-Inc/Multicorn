@@ -5,7 +5,7 @@ PYmajor 		 = $(shell python -V 2>&1 | cut -d " " -f 2  | cut -d "." -f 1)
 ifeq ($(PYmajor), 3)
 	PYEXEC = python2
 endif
-PYVERSION    = $(python_version)
+PYVERSION    = 2.7
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)

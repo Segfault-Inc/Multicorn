@@ -83,8 +83,8 @@ class ForeignDataWrapper(object):
                        statement options. It is left to the implementor
                        to decide what should be put in those options, and what
                        to do with them.
-        fdw_columns -- The foreign datawrapper columns. It is a sequence
-                       containing the column names.
+        fdw_columns -- The foreign datawrapper columns. It is a dictionary
+                       mapping the column names to their types.
 
         """
         pass

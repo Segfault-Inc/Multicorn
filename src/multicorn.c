@@ -74,7 +74,7 @@ static void multicorn_end(ForeignScanState * node);
 static void multicorn_error_check(void);
 static void init_if_needed(void);
 void		multicorn_get_options(Oid foreign_table_id, PyObject * options_dict, char **module);
-void		multicorn_get_attributes_name(TupleDesc desc, PyObject * list);
+void		multicorn_get_attributes_def(TupleDesc desc, PyObject * dict);
 void		multicorn_extract_conditions(ForeignScanState * node, PyObject * list);
 PyObject   *multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribute);
 void		multicorn_report_exception(PyObject * pErrType, PyObject * pErrValue, PyObject * pErrTraceback);
@@ -116,6 +116,7 @@ multicorn_handler(PG_FUNCTION_ARGS)
 Datum
 multicorn_validator(PG_FUNCTION_ARGS)
 {
+
 	List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
 	Oid			catalog = PG_GETARG_OID(1);
 	char	   *className = NULL;
@@ -149,7 +150,6 @@ multicorn_validator(PG_FUNCTION_ARGS)
 			PyDict_SetItemString(pOptions, def->defname, pStr);
 		}
 	}
-
 	if (catalog == ForeignServerRelationId)
 	{
 		if (className == NULL)
@@ -616,17 +616,26 @@ pyobject_to_cstring(PyObject * pyobject, Form_pg_attribute attribute, char **buf
 
 /*	Appends the columns names as python strings to the given python list */
 void
-multicorn_get_attributes_name(TupleDesc desc, PyObject * list)
+multicorn_get_attributes_def(TupleDesc desc, PyObject * dict)
 {
-	char	   *key;
+	char	   *key, *typname;
+	HeapTuple	typeTuple;
+	Form_pg_type typeStruct;
 	Py_ssize_t	i,
 				natts;
-
 	natts = desc->natts;
 	for (i = 0; i < natts; i++)
 	{
+        typeTuple = SearchSysCache1(TYPEOID,
+                                    desc->attrs[i]->atttypid);
+        if (!HeapTupleIsValid(typeTuple))
+            elog(ERROR, "lookup failed for type %u",
+                 desc->attrs[i]->atttypid);
+        typeStruct = (Form_pg_type) GETSTRUCT(typeTuple);
+        ReleaseSysCache(typeTuple);
+        typname = NameStr(typeStruct->typname);
 		key = NameStr(desc->attrs[i]->attname);
-		PyList_Append(list, PyString_FromString(key));
+		PyDict_SetItem(dict, PyString_FromString(key), PyString_FromString(typname));
 	}
 }
 
@@ -1007,8 +1016,8 @@ multicorn_get_instance(Relation rel)
 		multicorn_get_options(tablerelid, pOptions, &module);
 		pClass = multicorn_get_class(module);
 		multicorn_error_check();
-		pColumns = PyList_New(0);
-		multicorn_get_attributes_name(rel->rd_att, pColumns);
+		pColumns = PyDict_New();
+		multicorn_get_attributes_def(rel->rd_att, pColumns);
 		pObj = PyObject_CallObject(pClass, Py_BuildValue("(O,O)", pOptions, pColumns));
 		multicorn_error_check();
 		PyDict_SetItem(TABLES_DICT, pTableId, pObj);

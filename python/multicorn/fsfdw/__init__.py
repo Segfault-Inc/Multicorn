@@ -43,7 +43,7 @@ class FilesystemFdw(ForeignDataWrapper):
                                 "additional column: \n"
                                 "%s character varying" % self.filename_column)
             else:
-                columns.remove(self.filename_column)
+                columns.pop(self.filename_column)
         if self.content_column:
             if self.content_column not in columns:
                 log_to_postgres("The content column (%s) does not exist"
@@ -53,9 +53,9 @@ class FilesystemFdw(ForeignDataWrapper):
                                 "additional column: \n"
                                 "%s bytea" % self.content_column)
             else:
-                columns.remove(self.content_column)
+                columns.pop(self.content_column)
         if len(self.structured_directory.properties) < len(columns):
-            missing_columns = set(columns).difference(
+            missing_columns = set(columns.keys()).difference(
                     self.structured_directory.properties)
             log_to_postgres("Some columns are not mapped in the structured fs",
                     WARNING, "Remove the following columns: %s "

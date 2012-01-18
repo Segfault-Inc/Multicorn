@@ -12,7 +12,7 @@ CREATE foreign table testmulticorn (
 -- Test "normal" usage
 select * from testmulticorn;
 NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  ['test1', 'test2']
+NOTICE:  {'test1': 'varchar', 'test2': 'varchar'}
 NOTICE:  []
 NOTICE:  set(['test1', 'test2'])
    test1    |   test2    
