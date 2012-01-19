@@ -16,6 +16,8 @@ select * from testmulticorn;
 
 -- Test quals
 select * from testmulticorn where test1 like '%0';
+select * from testmulticorn where test1 ilike '%0';
+
 
 -- Test columns
 select test2 from testmulticorn;

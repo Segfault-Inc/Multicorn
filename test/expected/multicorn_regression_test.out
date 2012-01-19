@@ -49,6 +49,15 @@ NOTICE:  set(['test1', 'test2'])
  test1 3 10 | test2 1 10
 (2 rows)
 
+select * from testmulticorn where test1 ilike '%0';
+NOTICE:  [test1 ~~* %0]
+NOTICE:  set(['test1', 'test2'])
+   test1    |   test2    
+------------+------------
+ test1 1 0  | test2 2 0
+ test1 3 10 | test2 1 10
+(2 rows)
+
 -- Test columns
 select test2 from testmulticorn;
 NOTICE:  []
