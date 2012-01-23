@@ -616,19 +616,22 @@ pyobject_to_cstring(PyObject * pyobject, Form_pg_attribute attribute, char **buf
 void
 multicorn_get_attributes_def(TupleDesc desc, PyObject * dict)
 {
-	char	   *key, *typname;
-    int typOid;
-    PyObject   *column_class, *column_instance;
+	char	   *key,
+			   *typname;
+	int			typOid;
+	PyObject   *column_class,
+			   *column_instance;
 	Py_ssize_t	i,
 				natts;
+
 	natts = desc->natts;
-    column_class = multicorn_get_class("multicorn.ColumnDefinition");
+	column_class = multicorn_get_class("multicorn.ColumnDefinition");
 	for (i = 0; i < natts; i++)
 	{
-        typOid = desc->attrs[i]->atttypid;
-        typname = format_type_be(typOid);
+		typOid = desc->attrs[i]->atttypid;
+		typname = format_type_be(typOid);
 		key = NameStr(desc->attrs[i]->attname);
-        column_instance = PyObject_CallObject(column_class, Py_BuildValue("(s,i,s)", key, typOid, typname));
+		column_instance = PyObject_CallObject(column_class, Py_BuildValue("(s,i,s)", key, typOid, typname));
 		PyDict_SetItem(dict, PyString_FromString(key), column_instance);
 	}
 }
