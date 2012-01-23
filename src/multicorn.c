@@ -72,7 +72,7 @@ static void multicorn_end(ForeignScanState * node);
    Helpers
    */
 static void multicorn_error_check(void);
-static void init_if_needed(void);
+void		_PG_init(void);
 void		multicorn_get_options(Oid foreign_table_id, PyObject * options_dict, char **module);
 void		multicorn_get_attributes_name(TupleDesc desc, PyObject * list);
 void		multicorn_extract_conditions(ForeignScanState * node, PyObject * list);
@@ -123,7 +123,6 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	PyObject   *pOptions,
 			   *pStr;
 
-	init_if_needed();
 	pOptions = PyDict_New();
 	foreach(cell, options_list)
 	{
@@ -195,7 +194,6 @@ multicorn_begin(ForeignScanState * node, int eflags)
 	AttInMetadata *attinmeta;
 	MulticornState *state;
 
-	init_if_needed();
 	attinmeta = TupleDescGetAttInMetadata(node->ss.ss_currentRelation->rd_att);
 	state = (MulticornState *) palloc(sizeof(MulticornState));
 	state->rownum = 0;
@@ -956,16 +954,13 @@ multicorn_report_exception(PyObject * pErrType, PyObject * pErrValue, PyObject *
 					errdetail_log("%s", PyString_AsString(PyObject_CallObject(PyObject_GetAttrString(newline, "join"), Py_BuildValue("(O)", traceback_list))))));
 }
 
-static void
-init_if_needed()
+void
+_PG_init()
 {
-	if (TABLES_DICT == NULL)
-	{
-		/* TODO: managed locks and things */
-		Py_Initialize();
-		PyDateTime_IMPORT;
-		TABLES_DICT = PyDict_New();
-	}
+	/* TODO: managed locks and things */
+	Py_Initialize();
+	PyDateTime_IMPORT;
+	TABLES_DICT = PyDict_New();
 }
 
 PyObject *
@@ -993,7 +988,6 @@ multicorn_get_instance(Relation rel)
 	Oid			tablerelid;
 	char	   *module;
 
-	init_if_needed();
 	tablerelid = RelationGetRelid(rel);
 	pTableId = PyInt_FromSsize_t(tablerelid);
 	multicorn_error_check();
