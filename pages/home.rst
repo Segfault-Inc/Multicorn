@@ -55,7 +55,7 @@ To use it, you have to:
       CREATE EXTENSION multicorn;
 
 
-- Create a "foreign server".
+- Create a server.
   In the SQL ``OPTIONS`` clause, you must provide an options named wrapper,
   containing the fully-qualified class name of the concrete python foreign data
   wrapper you wish to use. want to use:
