@@ -57,7 +57,7 @@ You can declare the following table:
 
 .. code-block:: sql
    
-    CREATE FOREIGN SERVER csv_srv foreign data wrapper multicorn options (
+    CREATE SERVER csv_srv foreign data wrapper multicorn options (
         wrapper 'multicorn.csvfdw.CsvFdw'
     );
    
@@ -152,7 +152,7 @@ You can access those files using a foreign table like this:
 
 .. code-block:: sql
 
-    CREATE FOREIGN SERVER filesytem_srv foreign data wrapper multicorn options (
+    CREATE SERVER filesytem_srv foreign data wrapper multicorn options (
         wrapper 'multicorn.fsfdw.FilesystemFdw'
     );
 
@@ -222,7 +222,7 @@ Let's suppose you want to access an sqlite3 database located at ``/tmp/data.db``
 
 .. code-block:: sql
 
-    CREATE FOREIGN SERVER sqlite_srv foreign data wrapper multicorn options (
+    CREATE SERVER sqlite_srv foreign data wrapper multicorn options (
         wrapper 'multicorn.sqlitefdw.SqliteFdw'
     );
 
@@ -290,7 +290,7 @@ definition:
 
 .. code-block:: sql
 
-    CREATE FOREIGN SERVER rss_srv foreign data wrapper multicorn options (
+    CREATE SERVER rss_srv foreign data wrapper multicorn options (
         wrapper 'multicorn.rssfdw.RssFdw'
     );
     
