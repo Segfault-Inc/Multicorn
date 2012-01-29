@@ -94,7 +94,7 @@ HeapTuple	pysequence_to_postgres_tuple(TupleDesc desc, PyObject * pyseq);
 HeapTuple	pydict_to_postgres_tuple(TupleDesc desc, PyObject * pydict);
 ssize_t		pyobject_to_cstring(PyObject * pyobject, Form_pg_attribute attribute, char **buffer);
 
-const char *DATE_FORMAT_STRING = "%Y-%m-%d";
+const char *DATE_FORMAT_STRING = "%Y-%m-%d %H:%M:%S";
 
 PyObject   *TABLES_DICT;
 

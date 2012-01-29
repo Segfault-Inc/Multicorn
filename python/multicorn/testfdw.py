@@ -30,7 +30,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                             "index": index}
                 elif self.test_type == 'date':
                     line[column_name] = datetime(2011, (index % 12) + 1,
-                            next(random_thing))
+                            next(random_thing), 14, 30, 25)
                 else:
                     line[column_name] = '%s %s %s' % (column_name,
                             next(random_thing), index)
