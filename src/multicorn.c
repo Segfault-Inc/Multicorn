@@ -630,7 +630,7 @@ multicorn_get_attributes_def(TupleDesc desc, PyObject * dict)
 		typname = format_type_be(typOid);
 		key = NameStr(desc->attrs[i]->attname);
 		column_instance = PyObject_CallObject(column_class, Py_BuildValue("(s,i,s)", key, typOid, typname));
-		PyDict_SetItem(dict, PyString_FromString(key), column_instance);
+		PyMapping_SetItemString(dict, key, column_instance);
 	}
 }
 
@@ -990,7 +990,8 @@ multicorn_get_instance(Relation rel)
 			   *pClass,
 			   *pObj,
 			   *pColumns,
-			   *pTableId;
+			   *pTableId,
+               *pOrderedDictClass;
 	Oid			tablerelid;
 	char	   *module;
 
@@ -1007,7 +1008,8 @@ multicorn_get_instance(Relation rel)
 		multicorn_get_options(tablerelid, pOptions, &module);
 		pClass = multicorn_get_class(module);
 		multicorn_error_check();
-		pColumns = PyDict_New();
+        pOrderedDictClass = multicorn_get_class("multicorn.ordered_dict.OrderedDict");
+		pColumns = PyObject_CallObject(pOrderedDictClass, PyTuple_New(0));
 		multicorn_get_attributes_def(rel->rd_att, pColumns);
 		pObj = PyObject_CallObject(pClass, Py_BuildValue("(O,O)", pOptions, pColumns));
 		multicorn_error_check();
