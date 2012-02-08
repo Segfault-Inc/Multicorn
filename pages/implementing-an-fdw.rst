@@ -103,7 +103,10 @@ The init method must accept two arguments
     ``CREATE FOREIGN TABLE`` statement, minus the wrapper option.
 
 ``columns``
-    A list of the columns names given during the table creation.
+    A mapping of the columns names given during the table creation, associated
+    to their types. 
+    Ex: {'test': 'character varying'}
+
 
 Our access point do not need any options, thus we will only need to keep a
 reference to the columns:
@@ -231,7 +234,7 @@ It accepts three arguments:
             .. important:: 
                 
                 An ERROR message results in the current transaction being aborted.
-                Think about the consequences when you uses it !
+                Think about the consequences when you use it !
 
         ``logging.CRITICAL``
             Maps to a postgresql FATAL message. Causes the current server process
@@ -240,7 +243,7 @@ It accepts three arguments:
             .. important:: 
                 
                 A CRITICAL message results in the current server process to be aborted
-                Think about the consequences when you uses it !
+                Think about the consequences when you use it !
 
 ``hint`` (optional)
     An hint given to the user to resolve the cause of the message (ex:``Try
