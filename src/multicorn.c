@@ -991,7 +991,7 @@ multicorn_get_instance(Relation rel)
 			   *pObj,
 			   *pColumns,
 			   *pTableId,
-               *pOrderedDictClass;
+			   *pOrderedDictClass;
 	Oid			tablerelid;
 	char	   *module;
 
@@ -1008,7 +1008,7 @@ multicorn_get_instance(Relation rel)
 		multicorn_get_options(tablerelid, pOptions, &module);
 		pClass = multicorn_get_class(module);
 		multicorn_error_check();
-        pOrderedDictClass = multicorn_get_class("multicorn.ordered_dict.OrderedDict");
+		pOrderedDictClass = multicorn_get_class("multicorn.ordered_dict.OrderedDict");
 		pColumns = PyObject_CallObject(pOrderedDictClass, PyTuple_New(0));
 		multicorn_get_attributes_def(rel->rd_att, pColumns);
 		pObj = PyObject_CallObject(pClass, Py_BuildValue("(O,O)", pOptions, pColumns));
