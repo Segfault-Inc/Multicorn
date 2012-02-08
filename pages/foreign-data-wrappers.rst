@@ -3,6 +3,92 @@
 Multicorn is bundled with a small set of Foreign Data Wrappers, which you can
 use or customize for your needs.
 
+
+SQLAlchemy Foreign Data Wrapper
+===============================
+
+Class: ``multicorn.sqlalchemyfdw.SqlAlchemyFdw``
+
+Source code: `multicorn/sqlalchemyfdw.py`_
+
+.. _multicorn/sqlalchemyfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/sqlalchemyfdw.py
+
+Purpose
+-------
+
+This fdw can be used to access data stored in a remote RDBMS. 
+Through the use of sqlalchemy, many different rdbms engines are supported.
+
+Dependencies
+------------
+
+You will need the `sqlalchemy`_ library, as well as a suitable dbapi driver for
+the remote database.
+
+You can find a list of supported RDBMs, and their associated dbapi drivers and
+connection strings in the `sqlalchemy dialects documentation`_.
+
+.. _sqlalchemy dialects documentation: http://docs.sqlalchemy.org/en/latest/dialects/
+
+.. _sqlalchemy: http://www.sqlalchemy.org/
+
+Required options
+----------------
+
+``db_url`` (string)
+  An sqlalchemy connection string.
+  Examples:
+    
+    - mysql: `mysql://<user>:<password>@<host>/<dbname>`
+    - mssql: `mssql://<user>:<password>@<dsname>`
+
+  See the `sqlalchemy dialects documentation`_. for documentation.
+
+``tablename`` (string)
+  The table name in the remote RDBMS.
+
+When defining the table, the local column names will be used to retrieve the
+remote column data.
+Moreover, the local column types will be used to interpret the results in the
+remote table. Sqlalchemy being aware of the differences between database
+implementations, it will convert each value from the remote database to python
+using the converter inferred from the column type, and convert it back to a
+postgresql suitable form.
+
+What does it do to reduce the amount of fetched data ?
+------------------------------------------------------
+
+- `quals` are pushed to the remote database whenever possible. This include
+  simple operators : 
+  
+    - equality, inequality (=, <>, >, <, <=, >=)
+    - like, ilike and their negations
+    - IN clauses with scalars, = ANY (array)
+    - NOT IN clauses, != ALL (array)
+- the set of needed columns is pushed to the remote_side, and only those columns
+  will be fetched.
+
+Usage example
+-------------
+
+For a connection to a remote mysql database (you'll need a mysql dbapi driver,
+such as pymysql):
+
+.. code-block:: sql
+
+  CREATE SERVER alchemy_srv foreign data wrapper multicorn options (
+      wrapper 'multicorn.alchemyfdw.SqlAlchemyFdw'
+  );
+
+  create foreign table mysql_table (
+    column1 integer,
+    column2 varchar
+  ) server alchemy_srv options (
+    tablename 'table',
+    db_url 'mysql://myuser:mypassword@myhost/mydb'
+  );
+
+
 CSV Foreign Data Wrapper
 ========================
 
@@ -189,53 +275,8 @@ Example:
 SQLite Foreign Data Wrapper
 ===========================
 
-Class: ``multicorn.sqlitefdw.SqliteFdw``
-
-Source code: `multicorn/sqlitefdw.py`_
-
-.. _multicorn/sqlitefdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/sqlitefdw.py
-
-Purpose
--------
-
-This fdw can be used to access data stored in tables in a sqlite database.
-
-Dependencies
-------------
-
-No dependency outside the standard python distribution.
-
-Required options
-----------------
-
-``database`` (string)
-  The sqlite database to connect to. Examples: ``/tmp/mydatabase.db``,
-  ``:memory:``
-
-``tablename`` (string)
-  The name of the mapped table.
-
-Usage Example
--------------
-
-Let's suppose you want to access an sqlite3 database located at ``/tmp/data.db``.
-
-.. code-block:: sql
-
-    CREATE SERVER sqlite_srv foreign data wrapper multicorn options (
-        wrapper 'multicorn.sqlitefdw.SqliteFdw'
-    );
-
-
-    CREATE FOREIGN TABLE sqlitetest (
-        column1 integer,
-        column2 character varying
-        ...etc..
-    ) server sqlite_srv options (
-        database    '/tmp/data.db',
-        tablename   'table1'
-    )
-
+The sqlite foreign data wrapper has been removed in favor of the more general
+sqlalchemy foreign data wrapper.
 
 
 RSS Foreign Data Wrapper
