@@ -33,12 +33,12 @@ class RssFdw(ForeignDataWrapper):
                     ERROR)
         self.columns = columns
 
-    def make_item_from_xml(self, xml_elem):
+    def make_item_from_xml(self, xml_elem, namespaces):
         """Internal method used for parsing item xml element from the
         columns definition."""
         item = {}
         for prop in self.columns:
-            value = xml_elem.xpath(prop)
+            value = xml_elem.xpath(prop, namespaces=namespaces)
             if value:
                 item[prop] = value[0].text
         return item
@@ -54,7 +54,7 @@ class RssFdw(ForeignDataWrapper):
                 return values
         try:
             xml = etree.fromstring(urllib.urlopen(self.url).read())
-            items = [self.make_item_from_xml(elem)
+            items = [self.make_item_from_xml(elem, xml.nsmap)
                     for elem in xml.xpath('//item')]
             self.cache[(quals, columns)] = (datetime.now(), items)
             return items
