@@ -1,4 +1,4 @@
-"""An SQLite 3 foreign data wrapper"""
+"""A SQLAlchemy foreign data wrapper"""
 
 from . import ForeignDataWrapper
 from .utils import log_to_postgres, ERROR, WARNING, DEBUG
