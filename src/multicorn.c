@@ -26,6 +26,10 @@
 #include "foreign/foreign.h"
 #include "funcapi.h"
 #include "miscadmin.h"
+#include "optimizer/pathnode.h"
+#include "optimizer/pathnode.h"
+#include "optimizer/planmain.h"
+#include "optimizer/restrictinfo.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
@@ -43,13 +47,21 @@
 
 PG_MODULE_MAGIC;
 
-typedef struct MulticornState
+typedef struct MulticornPlanState
+{
+  PyObject * needed_columns;
+}   MulticornPlanState;
+
+
+typedef struct MulticornExecState
 {
 	AttInMetadata *attinmeta;
 	PyObject   *quals;
 	int			rownum;
 	PyObject   *pIterator;
-}	MulticornState;
+    MulticornPlanState *planstate;
+}	MulticornExecState;
+
 
 extern Datum multicorn_handler(PG_FUNCTION_ARGS);
 extern Datum multicorn_validator(PG_FUNCTION_ARGS);
@@ -63,7 +75,7 @@ PG_FUNCTION_INFO_V1(multicorn_validator);
  */
 static void multicornGetForeignRelSize(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid);
 static void multicornGetForeignPaths(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid);
-static ForeignScan *multicornGetForeignPlan(PlannerInfo *root, RelOptInfo *baserel, Oid foreign_table_id,
+static ForeignScan *multicornGetForeignPlan(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid,
     ForeignPath *best_path, List *tlist, List *scan_clauses);
 static void multicornExplainForeignScan(ForeignScanState * node, ExplainState * es);
 static void multicornBeginForeignScan(ForeignScanState * node, int eflags);
@@ -76,7 +88,7 @@ static void multicornEndForeignScan(ForeignScanState * node);
    */
 static void multicorn_error_check(void);
 void		_PG_init(void);
-void		multicorn_get_options(Oid foreign_table_id, PyObject * options_dict, char **module);
+void		multicorn_get_options(Oid foreigntableid, PyObject * options_dict, char **module);
 void		multicorn_get_attributes_def(TupleDesc desc, PyObject * dict);
 void		multicorn_extract_conditions(ForeignScanState * node, PyObject * list);
 PyObject   *multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribute);
@@ -87,7 +99,7 @@ void		multicorn_get_columns(List * columnlist, TupleDesc desc, PyObject *);
 void		multicorn_get_column(Expr * expr, TupleDesc desc, PyObject * list);
 const char *get_encoding_from_attribute(Form_pg_attribute attribute);
 void		multicorn_execute(ForeignScanState * node);
-void		multicorn_clean_state(MulticornState * state);
+void		multicorn_clean_state(MulticornExecState * state);
 void		multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_operator operator, PyObject ** result);
 PyObject   *multicorn_get_class(char *className);
 PyObject   *multicorn_get_multicorn(void);
@@ -171,8 +183,35 @@ multicornGetForeignRelSize(PlannerInfo *root,
 					  RelOptInfo *baserel,
 					  Oid foreigntableid)
 {
-  // Do nothing here right now  
+    PyObject    *pObj,
+                *pMethod,
+                *pRowsAndWidth,
+                *pArgs,
+                *pZero,
+                *pBuffer;
+    MulticornPlanState * state = (MulticornPlanState *) palloc(sizeof(MulticornPlanState));
+    ForeignTable * ftable = GetForeignTable(foreigntableid);
+    Relation rel = RelationIdGetRelation(ftable->relid);
+    state->needed_columns = PySet_New(NULL);
+    multicorn_get_columns(baserel->reltargetlist, rel->rd_att, state->needed_columns);
+    multicorn_get_columns(baserel->baserestrictinfo, rel->rd_att, state->needed_columns);
+    pObj = multicorn_get_instance(rel);
+    RelationClose(rel);
+	pMethod = PyObject_GetAttrString(pObj, "get_rel_size");
+    pArgs = Py_BuildValue("(O,O)", state->needed_columns, state->needed_columns);
+    pZero = Py_BuildValue("d");
+    // TODO: user planner info.
+	pRowsAndWidth = PyObject_CallObject(pMethod, pArgs);
+	multicorn_error_check();
+    baserel->fdw_private = state;
+    pBuffer = PyTuple_GetItem(pRowsAndWidth, 0);
+    PyNumber_Coerce(&pBuffer, &pZero);
+    baserel->rows = PyFloat_AsDouble(pBuffer);
+    pBuffer = PyTuple_GetItem(pRowsAndWidth, 1);
+    PyNumber_Coerce(&pBuffer, &pZero);
+    baserel->width = PyFloat_AsDouble(pBuffer);
 }
+
 
 /*
  * multicornGetForeignPaths
@@ -187,8 +226,6 @@ multicornGetForeignPaths(PlannerInfo *root,
 					RelOptInfo *baserel,
 					Oid foreigntableid)
 {
-  Cost startup_cost;
-  Cost total_cost;
   add_path(baserel, (Path *)
 			 create_foreignscan_path(root, baserel,
 									 baserel->rows,
@@ -221,6 +258,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 	 * nodes from the clauses and ignore pseudoconstants (which will be
 	 * handled elsewhere).
 	 */
+
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 
 	/* Create the ForeignScan node */
@@ -250,12 +288,15 @@ multicornBeginForeignScan(ForeignScanState * node, int eflags)
 {
 	/* TODO: do things if necessary */
 	AttInMetadata *attinmeta;
-	MulticornState *state;
+	MulticornExecState *state;
+    MulticornPlanState *plan_state;
 	attinmeta = TupleDescGetAttInMetadata(node->ss.ss_currentRelation->rd_att);
-	state = (MulticornState *) palloc(sizeof(MulticornState));
+	state = (MulticornExecState *) palloc(sizeof(MulticornExecState));
 	state->rownum = 0;
 	state->attinmeta = attinmeta;
 	state->pIterator = NULL;
+    plan_state = (MulticornPlanState *) ((ForeignScan *) node->ss.ps.plan)->fdw_private;
+    state->planstate = plan_state;
 	node->fdw_state = (void *) state;
 }
 
@@ -269,21 +310,17 @@ multicorn_execute(ForeignScanState * node)
 			   *pConds,
 			   *colList;
 
-	MulticornState *state = node->fdw_state;
+	MulticornExecState *state = node->fdw_state;
 	Relation	rel = node->ss.ss_currentRelation;
-
 	pObj = multicorn_get_instance(rel);
 	Py_INCREF(pObj);
 	pArgs = PyTuple_New(2);
 	pConds = PyList_New(0);
 	multicorn_extract_conditions(node, pConds);
 	PyTuple_SetItem(pArgs, 0, pConds);
-	colList = PySet_New(NULL);
-	Py_INCREF(colList);
-	multicorn_get_columns(node->ss.ps.targetlist, rel->rd_att, colList);
-	multicorn_get_columns(node->ss.ps.qual, rel->rd_att, colList);
-	PyTuple_SetItem(pArgs, 1, colList);
-	multicorn_error_check();
+    colList = ((MulticornExecState *) node->fdw_state)->planstate->needed_columns;
+    PyTuple_SetItem(pArgs, 1, colList);
+    multicorn_error_check();
 	pMethod = PyObject_GetAttrString(pObj, "execute");
 	pValue = PyObject_CallObject(pMethod, pArgs);
 	Py_DECREF(pMethod);
@@ -299,7 +336,7 @@ static TupleTableSlot *
 multicornIterateForeignScan(ForeignScanState * node)
 {
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
-	MulticornState *state = (MulticornState *) node->fdw_state;
+	MulticornExecState *state = (MulticornExecState *) node->fdw_state;
 	HeapTuple	tuple;
 	PyObject   *pValue,
 			   *pIterator,
@@ -359,13 +396,13 @@ multicornIterateForeignScan(ForeignScanState * node)
 static void
 multicornReScanForeignScan(ForeignScanState * node)
 {
-	multicorn_clean_state((MulticornState *) node->fdw_state);
+	multicorn_clean_state((MulticornExecState *) node->fdw_state);
 }
 
 static void
 multicornEndForeignScan(ForeignScanState * node)
 {
-	multicorn_clean_state((MulticornState *) node->fdw_state);
+	multicorn_clean_state((MulticornExecState *) node->fdw_state);
 }
 
 static void
@@ -383,7 +420,7 @@ multicorn_error_check()
 }
 
 void
-multicorn_get_options(Oid foreign_table_id, PyObject * pOptions, char **module)
+multicorn_get_options(Oid foreigntableid, PyObject * pOptions, char **module)
 {
 	ForeignTable *f_table;
 	ForeignServer *f_server;
@@ -393,7 +430,7 @@ multicorn_get_options(Oid foreign_table_id, PyObject * pOptions, char **module)
 	bool		got_module = false;
 	PyObject   *pStr;
 
-	f_table = GetForeignTable(foreign_table_id);
+	f_table = GetForeignTable(foreigntableid);
 	f_server = GetForeignServer(f_table->serverid);
 
 	options = NIL;
@@ -1434,7 +1471,7 @@ multicorn_get_column(Expr * expr, TupleDesc desc, PyObject * list)
 }
 
 void
-multicorn_clean_state(MulticornState * state)
+multicorn_clean_state(MulticornExecState * state)
 {
 	if (state->pIterator)
 	{

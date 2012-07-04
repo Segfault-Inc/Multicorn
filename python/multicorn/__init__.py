@@ -89,6 +89,13 @@ class ForeignDataWrapper(object):
         """
         pass
 
+    def get_rel_size(self, quals, columns):
+        """Helps the planner by returning costs.
+        
+        Returns a tuple of the form (nb_row, avg width)
+        """
+        return (100000000, len(columns) * 100)
+
     def execute(self, quals, columns):
         """Execute a query in the foreign data wrapper.
 
