@@ -61,12 +61,15 @@ PG_FUNCTION_INFO_V1(multicorn_validator);
 /*
  * FDW functions declarations
  */
-static FdwPlan *multicorn_plan(Oid foreign_table_id, PlannerInfo * root, RelOptInfo * base_relation);
-static void multicorn_explain(ForeignScanState * node, ExplainState * es);
-static void multicorn_begin(ForeignScanState * node, int eflags);
-static TupleTableSlot *multicorn_iterate(ForeignScanState * node);
-static void multicorn_rescan(ForeignScanState * node);
-static void multicorn_end(ForeignScanState * node);
+static void multicornGetForeignRelSize(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid);
+static void multicornGetForeignPaths(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid);
+static ForeignScan *multicornGetForeignPlan(PlannerInfo *root, RelOptInfo *baserel, Oid foreign_table_id,
+    ForeignPath *best_path, List *tlist, List *scan_clauses);
+static void multicornExplainForeignScan(ForeignScanState * node, ExplainState * es);
+static void multicornBeginForeignScan(ForeignScanState * node, int eflags);
+static TupleTableSlot *multicornIterateForeignScan(ForeignScanState * node);
+static void multicornReScanForeignScan(ForeignScanState * node);
+static void multicornEndForeignScan(ForeignScanState * node);
 
 /*
    Helpers
@@ -100,14 +103,14 @@ Datum
 multicorn_handler(PG_FUNCTION_ARGS)
 {
 	FdwRoutine *fdw_routine = makeNode(FdwRoutine);
-
-	fdw_routine->PlanForeignScan = multicorn_plan;
-	fdw_routine->ExplainForeignScan = multicorn_explain;
-	fdw_routine->BeginForeignScan = multicorn_begin;
-	fdw_routine->IterateForeignScan = multicorn_iterate;
-	fdw_routine->ReScanForeignScan = multicorn_rescan;
-	fdw_routine->EndForeignScan = multicorn_end;
-
+    fdw_routine->GetForeignRelSize = multicornGetForeignRelSize;
+    fdw_routine->GetForeignPaths = multicornGetForeignPaths;
+    fdw_routine->GetForeignPlan = multicornGetForeignPlan;
+	fdw_routine->ExplainForeignScan = multicornExplainForeignScan;
+	fdw_routine->BeginForeignScan = multicornBeginForeignScan;
+	fdw_routine->IterateForeignScan = multicornIterateForeignScan;
+	fdw_routine->ReScanForeignScan = multicornReScanForeignScan;
+	fdw_routine->EndForeignScan = multicornEndForeignScan;
 	PG_RETURN_POINTER(fdw_routine);
 }
 
@@ -159,22 +162,79 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
-static FdwPlan *
-multicorn_plan(Oid foreign_table_id,
-			   PlannerInfo * root,
-			   RelOptInfo * base_relation)
+/*
+ * multicornGetForeignRelSize
+ *		Obtain relation size estimates for a foreign table
+ */
+static void
+multicornGetForeignRelSize(PlannerInfo *root,
+					  RelOptInfo *baserel,
+					  Oid foreigntableid)
 {
-	FdwPlan    *fdw_plan;
-
-	fdw_plan = makeNode(FdwPlan);
-	fdw_plan->startup_cost = 10;
-	base_relation->rows = 9999999;
-	fdw_plan->total_cost = 15;
-	return fdw_plan;
+  // Do nothing here right now  
 }
 
+/*
+ * multicornGetForeignPaths
+ *		Create possible access paths for a scan on the foreign table
+ *
+ *		Currently we don't support any push-down feature, so there is only one
+ *		possible access path, which simply returns all records in the order in
+ *		the data multicorn.
+ */
 static void
-multicorn_explain(ForeignScanState * node, ExplainState * es)
+multicornGetForeignPaths(PlannerInfo *root,
+					RelOptInfo *baserel,
+					Oid foreigntableid)
+{
+  Cost startup_cost;
+  Cost total_cost;
+  add_path(baserel, (Path *)
+			 create_foreignscan_path(root, baserel,
+									 baserel->rows,
+									 baserel->baserestrictcost.startup,
+									 baserel->baserestrictcost.startup,
+									 NIL,		/* no pathkeys */
+									 NULL,		/* no outer rel either */
+									 NIL));		/* no fdw_private data */
+
+}
+
+/*
+ * multicornGetForeignPlan
+ *		Create a ForeignScan plan node for scanning the foreign table
+ */
+static ForeignScan *
+multicornGetForeignPlan(PlannerInfo *root,
+				   RelOptInfo *baserel,
+				   Oid foreigntableid,
+				   ForeignPath *best_path,
+				   List *tlist,
+				   List *scan_clauses)
+{
+	Index		scan_relid = baserel->relid;
+
+	/*
+	 * We have no native ability to evaluate restriction clauses, so we just
+	 * put all the scan_clauses into the plan node's qual list for the
+	 * executor to check.  So all we have to do here is strip RestrictInfo
+	 * nodes from the clauses and ignore pseudoconstants (which will be
+	 * handled elsewhere).
+	 */
+	scan_clauses = extract_actual_clauses(scan_clauses, false);
+
+	/* Create the ForeignScan node */
+	return make_foreignscan(tlist,
+							scan_clauses,
+							scan_relid,
+							NIL,	/* no expressions to evaluate */
+							NIL);		/* no private state either */
+
+}
+
+
+static void
+multicornExplainForeignScan(ForeignScanState * node, ExplainState * es)
 {
 	/* TODO: calculate real values */
 	ExplainPropertyText("Foreign multicorn", "multicorn", es);
@@ -186,12 +246,11 @@ multicorn_explain(ForeignScanState * node, ExplainState * es)
 }
 
 static void
-multicorn_begin(ForeignScanState * node, int eflags)
+multicornBeginForeignScan(ForeignScanState * node, int eflags)
 {
 	/* TODO: do things if necessary */
 	AttInMetadata *attinmeta;
 	MulticornState *state;
-
 	attinmeta = TupleDescGetAttInMetadata(node->ss.ss_currentRelation->rd_att);
 	state = (MulticornState *) palloc(sizeof(MulticornState));
 	state->rownum = 0;
@@ -237,7 +296,7 @@ multicorn_execute(ForeignScanState * node)
 
 
 static TupleTableSlot *
-multicorn_iterate(ForeignScanState * node)
+multicornIterateForeignScan(ForeignScanState * node)
 {
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	MulticornState *state = (MulticornState *) node->fdw_state;
@@ -298,13 +357,13 @@ multicorn_iterate(ForeignScanState * node)
 }
 
 static void
-multicorn_rescan(ForeignScanState * node)
+multicornReScanForeignScan(ForeignScanState * node)
 {
 	multicorn_clean_state((MulticornState *) node->fdw_state);
 }
 
 static void
-multicorn_end(ForeignScanState * node)
+multicornEndForeignScan(ForeignScanState * node)
 {
 	multicorn_clean_state((MulticornState *) node->fdw_state);
 }
