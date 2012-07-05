@@ -1361,23 +1361,6 @@ multicorn_get_column(Expr *expr, TupleDesc desc, PyObject *list)
 	}
 	switch (expr->type)
 	{
-
-		case T_ExprState:
-			multicorn_get_column(((ExprState *) expr)->expr, desc, list);
-			break;
-
-		case T_GenericExprState:
-			multicorn_get_column(((GenericExprState *) expr)->xprstate.expr, desc, list);
-			break;
-
-		case T_FuncExprState:
-		case T_ScalarArrayOpExprState:
-			foreach(cell, ((FuncExprState *) expr)->args)
-			{
-				multicorn_get_column((Expr *) lfirst(cell), desc, list);
-			}
-			break;
-
 		case T_Var:
 			key = NameStr(desc->attrs[((Var *) expr)->varattno - 1]->attname);
 			if (key != NULL)
@@ -1580,39 +1563,12 @@ multicorn_get_column(Expr *expr, TupleDesc desc, PyObject *list)
 			multicorn_get_column(((NullTest *) expr)->arg, desc, list);
 			break;
 
-		case T_NullTestState:
-			multicorn_get_column((Expr *) (((NullTestState *) expr)->arg), desc, list);
-			break;
-
-		case T_CoerceViaIOState:
-			multicorn_get_column((Expr *) (((CoerceViaIOState *) expr)->arg), desc, list);
-			break;
-
 		case T_BooleanTest:
 			multicorn_get_column(((BooleanTest *) expr)->arg, desc, list);
 			break;
 
 		case T_CoerceToDomain:
 			multicorn_get_column(((CoerceToDomain *) expr)->arg, desc, list);
-			break;
-
-		case T_SubPlanState:
-			multicorn_get_column(((Expr *) ((SubPlanState *) expr)->testexpr), desc, list);
-			foreach(cell, ((SubPlanState *) expr)->args)
-			{
-				multicorn_get_column((Expr *) lfirst(cell), desc, list);
-			}
-			break;
-
-		case T_ArrayCoerceExprState:
-			multicorn_get_column(((Expr *) ((ArrayCoerceExprState *) expr)->arg), desc, list);
-			break;
-
-		case T_BoolExprState:
-			foreach(cell, ((BoolExprState *) expr)->args)
-			{
-				multicorn_get_column((Expr *) lfirst(cell), desc, list);
-			}
 			break;
 
 		default:
