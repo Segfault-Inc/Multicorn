@@ -199,8 +199,10 @@ multicornGetForeignRelSize(PlannerInfo *root,
 			   *pMethod,
 			   *pRowsAndWidth,
 			   *pArgs,
+			   *pQualsAndParams,
 			   *pZero,
 			   *pBuffer;
+	Py_ssize_t	i;
 	MulticornPlanState *state;
 	ForeignTable *ftable = GetForeignTable(foreigntableid);
 	Relation	rel = RelationIdGetRelation(ftable->relid);
@@ -210,10 +212,19 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	pObj = multicorn_get_instance(rel);
 	Py_INCREF(pObj);
 	RelationClose(rel);
+	pQualsAndParams = PyList_New(0);
+	for (i = 0; i < PyList_Size(state->quals); i++)
+	{
+		PyList_Append(pQualsAndParams, PyList_GetItem(state->quals, i));
+	}
+	for (i = 0; i < PyList_Size(state->params); i++)
+	{
+		PyList_Append(pQualsAndParams, PyList_GetItem(state->params, i));
+	}
+
 	pMethod = PyObject_GetAttrString(pObj, "get_rel_size");
-	pArgs = Py_BuildValue("(O,O)", state->quals, state->needed_columns);
+	pArgs = Py_BuildValue("(O,O)", pQualsAndParams, state->needed_columns);
 	pZero = Py_BuildValue("d");
-	/* TODO: user planner info. */
 	pRowsAndWidth = PyObject_CallObject(pMethod, pArgs);
 	multicorn_error_check();
 	pBuffer = PyTuple_GetItem(pRowsAndWidth, 0);
@@ -259,10 +270,6 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
 /*
  * multicornGetForeignPaths
  *		Create possible access paths for a scan on the foreign table
- *
- *		Currently we don't support any push-down feature, so there is only one
- *		possible access path, which simply returns all records in the order in
- *		the data multicorn.
  */
 static void
 multicornGetForeignPaths(PlannerInfo *root,
@@ -318,13 +325,6 @@ multicornGetForeignPlan(PlannerInfo *root,
 static void
 multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 {
-	/* TODO: calculate real values */
-	ExplainPropertyText("Foreign multicorn", "multicorn", es);
-
-	if (es->costs)
-	{
-		ExplainPropertyLong("Foreign multicorn cost", 10.5, es);
-	}
 }
 
 static void

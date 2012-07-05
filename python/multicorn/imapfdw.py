@@ -51,6 +51,23 @@ class ImapFdw(ForeignDataWrapper):
         self.flags_column = options.get('flags_column', None)
         self.internaldate_column = options.get('internaldate_column', None)
 
+    def get_rel_size(self, quals, columns):
+        """Inform the planner that it can be EXTREMELY costly to use the 
+        payload column, and that a query on Message-ID will return only one row."""
+        width = len(columns) * 100
+        nb_rows = 1000000
+        if self.payload_column in columns:
+            width += 100000000000
+        nb_rows = nb_rows / (10 ** len(quals))
+        for qual in quals:
+            if qual.field_name.lower() == 'in-reply-to' and\
+                    qual.operator == '=':
+                nb_rows = 10
+            if qual.field_name.lower() == 'message-id' and qual.operator == '=':
+                nb_rows = 1
+                break
+        return (nb_rows, width)
+
     def _create_agent(self):
         self._imap_agent = IMAPClient(self.host, self.port, ssl=self.ssl)
         if self.login:

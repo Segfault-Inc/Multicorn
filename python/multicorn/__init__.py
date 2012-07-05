@@ -110,6 +110,10 @@ class ForeignDataWrapper(object):
         """
         return (100000000, len(columns) * 100)
 
+    def get_path_keys(self):
+        """Helps the planner by supplying a list of access keys."""
+        return []
+
     def execute(self, quals, columns):
         """Execute a query in the foreign data wrapper.
 
