@@ -50,17 +50,26 @@ PG_MODULE_MAGIC;
 typedef struct MulticornPlanState
 {
   PyObject * needed_columns;
+  PyObject * quals;
+  PyObject * params;
 }   MulticornPlanState;
 
 
 typedef struct MulticornExecState
 {
 	AttInMetadata *attinmeta;
-	PyObject   *quals;
 	int			rownum;
 	PyObject   *pIterator;
     MulticornPlanState *planstate;
 }	MulticornExecState;
+
+typedef enum MulticornParamType
+{
+   MulticornQUAL,
+   MulticornPARAM_EXTERN,
+   MulticornPARAM_EXEC,
+   MulticornUNKNOWN
+} MulticornParamType;
 
 
 extern Datum multicorn_handler(PG_FUNCTION_ARGS);
@@ -86,11 +95,12 @@ static void multicornEndForeignScan(ForeignScanState * node);
 /*
    Helpers
    */
-static void multicorn_error_check(void);
+void        multicorn_init_plan_state(RelOptInfo * baserel, Oid foreigntableid);
+void        multicorn_error_check(void);
 void		_PG_init(void);
 void		multicorn_get_options(Oid foreigntableid, PyObject * options_dict, char **module);
 void		multicorn_get_attributes_def(TupleDesc desc, PyObject * dict);
-void		multicorn_extract_conditions(ForeignScanState * node, PyObject * list);
+void		multicorn_extract_conditions(List * baserestrictinfo, PyObject * qual_list, PyObject * param_list, Relation baserel);
 PyObject   *multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribute);
 void		multicorn_report_exception(PyObject * pErrType, PyObject * pErrValue, PyObject * pErrTraceback);
 PyObject   *multicorn_get_instance(Relation rel);
@@ -99,8 +109,9 @@ void		multicorn_get_columns(List * columnlist, TupleDesc desc, PyObject *);
 void		multicorn_get_column(Expr * expr, TupleDesc desc, PyObject * list);
 const char *get_encoding_from_attribute(Form_pg_attribute attribute);
 void		multicorn_execute(ForeignScanState * node);
+PyObject *  multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState *state);
 void		multicorn_clean_state(MulticornExecState * state);
-void		multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_operator operator, PyObject ** result);
+MulticornParamType multicorn_extract_qual(Node * left, Node * right, Relation base_rel, Form_pg_operator operator, PyObject ** result);
 PyObject   *multicorn_get_class(char *className);
 PyObject   *multicorn_get_multicorn(void);
 void		multicorn_unnest(Node * value, Node ** result);
@@ -189,27 +200,56 @@ multicornGetForeignRelSize(PlannerInfo *root,
                 *pArgs,
                 *pZero,
                 *pBuffer;
-    MulticornPlanState * state = (MulticornPlanState *) palloc(sizeof(MulticornPlanState));
+    MulticornPlanState * state;
     ForeignTable * ftable = GetForeignTable(foreigntableid);
     Relation rel = RelationIdGetRelation(ftable->relid);
-    state->needed_columns = PySet_New(NULL);
-    multicorn_get_columns(baserel->reltargetlist, rel->rd_att, state->needed_columns);
-    multicorn_get_columns(baserel->baserestrictinfo, rel->rd_att, state->needed_columns);
+    multicorn_init_plan_state(baserel, foreigntableid);
+    state = baserel->fdw_private;
     pObj = multicorn_get_instance(rel);
+    Py_INCREF(pObj);
     RelationClose(rel);
 	pMethod = PyObject_GetAttrString(pObj, "get_rel_size");
-    pArgs = Py_BuildValue("(O,O)", state->needed_columns, state->needed_columns);
+    pArgs = Py_BuildValue("(O,O)", state->quals, state->needed_columns);
     pZero = Py_BuildValue("d");
     // TODO: user planner info.
 	pRowsAndWidth = PyObject_CallObject(pMethod, pArgs);
 	multicorn_error_check();
-    baserel->fdw_private = state;
     pBuffer = PyTuple_GetItem(pRowsAndWidth, 0);
     PyNumber_Coerce(&pBuffer, &pZero);
     baserel->rows = PyFloat_AsDouble(pBuffer);
     pBuffer = PyTuple_GetItem(pRowsAndWidth, 1);
     PyNumber_Coerce(&pBuffer, &pZero);
     baserel->width = PyFloat_AsDouble(pBuffer);
+    Py_DECREF(pObj);
+}
+
+void
+multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
+{
+    if(baserel->fdw_private == NULL)
+    {
+      MulticornPlanState * state = (MulticornPlanState *) palloc(sizeof(MulticornPlanState));
+      ForeignTable * ftable = GetForeignTable(foreigntableid);
+      Relation rel = RelationIdGetRelation(ftable->relid);
+      Expr	   *current_expr;
+      ListCell   *cell;
+      state->needed_columns = PySet_New(NULL);
+      state->quals = PyList_New(0);
+      state->params= PyList_New(0);
+      foreach(cell, baserel->reltargetlist)
+      {
+          current_expr = (Expr *) lfirst(cell);
+          multicorn_get_column(current_expr, rel->rd_att, state->needed_columns);
+      }
+      foreach(cell, baserel->baserestrictinfo)
+      {
+          current_expr = ((RestrictInfo *) lfirst(cell))->clause;
+          multicorn_get_column(current_expr, rel->rd_att, state->needed_columns);
+      }
+      multicorn_extract_conditions(baserel->baserestrictinfo, state->quals, state->params, rel);
+      RelationClose(rel);
+      baserel->fdw_private = state;
+    }
 }
 
 
@@ -233,7 +273,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 									 baserel->baserestrictcost.startup,
 									 NIL,		/* no pathkeys */
 									 NULL,		/* no outer rel either */
-									 NIL));		/* no fdw_private data */
+									 baserel->fdw_private));		/* no fdw_private data */
 
 }
 
@@ -266,7 +306,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 							scan_clauses,
 							scan_relid,
 							NIL,	/* no expressions to evaluate */
-							NIL);		/* no private state either */
+							baserel->fdw_private);		/* no private state either */
 
 }
 
@@ -300,6 +340,68 @@ multicornBeginForeignScan(ForeignScanState * node, int eflags)
 	node->fdw_state = (void *) state;
 }
 
+PyObject *
+multicorn_get_quals(ForeignScanState * node, Relation rel, MulticornExecState *state)
+{
+    PyObject *pConds, *pParams;
+    ParamListInfo params = node->ss.ps.state->es_param_list_info;
+    ParamExecData * exec_params = node->ss.ps.state->es_param_exec_vals;
+
+    // Fill the params with the concrete values.
+    if(PyList_Size(state->planstate->params) > 0)
+    {
+      Py_ssize_t i,
+                 valueIndex,
+                 attrIndex,
+                 length;
+      PyObject  *pCurrentParam,
+                *pValue,
+                *pOperator,
+                *pKey,
+                *qual_class;
+      Datum value;
+	  qual_class = multicorn_get_class("multicorn.Qual");
+      pParams = state->planstate->params;
+      // Copy the list of quals
+      length = PyList_Size(state->planstate->quals);
+      pConds = PyList_New(0);
+      for (i = 0; i < length; i++){
+        PyList_Append(pConds, PyList_GetItem(state->planstate->quals, i));
+      }
+      length = PyList_Size(state->planstate->params);
+      for (i = 0;  i < length; i++){
+        pCurrentParam = PyList_GetItem(pParams, i);
+        valueIndex = PyInt_AsSsize_t(PyObject_GetAttrString(pCurrentParam, "param_id"));
+        attrIndex = PyInt_AsSsize_t(PyObject_GetAttrString(pCurrentParam, "att_num"));
+        pKey = PyObject_GetAttrString(pCurrentParam, "field_name");
+        pOperator = PyObject_GetAttrString(pCurrentParam, "operator");
+
+        switch(PyInt_AsSsize_t(PyObject_GetAttrString(pCurrentParam, "param_kind"))){
+          case MulticornPARAM_EXTERN:
+            if(params->params[valueIndex -1].isnull){
+              value = -1;
+            } else {
+              value = params->params[valueIndex - 1].value;
+            }
+            break;
+          case MulticornPARAM_EXEC:
+            value = exec_params[valueIndex].value;
+            break;
+          default:
+            continue;
+        }
+        pValue = multicorn_datum_to_python(value,
+              PyInt_AsSsize_t(PyObject_GetAttrString(pCurrentParam, "param_type")),
+              rel->rd_att->attrs[attrIndex]);
+		PyList_Append(pConds, PyObject_CallObject(qual_class, Py_BuildValue("(O,O,O)", pKey, pOperator, pValue)));
+       } 
+    } else {
+      // Reuse "quals" directly
+      pConds = state->planstate->quals;
+    }
+    return pConds;
+}
+
 void
 multicorn_execute(ForeignScanState * node)
 {
@@ -312,13 +414,15 @@ multicorn_execute(ForeignScanState * node)
 
 	MulticornExecState *state = node->fdw_state;
 	Relation	rel = node->ss.ss_currentRelation;
+    // Get the python FDW instance
 	pObj = multicorn_get_instance(rel);
-	Py_INCREF(pObj);
+    Py_INCREF(pObj);
+    pConds = multicorn_get_quals(node, rel, state);
 	pArgs = PyTuple_New(2);
-	pConds = PyList_New(0);
-	multicorn_extract_conditions(node, pConds);
+    colList = state->planstate->needed_columns;
+    Py_INCREF(pConds);
+    Py_INCREF(colList);
 	PyTuple_SetItem(pArgs, 0, pConds);
-    colList = ((MulticornExecState *) node->fdw_state)->planstate->needed_columns;
     PyTuple_SetItem(pArgs, 1, colList);
     multicorn_error_check();
 	pMethod = PyObject_GetAttrString(pObj, "execute");
@@ -329,6 +433,7 @@ multicorn_execute(ForeignScanState * node)
 	state->pIterator = PyObject_GetIter(pValue);
 	multicorn_error_check();
 	Py_DECREF(pValue);
+    Py_DECREF(pObj);
 }
 
 
@@ -402,10 +507,15 @@ multicornReScanForeignScan(ForeignScanState * node)
 static void
 multicornEndForeignScan(ForeignScanState * node)
 {
-	multicorn_clean_state((MulticornExecState *) node->fdw_state);
+    MulticornExecState * state = node->fdw_state;
+	multicorn_clean_state(state);
+    Py_DECREF(state->planstate->needed_columns);
+    Py_DECREF(state->planstate->quals);
+    state->planstate->needed_columns = NULL;
+    state->planstate->quals = NULL;
 }
 
-static void
+void
 multicorn_error_check()
 {
 	PyObject   *pErrType,
@@ -746,21 +856,20 @@ multicorn_unnest(Node * node, Node ** result)
 	}
 }
 
-void
-multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_operator operator, PyObject ** result)
+MulticornParamType
+multicorn_extract_qual(Node * left, Node * right, Relation baserel, Form_pg_operator operator, PyObject ** result)
 {
 	HeapTuple	tp;
-	ExprState  *exprstate;
 	Form_pg_attribute attr;
 	char	   *key;
-	bool		isnull;
-	TupleDesc	tupdesc = fss->ss.ss_currentRelation->rd_att;
+	TupleDesc	tupdesc = baserel->rd_att;
 	PyObject   *value = NULL;
 	PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
-	Datum		exprvalue;
+	PyObject   *param_class = multicorn_get_class("multicorn.Param");
+    MulticornParamType param_type;
 	Node	   *normalized_left;
 	Node	   *normalized_right;
-
+    Param * param;
 	multicorn_error_check();
 	multicorn_unnest(left, &normalized_left);
 	multicorn_unnest(right, &normalized_right);
@@ -781,7 +890,6 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_o
 	}
 	if (IsA(normalized_left, Var))
 	{
-		multicorn_error_check();
 		attr = tupdesc->attrs[((Var *) normalized_left)->varattno - 1];
 		key = NameStr(attr->attname);
 		multicorn_error_check();
@@ -789,146 +897,169 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_o
 		{
 			case T_Const:
 				value = multicorn_datum_to_python(((Const *) normalized_right)->constvalue, ((Const *) normalized_right)->consttype, attr);
+		        *result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,O)", key, NameStr(operator->oprname), value));
+        		multicorn_error_check();
+                return MulticornQUAL;
 				break;
 			case T_Param:
-				exprstate = ExecInitExpr((Expr *) normalized_right, &(fss->ss.ps));
-				exprvalue = ExecEvalExpr(exprstate, fss->ss.ps.ps_ExprContext, &isnull, NULL);
-				if (isnull)
-				{
-					value = Py_None;
-				}
-				else
-				{
-					value = multicorn_datum_to_python(exprvalue, ((Param *) normalized_right)->paramtype, attr);
-				}
-				break;
+                param = (Param *) normalized_right;
+                switch(param->paramkind){
+                  case PARAM_EXTERN:
+                    param_type = MulticornPARAM_EXTERN;
+                    break;
+                  case PARAM_EXEC:
+                    param_type = MulticornPARAM_EXEC;
+                    break;
+                  default:
+                    return MulticornUNKNOWN;
+                }
+                // Build the param with key, operator, paramid, attno
+                *result = PyObject_CallObject(param_class,
+                    Py_BuildValue("(s,s,i,i,i,i)", key, NameStr(operator->oprname),
+                      param->paramid,
+                      ((Var *) normalized_left)->varattno - 1,
+                      param_type,
+                      param->paramtype));
+                multicorn_error_check();
+                return param_type;
 			default:
 				elog(WARNING, "Cant manage type %i", normalized_right->type);
 				break;
 		}
 	}
-	if (value)
-	{
-		*result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,O)", key, NameStr(operator->oprname), value));
-		multicorn_error_check();
-	}
+    return MulticornUNKNOWN;
 }
 
 void
-multicorn_extract_conditions(ForeignScanState * node, PyObject * list)
+multicorn_extract_conditions(List * baserestrictinfo, PyObject * qual_list, PyObject * param_list, Relation baserel)
 {
-	if (node->ss.ps.plan->qual)
-	{
-		ListCell   *lc;
-		List	   *quals = list_copy(node->ss.ps.qual);
-		PyObject   *tempqual;
-		HeapTuple	tp;
-		Node	   *left,
-				   *right;
-		Form_pg_operator operator_tup;
+      ListCell   *lc;
+      PyObject   *tempqual;
+      HeapTuple	tp;
+      Node	   *left,
+                 *right;
+      Form_pg_operator operator_tup;
+      MulticornParamType paramtype;
 
-		foreach(lc, quals)
-		{
-			Node	   *nodexp = (Node *) ((ExprState *) lfirst(lc))->expr;
+      foreach(lc, baserestrictinfo)
+      {
+          Node	   *nodexp = (Node *) ((RestrictInfo *) lfirst(lc))->clause;
 
-			tempqual = NULL;
-			if (nodexp != NULL)
-			{
-				switch (nodexp->type)
-				{
-					case T_OpExpr:
-						if (list_length(((OpExpr *) nodexp)->args) == 2)
-						{
-							OpExpr	   *op = (OpExpr *) nodexp;
+          tempqual = NULL;
+          if (nodexp != NULL)
+          {
+              switch (nodexp->type)
+              {
+                  case T_OpExpr:
+                      if (list_length(((OpExpr *) nodexp)->args) == 2)
+                      {
+                          OpExpr	   *op = (OpExpr *) nodexp;
 
-							left = list_nth(op->args, 0);
-							right = list_nth(op->args, 1);
-							tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
-							if (!HeapTupleIsValid(tp))
-								elog(ERROR, "cache lookup failed for operator %u", op->opno);
-							operator_tup = (Form_pg_operator) GETSTRUCT(tp);
-							ReleaseSysCache(tp);
-							multicorn_get_param(left, right, node, operator_tup, &tempqual);
-							if (tempqual)
-							{
-								PyList_Append(list, tempqual);
-							}
-						}
-						break;
-					case T_ScalarArrayOpExpr:
-						if (list_length(((ScalarArrayOpExpr *) nodexp)->args) == 2)
-						{
-							ScalarArrayOpExpr *op = (ScalarArrayOpExpr *) nodexp;
+                          left = list_nth(op->args, 0);
+                          right = list_nth(op->args, 1);
+                          tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+                          if (!HeapTupleIsValid(tp))
+                              elog(ERROR, "cache lookup failed for operator %u", op->opno);
+                          operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+                          ReleaseSysCache(tp);
+                          paramtype = multicorn_extract_qual(left, right, baserel, operator_tup, &tempqual);
+                          switch(paramtype){
+                              case MulticornQUAL: 
+                                PyList_Append(qual_list, tempqual);
+                                break;
+                              case MulticornPARAM_EXTERN:
+                              case MulticornPARAM_EXEC:
+                                PyList_Append(param_list, tempqual);
+                                break;
+                              default:
+                                break;
+                          }
+                      }
+                      break;
+                  case T_ScalarArrayOpExpr:
+                      if (list_length(((ScalarArrayOpExpr *) nodexp)->args) == 2)
+                      {
+                          ScalarArrayOpExpr *op = (ScalarArrayOpExpr *) nodexp;
 
-							left = list_nth(op->args, 0);
-							right = list_nth(op->args, 1);
-							tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
-							if (!HeapTupleIsValid(tp))
-								elog(ERROR, "cache lookup failed for operator %u", op->opno);
-							operator_tup = (Form_pg_operator) GETSTRUCT(tp);
-							ReleaseSysCache(tp);
+                          left = list_nth(op->args, 0);
+                          right = list_nth(op->args, 1);
+                          tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+                          if (!HeapTupleIsValid(tp))
+                              elog(ERROR, "cache lookup failed for operator %u", op->opno);
+                          operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+                          ReleaseSysCache(tp);
 
-							/*
-							 * Build the qual "normally" and set the operator
-							 * to a tuple instead
-							 */
-							multicorn_get_param(left, right, node, operator_tup, &tempqual);
-							if (tempqual)
-							{
-								multicorn_unnest(left, &left);
-								if (IsA(left, Var))
-								{
-									/*
-									 * Don't add it to the list if the form is
-									 * constant = ANY(column)
-									 */
-									if (op->useOr)
-									{
-										/* ANY clause on the array + "=" -> IN */
-										PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
-																								   PyObject_GetAttrString(tempqual, "operator"), Py_True));
-									}
-									else
-									{
-										PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
-																								   PyObject_GetAttrString(tempqual, "operator"), Py_False));
-									}
-									PyList_Append(list, tempqual);
-								}
-							}
-						}
-						break;
-					case T_NullTest:
-						/* TODO: this code is pretty much duplicated from */
-						/* get_param, find a way to share it. */
-						if IsA
-							(((NullTest *) nodexp)->arg, Var)
-						{
-							char	   *operator_name;
-							NullTest   *nulltest = (NullTest *) nodexp;
-							TupleDesc	tupdesc = node->ss.ss_currentRelation->rd_att;
-							PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
-							Form_pg_attribute attr = tupdesc->attrs[((Var *) nulltest->arg)->varattno - 1];
+                          /*
+                           * Build the qual "normally" and set the operator
+                           * to a tuple instead
+                           */
+                          paramtype = multicorn_extract_qual(left, right, baserel, operator_tup, &tempqual);
 
-							if (nulltest->nulltesttype == IS_NULL)
-							{
-								operator_name = "=";
-							}
-							else
-							{
-								operator_name = "<>";
-							}
-							PyList_Append(list, PyObject_CallObject(qual_class,
-																	Py_BuildValue("(s,s,O)", NameStr(attr->attname), operator_name, Py_None)));
-						}
-						break;
-					default:
-						elog(WARNING, "GOT AN UNEXPECTED TYPE: %i", nodexp->type);
-						break;
-				}
-			}
-		}
-	}
+                          if (tempqual)
+                          {
+                              multicorn_unnest(left, &left);
+                              if (IsA(left, Var))
+                              {
+                                  /*
+                                   * Don't add it to the list if the form is
+                                   * constant = ANY(column)
+                                   */
+                                  if (op->useOr)
+                                  {
+                                      /* ANY clause on the array + "=" -> IN */
+                                      PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+                                                                                                 PyObject_GetAttrString(tempqual, "operator"), Py_True));
+                                  }
+                                  else
+                                  {
+                                      PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+                                                                                                 PyObject_GetAttrString(tempqual, "operator"), Py_False));
+                                  }
+                              }
+                          }
+                          switch(paramtype){
+                              case MulticornQUAL: 
+                                PyList_Append(qual_list, tempqual);
+                                break;
+                              case MulticornPARAM_EXEC:
+                              case MulticornPARAM_EXTERN:
+                                PyList_Append(param_list, tempqual);
+                                break;
+                              default:
+                                break;
+                          }
+                      }
+                      break;
+                  case T_NullTest:
+                      /* TODO: this code is pretty much duplicated from */
+                      /* get_param, find a way to share it. */
+                      if IsA
+                          (((NullTest *) nodexp)->arg, Var)
+                      {
+                          char	   *operator_name;
+                          NullTest   *nulltest = (NullTest *) nodexp;
+                          TupleDesc	tupdesc = baserel->rd_att;
+                          PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
+                          Form_pg_attribute attr = tupdesc->attrs[((Var *) nulltest->arg)->varattno - 1];
+
+                          if (nulltest->nulltesttype == IS_NULL)
+                          {
+                              operator_name = "=";
+                          }
+                          else
+                          {
+                              operator_name = "<>";
+                          }
+                          PyList_Append(qual_list, PyObject_CallObject(qual_class,
+                                                                  Py_BuildValue("(s,s,O)", NameStr(attr->attname), operator_name, Py_None)));
+                      }
+                      break;
+                  default:
+                      elog(WARNING, "GOT AN UNEXPECTED TYPE: %i", nodexp->type);
+                      break;
+              }
+          }
+      }
 }
 
 PyObject *
@@ -943,7 +1074,9 @@ multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribut
 	fsec_t		fsec;
 	struct pg_tm *pg_tm_value;
 	Py_ssize_t	size;
-
+    if(datumvalue == -1){
+      return Py_None;
+    }
 	switch (type)
 	{
 		case TEXTOID:
@@ -999,10 +1132,10 @@ multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribut
 			if ((typeStruct->typelem != 0) && (typeStruct->typlen == -1))
 			{
 				/* Its an array */
-				bool		isnull;
 				Datum		buffer;
 				PyObject   *listelem;
 				ArrayIterator iterator;
+                bool isnull;
 
 				result = PyList_New(0);
 				iterator = array_create_iterator(DatumGetArrayTypeP(datumvalue), 0);
@@ -1113,7 +1246,7 @@ multicorn_get_instance(Relation rel)
 		multicorn_error_check();
 		Py_DECREF(pOptions);
 		Py_DECREF(pClass);
-		Py_DECREF(pObj);
+        Py_DECREF(pObj);
 	}
 	return pObj;
 }
@@ -1194,19 +1327,6 @@ BuildTupleFromCStringsWithSize(AttInMetadata * attinmeta, char **values, ssize_t
 }
 
 void
-multicorn_get_columns(List * columnslist, TupleDesc desc, PyObject * result)
-{
-	Expr	   *current_expr;
-	ListCell   *cell;
-
-	foreach(cell, columnslist)
-	{
-		current_expr = (Expr *) lfirst(cell);
-		multicorn_get_column(current_expr, desc, result);
-	}
-}
-
-void
 multicorn_get_column(Expr * expr, TupleDesc desc, PyObject * list)
 {
 	ListCell   *cell;
@@ -1246,13 +1366,21 @@ multicorn_get_column(Expr * expr, TupleDesc desc, PyObject * list)
 		case T_OpExpr:
 		case T_DistinctExpr:
 		case T_NullIfExpr:
-		case T_ScalarArrayOpExpr:
 		case T_FuncExpr:
 			foreach(cell, ((OpExpr *) expr)->args)
 			{
 				multicorn_get_column((Expr *) lfirst(cell), desc, list);
+
 			}
 			break;
+
+
+		case T_ScalarArrayOpExpr:
+            foreach(cell, ((ScalarArrayOpExpr *) expr)->args)
+            {
+          		multicorn_get_column((Expr *) lfirst(cell), desc, list);
+            }
+            break;
 
 		case T_Const:
 		case T_Param:
@@ -1477,5 +1605,5 @@ multicorn_clean_state(MulticornExecState * state)
 	{
 		Py_DECREF(state->pIterator);
 		state->pIterator = NULL;
-	}
+   	}
 }

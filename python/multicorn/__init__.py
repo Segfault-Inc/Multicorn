@@ -13,6 +13,7 @@ import sys
 
 ANY = object()
 ALL = object()
+UNBOUND = object()
 
 
 class Qual(object):
@@ -69,6 +70,19 @@ class Qual(object):
             operator = self.operator
         return (u"%s %s %s" % (self.field_name, operator, value))\
                 .encode('utf8')
+
+class Param(Qual):
+  """A param is like a qual, except that its value is filled at execution time
+  rather than at plan time.
+  """
+
+  def __init__(self, field_name, operator, param_id, att_num, param_kind,
+          param_type):
+      super(Param, self).__init__(field_name, operator, UNBOUND)
+      self.param_id = param_id
+      self.att_num = att_num
+      self.param_kind = param_kind
+      self.param_type = param_type
 
 
 class ForeignDataWrapper(object):

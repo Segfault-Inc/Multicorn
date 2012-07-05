@@ -1,7 +1,5 @@
 CREATE EXTENSION multicorn;
 CREATE EXTENSION hstore;
-WARNING:  => is deprecated as an operator name
-DETAIL:  This name may be disallowed altogether in future versions of PostgreSQL.
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.testfdw.TestForeignDataWrapper'
 );
