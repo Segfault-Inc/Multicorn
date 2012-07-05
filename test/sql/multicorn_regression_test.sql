@@ -23,10 +23,10 @@ select * from testmulticorn where test1 ilike '%0';
 select test2 from testmulticorn;
 
 -- Test subquery plan
-select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where substr(t2.test1, 7, 1)::int = substr(t1.test1, 7, 1)::int)
+select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where substr(t2.test1, 7, 1)::int = substr(t1.test1, 7, 1)::int) as max
 from testmulticorn t1 order by max desc;
 
-select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where t2.test1 = t1.test1)
+select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where t2.test1 = t1.test1) as max
 from testmulticorn t1 order by max desc;
 
 select * from testmulticorn where test1 is null;
