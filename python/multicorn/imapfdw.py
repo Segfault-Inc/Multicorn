@@ -84,6 +84,11 @@ class ImapFdw(ForeignDataWrapper):
             self._create_agent()
         return self._imap_agent
 
+    def get_path_keys(self):
+        """Helps the planner by supplying a list of list of access keys, as well
+        as a row estimate for each one."""
+        return [('Message-ID', 1)]
+
     def _make_condition(self, key, operator, value):
         if operator not in ('~~', '!~~', '=', '<>', '@>', '&&', '~~*', '!~~*'):
             # Do not manage special operators
@@ -155,6 +160,8 @@ class ImapFdw(ForeignDataWrapper):
         return conditions
 
     def execute(self, quals, columns):
+        log_to_postgres("With quals: %s" % quals)
+        log_to_postgres("With columns: %s" % columns)
         # The header dictionary maps columns to their imap search string
         col_to_imap = {}
         headers = []

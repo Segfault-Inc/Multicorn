@@ -26,7 +26,7 @@
 #include "foreign/foreign.h"
 #include "funcapi.h"
 #include "miscadmin.h"
-#include "optimizer/pathnode.h"
+#include "optimizer/paths.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
@@ -68,6 +68,7 @@ typedef enum MulticornParamType
 	MulticornQUAL,
 	MulticornPARAM_EXTERN,
 	MulticornPARAM_EXEC,
+    MulticornVAR,
 	MulticornUNKNOWN
 }	MulticornParamType;
 
@@ -112,6 +113,10 @@ void		multicorn_execute(ForeignScanState *node);
 PyObject   *multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * state);
 void		multicorn_clean_state(MulticornExecState * state);
 MulticornParamType multicorn_extract_qual(Node *left, Node *right, Relation base_rel, Form_pg_operator operator, PyObject **result);
+int			multicorn_is_filter_on_column(RestrictInfo *restrictinfo, Relation baserel, PyObject *colname);
+void        multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo * baserel,
+                    RestrictInfo * restrictinfo, double parampathrows);
+
 PyObject   *multicorn_get_class(char *className);
 PyObject   *multicorn_get_multicorn(void);
 void		multicorn_unnest(Node *value, Node **result);
@@ -266,6 +271,74 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
 	}
 }
 
+/*
+ *	Test wether the given restrictinfo clause is an equal clause on the given
+ *	column (identified by name)
+ * */
+int
+multicorn_is_filter_on_column(RestrictInfo *restrictinfo, Relation baserel, PyObject *colname)
+{
+	Expr	   *clause = restrictinfo->clause;
+	Expr	   *left;
+	Expr	   *right;
+	HeapTuple	tp;
+	Form_pg_operator operator_tup;
+	PyObject   *qual;
+	OpExpr	   *op;
+	int			isEq;
+	MulticornParamType param_type;
+
+	if (IsA(clause, OpExpr))
+	{
+		op = (OpExpr *) clause;
+		left = list_nth(op->args, 0);
+		right = list_nth(op->args, 1);
+		tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+		operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+		ReleaseSysCache(tp);
+		param_type = multicorn_extract_qual((Node *) left, (Node *) right, baserel, operator_tup, &qual);
+		switch (param_type)
+		{
+			case MulticornPARAM_EXTERN:
+			case MulticornPARAM_EXEC:
+			case MulticornQUAL:
+				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
+				multicorn_error_check();
+				return isEq == 0 ? 1 : 0;
+            case MulticornVAR:
+				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
+				multicorn_error_check();
+                if(isEq == 0){
+                  return 1;
+                }
+				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "value"));
+				multicorn_error_check();
+				return isEq == 0 ? 1 : 0;
+			default:
+				return 0;
+		}
+	}
+	return 0;
+}
+
+void
+multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo * baserel,
+    RestrictInfo * restrictinfo, double parampathrows)
+{
+    ParamPathInfo * ppi = makeNode(ParamPathInfo);
+    ForeignPath * foreignPath = create_foreignscan_path(root, baserel,
+                                          parampathrows,
+                           baserel->baserestrictcost.startup + 10,
+                           parampathrows * baserel->width,
+                                          NIL,
+                                          NULL,
+                                       baserel->fdw_private);
+    ppi->ppi_req_outer = NULL;
+    ppi->ppi_rows = parampathrows;
+    ppi->ppi_clauses = lappend(ppi->ppi_clauses, restrictinfo);
+    foreignPath->path.param_info = ppi;
+    add_path(baserel, (Path *) foreignPath);
+}
 
 /*
  * multicornGetForeignPaths
@@ -276,14 +349,66 @@ multicornGetForeignPaths(PlannerInfo *root,
 						 RelOptInfo *baserel,
 						 Oid foreigntableid)
 {
+	PyObject   *pObj,
+			   *pMethod,
+			   *pPathKeysList,
+			   *pPathKeytuple,
+			   *pPathKeyAttrName,
+			   *pPathKeyCost,
+			   *pZero;
+	Py_ssize_t	i;
+	ListCell   *ri_cell, *eq_class_cell;
+    EquivalenceClass * eq_class;
+	ForeignTable *ftable = GetForeignTable(foreigntableid);
+	Relation	rel = RelationIdGetRelation(ftable->relid);
+	RestrictInfo *restrictinfo;
+    double parampathrows;
+	pObj = multicorn_get_instance(rel);
+    pZero = Py_BuildValue("d");
+
+	pMethod = PyObject_GetAttrString(pObj, "get_path_keys");
+	pPathKeysList = PyObject_CallObject(pMethod, Py_BuildValue("()"));
+	multicorn_error_check();
+    // Add values for restrictinfo.
+	for (i = 0; i < PyList_Size(pPathKeysList); i++)
+	{
+		pPathKeytuple = PyList_GetItem(pPathKeysList, i);
+        pPathKeyAttrName = PyTuple_GetItem(pPathKeytuple, 0);
+        pPathKeyCost = PyTuple_GetItem(pPathKeytuple, 1);
+	    PyNumber_Coerce(&pPathKeyCost, &pZero);
+        parampathrows = PyFloat_AsDouble(pPathKeyCost);
+        multicorn_error_check();
+        foreach(ri_cell, baserel->baserestrictinfo)
+        {
+            restrictinfo = (RestrictInfo *) lfirst(ri_cell);
+            if (multicorn_is_filter_on_column(restrictinfo, rel, pPathKeyAttrName))
+            {
+                /* Do stuff */
+                multicorn_append_path_from_restrictinfo(root, baserel, restrictinfo, parampathrows); 
+                multicorn_error_check();
+            }
+        }
+        // Add values for equivalence classes
+        foreach(eq_class_cell, root->eq_classes){
+           eq_class = (EquivalenceClass *) lfirst(eq_class_cell);
+           foreach(ri_cell, eq_class->ec_sources){
+            restrictinfo = (RestrictInfo *) lfirst(ri_cell);
+            if (multicorn_is_filter_on_column(restrictinfo, rel, pPathKeyAttrName))
+            {
+              multicorn_append_path_from_restrictinfo(root, baserel, restrictinfo, parampathrows); 
+            }
+           }
+        }
+	}
+	RelationClose(rel);
 	add_path(baserel, (Path *)
 			 create_foreignscan_path(root, baserel,
 									 baserel->rows,
 									 baserel->baserestrictcost.startup,
-									 baserel->baserestrictcost.startup,
+									 baserel->rows * baserel->width,
 									 NIL,		/* no pathkeys */
 									 NULL,		/* no outer rel either */
-									 baserel->fdw_private));	/* no fdw_private data */
+									 baserel->fdw_private));
 
 }
 
@@ -877,7 +1002,7 @@ MulticornParamType
 multicorn_extract_qual(Node *left, Node *right, Relation baserel, Form_pg_operator operator, PyObject **result)
 {
 	HeapTuple	tp;
-	Form_pg_attribute attr;
+	Form_pg_attribute attr, attr_right;
 	char	   *key;
 	TupleDesc	tupdesc = baserel->rd_att;
 	PyObject   *value = NULL;
@@ -941,6 +1066,15 @@ multicorn_extract_qual(Node *left, Node *right, Relation baserel, Form_pg_operat
 														  param->paramtype));
 				multicorn_error_check();
 				return param_type;
+            case T_Var:
+		        attr_right = tupdesc->attrs[((Var *) normalized_right)->varattno - 1];
+                // Check that the attributes are from the same rel.
+                if(attr->attrelid == attr_right->attrelid)
+                {
+                  *result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,s)", key, NameStr(operator->oprname), NameStr(attr_right->attname)));
+                  return MulticornVAR;
+                }
+                return MulticornUNKNOWN;
 			default:
 				elog(WARNING, "Cant manage type %i", normalized_right->type);
 				break;
