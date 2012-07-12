@@ -68,7 +68,7 @@ typedef enum MulticornParamType
 	MulticornQUAL,
 	MulticornPARAM_EXTERN,
 	MulticornPARAM_EXEC,
-    MulticornVAR,
+	MulticornVAR,
 	MulticornUNKNOWN
 }	MulticornParamType;
 
@@ -113,9 +113,9 @@ void		multicorn_execute(ForeignScanState *node);
 PyObject   *multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * state);
 void		multicorn_clean_state(MulticornExecState * state);
 MulticornParamType multicorn_extract_qual(Node *left, Node *right, Relation base_rel, Form_pg_operator operator, PyObject **result);
-PyObject *  multicorn_is_filter_on_column(RestrictInfo *restrictinfo, Relation baserel, PyObject *colname);
-void        multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo * baserel,
-                    RestrictInfo * restrictinfo, double parampathrows, Relids allrels);
+PyObject   *multicorn_is_filter_on_column(RestrictInfo *restrictinfo, Relation baserel, PyObject *colname);
+void multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo *baserel,
+		   RestrictInfo *restrictinfo, double parampathrows, Relids allrels);
 
 PyObject   *multicorn_get_class(char *className);
 PyObject   *multicorn_get_multicorn(void);
@@ -264,7 +264,7 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
 		{
 			current_expr = ((RestrictInfo *) lfirst(cell))->clause;
 			multicorn_get_column(current_expr, rel->rd_att, state->needed_columns);
-		    multicorn_extract_condition(current_expr, state->quals, state->params, rel);
+			multicorn_extract_condition(current_expr, state->quals, state->params, rel);
 		}
 		RelationClose(rel);
 		baserel->fdw_private = state;
@@ -305,13 +305,14 @@ multicorn_is_filter_on_column(RestrictInfo *restrictinfo, Relation baserel, PyOb
 				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
 				multicorn_error_check();
 				return isEq == 0 ? qual : NULL;
-            case MulticornVAR:
+			case MulticornVAR:
 				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
 				multicorn_error_check();
 				return isEq == 0 ? qual : NULL;
-                if(isEq == 0){
-                  return qual;
-                }
+				if (isEq == 0)
+				{
+					return qual;
+				}
 				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "value"));
 				multicorn_error_check();
 				return isEq == 0 ? qual : NULL;
@@ -323,27 +324,29 @@ multicorn_is_filter_on_column(RestrictInfo *restrictinfo, Relation baserel, PyOb
 }
 
 void
-multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo * baserel,
-    RestrictInfo * restrictinfo, double parampathrows, Relids allrels)
+multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo *baserel,
+			RestrictInfo *restrictinfo, double parampathrows, Relids allrels)
 {
-    ParamPathInfo * ppi = makeNode(ParamPathInfo);
-    Relids otherrels = NULL;
-    ForeignPath * foreignPath;
-    if(allrels){
-      otherrels = bms_del_member(bms_copy((Bitmapset *)allrels), baserel->relid);
-    }
-    foreignPath = create_foreignscan_path(root, baserel,
-                                          parampathrows,
-                           baserel->baserestrictcost.startup + 10,
-                           parampathrows * baserel->width,
-                                          NIL,
-                                          NULL,
-                                       baserel->fdw_private);
-    ppi->ppi_req_outer =  otherrels;
-    ppi->ppi_rows = parampathrows;
-    ppi->ppi_clauses = lappend(ppi->ppi_clauses, restrictinfo);
-    foreignPath->path.param_info = ppi;
-    add_path(baserel, (Path *) foreignPath);
+	ParamPathInfo *ppi = makeNode(ParamPathInfo);
+	Relids		otherrels = NULL;
+	ForeignPath *foreignPath;
+
+	if (allrels)
+	{
+		otherrels = bms_del_member(bms_copy((Bitmapset *) allrels), baserel->relid);
+	}
+	foreignPath = create_foreignscan_path(root, baserel,
+										  parampathrows,
+									  baserel->baserestrictcost.startup + 10,
+										  parampathrows * baserel->width,
+										  NIL,
+										  NULL,
+										  baserel->fdw_private);
+	ppi->ppi_req_outer = otherrels;
+	ppi->ppi_rows = parampathrows;
+	ppi->ppi_clauses = lappend(ppi->ppi_clauses, restrictinfo);
+	foreignPath->path.param_info = ppi;
+	add_path(baserel, (Path *) foreignPath);
 }
 
 /*
@@ -362,43 +365,47 @@ multicornGetForeignPaths(PlannerInfo *root,
 			   *pPathKeyAttrName,
 			   *pPathKeyCost,
 			   *pZero,
-               *pQual;
+			   *pQual;
 	Py_ssize_t	i;
-	ListCell   *ri_cell, *eq_class_cell;
-    EquivalenceClass * eq_class;
+	ListCell   *ri_cell,
+			   *eq_class_cell;
+	EquivalenceClass *eq_class;
 	ForeignTable *ftable = GetForeignTable(foreigntableid);
 	Relation	rel = RelationIdGetRelation(ftable->relid);
 	RestrictInfo *restrictinfo;
-    double parampathrows;
-    MulticornPlanState * state = baserel->fdw_private;
+	double		parampathrows;
+	MulticornPlanState *state = baserel->fdw_private;
+
 	pObj = multicorn_get_instance(rel);
-    pZero = Py_BuildValue("d");
+	pZero = Py_BuildValue("d");
 
 	pMethod = PyObject_GetAttrString(pObj, "get_path_keys");
 	pPathKeysList = PyObject_CallObject(pMethod, Py_BuildValue("()"));
 	multicorn_error_check();
-    // Add values for restrictinfo.
+	/* Add values for restrictinfo. */
 	for (i = 0; i < PyList_Size(pPathKeysList); i++)
 	{
 		pPathKeytuple = PyList_GetItem(pPathKeysList, i);
-        pPathKeyAttrName = PyTuple_GetItem(pPathKeytuple, 0);
-        pPathKeyCost = PyTuple_GetItem(pPathKeytuple, 1);
-	    PyNumber_Coerce(&pPathKeyCost, &pZero);
-        parampathrows = PyFloat_AsDouble(pPathKeyCost);
-        multicorn_error_check();
-        // Add values for equivalence classes
-        foreach(eq_class_cell, root->eq_classes){
-           eq_class = (EquivalenceClass *) lfirst(eq_class_cell);
-           foreach(ri_cell, eq_class->ec_sources){
-            restrictinfo = (RestrictInfo *) lfirst(ri_cell);
-            pQual = multicorn_is_filter_on_column(restrictinfo, rel, pPathKeyAttrName);
-            if(pQual)
-            {
-              multicorn_append_path_from_restrictinfo(root, baserel, restrictinfo, parampathrows, eq_class->ec_relids);
-              multicorn_error_check();
-            }
-           }
-        }
+		pPathKeyAttrName = PyTuple_GetItem(pPathKeytuple, 0);
+		pPathKeyCost = PyTuple_GetItem(pPathKeytuple, 1);
+		PyNumber_Coerce(&pPathKeyCost, &pZero);
+		parampathrows = PyFloat_AsDouble(pPathKeyCost);
+		multicorn_error_check();
+		/* Add values for equivalence classes */
+		foreach(eq_class_cell, root->eq_classes)
+		{
+			eq_class = (EquivalenceClass *) lfirst(eq_class_cell);
+			foreach(ri_cell, eq_class->ec_sources)
+			{
+				restrictinfo = (RestrictInfo *) lfirst(ri_cell);
+				pQual = multicorn_is_filter_on_column(restrictinfo, rel, pPathKeyAttrName);
+				if (pQual)
+				{
+					multicorn_append_path_from_restrictinfo(root, baserel, restrictinfo, parampathrows, eq_class->ec_relids);
+					multicorn_error_check();
+				}
+			}
+		}
 	}
 	RelationClose(rel);
 	add_path(baserel, (Path *)
@@ -408,7 +415,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 									 baserel->rows * baserel->width,
 									 NIL,		/* no pathkeys */
 									 NULL,		/* no outer rel either */
-									 (void *)state));
+									 (void *) state));
 
 }
 
@@ -425,18 +432,19 @@ multicornGetForeignPlan(PlannerInfo *root,
 						List *scan_clauses)
 {
 	Index		scan_relid = baserel->relid;
-    MulticornPlanState * state = baserel->fdw_private;
+	MulticornPlanState *state = baserel->fdw_private;
 	ForeignTable *ftable = GetForeignTable(foreigntableid);
 	Relation	rel = RelationIdGetRelation(ftable->relid);
-    Expr * current_expr;
-    ListCell * lc;
+	Expr	   *current_expr;
+	ListCell   *lc;
+
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
-    foreach(lc, scan_clauses)
-    {
-      current_expr = (Expr *) lfirst(lc);
-	  multicorn_extract_condition(current_expr, state->quals, state->params, rel);
-      multicorn_error_check();
-    }
+	foreach(lc, scan_clauses)
+	{
+		current_expr = (Expr *) lfirst(lc);
+		multicorn_extract_condition(current_expr, state->quals, state->params, rel);
+		multicorn_error_check();
+	}
 	RelationClose(rel);
 	/* Create the ForeignScan node */
 	return make_foreignscan(tlist,
@@ -444,8 +452,6 @@ multicornGetForeignPlan(PlannerInfo *root,
 							scan_relid,
 							NIL,	/* no expressions to evaluate */
 							baserel->fdw_private);
-														
-
 }
 
 
@@ -479,6 +485,18 @@ multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * s
 			   *pParams;
 	ParamListInfo params = node->ss.ps.state->es_param_list_info;
 	ParamExecData *exec_params = node->ss.ps.state->es_param_exec_vals;
+	ListCell   *lc;
+
+	if (!bms_is_empty(node->ss.ps.plan->extParam))
+	{
+		/* If we still have pending external params,  */
+		/* look for them in the qual list. */
+		foreach(lc, node->ss.ps.plan->qual)
+		{
+			multicorn_extract_condition((Expr *) lfirst(lc), state->planstate->quals,
+										state->planstate->params, rel);
+		}
+	}
 
 	/* Fill the params with the concrete values. */
 	if (PyList_Size(state->planstate->params) > 0)
@@ -529,12 +547,12 @@ multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * s
 				default:
 					continue;
 			}
-            multicorn_error_check();
+			multicorn_error_check();
 			pValue = multicorn_datum_to_python(value,
 											   PyInt_AsSsize_t(PyObject_GetAttrString(pCurrentParam, "param_type")),
 											   rel->rd_att->attrs[attrIndex]);
 			PyList_Append(pConds, PyObject_CallObject(qual_class, Py_BuildValue("(O,O,O)", pKey, pOperator, pValue)));
-            multicorn_error_check();
+			multicorn_error_check();
 		}
 	}
 	else
@@ -542,6 +560,7 @@ multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * s
 		/* Reuse "quals" directly */
 		pConds = state->planstate->quals;
 	}
+
 	return pConds;
 }
 
@@ -1005,7 +1024,8 @@ MulticornParamType
 multicorn_extract_qual(Node *left, Node *right, Relation baserel, Form_pg_operator operator, PyObject **result)
 {
 	HeapTuple	tp;
-	Form_pg_attribute attr, attr_right;
+	Form_pg_attribute attr,
+				attr_right;
 	char	   *key;
 	TupleDesc	tupdesc = baserel->rd_att;
 	PyObject   *value = NULL;
@@ -1069,15 +1089,15 @@ multicorn_extract_qual(Node *left, Node *right, Relation baserel, Form_pg_operat
 														  param->paramtype));
 				multicorn_error_check();
 				return param_type;
-            case T_Var:
-		        attr_right = tupdesc->attrs[((Var *) normalized_right)->varattno - 1];
-                // Check that the attributes are from the same rel.
-                if(attr->attrelid == attr_right->attrelid)
-                {
-                  *result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,s)", key, NameStr(operator->oprname), NameStr(attr_right->attname)));
-                  return MulticornVAR;
-                }
-                return MulticornUNKNOWN;
+			case T_Var:
+				attr_right = tupdesc->attrs[((Var *) normalized_right)->varattno - 1];
+				/* Check that the attributes are from the same rel. */
+				if (attr->attrelid == attr_right->attrelid)
+				{
+					*result = PyObject_CallObject(qual_class, Py_BuildValue("(s,s,s)", key, NameStr(operator->oprname), NameStr(attr_right->attname)));
+					return MulticornVAR;
+				}
+				return MulticornUNKNOWN;
 			default:
 				elog(WARNING, "Cant manage type %i", normalized_right->type);
 				break;
@@ -1087,7 +1107,7 @@ multicorn_extract_qual(Node *left, Node *right, Relation baserel, Form_pg_operat
 }
 
 void
-multicorn_extract_condition(Expr * clause, PyObject *qual_list, PyObject *param_list, Relation baserel)
+multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_list, Relation baserel)
 {
 	PyObject   *tempqual = NULL;
 	HeapTuple	tp;
@@ -1096,124 +1116,124 @@ multicorn_extract_condition(Expr * clause, PyObject *qual_list, PyObject *param_
 	Form_pg_operator operator_tup;
 	MulticornParamType paramtype;
 
-    if (clause != NULL)
-    {
-        switch (clause->type)
-        {
-            case T_OpExpr:
-                if (list_length(((OpExpr *) clause)->args) == 2)
-                {
-                    OpExpr	   *op = (OpExpr *) clause;
+	if (clause != NULL)
+	{
+		switch (clause->type)
+		{
+			case T_OpExpr:
+				if (list_length(((OpExpr *) clause)->args) == 2)
+				{
+					OpExpr	   *op = (OpExpr *) clause;
 
-                    left = list_nth(op->args, 0);
-                    right = list_nth(op->args, 1);
-                    tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
-                    if (!HeapTupleIsValid(tp))
-                        elog(ERROR, "cache lookup failed for operator %u", op->opno);
-                    operator_tup = (Form_pg_operator) GETSTRUCT(tp);
-                    ReleaseSysCache(tp);
-                    paramtype = multicorn_extract_qual(left, right, baserel, operator_tup, &tempqual);
-                    switch (paramtype)
-                    {
-                        case MulticornQUAL:
-                            PyList_Append(qual_list, tempqual);
-                            break;
-                        case MulticornPARAM_EXTERN:
-                        case MulticornPARAM_EXEC:
-                            PyList_Append(param_list, tempqual);
-                            break;
-                        // MulticornVAR ignored here, it should be
-                        // converted to a param extern or param_exec after
-                        // a path has been chosen.
-                        default:
-                            break;
-                    }
-                }
-                break;
-            case T_ScalarArrayOpExpr:
-                if (list_length(((ScalarArrayOpExpr *) clause)->args) == 2)
-                {
-                    ScalarArrayOpExpr *op = (ScalarArrayOpExpr *) clause;
+					left = list_nth(op->args, 0);
+					right = list_nth(op->args, 1);
+					tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+					if (!HeapTupleIsValid(tp))
+						elog(ERROR, "cache lookup failed for operator %u", op->opno);
+					operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+					ReleaseSysCache(tp);
+					paramtype = multicorn_extract_qual(left, right, baserel, operator_tup, &tempqual);
+					switch (paramtype)
+					{
+						case MulticornQUAL:
+							PyList_Append(qual_list, tempqual);
+							break;
+						case MulticornPARAM_EXTERN:
+						case MulticornPARAM_EXEC:
+							PyList_Append(param_list, tempqual);
+							break;
+							/* MulticornVAR ignored here, it should be */
+							/* converted to a param extern or param_exec after */
+							/* a path has been chosen. */
+						default:
+							break;
+					}
+				}
+				break;
+			case T_ScalarArrayOpExpr:
+				if (list_length(((ScalarArrayOpExpr *) clause)->args) == 2)
+				{
+					ScalarArrayOpExpr *op = (ScalarArrayOpExpr *) clause;
 
-                    left = list_nth(op->args, 0);
-                    right = list_nth(op->args, 1);
-                    tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
-                    if (!HeapTupleIsValid(tp))
-                        elog(ERROR, "cache lookup failed for operator %u", op->opno);
-                    operator_tup = (Form_pg_operator) GETSTRUCT(tp);
-                    ReleaseSysCache(tp);
+					left = list_nth(op->args, 0);
+					right = list_nth(op->args, 1);
+					tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+					if (!HeapTupleIsValid(tp))
+						elog(ERROR, "cache lookup failed for operator %u", op->opno);
+					operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+					ReleaseSysCache(tp);
 
-                    /*
-                     * Build the qual "normally" and set the operator to a
-                     * tuple instead
-                     */
-                    paramtype = multicorn_extract_qual(left, right, baserel, operator_tup, &tempqual);
+					/*
+					 * Build the qual "normally" and set the operator to a
+					 * tuple instead
+					 */
+					paramtype = multicorn_extract_qual(left, right, baserel, operator_tup, &tempqual);
 
-                    if (tempqual)
-                    {
-                        multicorn_unnest(left, &left);
-                        if (IsA(left, Var))
-                        {
-                            /*
-                             * Don't add it to the list if the form is
-                             * constant = ANY(column)
-                             */
-                            if (op->useOr)
-                            {
-                                /* ANY clause on the array + "=" -> IN */
-                                PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
-                                                                                           PyObject_GetAttrString(tempqual, "operator"), Py_True));
-                            }
-                            else
-                            {
-                                PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
-                                                                                           PyObject_GetAttrString(tempqual, "operator"), Py_False));
-                            }
-                        }
-                    }
-                    switch (paramtype)
-                    {
-                        case MulticornQUAL:
-                            PyList_Append(qual_list, tempqual);
-                            break;
-                        case MulticornPARAM_EXEC:
-                        case MulticornPARAM_EXTERN:
-                            PyList_Append(param_list, tempqual);
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                break;
-            case T_NullTest:
-                /* TODO: this code is pretty much duplicated from */
-                /* get_param, find a way to share it. */
-                if IsA
-                    (((NullTest *) clause)->arg, Var)
-                {
-                    char	   *operator_name;
-                    NullTest   *nulltest = (NullTest *) clause;
-                    TupleDesc	tupdesc = baserel->rd_att;
-                    PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
-                    Form_pg_attribute attr = tupdesc->attrs[((Var *) nulltest->arg)->varattno - 1];
+					if (tempqual)
+					{
+						multicorn_unnest(left, &left);
+						if (IsA(left, Var))
+						{
+							/*
+							 * Don't add it to the list if the form is
+							 * constant = ANY(column)
+							 */
+							if (op->useOr)
+							{
+								/* ANY clause on the array + "=" -> IN */
+								PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+																						   PyObject_GetAttrString(tempqual, "operator"), Py_True));
+							}
+							else
+							{
+								PyObject_SetAttrString(tempqual, "operator", Py_BuildValue("(O,O)",
+																						   PyObject_GetAttrString(tempqual, "operator"), Py_False));
+							}
+						}
+					}
+					switch (paramtype)
+					{
+						case MulticornQUAL:
+							PyList_Append(qual_list, tempqual);
+							break;
+						case MulticornPARAM_EXEC:
+						case MulticornPARAM_EXTERN:
+							PyList_Append(param_list, tempqual);
+							break;
+						default:
+							break;
+					}
+				}
+				break;
+			case T_NullTest:
+				/* TODO: this code is pretty much duplicated from */
+				/* get_param, find a way to share it. */
+				if IsA
+					(((NullTest *) clause)->arg, Var)
+				{
+					char	   *operator_name;
+					NullTest   *nulltest = (NullTest *) clause;
+					TupleDesc	tupdesc = baserel->rd_att;
+					PyObject   *qual_class = multicorn_get_class("multicorn.Qual");
+					Form_pg_attribute attr = tupdesc->attrs[((Var *) nulltest->arg)->varattno - 1];
 
-                    if (nulltest->nulltesttype == IS_NULL)
-                    {
-                        operator_name = "=";
-                    }
-                    else
-                    {
-                        operator_name = "<>";
-                    }
-                    PyList_Append(qual_list, PyObject_CallObject(qual_class,
-                                                                 Py_BuildValue("(s,s,O)", NameStr(attr->attname), operator_name, Py_None)));
-                }
-                break;
-            default:
-                elog(WARNING, "GOT AN UNEXPECTED TYPE: %i", clause->type);
-                break;
-        }
-    }
+					if (nulltest->nulltesttype == IS_NULL)
+					{
+						operator_name = "=";
+					}
+					else
+					{
+						operator_name = "<>";
+					}
+					PyList_Append(qual_list, PyObject_CallObject(qual_class,
+																 Py_BuildValue("(s,s,O)", NameStr(attr->attname), operator_name, Py_None)));
+				}
+				break;
+			default:
+				elog(WARNING, "GOT AN UNEXPECTED TYPE: %i", clause->type);
+				break;
+		}
+	}
 }
 
 PyObject *
@@ -1331,7 +1351,7 @@ multicorn_report_exception(PyObject *pErrType, PyObject *pErrValue, PyObject *pE
 {
 	char	   *errName,
 			   *errValue,
-               *errTraceback = "";
+			   *errTraceback = "";
 	PyObject   *traceback_list;
 	PyObject   *tracebackModule = PyImport_Import(PyString_FromString("traceback"));
 	PyObject   *format_exception = PyObject_GetAttrString(tracebackModule, "format_exception");
@@ -1340,11 +1360,11 @@ multicorn_report_exception(PyObject *pErrType, PyObject *pErrValue, PyObject *pE
 	PyErr_NormalizeException(&pErrType, &pErrValue, &pErrTraceback);
 	errName = PyString_AsString(PyObject_GetAttrString(pErrType, "__name__"));
 	errValue = PyString_AsString(PyObject_Str(pErrValue));
-    if(pErrTraceback)
-    {
-      traceback_list = PyObject_CallObject(format_exception, Py_BuildValue("(O,O,O)", pErrType, pErrValue, pErrTraceback));
-      errTraceback = PyString_AsString(PyObject_CallObject(PyObject_GetAttrString(newline, "join"), Py_BuildValue("(O)", traceback_list)));
-    }
+	if (pErrTraceback)
+	{
+		traceback_list = PyObject_CallObject(format_exception, Py_BuildValue("(O,O,O)", pErrType, pErrValue, pErrTraceback));
+		errTraceback = PyString_AsString(PyObject_CallObject(PyObject_GetAttrString(newline, "join"), Py_BuildValue("(O)", traceback_list)));
+	}
 	ereport(ERROR, (errmsg("Error in python: %s", errName),
 					errdetail("%s", errValue),
 					errdetail_log("%s", errTraceback)));
