@@ -20,6 +20,11 @@ STANDARD_FLAGS = {
 SEARCH_HEADERS = ['BCC', 'CC', 'FROM', 'TO']
 
 
+class NoMatchPossible(Exception):
+    """An exception raised when the conditions can NOT be met by any message,
+    ever."""
+
+
 def make_or(values):
     """Create an imap OR filter based on a list of conditions to be or'ed"""
     values = filter(lambda x: x not in (None, '()'), values)
@@ -133,6 +138,11 @@ class ImapFdw(ForeignDataWrapper):
         elif key in SEARCH_HEADERS:
             value = '%s "%s"' % (key, value)
         else:
+            # Special case for Message-ID and In-Reply-To:
+            # zero-length strings are forbidden so dont bother
+            # searching them
+            if not value:
+                raise NoMatchPossible()
             prefix = 'HEADER '
             value = '%s "%s"' % (key, value)
         return '%s%s' % (prefix, value)
@@ -177,9 +187,13 @@ class ImapFdw(ForeignDataWrapper):
                 col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
                         column.upper()
                 headers.append(column)
-        conditions = self.extract_conditions(quals) or ['ALL']
-        matching_mails = self.imap_agent.search(charset="UTF8",
-            criteria=conditions)
+        try:
+            conditions = self.extract_conditions(quals) or ['ALL']
+        except NoMatchPossible:
+            matching_mails = []
+        else:
+            matching_mails = self.imap_agent.search(charset="UTF8",
+                criteria=conditions)
         if matching_mails:
             data = self.imap_agent.fetch(matching_mails, col_to_imap.values())
             item = {}
@@ -187,8 +201,7 @@ class ImapFdw(ForeignDataWrapper):
                 for column, key in col_to_imap.iteritems():
                     item[column] = msg[key]
                     if column in headers:
-                        item[column] = item[column].replace('%s:' %
-                            column, '', 1).strip()
+                        item[column] = item[column].split(':', 1)[-1].strip()
                         values = decode_header(item[column])
                         for decoded_header, charset in values:
                             # Values are of the from "Header: value"

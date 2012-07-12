@@ -101,7 +101,6 @@ void		multicorn_error_check(void);
 void		_PG_init(void);
 void		multicorn_get_options(Oid foreigntableid, PyObject *options_dict, char **module);
 void		multicorn_get_attributes_def(TupleDesc desc, PyObject *dict);
-void		multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_list, Relation baserel);
 PyObject   *multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribute);
 void		multicorn_report_exception(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback);
 PyObject   *multicorn_get_instance(Relation rel);
@@ -112,6 +111,7 @@ const char *get_encoding_from_attribute(Form_pg_attribute attribute);
 void		multicorn_execute(ForeignScanState *node);
 PyObject   *multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * state);
 void		multicorn_clean_state(MulticornExecState * state);
+void		multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_list, Relation baserel);
 MulticornParamType multicorn_extract_qual(Node *left, Node *right, Relation base_rel, Form_pg_operator operator, PyObject **result);
 PyObject   *multicorn_is_filter_on_column(RestrictInfo *restrictinfo, Relation baserel, PyObject *colname);
 void multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo *baserel,
@@ -432,20 +432,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 						List *scan_clauses)
 {
 	Index		scan_relid = baserel->relid;
-	MulticornPlanState *state = baserel->fdw_private;
-	ForeignTable *ftable = GetForeignTable(foreigntableid);
-	Relation	rel = RelationIdGetRelation(ftable->relid);
-	Expr	   *current_expr;
-	ListCell   *lc;
-
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
-	foreach(lc, scan_clauses)
-	{
-		current_expr = (Expr *) lfirst(lc);
-		multicorn_extract_condition(current_expr, state->quals, state->params, rel);
-		multicorn_error_check();
-	}
-	RelationClose(rel);
 	/* Create the ForeignScan node */
 	return make_foreignscan(tlist,
 							scan_clauses,
@@ -463,10 +450,12 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 static void
 multicornBeginForeignScan(ForeignScanState *node, int eflags)
 {
-	/* TODO: do things if necessary */
+    PyObject * dummyQuals;
 	AttInMetadata *attinmeta;
 	MulticornExecState *state;
 	MulticornPlanState *plan_state;
+	Relation	rel = node->ss.ss_currentRelation;
+	ListCell   *lc;
 
 	attinmeta = TupleDescGetAttInMetadata(node->ss.ss_currentRelation->rd_att);
 	state = (MulticornExecState *) palloc(sizeof(MulticornExecState));
@@ -476,6 +465,18 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	plan_state = (MulticornPlanState *) ((ForeignScan *) node->ss.ps.plan)->fdw_private;
 	state->planstate = plan_state;
 	node->fdw_state = (void *) state;
+    dummyQuals = PyList_New(0);
+	if (!bms_is_empty(node->ss.ps.plan->extParam))
+	{
+		/* If we still have pending external params,  */
+		/* look for them in the qual list.  */
+        /* We use dummy quals since we do not want to parse quals two times */
+		foreach(lc, node->ss.ps.plan->qual)
+		{
+			multicorn_extract_condition((Expr *) lfirst(lc), dummyQuals,
+										state->planstate->params, rel);
+		}
+	}
 }
 
 PyObject *
@@ -485,18 +486,6 @@ multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * s
 			   *pParams;
 	ParamListInfo params = node->ss.ps.state->es_param_list_info;
 	ParamExecData *exec_params = node->ss.ps.state->es_param_exec_vals;
-	ListCell   *lc;
-
-	if (!bms_is_empty(node->ss.ps.plan->extParam))
-	{
-		/* If we still have pending external params,  */
-		/* look for them in the qual list. */
-		foreach(lc, node->ss.ps.plan->qual)
-		{
-			multicorn_extract_condition((Expr *) lfirst(lc), state->planstate->quals,
-										state->planstate->params, rel);
-		}
-	}
 
 	/* Fill the params with the concrete values. */
 	if (PyList_Size(state->planstate->params) > 0)
@@ -675,8 +664,10 @@ multicornEndForeignScan(ForeignScanState *node)
 	multicorn_clean_state(state);
 	Py_DECREF(state->planstate->needed_columns);
 	Py_DECREF(state->planstate->quals);
+	Py_DECREF(state->planstate->params);
 	state->planstate->needed_columns = NULL;
 	state->planstate->quals = NULL;
+	state->planstate->params = NULL;
 }
 
 void
