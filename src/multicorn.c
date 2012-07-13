@@ -333,7 +333,7 @@ multicorn_append_path_from_restrictinfo(PlannerInfo *root, RelOptInfo *baserel,
 
 	if (allrels)
 	{
-		otherrels = bms_del_member(bms_copy((Bitmapset *) allrels), baserel->relid);
+		otherrels = bms_difference(allrels, bms_make_singleton(baserel->relid));
 	}
 	foreignPath = create_foreignscan_path(root, baserel,
 										  parampathrows,
@@ -395,14 +395,17 @@ multicornGetForeignPaths(PlannerInfo *root,
 		foreach(eq_class_cell, root->eq_classes)
 		{
 			eq_class = (EquivalenceClass *) lfirst(eq_class_cell);
-			foreach(ri_cell, eq_class->ec_sources)
+			if (bms_is_member(baserel->relid, eq_class->ec_relids))
 			{
-				restrictinfo = (RestrictInfo *) lfirst(ri_cell);
-				pQual = multicorn_is_filter_on_column(restrictinfo, rel, pPathKeyAttrName);
-				if (pQual)
+				foreach(ri_cell, eq_class->ec_sources)
 				{
-					multicorn_append_path_from_restrictinfo(root, baserel, restrictinfo, parampathrows, eq_class->ec_relids);
-					multicorn_error_check();
+					restrictinfo = (RestrictInfo *) lfirst(ri_cell);
+					pQual = multicorn_is_filter_on_column(restrictinfo, rel, pPathKeyAttrName);
+					if (pQual)
+					{
+						multicorn_append_path_from_restrictinfo(root, baserel, restrictinfo, parampathrows, eq_class->ec_relids);
+						multicorn_error_check();
+					}
 				}
 			}
 		}
@@ -466,15 +469,14 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	plan_state = (MulticornPlanState *) ((ForeignScan *) node->ss.ps.plan)->fdw_private;
 	state->planstate = plan_state;
 	node->fdw_state = (void *) state;
-	dummyQuals = PyList_New(0);
 	if (!bms_is_empty(node->ss.ps.plan->extParam))
 	{
 		/* If we still have pending external params,  */
 		/* look for them in the qual list.	*/
 		/* We use dummy quals since we do not want to parse quals two times */
+		dummyQuals = PyList_New(0);
 		Py_DECREF(state->planstate->params);
 		state->planstate->params = PyList_New(0);
-
 		foreach(lc, node->ss.ps.plan->qual)
 		{
 			multicorn_extract_condition((Expr *) lfirst(lc), dummyQuals,

@@ -35,3 +35,14 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                     line[column_name] = '%s %s %s' % (column_name,
                             next(random_thing), index)
             yield line
+
+
+    def get_rel_size(self, quals, columns):
+        if self.test_type == 'planner':
+            return (10000000, len(columns) * 10)
+        return (20, len(columns) * 10)
+
+    def get_path_keys(self):
+        if self.test_type == 'planner':
+            return [('test1', 1)]
+        return []
