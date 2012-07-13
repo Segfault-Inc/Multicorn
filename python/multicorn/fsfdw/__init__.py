@@ -9,7 +9,7 @@ https://github.com/Kozea/StructuredFS.
 from multicorn import ForeignDataWrapper
 from multicorn.fsfdw.structuredfs import StructuredDirectory
 from multicorn.utils import log_to_postgres
-from logging import ERROR, WARNING
+from logging import ERROR, WARNING, DEBUG
 import os
 
 
@@ -34,6 +34,11 @@ class FilesystemFdw(ForeignDataWrapper):
         self.content_column = options.get('content_column', None)
         self.filename_column = options.get('filename_column', None)
         self.structured_directory = StructuredDirectory(root_dir, pattern)
+        self.folder_columns = [key[0] for key in
+                               self.structured_directory._path_parts_properties
+                               if key]
+        # Assume 100 files/folder per folder 
+        self.total_files = 100 ** len(pattern.split('/'))
         if self.filename_column:
             if self.filename_column not in columns:
                 log_to_postgres("The filename column (%s) does not exist"
@@ -61,6 +66,46 @@ class FilesystemFdw(ForeignDataWrapper):
                     WARNING, "Remove the following columns: %s "
                     % missing_columns)
 
+    def get_rel_size(self, quals, columns):
+        """Helps the planner by returning costs
+        For the width, we assume 30 for every returned column, + 1 million for the content
+        column.
+
+        For the number of rows, we assume 100 files per folder.
+        So, if we filter down to the last folder, thats only 100 files.
+
+        To one level up, that's already 100^2.
+        """
+        # TODO: find a way to give useful stats.
+        cond = self._equals_cond(quals)
+        nb_total = len(self.folder_columns)
+        nb_fixes = len([key for key in cond if key in
+                       self.folder_columns])
+        nb_rows = 100 ** (nb_total - nb_fixes)
+        if self.filename_column in cond:
+            nb_rows = 1
+        width = len(columns) * 30
+        if self.content_column in columns:
+            width += 1000000
+        return (nb_rows, width)
+
+    def _equals_cond(self, quals):
+        return dict((qual.field_name, unicode(qual.value)) for
+                qual in quals if qual.operator == '=')
+
+    def get_path_keys(self):
+        """Return the path keys for parameterized path.
+
+        The structured fs can manage equal filters on its directory patterns,
+        so that can be used.
+        """
+        values = [((self.filename_column,), 1)]
+        folders = self.folder_columns
+        for i in range(1, len(folders) + 1):
+            values.append((folders[:i], 100 ** (len(folders) - i)))
+        log_to_postgres(unicode(values))
+        return values
+
     def execute(self, quals, columns):
         """Execute method.
 
@@ -68,8 +113,8 @@ class FilesystemFdw(ForeignDataWrapper):
         structure.
 
         """
-        cond = dict((qual.field_name, unicode(qual.value)) for
-                qual in quals if qual.operator == '=')
+        cond = self._equals_cond(quals)
+        log_to_postgres(str(quals))
         if self.filename_column in cond:
             item = self.structured_directory.from_filename(
                     cond[self.filename_column])

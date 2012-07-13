@@ -92,8 +92,8 @@ class ImapFdw(ForeignDataWrapper):
     def get_path_keys(self):
         """Helps the planner by supplying a list of list of access keys, as well
         as a row estimate for each one."""
-        return [('Message-ID', 1), ('From', 100), ('To', 100),
-                ('In-Reply-To', 10)]
+        return [(('Message-ID',), 1), (('From',), 100), (('To',), 100),
+                (('In-Reply-To',), 10)]
 
     def _make_condition(self, key, operator, value):
         if operator not in ('~~', '!~~', '=', '<>', '@>', '&&', '~~*', '!~~*'):

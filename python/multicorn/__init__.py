@@ -84,6 +84,13 @@ class Param(Qual):
         self.param_kind = param_kind
         self.param_type = param_type
 
+class Var(Qual):
+    """A var is like a param, except that the comparison will be against another
+    field.
+    The value contains the field name. If empty, the value comes from another
+    relation.
+    """
+
 class ForeignDataWrapper(object):
     """Base class for all foreign data wrapper instances."""
 
