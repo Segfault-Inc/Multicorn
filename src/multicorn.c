@@ -432,6 +432,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 						List *scan_clauses)
 {
 	Index		scan_relid = baserel->relid;
+
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 	/* Create the ForeignScan node */
 	return make_foreignscan(tlist,
@@ -450,7 +451,7 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 static void
 multicornBeginForeignScan(ForeignScanState *node, int eflags)
 {
-    PyObject * dummyQuals;
+	PyObject   *dummyQuals;
 	AttInMetadata *attinmeta;
 	MulticornExecState *state;
 	MulticornPlanState *plan_state;
@@ -465,12 +466,15 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	plan_state = (MulticornPlanState *) ((ForeignScan *) node->ss.ps.plan)->fdw_private;
 	state->planstate = plan_state;
 	node->fdw_state = (void *) state;
-    dummyQuals = PyList_New(0);
+	dummyQuals = PyList_New(0);
 	if (!bms_is_empty(node->ss.ps.plan->extParam))
 	{
 		/* If we still have pending external params,  */
-		/* look for them in the qual list.  */
-        /* We use dummy quals since we do not want to parse quals two times */
+		/* look for them in the qual list.	*/
+		/* We use dummy quals since we do not want to parse quals two times */
+		Py_DECREF(state->planstate->params);
+		state->planstate->params = PyList_New(0);
+
 		foreach(lc, node->ss.ps.plan->qual)
 		{
 			multicorn_extract_condition((Expr *) lfirst(lc), dummyQuals,
