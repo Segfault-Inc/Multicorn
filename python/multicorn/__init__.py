@@ -127,8 +127,7 @@ class ForeignDataWrapper(object):
         columns     -- A list of columns that postgresql is going to need.
                     You should return AT LEAST those columns when returning a
                     dict. If returning a sequence, every column from the table
-                    should be in
-                    the sequence.
+                    should be in the sequence.
 
         """
         pass

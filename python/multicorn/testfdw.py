@@ -44,5 +44,5 @@ class TestForeignDataWrapper(ForeignDataWrapper):
 
     def get_path_keys(self):
         if self.test_type == 'planner':
-            return [('test1', 1)]
+            return [(('test1',), 1)]
         return []
