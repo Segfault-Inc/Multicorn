@@ -52,7 +52,6 @@ typedef struct MulticornPlanState
 	PyObject   *needed_columns;
 	PyObject   *quals;
 	PyObject   *params;
-	int			used_relid;
 	PlannerInfo *planinfo;
 }	MulticornPlanState;
 
@@ -117,7 +116,7 @@ void		multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *p
 MulticornParamType multicorn_extract_qual(Node *left, Node *right, Relation base_rel,
 					   Relids base_relids,
 					   Form_pg_operator operator, PyObject **result);
-bool		multicorn_is_on_column(EquivalenceClass *eq_class, Relation baserel, PyObject *colname, Relids base_relids);
+List	   *multicorn_on_column_clauses(EquivalenceClass *eq_class, Relation baserel, PyObject *colname, Relids base_relids);
 void multicorn_append_param_path(PlannerInfo *root, RelOptInfo *baserel,
 				  Relids *relids, double parampathrows, List *restrictinfos);
 
@@ -280,8 +279,8 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
  *	Test wether the given equivalence class concerns the given
  *	column (identified by name)
  * */
-bool
-multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colname, Relids base_relids)
+List *
+multicorn_on_column_clauses(EquivalenceClass *eq_class, Relation rel, PyObject *colname, Relids base_relids)
 {
 	Expr	   *clause;
 	Expr	   *left;
@@ -291,6 +290,7 @@ multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colna
 	PyObject   *qual;
 	OpExpr	   *op;
 	int			isEq;
+	List	   *clauses = NULL;
 	MulticornParamType param_type;
 	ListCell   *ri_cell;
 	RestrictInfo *restrictinfo;
@@ -324,7 +324,7 @@ multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colna
 						multicorn_error_check();
 						if (isEq == 0)
 						{
-							return true;
+							clauses = list_append_unique(clauses, restrictinfo);
 						}
 						break;
 					case MulticornVAR:
@@ -332,13 +332,13 @@ multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colna
 						multicorn_error_check();
 						if (isEq == 0)
 						{
-							return true;
+							clauses = list_append_unique(clauses, restrictinfo);
 						}
 						isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "value"));
 						multicorn_error_check();
 						if (isEq == 0)
 						{
-							return true;
+							clauses = list_append_unique(clauses, restrictinfo);
 						}
 						break;
 					default:
@@ -347,7 +347,7 @@ multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colna
 			}
 		}
 	}
-	return false;
+	return clauses;
 }
 
 
@@ -408,6 +408,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 	int			found = 0;
 	MulticornPlanState *state = baserel->fdw_private;
 	List	   *clauses = NULL;
+	List	   *current_clauses = NULL;
 	Relids	   *outerrels;
 
 	pObj = multicorn_get_instance(rel);
@@ -437,10 +438,11 @@ multicornGetForeignPaths(PlannerInfo *root,
 			foreach(eq_class_cell, root->eq_classes)
 			{
 				eq_class = (EquivalenceClass *) lfirst(eq_class_cell);
-				if (multicorn_is_on_column(eq_class, rel, pPathKeyAttrName, bms_make_singleton(baserel->relid)))
+				current_clauses = multicorn_on_column_clauses(eq_class, rel, pPathKeyAttrName, bms_make_singleton(baserel->relid));
+				if (current_clauses)
 				{
-					clauses = list_union(clauses, eq_class->ec_sources);
 					outerrels = (Relids *) bms_union((Bitmapset *) outerrels, eq_class->ec_relids);
+					clauses = list_union(current_clauses, clauses);
 					found = 1;
 				}
 			}
@@ -486,8 +488,6 @@ multicornGetForeignPlan(PlannerInfo *root,
 	Index		scan_relid = baserel->relid;
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
-
-	((MulticornPlanState *) baserel->fdw_private)->used_relid = baserel->relid;
 	/* Create the ForeignScan node */
 	return make_foreignscan(tlist,
 							scan_clauses,
