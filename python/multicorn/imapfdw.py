@@ -171,8 +171,6 @@ class ImapFdw(ForeignDataWrapper):
         return conditions
 
     def execute(self, quals, columns):
-        log_to_postgres("With quals: %s" % quals)
-        log_to_postgres("With columns: %s" % columns)
         # The header dictionary maps columns to their imap search string
         col_to_imap = {}
         headers = []
