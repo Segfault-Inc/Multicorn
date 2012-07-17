@@ -53,6 +53,7 @@ typedef struct MulticornPlanState
 	PyObject   *quals;
 	PyObject   *params;
 	int			used_relid;
+	PlannerInfo *planinfo;
 }	MulticornPlanState;
 
 
@@ -112,11 +113,11 @@ const char *get_encoding_from_attribute(Form_pg_attribute attribute);
 void		multicorn_execute(ForeignScanState *node);
 PyObject   *multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * state);
 void		multicorn_clean_state(MulticornExecState * state);
-void		multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_list, Relation baserel, int base_relid);
+void		multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_list, Relation baserel, Relids accepted_relids);
 MulticornParamType multicorn_extract_qual(Node *left, Node *right, Relation base_rel,
-					   int base_relid,
+					   Relids base_relids,
 					   Form_pg_operator operator, PyObject **result);
-bool		multicorn_is_on_column(EquivalenceClass *eq_class, Relation baserel, PyObject *colname, int base_relid);
+bool		multicorn_is_on_column(EquivalenceClass *eq_class, Relation baserel, PyObject *colname, Relids base_relids);
 void multicorn_append_param_path(PlannerInfo *root, RelOptInfo *baserel,
 				  Relids *relids, double parampathrows, List *restrictinfos);
 
@@ -254,6 +255,7 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
 		Relation	rel = RelationIdGetRelation(ftable->relid);
 		Expr	   *current_expr;
 		ListCell   *cell;
+		Relids		relids = bms_make_singleton(baserel->relid);
 
 		state->needed_columns = PySet_New(NULL);
 		state->quals = PyList_New(0);
@@ -267,7 +269,7 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
 		{
 			current_expr = ((RestrictInfo *) lfirst(cell))->clause;
 			multicorn_get_column(current_expr, rel->rd_att, state->needed_columns);
-			multicorn_extract_condition(current_expr, state->quals, state->params, rel, baserel->relid);
+			multicorn_extract_condition(current_expr, state->quals, state->params, rel, relids);
 		}
 		RelationClose(rel);
 		baserel->fdw_private = state;
@@ -279,7 +281,7 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
  *	column (identified by name)
  * */
 bool
-multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colname, int base_relid)
+multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colname, Relids base_relids)
 {
 	Expr	   *clause;
 	Expr	   *left;
@@ -312,7 +314,7 @@ multicorn_is_on_column(EquivalenceClass *eq_class, Relation rel, PyObject *colna
 				tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
 				operator_tup = (Form_pg_operator) GETSTRUCT(tp);
 				ReleaseSysCache(tp);
-				param_type = multicorn_extract_qual((Node *) left, (Node *) right, rel, base_relid, operator_tup, &qual);
+				param_type = multicorn_extract_qual((Node *) left, (Node *) right, rel, base_relids, operator_tup, &qual);
 				switch (param_type)
 				{
 					case MulticornPARAM_EXTERN:
@@ -435,7 +437,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 			foreach(eq_class_cell, root->eq_classes)
 			{
 				eq_class = (EquivalenceClass *) lfirst(eq_class_cell);
-				if (multicorn_is_on_column(eq_class, rel, pPathKeyAttrName, baserel->relid))
+				if (multicorn_is_on_column(eq_class, rel, pPathKeyAttrName, bms_make_singleton(baserel->relid)))
 				{
 					clauses = list_union(clauses, eq_class->ec_sources);
 					outerrels = (Relids *) bms_union((Bitmapset *) outerrels, eq_class->ec_relids);
@@ -509,6 +511,9 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	MulticornPlanState *plan_state;
 	Relation	rel = node->ss.ss_currentRelation;
 	ListCell   *lc;
+	int			i = 0;
+	RangeTblEntry *rtl_entry;
+	Relids		accepted_relids = NULL;
 
 	attinmeta = TupleDescGetAttInMetadata(node->ss.ss_currentRelation->rd_att);
 	state = (MulticornExecState *) palloc(sizeof(MulticornExecState));
@@ -526,10 +531,20 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 		dummyQuals = PyList_New(0);
 		Py_DECREF(state->planstate->params);
 		state->planstate->params = PyList_New(0);
+		/* First, extract relids taht can be used. */
+		foreach(lc, node->ss.ps.state->es_range_table)
+		{
+			i += 1;
+			rtl_entry = (RangeTblEntry *) lfirst(lc);
+			if (rtl_entry->relid == node->ss.ss_currentRelation->rd_id)
+			{
+				accepted_relids = bms_union(accepted_relids, bms_make_singleton(i));
+			}
+		}
 		foreach(lc, node->ss.ps.plan->qual)
 		{
 			multicorn_extract_condition((Expr *) lfirst(lc), dummyQuals,
-					  state->planstate->params, rel, plan_state->used_relid);
+							 state->planstate->params, rel, accepted_relids);
 		}
 	}
 }
@@ -1067,7 +1082,7 @@ multicorn_unnest(Node *node, Node **result)
 }
 
 MulticornParamType
-multicorn_extract_qual(Node *left, Node *right, Relation baserel, int base_relid, Form_pg_operator operator, PyObject **result)
+multicorn_extract_qual(Node *left, Node *right, Relation baserel, Relids base_relids, Form_pg_operator operator, PyObject **result)
 {
 	HeapTuple	tp;
 	Form_pg_attribute attr;
@@ -1092,8 +1107,8 @@ multicorn_extract_qual(Node *left, Node *right, Relation baserel, int base_relid
 		/* If left is not for us, but right is, or is left is not a var, but */
 		/* right is, switch them. */
 		if ((!IsA(normalized_left, Var)) ||
-			((!(((Var *) normalized_left)->varno == base_relid)) &&
-			 (((Var *) normalized_right)->varno == base_relid)))
+			(!bms_is_member(((Var *) normalized_left)->varno, base_relids) &&
+			 (bms_is_member(((Var *) normalized_right)->varno, base_relids))))
 		{
 			/* Switch the operands if possible */
 			/* Lookup the inverse operator (eg, <= for > and so on) */
@@ -1111,7 +1126,7 @@ multicorn_extract_qual(Node *left, Node *right, Relation baserel, int base_relid
 	}
 	/* Do not treat the qual if is not in the form "one of our vars operator */
 	/* something else" */
-	if (IsA(normalized_left, Var))
+	if (IsA(normalized_left, Var) &&bms_is_member(((Var *) normalized_left)->varno, base_relids))
 	{
 		attr = tupdesc->attrs[((Var *) normalized_left)->varattno - 1];
 		key = NameStr(attr->attname);
@@ -1147,7 +1162,7 @@ multicorn_extract_qual(Node *left, Node *right, Relation baserel, int base_relid
 				multicorn_error_check();
 				return param_type;
 			case T_Var:
-				if (((Var *) normalized_right)->varno == base_relid)
+				if (bms_is_member(((Var *) normalized_right)->varno, base_relids))
 				{
 					/* The right side is also for us, build the value */
 					rightkey = NameStr(tupdesc->attrs[((Var *) normalized_right)->varattno - 1]->attname);
@@ -1167,8 +1182,15 @@ multicorn_extract_qual(Node *left, Node *right, Relation baserel, int base_relid
 	return MulticornUNKNOWN;
 }
 
+/*
+ * Extract a condition usable from python from an clause, and append it to one
+ * of qual_list or param_list.
+ *
+ * Baserel is used to look up attribute names, while base_relids is used to
+ * determine which relids are suitable.
+ * */
 void
-multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_list, Relation baserel, int base_relid)
+multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_list, Relation baserel, Relids base_relids)
 {
 	PyObject   *tempqual = NULL;
 	HeapTuple	tp;
@@ -1193,7 +1215,7 @@ multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_l
 						elog(ERROR, "cache lookup failed for operator %u", op->opno);
 					operator_tup = (Form_pg_operator) GETSTRUCT(tp);
 					ReleaseSysCache(tp);
-					paramtype = multicorn_extract_qual(left, right, baserel, base_relid, operator_tup, &tempqual);
+					paramtype = multicorn_extract_qual(left, right, baserel, base_relids, operator_tup, &tempqual);
 					switch (paramtype)
 					{
 						case MulticornQUAL:
@@ -1228,7 +1250,7 @@ multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *param_l
 					 * Build the qual "normally" and set the operator to a
 					 * tuple instead
 					 */
-					paramtype = multicorn_extract_qual(left, right, baserel, base_relid, operator_tup, &tempqual);
+					paramtype = multicorn_extract_qual(left, right, baserel, base_relids, operator_tup, &tempqual);
 
 					if (tempqual)
 					{
