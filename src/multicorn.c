@@ -116,7 +116,7 @@ void		multicorn_extract_condition(Expr *clause, PyObject *qual_list, PyObject *p
 MulticornParamType multicorn_extract_qual(Node *left, Node *right, Relation base_rel,
 					   Relids base_relids,
 					   Form_pg_operator operator, PyObject **result);
-List	   *multicorn_on_column_clauses(EquivalenceClass *eq_class, Relation baserel, PyObject *colname, Relids base_relids);
+bool		multicorn_is_on_column(RestrictInfo *restrictinfo, Relation rel, PyObject *colname, Relids base_relids);
 void multicorn_append_param_path(PlannerInfo *root, RelOptInfo *baserel,
 				  Relids *relids, double parampathrows, List *restrictinfos);
 
@@ -275,12 +275,8 @@ multicorn_init_plan_state(RelOptInfo *baserel, Oid foreigntableid)
 	}
 }
 
-/*
- *	Test wether the given equivalence class concerns the given
- *	column (identified by name)
- * */
-List *
-multicorn_on_column_clauses(EquivalenceClass *eq_class, Relation rel, PyObject *colname, Relids base_relids)
+bool
+multicorn_is_on_column(RestrictInfo *restrictinfo, Relation rel, PyObject *colname, Relids base_relids)
 {
 	Expr	   *clause;
 	Expr	   *left;
@@ -290,66 +286,42 @@ multicorn_on_column_clauses(EquivalenceClass *eq_class, Relation rel, PyObject *
 	PyObject   *qual;
 	OpExpr	   *op;
 	int			isEq;
-	List	   *clauses = NULL;
 	MulticornParamType param_type;
-	ListCell   *ri_cell;
-	RestrictInfo *restrictinfo;
 
-	/*
-	 * If there is only one member, then the equivalence class is either for
-	 * an outer join, or a desired sort order. So we better leave it
-	 * untouched.
-	 */
-	if (eq_class->ec_members->length > 1)
+	clause = restrictinfo->clause;
+	if (IsA(clause, OpExpr))
 	{
-		foreach(ri_cell, eq_class->ec_sources)
+		op = (OpExpr *) clause;
+		left = list_nth(op->args, 0);
+		right = list_nth(op->args, 1);
+		tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
+		operator_tup = (Form_pg_operator) GETSTRUCT(tp);
+		ReleaseSysCache(tp);
+		param_type = multicorn_extract_qual((Node *) left, (Node *) right, rel, base_relids, operator_tup, &qual);
+		switch (param_type)
 		{
-			restrictinfo = (RestrictInfo *) lfirst(ri_cell);
-			clause = restrictinfo->clause;
-			if (IsA(clause, OpExpr))
-			{
-				op = (OpExpr *) clause;
-				left = list_nth(op->args, 0);
-				right = list_nth(op->args, 1);
-				tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(op->opno));
-				operator_tup = (Form_pg_operator) GETSTRUCT(tp);
-				ReleaseSysCache(tp);
-				param_type = multicorn_extract_qual((Node *) left, (Node *) right, rel, base_relids, operator_tup, &qual);
-				switch (param_type)
+			case MulticornPARAM_EXTERN:
+			case MulticornPARAM_EXEC:
+			case MulticornQUAL:
+				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
+				multicorn_error_check();
+				return isEq == 0;
+			case MulticornVAR:
+				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
+				multicorn_error_check();
+				if (isEq == 0)
 				{
-					case MulticornPARAM_EXTERN:
-					case MulticornPARAM_EXEC:
-					case MulticornQUAL:
-						isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
-						multicorn_error_check();
-						if (isEq == 0)
-						{
-							clauses = list_append_unique(clauses, restrictinfo);
-						}
-						break;
-					case MulticornVAR:
-						isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "field_name"));
-						multicorn_error_check();
-						if (isEq == 0)
-						{
-							clauses = list_append_unique(clauses, restrictinfo);
-						}
-						isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "value"));
-						multicorn_error_check();
-						if (isEq == 0)
-						{
-							clauses = list_append_unique(clauses, restrictinfo);
-						}
-						break;
-					default:
-						break;
+					return true;
 				}
-			}
+				isEq = PyObject_Compare(colname, PyObject_GetAttrString(qual, "value"));
+				multicorn_error_check();
+				return isEq == 0;
+			default:
+				break;
 		}
 	}
-	return clauses;
+	return false;
 }
-
 
 /*
  * Build a parameterized path using the given restrictinfo, and how much rows
@@ -400,7 +372,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 			   *pZero;
 	Py_ssize_t	i,
 				j;
-	ListCell   *eq_class_cell;
+	ListCell   *lc;
+	ListCell   *ri_cell;
+	RestrictInfo *restrictinfo;
 	EquivalenceClass *eq_class;
 	ForeignTable *ftable = GetForeignTable(foreigntableid);
 	Relation	rel = RelationIdGetRelation(ftable->relid);
@@ -408,7 +382,6 @@ multicornGetForeignPaths(PlannerInfo *root,
 	int			found = 0;
 	MulticornPlanState *state = baserel->fdw_private;
 	List	   *clauses = NULL;
-	List	   *current_clauses = NULL;
 	Relids	   *outerrels;
 
 	pObj = multicorn_get_instance(rel);
@@ -435,14 +408,38 @@ multicornGetForeignPaths(PlannerInfo *root,
 		{
 			pPathKeyAttrName = PySequence_GetItem(pPathKeys, j);
 			found = 0;
-			foreach(eq_class_cell, root->eq_classes)
+			/* Walk the equivalence_classes list for inner joins. */
+			foreach(lc, root->eq_classes)
 			{
-				eq_class = (EquivalenceClass *) lfirst(eq_class_cell);
-				current_clauses = multicorn_on_column_clauses(eq_class, rel, pPathKeyAttrName, bms_make_singleton(baserel->relid));
-				if (current_clauses)
+				eq_class = (EquivalenceClass *) lfirst(lc);
+
+				/*
+				 * If there is only one member, then the equivalence class is
+				 * either for an outer join, or a desired sort order. So we
+				 * better leave it untouched.
+				 */
+				if (eq_class->ec_members->length > 1)
 				{
-					outerrels = (Relids *) bms_union((Bitmapset *) outerrels, eq_class->ec_relids);
-					clauses = list_union(current_clauses, clauses);
+					foreach(ri_cell, eq_class->ec_sources)
+					{
+						restrictinfo = (RestrictInfo *) lfirst(ri_cell);
+						if (multicorn_is_on_column(restrictinfo, rel, pPathKeyAttrName, bms_make_singleton(baserel->relid)))
+						{
+							clauses = list_append_unique(clauses, restrictinfo);
+							outerrels = (Relids *) bms_union((Bitmapset *) outerrels, eq_class->ec_relids);
+							found = 1;
+						}
+					}
+				}
+			}
+			/* Walk the outer joins. */
+			foreach(ri_cell, list_union(root->left_join_clauses, root->right_join_clauses))
+			{
+				restrictinfo = (RestrictInfo *) lfirst(ri_cell);
+				if (multicorn_is_on_column(restrictinfo, rel, pPathKeyAttrName, bms_make_singleton(baserel->relid)))
+				{
+					clauses = list_append_unique(clauses, restrictinfo);
+					outerrels = (Relids *) bms_union((Bitmapset *) outerrels, restrictinfo->outer_relids);
 					found = 1;
 				}
 			}
