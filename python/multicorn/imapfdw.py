@@ -8,6 +8,7 @@ import re
 from email.header import decode_header
 
 from imapclient import IMAPClient
+from itertools import izip_longest, islice
 
 STANDARD_FLAGS = {
         'seen': 'Seen',
@@ -18,6 +19,30 @@ STANDARD_FLAGS = {
 }
 
 SEARCH_HEADERS = ['BCC', 'CC', 'FROM', 'TO']
+
+
+def compact_fetch(messages):
+    """Compact result in ranges.
+
+    For example, [1, 2, 3, 4, 10, 11, 12, 14, 17, 18, 19, 21, 92]
+    can be compacted in ['1:4', '10:12', '14', '17:19', '21', '92']
+
+    """
+    first_i = messages[0]
+    for (i, inext) in izip_longest(messages, islice(messages, 1, None)):
+        if inext == i + 1:
+            continue
+        elif first_i != i:
+            yield '%s:%s' % (first_i, i)
+            first_i = inext
+        else:
+            yield "%s" % i
+            first_i = inext
+
+
+class NoMatchPossible(Exception):
+    """An exception raised when the conditions can NOT be met by any message,
+    ever."""
 
 
 def make_or(values):
@@ -51,6 +76,23 @@ class ImapFdw(ForeignDataWrapper):
         self.flags_column = options.get('flags_column', None)
         self.internaldate_column = options.get('internaldate_column', None)
 
+    def get_rel_size(self, quals, columns):
+        """Inform the planner that it can be EXTREMELY costly to use the 
+        payload column, and that a query on Message-ID will return only one row."""
+        width = len(columns) * 100
+        nb_rows = 1000000
+        if self.payload_column in columns:
+            width += 100000000000
+        nb_rows = nb_rows / (10 ** len(quals))
+        for qual in quals:
+            if qual.field_name.lower() == 'in-reply-to' and\
+                    qual.operator == '=':
+                nb_rows = 10
+            if qual.field_name.lower() == 'message-id' and qual.operator == '=':
+                nb_rows = 1
+                break
+        return (nb_rows, width)
+
     def _create_agent(self):
         self._imap_agent = IMAPClient(self.host, self.port, ssl=self.ssl)
         if self.login:
@@ -66,6 +108,12 @@ class ImapFdw(ForeignDataWrapper):
         except IMAP4.abort:
             self._create_agent()
         return self._imap_agent
+
+    def get_path_keys(self):
+        """Helps the planner by supplying a list of list of access keys, as well
+        as a row estimate for each one."""
+        return [(('Message-ID',), 1), (('From',), 100), (('To',), 100),
+                (('In-Reply-To',), 10)]
 
     def _make_condition(self, key, operator, value):
         if operator not in ('~~', '!~~', '=', '<>', '@>', '&&', '~~*', '!~~*'):
@@ -110,9 +158,16 @@ class ImapFdw(ForeignDataWrapper):
         elif key in SEARCH_HEADERS:
             value = '%s "%s"' % (key, value)
         else:
+            # Special case for Message-ID and In-Reply-To:
+            # zero-length strings are forbidden so dont bother
+            # searching them
+            if not value:
+                raise NoMatchPossible()
             prefix = 'HEADER '
             value = '%s "%s"' % (key, value)
         return '%s%s' % (prefix, value)
+
+
 
     def extract_conditions(self, quals):
         """Build an imap search criteria string from a list of quals"""
@@ -152,18 +207,22 @@ class ImapFdw(ForeignDataWrapper):
                 col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
                         column.upper()
                 headers.append(column)
-        conditions = self.extract_conditions(quals) or ['ALL']
-        matching_mails = self.imap_agent.search(charset="UTF8",
-            criteria=conditions)
+        try:
+            conditions = self.extract_conditions(quals) or ['ALL']
+        except NoMatchPossible:
+            matching_mails = []
+        else:
+            matching_mails = self.imap_agent.search(charset="UTF8",
+                                                    criteria=conditions)
         if matching_mails:
-            data = self.imap_agent.fetch(matching_mails, col_to_imap.values())
+            data = self.imap_agent.fetch(list(compact_fetch(matching_mails)),
+                                         col_to_imap.values())
             item = {}
             for msg in data.values():
                 for column, key in col_to_imap.iteritems():
                     item[column] = msg[key]
                     if column in headers:
-                        item[column] = item[column].replace('%s:' %
-                            column, '', 1).strip()
+                        item[column] = item[column].split(':', 1)[-1].strip()
                         values = decode_header(item[column])
                         for decoded_header, charset in values:
                             # Values are of the from "Header: value"
