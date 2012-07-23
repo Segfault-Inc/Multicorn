@@ -8,6 +8,7 @@ import re
 from email.header import decode_header
 
 from imapclient import IMAPClient
+from itertools import izip_longest, islice
 
 STANDARD_FLAGS = {
         'seen': 'Seen',
@@ -18,6 +19,25 @@ STANDARD_FLAGS = {
 }
 
 SEARCH_HEADERS = ['BCC', 'CC', 'FROM', 'TO']
+
+
+def compact_fetch(messages):
+    """Compact result in ranges.
+
+    For example, [1, 2, 3, 4, 10, 11, 12, 14, 17, 18, 19, 21, 92]
+    can be compacted in ['1:4', '10:12', '14', '17:19', '21', '92']
+
+    """
+    first_i = messages[0]
+    for (i, inext) in izip_longest(messages, islice(messages, 1, None)):
+        if inext == i + 1:
+            continue
+        elif first_i != i:
+            yield '%s:%s' % (first_i, i)
+            first_i = inext
+        else:
+            yield "%s" % i
+            first_i = inext
 
 
 class NoMatchPossible(Exception):
@@ -147,6 +167,8 @@ class ImapFdw(ForeignDataWrapper):
             value = '%s "%s"' % (key, value)
         return '%s%s' % (prefix, value)
 
+
+
     def extract_conditions(self, quals):
         """Build an imap search criteria string from a list of quals"""
         conditions = []
@@ -191,9 +213,10 @@ class ImapFdw(ForeignDataWrapper):
             matching_mails = []
         else:
             matching_mails = self.imap_agent.search(charset="UTF8",
-                criteria=conditions)
+                                                    criteria=conditions)
         if matching_mails:
-            data = self.imap_agent.fetch(matching_mails, col_to_imap.values())
+            data = self.imap_agent.fetch(list(compact_fetch(matching_mails)),
+                                         col_to_imap.values())
             item = {}
             for msg in data.values():
                 for column, key in col_to_imap.iteritems():
