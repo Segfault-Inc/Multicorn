@@ -21,9 +21,9 @@ class FilesystemFdw(ForeignDataWrapper):
     root_dir            --  The base dir for searching the file
     pattern             --  The pattern for looking for file, starting from the
                             root_dir. See :class:`StructuredDirectory`.
-    content_property    --  The column's name which contains the file content.
+    content_column      --  The column's name which contains the file content.
                             (defaults to None)
-    filename_property   --  The column's name wich contains the full filename.
+    filename_column     --  The column's name wich contains the full filename.
 
     """
 
