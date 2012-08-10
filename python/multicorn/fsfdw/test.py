@@ -17,6 +17,7 @@ from contextlib import contextmanager
 import pytest
 
 from .structuredfs import StructuredDirectory, Item
+from .docutils_meta import mtime_lru_cache, extract_meta
 
 
 def with_tempdir(function):
@@ -301,6 +302,63 @@ def test_optimizations(tempdir):
     assert_listed(dict(cat='nonexistent'),
         [],
         ['nonexistent'])
+
+
+@with_tempdir
+def test_docutils_meta(tempdir):
+    def counting(filename):
+        counting.n_calls += 1
+        return extract_meta(filename)
+    counting.n_calls = 0
+    wrapper = mtime_lru_cache(counting, max_size=2)
+    def extract(filename):
+        return wrapper(os.path.join(tempdir, filename))
+    rest_1 = '''
+The main title
+==============
+
+Second title
+------------
+
+:Author: Me
+
+Content
+'''
+    meta_1 = {'title': 'The main title', 'subtitle': u'Second title',
+              'author': u'Me'}
+    rest_2 = '''
+First title
+===========
+
+:Author: Myself
+:foo: bar
+
+Not a subtitle
+--------------
+
+Content
+'''
+    meta_2 = {'title': 'First title', 'author': 'Myself', 'foo': 'bar'}
+    def write(filename, content):
+        with open(os.path.join(tempdir, filename), 'w') as file_obj:
+            file_obj.write(content)
+    write('first.rst', rest_1)
+    write('second.rst', rest_2)
+    assert counting.n_calls == 0
+    assert extract('first.rst') == meta_1
+    assert counting.n_calls == 1
+    assert extract('first.rst') == meta_1  # cached
+    assert counting.n_calls == 1
+    assert extract('second.rst') == meta_2
+    assert counting.n_calls == 2
+    write('third.rst', rest_1)
+    assert extract('third.rst') == meta_1  # Exceeds the cache size
+    assert counting.n_calls == 3
+    write('third.rst', rest_2)
+    assert extract('third.rst') == meta_2
+    assert counting.n_calls == 4
+    assert extract('first.rst') == meta_1  # Not cached anymore
+    assert counting.n_calls == 5
 
 
 if __name__ == '__main__':
