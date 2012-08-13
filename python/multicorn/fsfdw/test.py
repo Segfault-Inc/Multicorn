@@ -331,14 +331,17 @@ First title
 ===========
 
 :Author: Myself
-:foo: bar
+:Summary:
+    Lorem ipsum
+    dolor sit amet
 
 Not a subtitle
 --------------
 
 Content
 '''
-    meta_2 = {'title': 'First title', 'author': 'Myself', 'foo': 'bar'}
+    meta_2 = {'title': 'First title', 'author': 'Myself',
+              'summary': 'Lorem ipsum\ndolor sit amet'}
     def write(filename, content):
         with open(os.path.join(tempdir, filename), 'w') as file_obj:
             file_obj.write(content)

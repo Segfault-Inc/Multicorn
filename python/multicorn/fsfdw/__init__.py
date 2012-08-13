@@ -86,7 +86,7 @@ class FilesystemFdw(ForeignDataWrapper):
             if qual.operator == '=' and qual.field_name in properties))
 
 
-    def items_to_dicts(self, columns, items):
+    def items_to_dicts(self, items, columns):
         content_column = self.content_column
         filename_column = self.filename_column
         has_content = content_column and content_column in columns
@@ -114,11 +114,11 @@ class ReStructuredTextFdw(FilesystemFdw):
         self.extract_meta = mtime_lru_cache(extract_meta, max_size=1000)
         columns = dict((name, column) for name, column in columns.items()
                        if not name.startswith('rest_'))
-        super(RestructuredText, self).__init__(options, columns)
+        super(ReStructuredTextFdw, self).__init__(options, columns)
 
     def execute(self, quals, columns):
         items = self.get_items(quals, columns)
-        keys = [(name, name[:5])  # len('rest_') == 5
+        keys = [(name, name[5:])  # len('rest_') == 5
                 for name in columns if name.startswith('rest_')]
         if keys:
             items = self.add_meta(items, keys)
