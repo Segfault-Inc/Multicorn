@@ -61,38 +61,38 @@ PG_FUNCTION_INFO_V1(multicorn_validator);
 /*
  * FDW functions declarations
  */
-static FdwPlan *multicorn_plan(Oid foreign_table_id, PlannerInfo * root, RelOptInfo * base_relation);
-static void multicorn_explain(ForeignScanState * node, ExplainState * es);
-static void multicorn_begin(ForeignScanState * node, int eflags);
-static TupleTableSlot *multicorn_iterate(ForeignScanState * node);
-static void multicorn_rescan(ForeignScanState * node);
-static void multicorn_end(ForeignScanState * node);
+static FdwPlan *multicorn_plan(Oid foreign_table_id, PlannerInfo *root, RelOptInfo *base_relation);
+static void multicorn_explain(ForeignScanState *node, ExplainState *es);
+static void multicorn_begin(ForeignScanState *node, int eflags);
+static TupleTableSlot *multicorn_iterate(ForeignScanState *node);
+static void multicorn_rescan(ForeignScanState *node);
+static void multicorn_end(ForeignScanState *node);
 
 /*
    Helpers
    */
 static void multicorn_error_check(void);
 void		_PG_init(void);
-void		multicorn_get_options(Oid foreign_table_id, PyObject * options_dict, char **module);
-void		multicorn_get_attributes_def(TupleDesc desc, PyObject * dict);
-void		multicorn_extract_conditions(ForeignScanState * node, PyObject * list);
+void		multicorn_get_options(Oid foreign_table_id, PyObject *options_dict, char **module);
+void		multicorn_get_attributes_def(TupleDesc desc, PyObject *dict);
+void		multicorn_extract_conditions(ForeignScanState *node, PyObject *list);
 PyObject   *multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribute);
-void		multicorn_report_exception(PyObject * pErrType, PyObject * pErrValue, PyObject * pErrTraceback);
+void		multicorn_report_exception(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback);
 PyObject   *multicorn_get_instance(Relation rel);
-HeapTuple	BuildTupleFromCStringsWithSize(AttInMetadata * attinmeta, char **values, ssize_t * sizes);
-void		multicorn_get_columns(List * columnlist, TupleDesc desc, PyObject *);
-void		multicorn_get_column(Expr * expr, TupleDesc desc, PyObject * list);
+HeapTuple	BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t *sizes);
+void		multicorn_get_columns(List *columnlist, TupleDesc desc, PyObject *);
+void		multicorn_get_column(Expr *expr, TupleDesc desc, PyObject *list);
 const char *get_encoding_from_attribute(Form_pg_attribute attribute);
-void		multicorn_execute(ForeignScanState * node);
+void		multicorn_execute(ForeignScanState *node);
 void		multicorn_clean_state(MulticornState * state);
-void		multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_operator operator, PyObject ** result);
+void		multicorn_get_param(Node *left, Node *right, ForeignScanState *fss, Form_pg_operator operator, PyObject **result);
 PyObject   *multicorn_get_class(char *className);
 PyObject   *multicorn_get_multicorn(void);
-void		multicorn_unnest(Node * value, Node ** result);
+void		multicorn_unnest(Node *value, Node **result);
 
-HeapTuple	pysequence_to_postgres_tuple(TupleDesc desc, PyObject * pyseq);
-HeapTuple	pydict_to_postgres_tuple(TupleDesc desc, PyObject * pydict);
-ssize_t		pyobject_to_cstring(PyObject * pyobject, Form_pg_attribute attribute, char **buffer);
+HeapTuple	pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq);
+HeapTuple	pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict);
+ssize_t		pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buffer);
 
 PyObject   *TABLES_DICT;
 
@@ -161,8 +161,8 @@ multicorn_validator(PG_FUNCTION_ARGS)
 
 static FdwPlan *
 multicorn_plan(Oid foreign_table_id,
-			   PlannerInfo * root,
-			   RelOptInfo * base_relation)
+			   PlannerInfo *root,
+			   RelOptInfo *base_relation)
 {
 	FdwPlan    *fdw_plan;
 
@@ -174,7 +174,7 @@ multicorn_plan(Oid foreign_table_id,
 }
 
 static void
-multicorn_explain(ForeignScanState * node, ExplainState * es)
+multicorn_explain(ForeignScanState *node, ExplainState *es)
 {
 	/* TODO: calculate real values */
 	ExplainPropertyText("Foreign multicorn", "multicorn", es);
@@ -186,7 +186,7 @@ multicorn_explain(ForeignScanState * node, ExplainState * es)
 }
 
 static void
-multicorn_begin(ForeignScanState * node, int eflags)
+multicorn_begin(ForeignScanState *node, int eflags)
 {
 	/* TODO: do things if necessary */
 	AttInMetadata *attinmeta;
@@ -201,7 +201,7 @@ multicorn_begin(ForeignScanState * node, int eflags)
 }
 
 void
-multicorn_execute(ForeignScanState * node)
+multicorn_execute(ForeignScanState *node)
 {
 	PyObject   *pArgs,
 			   *pValue,
@@ -230,14 +230,21 @@ multicorn_execute(ForeignScanState * node)
 	Py_DECREF(pMethod);
 	Py_DECREF(pArgs);
 	multicorn_error_check();
-	state->pIterator = PyObject_GetIter(pValue);
-	multicorn_error_check();
-	Py_DECREF(pValue);
+	if (pValue == Py_None)
+	{
+		state->pIterator = Py_None;
+	}
+	else
+	{
+		state->pIterator = PyObject_GetIter(pValue);
+		multicorn_error_check();
+		Py_DECREF(pValue);
+	}
 }
 
 
 static TupleTableSlot *
-multicorn_iterate(ForeignScanState * node)
+multicorn_iterate(ForeignScanState *node)
 {
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	MulticornState *state = (MulticornState *) node->fdw_state;
@@ -254,6 +261,11 @@ multicorn_iterate(ForeignScanState * node)
 		multicorn_execute(node);
 	}
 	ExecClearTuple(slot);
+	if (state->pIterator == Py_None)
+	{
+		/* No iterator returned from get_iterator */
+		return slot;
+	}
 	pIterator = state->pIterator;
 	pValue = PyIter_Next(pIterator);
 	PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);
@@ -298,13 +310,13 @@ multicorn_iterate(ForeignScanState * node)
 }
 
 static void
-multicorn_rescan(ForeignScanState * node)
+multicorn_rescan(ForeignScanState *node)
 {
 	multicorn_clean_state((MulticornState *) node->fdw_state);
 }
 
 static void
-multicorn_end(ForeignScanState * node)
+multicorn_end(ForeignScanState *node)
 {
 	multicorn_clean_state((MulticornState *) node->fdw_state);
 }
@@ -324,7 +336,7 @@ multicorn_error_check()
 }
 
 void
-multicorn_get_options(Oid foreign_table_id, PyObject * pOptions, char **module)
+multicorn_get_options(Oid foreign_table_id, PyObject *pOptions, char **module)
 {
 	ForeignTable *f_table;
 	ForeignServer *f_server;
@@ -382,7 +394,7 @@ multicorn_get_options(Oid foreign_table_id, PyObject * pOptions, char **module)
 
 
 HeapTuple
-pydict_to_postgres_tuple(TupleDesc desc, PyObject * pydict)
+pydict_to_postgres_tuple(TupleDesc desc, PyObject *pydict)
 {
 	HeapTuple	tuple;
 	AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
@@ -432,7 +444,7 @@ pydict_to_postgres_tuple(TupleDesc desc, PyObject * pydict)
 }
 
 HeapTuple
-pysequence_to_postgres_tuple(TupleDesc desc, PyObject * pyseq)
+pysequence_to_postgres_tuple(TupleDesc desc, PyObject *pyseq)
 {
 	HeapTuple	tuple;
 	AttInMetadata *attinmeta = TupleDescGetAttInMetadata(desc);
@@ -505,7 +517,7 @@ get_encoding_from_attribute(Form_pg_attribute attribute)
 }
 
 ssize_t
-pyobject_to_cstring(PyObject * pyobject, Form_pg_attribute attribute, char **buffer)
+pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buffer)
 {
 	PyObject   *date_module = PyImport_Import(PyUnicode_FromString("datetime"));
 	PyObject   *date_cls = PyObject_GetAttrString(date_module, "date");
@@ -612,7 +624,7 @@ pyobject_to_cstring(PyObject * pyobject, Form_pg_attribute attribute, char **buf
 
 /*	Appends the columns names as python strings to the given python list */
 void
-multicorn_get_attributes_def(TupleDesc desc, PyObject * dict)
+multicorn_get_attributes_def(TupleDesc desc, PyObject *dict)
 {
 	char	   *key,
 			   *typname;
@@ -635,7 +647,7 @@ multicorn_get_attributes_def(TupleDesc desc, PyObject * dict)
 }
 
 void
-multicorn_unnest(Node * node, Node ** result)
+multicorn_unnest(Node *node, Node **result)
 {
 	switch (node->type)
 	{
@@ -651,7 +663,7 @@ multicorn_unnest(Node * node, Node ** result)
 }
 
 void
-multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_operator operator, PyObject ** result)
+multicorn_get_param(Node *left, Node *right, ForeignScanState *fss, Form_pg_operator operator, PyObject **result)
 {
 	HeapTuple	tp;
 	ExprState  *exprstate;
@@ -668,7 +680,7 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_o
 	multicorn_error_check();
 	multicorn_unnest(left, &normalized_left);
 	multicorn_unnest(right, &normalized_right);
-	if (IsA(normalized_right, Var) && !IsA(normalized_left, Var))
+	if (IsA(normalized_right, Var) &&!IsA(normalized_left, Var))
 	{
 		/* Switch the operands if possible */
 		/* Lookup the inverse operator (eg, <= for > and so on) */
@@ -719,7 +731,7 @@ multicorn_get_param(Node * left, Node * right, ForeignScanState * fss, Form_pg_o
 }
 
 void
-multicorn_extract_conditions(ForeignScanState * node, PyObject * list)
+multicorn_extract_conditions(ForeignScanState *node, PyObject *list)
 {
 	if (node->ss.ps.plan->qual)
 	{
@@ -942,7 +954,7 @@ multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribut
 }
 
 void
-multicorn_report_exception(PyObject * pErrType, PyObject * pErrValue, PyObject * pErrTraceback)
+multicorn_report_exception(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback)
 {
 	char	   *errName,
 			   *errValue;
@@ -1024,7 +1036,7 @@ multicorn_get_instance(Relation rel)
 
 
 HeapTuple
-BuildTupleFromCStringsWithSize(AttInMetadata * attinmeta, char **values, ssize_t * sizes)
+BuildTupleFromCStringsWithSize(AttInMetadata *attinmeta, char **values, ssize_t *sizes)
 {
 	TupleDesc	tupdesc = attinmeta->tupdesc;
 	int			natts = tupdesc->natts;
@@ -1098,7 +1110,7 @@ BuildTupleFromCStringsWithSize(AttInMetadata * attinmeta, char **values, ssize_t
 }
 
 void
-multicorn_get_columns(List * columnslist, TupleDesc desc, PyObject * result)
+multicorn_get_columns(List *columnslist, TupleDesc desc, PyObject *result)
 {
 	Expr	   *current_expr;
 	ListCell   *cell;
@@ -1111,7 +1123,7 @@ multicorn_get_columns(List * columnslist, TupleDesc desc, PyObject * result)
 }
 
 void
-multicorn_get_column(Expr * expr, TupleDesc desc, PyObject * list)
+multicorn_get_column(Expr *expr, TupleDesc desc, PyObject *list)
 {
 	ListCell   *cell;
 	char	   *key;
