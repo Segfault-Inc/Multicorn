@@ -30,7 +30,7 @@ class RssFdw(ForeignDataWrapper):
             self.cache_duration = timedelta(seconds=int(self.cache_duration))
         if self.url is None:
             log_to_postgres("You MUST set an url when creating the table!",
-                    ERROR)
+                            ERROR)
         self.columns = columns
 
     def make_item_from_xml(self, xml_elem, namespaces):
@@ -55,9 +55,9 @@ class RssFdw(ForeignDataWrapper):
         try:
             xml = etree.fromstring(urllib.urlopen(self.url).read())
             items = [self.make_item_from_xml(elem, xml.nsmap)
-                    for elem in xml.xpath('//item')]
+                     for elem in xml.xpath('//item')]
             self.cache[(quals, columns)] = (datetime.now(), items)
             return items
         except etree.ParseError:
-            print("Malformed xml, returning nothing")
+            log_to_postgres("Malformed xml, returning nothing")
             return
