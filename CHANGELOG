@@ -1,3 +1,6 @@
+0.9.2:
+    - Move to PG 9.2 fdw API.
+    - Add support to declared parameterized paths
 0.9.1
     - Improvements to the imap fdw
     - last supported version with pg 9.1.

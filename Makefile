@@ -10,11 +10,11 @@ DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test --load-language=plpgsql --port=5433
+REGRESS_OPTS = --inputdir=test --load-language=plpgsql
 MODULE_big     = multicorn
 OBJS = src/multicorn.o
 SHLIB_LINK   = -lpython$(PYVERSION)
-PG_CONFIG    = `which pg_config92`
+PG_CONFIG    = `which pg_config`
 PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\.| 9\.0" && echo no || echo yes)
 PG_CPPFLAGS  = -I/usr/include/python$(PYVERSION) $(python_includespec) $(CPPFLAGS)
 PROFILE      = -lpython$(PYVERSION)
