@@ -1,3 +1,6 @@
+0.9.1
+    - Improvements to the imap fdw
+    - last supported version with pg 9.1.
 0.0.9
     - Break backwards compatibility: the column definition to the foreign data
       wrapper constructor is now a dictionary of column names to their types.

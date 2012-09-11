@@ -94,6 +94,7 @@ static TupleTableSlot *multicornIterateForeignScan(ForeignScanState *node);
 static void multicornReScanForeignScan(ForeignScanState *node);
 static void multicornEndForeignScan(ForeignScanState *node);
 
+
 /*
    Helpers
    */
@@ -649,10 +650,16 @@ multicorn_execute(ForeignScanState *node)
 	Py_DECREF(pMethod);
 	Py_DECREF(pArgs);
 	multicorn_error_check();
-	state->pIterator = PyObject_GetIter(pValue);
-	multicorn_error_check();
-	Py_DECREF(pValue);
-	Py_DECREF(pObj);
+	if (pValue == Py_None)
+	{
+		state->pIterator = Py_None;
+	}
+	else
+	{
+		state->pIterator = PyObject_GetIter(pValue);
+		multicorn_error_check();
+		Py_DECREF(pValue);
+	}
 }
 
 
@@ -674,6 +681,11 @@ multicornIterateForeignScan(ForeignScanState *node)
 		multicorn_execute(node);
 	}
 	ExecClearTuple(slot);
+	if (state->pIterator == Py_None)
+	{
+		/* No iterator returned from get_iterator */
+		return slot;
+	}
 	pIterator = state->pIterator;
 	pValue = PyIter_Next(pIterator);
 	PyErr_Fetch(&pErrType, &pErrValue, &pErrTraceback);

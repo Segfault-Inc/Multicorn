@@ -1,5 +1,5 @@
 """
-Base mulricorn module.
+Base multicorn module.
 
 This module contains all the python code needed by the multicorn C extension
 to postgresql.

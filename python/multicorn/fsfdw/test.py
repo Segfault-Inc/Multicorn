@@ -8,16 +8,27 @@ Tests for StructuredFS.
 
 
 import os
+import sys
 import functools
+import tempfile
+import shutil
 from contextlib import contextmanager
 
-import attest
-from attest import Tests, assert_hook
+import pytest
 
 from .structuredfs import StructuredDirectory, Item
+from .docutils_meta import mtime_lru_cache, extract_meta
 
 
-SUITE = Tests(contexts=[attest.contexts.tempdir])
+def with_tempdir(function):
+    @functools.wraps(function)
+    def wrapper():
+        directory = tempfile.mkdtemp()
+        try:
+            return function(directory)
+        finally:
+            shutil.rmtree(directory)
+    return wrapper
 
 
 @contextmanager
@@ -25,12 +36,15 @@ def assert_raises(exception_class, message_part):
     """
     Check that an exception is raised and its message contains some string.
     """
-    with attest.raises(exception_class) as exception:
+    try:
         yield
-    assert message_part.lower() in exception.args[0].lower()
+    except exception_class as exception:
+        assert message_part.lower() in exception.args[0].lower()
+    else:
+        assert 0, 'Did not raise %s' % exception_class
 
 
-@SUITE.test
+@with_tempdir
 def test_parser(tempdir):
     """
     Test the pattern parser.
@@ -73,7 +87,7 @@ def test_parser(tempdir):
         == ['^(?P<category>.*)$', r'^\{num\}\_(?P<name>.*)\.bin$']
 
 
-@SUITE.test
+@with_tempdir
 def test_filenames(tempdir):
     binary = StructuredDirectory(tempdir, '{category}/{num}_{name}.bin')
     text = StructuredDirectory(tempdir, '{category}/{num}_{name}.txt')
@@ -105,7 +119,7 @@ def test_filenames(tempdir):
     assert [i.filename for i in binary.get_items()] == ['lipsum/4_foo.bin']
 
 
-@SUITE.test
+@with_tempdir
 def test_items(tempdir):
     """
     Test the :class:`Item` class.
@@ -150,14 +164,14 @@ def test_items(tempdir):
     assert item_bar.read() == 'BAR'
 
     content = u'Hello, Wörld!'
-    with attest.raises(UnicodeError):
+    with pytest.raises(UnicodeError):
         item_foo.write(content)
     item_foo.write(content.encode('utf8'))
     assert item_foo.read().decode('utf8') == content
     item_foo.remove()
-    with attest.raises(IOError):
+    with pytest.raises(IOError):
         item_foo.read()
-    with attest.raises(OSError):
+    with pytest.raises(OSError):
         item_foo.remove()
 
     assert [i.filename for i in text.get_items()] == ['lipsum/5_bar.txt']
@@ -167,7 +181,7 @@ def test_items(tempdir):
     assert os.listdir(tempdir) == []
 
 
-@SUITE.test
+@with_tempdir
 def test_get_items(tempdir):
     """
     Test the results of :meth:`StructuredDirectory.get_items`
@@ -190,7 +204,7 @@ def test_get_items(tempdir):
         filenames(fiz='5')
 
 
-@SUITE.test
+@with_tempdir
 def test_from_filename(tempdir):
     """
     Test the results of :meth:`StructuredDirectory.from_filename`
@@ -206,7 +220,7 @@ def test_from_filename(tempdir):
     assert matching.filename == 'lipsum/4_foo.txt'
 
 
-@SUITE.test
+@with_tempdir
 def test_optimizations(tempdir):
     """
     Test that :meth:`StructuredDirectory.get_items` doesn’t do more calls
@@ -237,9 +251,7 @@ def test_optimizations(tempdir):
         expected_contents = set(contents[num] for num in expected_ids)
         results = [item.read() for item in text.get_items(**properties)]
         assert set(results) == expected_contents
-        # Workaround a bug in Attest’s assert hook with closures
-        listed_ = listed
-        assert set(listed_) == set(expected_listed)
+        assert set(listed) == set(expected_listed)
 
     create(cat='lipsum', org='a', name='foo', id='1')
 
@@ -290,3 +302,67 @@ def test_optimizations(tempdir):
     assert_listed(dict(cat='nonexistent'),
         [],
         ['nonexistent'])
+
+
+@with_tempdir
+def test_docutils_meta(tempdir):
+    def counting(filename):
+        counting.n_calls += 1
+        return extract_meta(filename)
+    counting.n_calls = 0
+    wrapper = mtime_lru_cache(counting, max_size=2)
+    def extract(filename):
+        return wrapper(os.path.join(tempdir, filename))
+    rest_1 = '''
+The main title
+==============
+
+Second title
+------------
+
+:Author: Me
+
+Content
+'''
+    meta_1 = {'title': 'The main title', 'subtitle': u'Second title',
+              'author': u'Me'}
+    rest_2 = '''
+First title
+===========
+
+:Author: Myself
+:Summary:
+    Lorem ipsum
+    dolor sit amet
+
+Not a subtitle
+--------------
+
+Content
+'''
+    meta_2 = {'title': 'First title', 'author': 'Myself',
+              'summary': 'Lorem ipsum\ndolor sit amet'}
+    def write(filename, content):
+        with open(os.path.join(tempdir, filename), 'w') as file_obj:
+            file_obj.write(content)
+    write('first.rst', rest_1)
+    write('second.rst', rest_2)
+    assert counting.n_calls == 0
+    assert extract('first.rst') == meta_1
+    assert counting.n_calls == 1
+    assert extract('first.rst') == meta_1  # cached
+    assert counting.n_calls == 1
+    assert extract('second.rst') == meta_2
+    assert counting.n_calls == 2
+    write('third.rst', rest_1)
+    assert extract('third.rst') == meta_1  # Exceeds the cache size
+    assert counting.n_calls == 3
+    write('third.rst', rest_2)
+    assert extract('third.rst') == meta_2
+    assert counting.n_calls == 4
+    assert extract('first.rst') == meta_1  # Not cached anymore
+    assert counting.n_calls == 5
+
+
+if __name__ == '__main__':
+    pytest.main([__file__] + sys.argv)
