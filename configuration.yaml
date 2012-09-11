@@ -7,6 +7,8 @@ url: http://www.multicorn.org/
 menu:
   - Overview:
       link: /
+  - News:
+      link: /news/
   # Not online yet
 #  - Demo:
 #      link: http://trymulticorn.org/
