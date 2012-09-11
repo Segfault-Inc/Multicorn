@@ -198,7 +198,41 @@ would result in the following columns argument:
 
 Once again, if you returns more than these columns everything should be fine.
 
+Parameterized paths
+-------------------
 
+The python FDW implementor can affect the planner by implementing the
+get_path_keys and get_rel_size methods.
+
+
+.. code-block:: python
+
+    def get_rel_size(self, quals, columns):
+
+This method must return a tuple of the form (expected_number_of_row,
+expected_mean_width_of_a_row (in bytes)).
+
+The quals and columns arguments can be used to compute those estimates.
+
+For example, the imapfdw computes a huge width whenever the payload column is
+requested.
+
+.. code-block:: python
+
+    def get_path_keys(self):
+
+This method must return a list of tuple of the form (column_name,
+expected_number_of_row).
+
+The expected_number_of_row must be computed as if a "where column_name =
+some_value" filter were applied.
+
+This helps the planner to estimate parameterized paths cost, and change the plan
+accordingly.
+
+For example, informing the planner that a filter on a column may return exactly
+one row, instead of the full billion, may help it on deciding to use a
+nested-loop instead of a full sequential scan.
 
 Error reporting
 ===============

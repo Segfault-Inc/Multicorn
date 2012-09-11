@@ -278,6 +278,75 @@ SQLite Foreign Data Wrapper
 The sqlite foreign data wrapper has been removed in favor of the more general
 sqlalchemy foreign data wrapper.
 
+Imap Foreign Data Wrapper
+=========================
+
+Class: ``multicorn.imapfdw.ImapFdw``
+
+Source code: `multicorn/imapfdw.py`
+
+.. _multicorn/imapfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/imapfdw.py
+
+Purpose
+-------
+
+This fdw can be used to access mails from an IMAP mailbox.
+Column names are mapped to IMAP headers, and two special columns may conain the
+mail payload and its flags.
+
+Dependencies
+-------------
+
+imaplib
+
+Required options
+----------------
+
+``host`` (string)
+  The IMAP host to connect to.
+
+``port``
+  The IMAP host port to connect to.
+
+``login``
+  The login to connect with.
+
+``password``
+  The password to connect with.
+
+
+The login and password options should be set as a user mapping options, so as
+not to be stored in plaintext. See `the create user mapping documentation`_
+
+.. _the create user mapping: http://www.postgresql.org/docs/9.1/static/sql-createusermapping.html
+
+Allowed options
+---------------
+
+``payload_column`` (string)
+  The name of the column which will store the payload.
+
+``flags_column`` (string)
+  The name of the column which will store the IMAP flags, as an array of
+  strings.
+
+``ssl`` (boolean)
+  Wether to use ssl or not
+
+Server side filtering
+---------------------
+
+The imap fdw tries its best to convert postgresql quals into imap filters.
+
+The following quals are pushed to the server:
+    - equal, not equal, like, not like comparison
+    - = ANY, = NOT ANY
+
+These conditions are matched against the headers, or the body itself.
+
+The imap FDW will fetch only what is needed by the query: you should thus avoid
+requesting the payload_column if you don't need it.
+
 
 RSS Foreign Data Wrapper
 ========================
@@ -291,7 +360,7 @@ Source code: `multicorn/rssfdw.py`_
 Purpose
 -------
 
-This fdw can be used tgo access items from an rss feed.
+This fdw can be used to access items from an rss feed.
 The column names are mapped to the elements inside an item.
 An rss item has the following strcture:
 
