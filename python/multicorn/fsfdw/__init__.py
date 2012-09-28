@@ -103,7 +103,6 @@ class FilesystemFdw(ForeignDataWrapper):
         folders = self.folder_columns
         for i in range(1, len(folders) + 1):
             values.append((folders[:i], 100 ** (len(folders) - i)))
-        log_to_postgres(unicode(values))
         return values
 
     def execute(self, quals, columns):

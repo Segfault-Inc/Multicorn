@@ -49,6 +49,7 @@ static PyObject* log_to_postgres(PyObject* self, PyObject *args, PyObject* kwarg
     } else {
         ereport(severity, (errmsg("%s", message)));
     }
+    Py_INCREF(Py_None);
     return Py_None;
 }
 
