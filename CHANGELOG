@@ -1,3 +1,6 @@
+0.9.2.1:
+    - Fix bug in log_to_postgres utility function, leading to SIGABRT from
+      python.
 0.9.2:
     - Move to PG 9.2 fdw API.
     - Add support to declared parameterized paths
