@@ -37,4 +37,13 @@ select * from testmulticorn where 'grou' > test1;
 
 select * from testmulticorn where test1 < ANY(ARRAY['grou', 'MACHIN']);
 
+CREATE foreign table testmulticorn2 (
+    test1 character varying,
+    test2 character varying
+) server multicorn_srv options (
+    option1 'option2'
+);
+
+select * from testmulticorn union all select * from testmulticorn2;
+
 DROP EXTENSION multicorn cascade;

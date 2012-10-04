@@ -16,11 +16,13 @@
 static PyObject* log_to_postgres(PyObject* self, PyObject *args, PyObject* kwargs)
 {
     const char* message;
+    char * hintstr;
     const int level = 1;
     int severity;
     PyObject* hint;
     if(!PyArg_ParseTuple(args, "s|i", &message, &level)){
-        return ;
+        Py_INCREF(Py_None);
+        return Py_None;
     }
     switch(level)
     {
@@ -45,10 +47,16 @@ static PyObject* log_to_postgres(PyObject* self, PyObject *args, PyObject* kwarg
     }
     hint = PyDict_GetItemString(kwargs, "hint");
     if(hint != NULL && hint != Py_None){
+        hintstr = PyString_AsString(hint);
         ereport(severity, (errmsg("%s", message), errhint("%s", PyString_AsString(hint))));
     } else {
         ereport(severity, (errmsg("%s", message)));
     }
+    if(hint != Py_None){
+      Py_DECREF(hint);
+    }
+    Py_DECREF(args);
+    Py_DECREF(kwargs);
     Py_INCREF(Py_None);
     return Py_None;
 }
