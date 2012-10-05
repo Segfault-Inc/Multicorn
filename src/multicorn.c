@@ -25,6 +25,7 @@
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
 #include "funcapi.h"
+#include "lib/stringinfo.h"
 #include "miscadmin.h"
 #include "optimizer/paths.h"
 #include "optimizer/pathnode.h"
@@ -65,7 +66,11 @@ typedef struct MulticornExecState
 	Datum	   *dvalues;
 	bool	   *nulls;
 	Oid		   *typoids;
+    StringInfo buffer;
+    StringInfo keyBuffer;
+    StringInfo valueBuffer;
 }	MulticornExecState;
+
 
 typedef enum MulticornParamType
 {
@@ -129,11 +134,13 @@ void		multicorn_unnest(Node *value, Node **result);
 
 void		pysequence_to_postgres_tuple(MulticornExecState * state, TupleDesc desc, PyObject *pyseq);
 void		pydict_to_postgres_tuple(MulticornExecState * state, TupleDesc desc, PyObject *pydict);
-ssize_t		pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buffer);
+ssize_t		pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, MulticornExecState *state);
 
 PyObject   *TABLES_DICT,
 		   *MULTICORN_PZERO,
-		   *MULTICORN;
+		   *MULTICORN,
+           *MULTICORN_DATE_MODULE,
+           *MULTICORN_DATE_CLASS;
 
 
 Datum
@@ -577,6 +584,9 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	state->pIterator = NULL;
 	state->dvalues = palloc(natts * sizeof(Datum));
 	state->nulls = palloc(natts * sizeof(bool));
+    state->buffer = makeStringInfo();
+    state->keyBuffer = makeStringInfo();
+    state->valueBuffer = makeStringInfo();
 
 	plan_state = (MulticornPlanState *) ((ForeignScan *) node->ss.ps.plan)->fdw_private;
 	state->typoids = palloc(natts * sizeof(Oid));
@@ -841,6 +851,9 @@ multicornEndForeignScan(ForeignScanState *node)
 	pfree(state->dvalues);
 	pfree(state->nulls);
 	pfree(state->planstate);
+    pfree(state->buffer);
+    pfree(state->keyBuffer);
+    pfree(state->valueBuffer);
 	pfree(state);
 }
 
@@ -918,11 +931,10 @@ multicorn_get_options(Oid foreigntableid, PyObject *pOptions, char **module)
 void
 multicorn_pyobject_to_datum(PyObject *object, TupleDesc tupdesc, MulticornExecState * state, int attnum)
 {
-	char	   *buffer = 0;
 	Datum	   *dvalues = state->dvalues;
 	bool	   *nulls = state->nulls;
 	Oid			typeoid;
-	ssize_t		size = pyobject_to_cstring(object, tupdesc->attrs[attnum], &buffer);
+	ssize_t		size = pyobject_to_cstring(object, tupdesc->attrs[attnum], state);
 
 	state->dvalues[attnum] = (Datum) NULL;
 	if (size < 0)
@@ -937,13 +949,13 @@ multicorn_pyobject_to_datum(PyObject *object, TupleDesc tupdesc, MulticornExecSt
 			typeoid = state->typoids[attnum];
 			if (typeoid == BYTEAOID || typeoid == TEXTOID)
 			{
-				dvalues[attnum] = PointerGetDatum(cstring_to_text_with_len(buffer, size));
+				dvalues[attnum] = PointerGetDatum(cstring_to_text_with_len(state->buffer->data, size));
 				SET_VARSIZE(dvalues[attnum], size + VARHDRSZ);
 			}
 			else
 			{
 				dvalues[attnum] = InputFunctionCall(&state->attinmeta->attinfuncs[attnum],
-													buffer,
+													state->buffer->data,
 									   state->attinmeta->attioparams[attnum],
 									   state->attinmeta->atttypmods[attnum]);
 			}
@@ -1043,10 +1055,8 @@ get_encoding_from_attribute(Form_pg_attribute attribute)
 }
 
 ssize_t
-pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buffer)
+pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, MulticornExecState * state)
 {
-	PyObject   *date_module = PyImport_ImportModule("datetime");
-	PyObject   *date_cls = PyObject_GetAttrString(date_module, "date");
 	PyObject   *pStr;
 	PyObject   *pTempStr;
 
@@ -1054,21 +1064,17 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buff
 	/* We need to copy that in case it get dealloced later. */
 	char	   *tempbuffer;
 	Py_ssize_t	strlength = 0;
-
-	Py_DECREF(date_module);
 	if (PyNumber_Check(pyobject))
 	{
 		pTempStr = PyObject_Str(pyobject);
 		PyString_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
-		*buffer = palloc(sizeof(char) * (strlength + 1));
-		strncpy(*buffer, tempbuffer, strlength + 1);
+        resetStringInfo(state->buffer);
+        appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 		Py_DECREF(pTempStr);
-		Py_DECREF(date_cls);
 		return strlength;
 	}
 	if (pyobject == NULL || pyobject == Py_None)
 	{
-		Py_DECREF(date_cls);
 		return -1;
 	}
 	if (PyUnicode_Check(pyobject))
@@ -1080,20 +1086,19 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buff
 		if (!encoding_name)
 		{
 			PyString_AsStringAndSize(pyobject, &tempbuffer, &strlength);
-			*buffer = palloc(sizeof(char) * (strlength + 1));
-			strncpy(*buffer, tempbuffer, strlength + 1);
+            resetStringInfo(state->buffer);
+            appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 		}
 		else
 		{
 			pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(pyobject), unicode_size,
 										encoding_name, NULL);
 			PyString_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
-			*buffer = palloc(sizeof(char) * (strlength + 1));
-			strncpy(*buffer, tempbuffer, strlength + 1);
+            resetStringInfo(state->buffer);
+            appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 			Py_DECREF(pTempStr);
 		}
 		multicorn_error_check();
-		Py_DECREF(date_cls);
 		return strlength;
 	}
 	if (PyString_Check(pyobject))
@@ -1104,24 +1109,22 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buff
 					(errmsg("An error occured while decoding the %s column", NameStr(attribute->attname)),
 					 errhint("You should maybe return unicode instead?")));
 		}
-		*buffer = palloc(sizeof(char) * (strlength + 1));
-		strncpy(*buffer, tempbuffer, strlength + 1);
+        resetStringInfo(state->buffer);
+        appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 		multicorn_error_check();
-		Py_DECREF(date_cls);
 		return strlength;
 	}
-	if (PyObject_IsInstance(pyobject, date_cls))
+	if (PyObject_IsInstance(pyobject, MULTICORN_DATE_CLASS))
 	{
 		PyObject   *formatted_date;
 
 		formatted_date = PyObject_CallMethod(pyobject, "isoformat", "()");
 		multicorn_error_check();
 		PyString_AsStringAndSize(formatted_date, &tempbuffer, &strlength);
-		*buffer = palloc(sizeof(char) * (strlength + 1));
-		strncpy(*buffer, tempbuffer, strlength + 1);
+        resetStringInfo(state->buffer);
+        appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 		multicorn_error_check();
 		Py_DECREF(formatted_date);
-		Py_DECREF(date_cls);
 		return strlength;
 	}
 	if (PySequence_Check(pyobject))
@@ -1137,9 +1140,9 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buff
 		for (i = 0; i < size; i++)
 		{
 			pTempStr = PySequence_GetItem(pyobject, i);
-			pyobject_to_cstring(pTempStr, attribute, &tempbuffer);
+			pyobject_to_cstring(pTempStr, attribute, state);
 			Py_DECREF(pTempStr);
-			list_value = PyString_FromString(tempbuffer);
+			list_value = PyString_FromString(state->buffer->data);
 			PyList_Append(mapped_list, list_value);
 			Py_DECREF(list_value);
 		}
@@ -1148,56 +1151,53 @@ pyobject_to_cstring(PyObject *pyobject, Form_pg_attribute attribute, char **buff
 		Py_DECREF(pTempStr);
 		multicorn_error_check();
 		PyString_AsStringAndSize(pStr, &tempbuffer, &strlength);
-		*buffer = palloc(sizeof(char) * (strlength + 1));
-		strncpy(*buffer, tempbuffer, strlength + 1);
+        resetStringInfo(state->buffer);
+        appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 		multicorn_error_check();
 		Py_DECREF(mapped_list);
 		Py_DECREF(delimiter);
 		Py_DECREF(format);
 		Py_DECREF(pStr);
-		Py_DECREF(date_cls);
 		return strlength;
 	}
 	if (PyMapping_Check(pyobject))
 	{
-		char	   *keybuffer;
-		char	   *valuebuffer;
 		PyObject   *mapped_list = PyList_New(0);
 		PyObject   *items = PyMapping_Items(pyobject);
 		PyObject   *delimiter = PyString_FromString(", ");
 		PyObject   *current_tuple;
 		PyObject   *pTemp;
 		Py_ssize_t	i;
+        ssize_t tempLength;
 		Py_ssize_t	size = PyList_Size(items);
-
 		for (i = 0; i < size; i++)
 		{
 			current_tuple = PySequence_GetItem(items, i);
-			pyobject_to_cstring(PyTuple_GetItem(current_tuple, 0), attribute, &keybuffer);
-			pyobject_to_cstring(PyTuple_GetItem(current_tuple, 1), attribute, &valuebuffer);
-			pTemp = PyString_FromFormat("%s=>%s", keybuffer, valuebuffer);
+            resetStringInfo(state->keyBuffer);
+            resetStringInfo(state->valueBuffer);
+			tempLength = pyobject_to_cstring(PyTuple_GetItem(current_tuple, 0), attribute, state);
+            appendBinaryStringInfo(state->keyBuffer, state->buffer->data, tempLength);
+			tempLength = pyobject_to_cstring(PyTuple_GetItem(current_tuple, 1), attribute, state);
+            appendBinaryStringInfo(state->valueBuffer, state->buffer->data, tempLength);
+			pTemp = PyString_FromFormat("%s=>%s", state->keyBuffer->data, state->valueBuffer->data);
 			PyList_Append(mapped_list, pTemp);
 			Py_DECREF(pTemp);
 			Py_DECREF(current_tuple);
-			pfree(keybuffer);
-			pfree(valuebuffer);
 		}
 		pTempStr = PyObject_CallMethod(delimiter, "join", "(O)", mapped_list);
 		Py_DECREF(pTempStr);
 		PyString_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
-		*buffer = palloc(sizeof(char) * (strlength + 1));
-		strncpy(*buffer, tempbuffer, strlength + 1);
+        resetStringInfo(state->buffer);
+        appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 		Py_DECREF(mapped_list);
 		Py_DECREF(items);
 		Py_DECREF(delimiter);
-		Py_DECREF(date_cls);
 		return strlength;
 	}
-	Py_DECREF(date_cls);
 	pTempStr = PyObject_Str(pyobject);
 	PyString_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
-	*buffer = palloc(sizeof(char) * (strlength + 1));
-	strncpy(*buffer, tempbuffer, strlength + 1);
+    resetStringInfo(state->buffer);
+    appendBinaryStringInfo(state->buffer, tempbuffer, strlength);
 	Py_DECREF(pTempStr);
 	return strlength;
 }
@@ -1664,12 +1664,17 @@ _PG_init()
 	TABLES_DICT = PyDict_New();
 	MULTICORN_PZERO = Py_BuildValue("d");
 	MULTICORN = PyImport_ImportModule("multicorn");
+	MULTICORN_DATE_MODULE = PyImport_ImportModule("datetime");
+    MULTICORN_DATE_CLASS = PyObject_GetAttrString(MULTICORN_DATE_MODULE, "date");
 }
 
 void
 _PG_fini()
 {
 	Py_DECREF(TABLES_DICT);
+    Py_DECREF(MULTICORN_PZERO);
+    Py_DECREF(MULTICORN_DATE_MODULE);
+    Py_DECREF(MULTICORN_DATE_CLASS);
 	Py_Finalize();
 }
 
