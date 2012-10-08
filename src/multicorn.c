@@ -333,6 +333,7 @@ multicorn_is_on_column(RestrictInfo *restrictinfo, Relation rel, PyObject *colna
 				isEq = PyObject_Compare(colname, pTemp);
 				Py_DECREF(pTemp);
 				multicorn_error_check();
+				Py_DECREF(qual);
 				return isEq == 0;
 			case MulticornVAR:
 				pTemp = PyObject_GetAttrString(qual, "field_name");
@@ -341,12 +342,14 @@ multicorn_is_on_column(RestrictInfo *restrictinfo, Relation rel, PyObject *colna
 				multicorn_error_check();
 				if (isEq == 0)
 				{
+					Py_DECREF(qual);
 					return true;
 				}
 				pTemp = PyObject_GetAttrString(qual, "value");
 				isEq = PyObject_Compare(colname, pTemp);
 				Py_DECREF(pTemp);
 				multicorn_error_check();
+				Py_DECREF(qual);
 				return isEq == 0;
 			default:
 				break;
