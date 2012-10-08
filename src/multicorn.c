@@ -662,7 +662,6 @@ multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * s
 		{
 			pTemp = PyList_GetItem(state->planstate->quals, i);
 			PyList_Append(pConds, pTemp);
-			Py_DECREF(pTemp);
 		}
 		length = PyList_Size(state->planstate->params);
 		multicorn_error_check();
@@ -725,7 +724,6 @@ multicorn_get_quals(ForeignScanState *node, Relation rel, MulticornExecState * s
 		{
 			pTemp = PyList_GetItem(state->planstate->quals, i);
 			PyList_Append(pConds, pTemp);
-			Py_DECREF(pTemp);
 		}
 	}
 
