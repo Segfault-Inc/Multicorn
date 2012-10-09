@@ -45,8 +45,6 @@ class RssFdw(ForeignDataWrapper):
 
     def execute(self, quals, columns):
         """Quals are ignored."""
-        quals = tuple(quals)
-        columns = tuple(columns)
         if self.cache_duration is not None:
             date, values = self.cache
             if values is not None:
