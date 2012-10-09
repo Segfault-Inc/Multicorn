@@ -1,3 +1,7 @@
+1.0.0-beta:
+    - Fix many many memory related bugs
+    - Add gcfdw to help debugging python reference counting bugs.
+    - Let the structuredfs work with file object
 0.9.2.1:
     - Fix bug in log_to_postgres utility function, leading to SIGABRT from
       python.
@@ -18,10 +22,10 @@
 0.0.7
     - Fix bug with 64bits platform on text and bytea types
 0.0.6
-	- Fix operand switching, replacing the operator by its commutator
-	- Removed ANY, CONTAINS, IN support for a more general approach
+  - Fix operand switching, replacing the operator by its commutator
+  - Removed ANY, CONTAINS, IN support for a more general approach
     - Fix many bugs in imapfdw
 
 0.0.5
-	- Fix bug on Postgresql exceptions management
-	- Replaced imaplib by imapclient for better server compatibility
+  - Fix bug on Postgresql exceptions management
+  - Replaced imaplib by imapclient for better server compatibility
