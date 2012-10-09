@@ -71,6 +71,17 @@ class Qual(object):
         return (u"%s %s %s" % (self.field_name, operator, value))\
                 .encode('utf8')
 
+    def __eq__(self, other):
+        if isinstance(other, Qual):
+            return (self.field_name == other.field_name and
+                    self.operator == other.operator and
+                    self.value == other.value)
+        return False
+
+    def __hash__(self):
+        return hash((self.field_name, self.operator, self.value))
+
+
 class Param(Qual):
     """A param is like a qual, except that its value is filled at execution time
     rather than at plan time.

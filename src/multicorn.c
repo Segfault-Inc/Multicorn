@@ -1617,7 +1617,6 @@ multicorn_datum_to_python(Datum datumvalue, Oid type, Form_pg_attribute attribut
 						listelem = multicorn_datum_to_python(buffer, typeStruct->typelem, attribute);
 						if (listelem == NULL)
 						{
-							Py_DECREF(listelem);
 							result = NULL;
 							break;
 						}

@@ -6,7 +6,7 @@ from lxml import etree
 import urllib
 from logging import ERROR
 from multicorn.utils import log_to_postgres
-
+import pickle
 
 class RssFdw(ForeignDataWrapper):
     """An rss foreign data wrapper.
@@ -24,7 +24,7 @@ class RssFdw(ForeignDataWrapper):
     def __init__(self, options, columns):
         super(RssFdw, self).__init__(options, columns)
         self.url = options.get('url', None)
-        self.cache = {}
+        self.cache = (None, None)
         self.cache_duration = options.get('cache_duration', None)
         if self.cache_duration is not None:
             self.cache_duration = timedelta(seconds=int(self.cache_duration))
@@ -48,15 +48,15 @@ class RssFdw(ForeignDataWrapper):
         quals = tuple(quals)
         columns = tuple(columns)
         if self.cache_duration is not None:
-            date, values = self.cache.get((quals, columns), (None, None))
-            if (values is not None and
-                    (datetime.now() - date) < self.cache_duration):
-                return values
+            date, values = self.cache
+            if values is not None:
+                if (datetime.now() - date) < self.cache_duration:
+                    return values
         try:
             xml = etree.fromstring(urllib.urlopen(self.url).read())
             items = [self.make_item_from_xml(elem, xml.nsmap)
                      for elem in xml.xpath('//item')]
-            self.cache[(quals, columns)] = (datetime.now(), items)
+            self.cache = (datetime.now(), items)
             return items
         except etree.ParseError:
             log_to_postgres("Malformed xml, returning nothing")
