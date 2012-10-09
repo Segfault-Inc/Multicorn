@@ -10,6 +10,7 @@ import re
 import errno
 import string
 import collections
+import shutil
 
 
 vformat = string.Formatter().vformat
@@ -225,15 +226,18 @@ class Item(collections.Mapping):
 
     def write(self, content):
         """
-        Create or overwrite the file with the ``content`` bytestring.
+        Create or overwrite the file with the ``content`` bytestring or
+        fileobject.
         """
         filename = self.full_filename
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)
-
         with open(filename, 'wb') as file_:
-            file_.write(content)
+            if hasattr(content, 'read'):
+                shutil.copyfileobj(content,  file_)
+            else:
+                file_.write(content)
 
     def remove(self):
         """
