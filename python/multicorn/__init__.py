@@ -11,6 +11,8 @@ postgresql (usually, the system wide python installation).
 
 import sys
 
+__version__ = '__VERSION__'
+
 ANY = object()
 ALL = object()
 UNBOUND = object()

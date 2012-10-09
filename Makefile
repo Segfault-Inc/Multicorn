@@ -33,6 +33,11 @@ python_code: setup.py
 
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
+	unzip ./multicorn-$(EXTVERSION).zip
+	rm ./multicorn-$(EXTVERSION).zip
+	sed "s/__VERSION__/$(EXTVERSION)/g" ./multicorn-$(EXTVERSION)/META.json  ./multicorn-$(EXTVERSION)/setup.py  ./multicorn-$(EXTVERSION)/python/multicorn/__init__.py -i
+	zip ./multicorn-$(EXTVERSION).zip ./multicorn-$(EXTVERSION)/
+	#rm ./multicorn-$(EXTVERSION) -rf
 
 DATA = $(wildcard sql/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
 EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql
