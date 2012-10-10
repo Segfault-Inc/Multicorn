@@ -29,7 +29,10 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
 python_code: setup.py
-	$(PYEXEC) ./setup.py install
+	cp ./setup.py ./setup--$(EXTVERSION).py
+	sed "s/__VERSION__/$(EXTVERSION)-dev/g" ./setup--$(EXTVERSION).py -i
+	$(PYEXEC) ./setup--$(EXTVERSION).py install
+	rm ./setup--$(EXTVERSION).py
 
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
