@@ -36,7 +36,7 @@ release-zip: all
 	unzip ./multicorn-$(EXTVERSION).zip
 	rm ./multicorn-$(EXTVERSION).zip
 	sed "s/__VERSION__/$(EXTVERSION)/g" ./multicorn-$(EXTVERSION)/META.json  ./multicorn-$(EXTVERSION)/setup.py  ./multicorn-$(EXTVERSION)/python/multicorn/__init__.py -i
-	zip ./multicorn-$(EXTVERSION).zip ./multicorn-$(EXTVERSION)/
+	zip -r ./multicorn-$(EXTVERSION).zip ./multicorn-$(EXTVERSION)/
 	rm ./multicorn-$(EXTVERSION) -rf
 
 DATA = $(wildcard sql/*--*.sql) sql/$(EXTENSION)--$(EXTVERSION).sql
