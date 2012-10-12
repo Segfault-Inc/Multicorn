@@ -20,7 +20,7 @@
     },
     "provides": {
         "multicorn": {
-            "abstract": "Multicorn Python bindings for Postgres 9.1+ Foreign Data Wrapper",
+            "abstract": "Multicorn Python bindings for Postgres 9.2 Foreign Data Wrapper",
             "file": "sql/multicorn.sql",
             "docfile": "doc/multicorn.md",
             "version": "__VERSION__"
