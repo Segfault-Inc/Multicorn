@@ -8,7 +8,7 @@ first release of Multicorn for  PostgreSQL 9.2.
 
 The numeration scheme changes for that reason.
 
-The 0.9.2 major featur is the ability to influence the planner by informing it
+The 0.9.2 major feature is the ability to influence the planner by informing it
 of possible parameterized paths.
 
 See the `Implementor's guide`_ for more information about this feature.
