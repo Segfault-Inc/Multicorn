@@ -1,7 +1,7 @@
-1.0.0-beta:
+1.0.0beta1:
     - Fix many many memory related bugs
     - Add gcfdw to help debugging python reference counting bugs.
-    - Let the structuredfs work with file object
+    - Let the structuredfs work with file-like objects.
 0.9.2.1:
     - Fix bug in log_to_postgres utility function, leading to SIGABRT from
       python.
