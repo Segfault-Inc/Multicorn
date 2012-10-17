@@ -318,7 +318,7 @@ Required options
 The login and password options should be set as a user mapping options, so as
 not to be stored in plaintext. See `the create user mapping documentation`_
 
-.. _the create user mapping: http://www.postgresql.org/docs/9.1/static/sql-createusermapping.html
+.. _the create user mapping documentation: http://www.postgresql.org/docs/9.1/static/sql-createusermapping.html
 
 Allowed options
 ---------------
