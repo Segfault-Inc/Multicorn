@@ -138,7 +138,6 @@ void		pydict_to_postgres_tuple(MulticornExecState * state, TupleDesc desc, PyObj
 ssize_t		pyobject_to_cstring(PyObject *pyobject, TupleDesc desc, int attnum, MulticornExecState * state);
 
 PyObject   *TABLES_DICT,
-		   *MULTICORN_PZERO,
 		   *MULTICORN,
 		   *MULTICORN_DATE_MODULE,
 		   *MULTICORN_DATE_CLASS;
@@ -163,7 +162,6 @@ multicorn_handler(PG_FUNCTION_ARGS)
 Datum
 multicorn_validator(PG_FUNCTION_ARGS)
 {
-
 	List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
 	Oid			catalog = PG_GETARG_OID(1);
 	char	   *className = NULL;
@@ -254,12 +252,14 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	pRowsAndWidth = PyObject_CallMethod(pObj, "get_rel_size", "(O,O)", pQualsAndParams, state->needed_columns);
 	multicorn_error_check();
 	pBuffer = PyTuple_GetItem(pRowsAndWidth, 0);
-	PyNumber_Coerce(&pBuffer, &MULTICORN_PZERO);
-	baserel->rows = PyFloat_AsDouble(pBuffer);
+	pBuffer = PyNumber_Long(pBuffer);
+	multicorn_error_check();
+	baserel->rows = PyLong_AsDouble(pBuffer);
 	Py_DECREF(pBuffer);
 	pBuffer = PyTuple_GetItem(pRowsAndWidth, 1);
-	PyNumber_Coerce(&pBuffer, &MULTICORN_PZERO);
-	baserel->width = PyFloat_AsDouble(pBuffer);
+	pBuffer = PyNumber_Int(pBuffer);
+	baserel->width = (int) PyInt_AsLong(pBuffer);
+	multicorn_error_check();
 	Py_DECREF(pBuffer);
 	Py_DECREF(state->needed_columns);
 	Py_DECREF(state->quals);
@@ -406,7 +406,8 @@ multicornGetForeignPaths(PlannerInfo *root,
 			   *pPathKeytuple,
 			   *pPathKeys,
 			   *pPathKeyAttrName,
-			   *pPathKeyCost;
+			   *pPathKeyCost,
+			   *pLongPathKeyCost;
 	Py_ssize_t	i,
 				j;
 	ListCell   *lc;
@@ -420,6 +421,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 	int			found = 0;
 	List	   *clauses = NULL;
 	Relids	   *outerrels;
+	Path	   *path;
 
 	pObj = multicorn_get_instance(rel);
 	pPathKeysList = PyObject_CallMethod(pObj, "get_path_keys", "()");
@@ -433,8 +435,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 		pPathKeytuple = PySequence_GetItem(pPathKeysList, i);
 		pPathKeys = PySequence_GetItem(pPathKeytuple, 0);
 		pPathKeyCost = PySequence_GetItem(pPathKeytuple, 1);
-		PyNumber_Coerce(&pPathKeyCost, &MULTICORN_PZERO);
-		parampathrows = PyFloat_AsDouble(pPathKeyCost);
+		pLongPathKeyCost = PyNumber_Long(pPathKeyCost);
+		parampathrows = PyLong_AsDouble(pLongPathKeyCost);
+		Py_DECREF(pLongPathKeyCost);
 		multicorn_error_check();
 		clauses = NULL;
 		outerrels = NULL;
@@ -496,18 +499,17 @@ multicornGetForeignPaths(PlannerInfo *root,
 		Py_DECREF(pPathKeys);
 		Py_DECREF(pPathKeyCost);
 	}
-	Py_DECREF(MULTICORN_PZERO);
 	Py_DECREF(pPathKeysList);
 	RelationClose(rel);
-	add_path(baserel, (Path *)
-			 create_foreignscan_path(root, baserel,
-									 baserel->rows,
-									 baserel->baserestrictcost.startup,
-									 baserel->rows * baserel->width,
-									 NIL,		/* no pathkeys */
-									 NULL,		/* no outer rel either */
-									 (void *) NULL));
-
+	path = (Path *)
+		create_foreignscan_path(root, baserel,
+								baserel->rows,
+								baserel->baserestrictcost.startup,
+								baserel->rows * baserel->width,
+								NIL,	/* no pathkeys */
+								NULL,	/* no outer rel either */
+								(void *) NULL);
+	add_path(baserel, path);
 }
 
 /*
@@ -524,14 +526,29 @@ multicornGetForeignPlan(PlannerInfo *root,
 {
 	Index		scan_relid = baserel->relid;
 	MulticornPlanState *state = multicorn_init_plan_state(baserel, foreigntableid);
+	Const	   *private_state;
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 	/* Create the ForeignScan node */
+
+	/*
+	 * We have to turn the private state into a datum, to allow it to be
+	 * copied.
+	 */
+	/* Since the MulticornPlanState DOES NOT reference any palloc'd datum, */
+	/* it can be copied safely (Python memory is NOT managed by postgres) */
+	private_state = makeConst(INTERNALOID,
+							  0,
+							  0,
+							  sizeof(MulticornPlanState),
+							  PointerGetDatum(state),
+							  false,
+							  false);
 	return make_foreignscan(tlist,
 							scan_clauses,
 							scan_relid,
 							NIL,	/* no expressions to evaluate */
-							(void *) state);
+							(void *) private_state);
 }
 
 
@@ -580,6 +597,7 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	const char *temp;
 	RangeTblEntry *rtl_entry;
 	Relids		accepted_relids = NULL;
+	Const	   *raw_state;
 
 	attinmeta = TupleDescGetAttInMetadata(node->ss.ss_currentRelation->rd_att);
 	natts = node->ss.ss_currentRelation->rd_att->natts;
@@ -600,7 +618,9 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 		strcpy(state->attrEncodings[i], temp);
 	}
 	i = 0;
-	plan_state = (MulticornPlanState *) ((ForeignScan *) node->ss.ps.plan)->fdw_private;
+	raw_state = (Const *) (((ForeignScan *) node->ss.ps.plan)->fdw_private);
+	plan_state = (MulticornPlanState *) DatumGetPointer(raw_state->constvalue);
+	((ForeignScan *) node->ss.ps.plan)->fdw_private = plan_state;
 	state->typoids = palloc(natts * sizeof(Oid));
 	state->planstate = plan_state;
 	node->fdw_state = (void *) state;
@@ -1679,7 +1699,6 @@ _PG_init()
 	Py_Initialize();
 	PyDateTime_IMPORT;
 	TABLES_DICT = PyDict_New();
-	MULTICORN_PZERO = Py_BuildValue("d");
 	MULTICORN = PyImport_ImportModule("multicorn");
 	MULTICORN_DATE_MODULE = PyImport_ImportModule("datetime");
 	MULTICORN_DATE_CLASS = PyObject_GetAttrString(MULTICORN_DATE_MODULE, "date");
@@ -1689,7 +1708,6 @@ void
 _PG_fini()
 {
 	Py_DECREF(TABLES_DICT);
-	Py_DECREF(MULTICORN_PZERO);
 	Py_DECREF(MULTICORN_DATE_MODULE);
 	Py_DECREF(MULTICORN_DATE_CLASS);
 	Py_Finalize();

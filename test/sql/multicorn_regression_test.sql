@@ -46,4 +46,7 @@ CREATE foreign table testmulticorn2 (
 
 select * from testmulticorn union all select * from testmulticorn2;
 
+\set FETCH_COUNT 1000
+select * from testmulticorn;
+
 DROP EXTENSION multicorn cascade;
