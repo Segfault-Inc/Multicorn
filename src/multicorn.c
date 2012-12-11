@@ -11,6 +11,7 @@
  *-------------------------------------------------------------------------
  */
 
+#include "Python.h"
 #include "postgres.h"
 #include "access/relscan.h"
 #include "access/reloptions.h"
@@ -41,9 +42,9 @@
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
 #include "utils/lsyscache.h"
+#include "nodes/makefuncs.h"
 #include "pgtime.h"
 #include "mb/pg_wchar.h"
-#include "Python.h"
 #include "datetime.h"
 
 
@@ -132,6 +133,8 @@ void multicorn_append_param_path(PlannerInfo *root, RelOptInfo *baserel,
 PyObject   *multicorn_get_class(char *className);
 PyObject   *multicorn_get_multicorn(void);
 void		multicorn_unnest(Node *value, Node **result);
+void		multicorn_init_typeoids(MulticornExecState * state);
+void		multicorn_pyobject_to_datum(PyObject *object, TupleDesc tupdesc, MulticornExecState * state, int attnum);
 
 void		pysequence_to_postgres_tuple(MulticornExecState * state, TupleDesc desc, PyObject *pyseq);
 void		pydict_to_postgres_tuple(MulticornExecState * state, TupleDesc desc, PyObject *pydict);
@@ -620,7 +623,7 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	i = 0;
 	raw_state = (Const *) (((ForeignScan *) node->ss.ps.plan)->fdw_private);
 	plan_state = (MulticornPlanState *) DatumGetPointer(raw_state->constvalue);
-	((ForeignScan *) node->ss.ps.plan)->fdw_private = plan_state;
+	((ForeignScan *) node->ss.ps.plan)->fdw_private = (void *) plan_state;
 	state->typoids = palloc(natts * sizeof(Oid));
 	state->planstate = plan_state;
 	node->fdw_state = (void *) state;
