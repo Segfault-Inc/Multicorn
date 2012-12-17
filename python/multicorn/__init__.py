@@ -84,26 +84,6 @@ class Qual(object):
         return hash((self.field_name, self.operator, self.value))
 
 
-class Param(Qual):
-    """A param is like a qual, except that its value is filled at execution time
-    rather than at plan time.
-    """
-
-    def __init__(self, field_name, operator, param_id, att_num, param_kind,
-                   param_type):
-        super(Param, self).__init__(field_name, operator, UNBOUND)
-        self.param_id = param_id
-        self.att_num = att_num
-        self.param_kind = param_kind
-        self.param_type = param_type
-
-class Var(Qual):
-    """A var is like a param, except that the comparison will be against another
-    field.
-    The value contains the field name. If empty, the value comes from another
-    relation.
-    """
-
 class ForeignDataWrapper(object):
     """Base class for all foreign data wrapper instances."""
 
@@ -124,7 +104,7 @@ class ForeignDataWrapper(object):
 
     def get_rel_size(self, quals, columns):
         """Helps the planner by returning costs.
-        
+
         Returns a tuple of the form (nb_row, avg width)
         """
         return (100000000, len(columns) * 100)

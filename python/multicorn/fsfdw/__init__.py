@@ -37,7 +37,7 @@ class FilesystemFdw(ForeignDataWrapper):
         self.folder_columns = [key[0] for key in
                                self.structured_directory._path_parts_properties
                                if key]
-        # Assume 100 files/folder per folder 
+        # Assume 100 files/folder per folder
         self.total_files = 100 ** len(pattern.split('/'))
         if self.filename_column:
             if self.filename_column not in columns:

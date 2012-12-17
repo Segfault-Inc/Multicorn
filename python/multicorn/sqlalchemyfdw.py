@@ -62,8 +62,8 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         self.metadata = MetaData()
         tablename = fdw_options['tablename']
         self.table = Table(tablename, self.metadata,
-                *[Column(col.column_name, ischema_names[col.type_name])
-                    for col in fdw_columns.values()])
+                           *[Column(col.column_name, ischema_names[col.type_name])
+                             for col in fdw_columns.values()])
 
     def execute(self, quals, columns):
         """
@@ -75,10 +75,10 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             operator = OPERATORS.get(qual.operator, None)
             if operator:
                 clauses.append(operator(self.table.c[qual.field_name],
-                    qual.value))
+                                        qual.value))
             else:
                 log_to_postgres('Qual not pushed to foreign db: %s' % qual,
-                        WARNING)
+                                WARNING)
         if clauses:
             statement = statement.where(and_(*clauses))
         columns = [self.table.c[col] for col in columns]

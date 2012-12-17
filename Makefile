@@ -12,7 +12,7 @@ TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test --load-language=plpgsql
 MODULE_big     = multicorn
-OBJS = src/multicorn.o
+OBJS =  src/errors.o src/python.o src/query.o src/multicorn.o
 SHLIB_LINK   = -lpython$(PYVERSION)
 PG_CONFIG    = `which pg_config`
 PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\.| 9\.0" && echo no || echo yes)
