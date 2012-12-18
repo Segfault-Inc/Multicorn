@@ -95,9 +95,11 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 	for (i = 0; i < attinmeta->tupdesc->natts; i++)
 	{
 		Form_pg_attribute attr = attinmeta->tupdesc->attrs[i];
-		if(!attr->attisdropped)
+
+		if (!attr->attisdropped)
 		{
 			ConversionInfo *cinfo = palloc0(sizeof(ConversionInfo));
+
 			cinfo->atttypoid = attr->atttypid;
 			cinfo->atttypmod = attinmeta->atttypmods[i];
 			cinfo->attioparam = attinmeta->attioparams[i];
@@ -106,7 +108,9 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 			cinfo->attrname = NameStr(attr->attname);
 			cinfo->attnum = i + 1;
 			cinfos[i] = cinfo;
-		} else {
+		}
+		else
+		{
 			cinfos[i] = NULL;
 		}
 	}
@@ -245,7 +249,7 @@ canonicalOpExpr(OpExpr *opExpr, RelOptInfo *baserel)
 		r = unnestClause(list_nth(opExpr->args, 1));
 		swapOperandsAsNeeded(&l, &r, &operatorid, baserel);
 	}
-	if (IsA(l, Var) && bms_is_member(((Var *) l)->varno, base_relids))
+	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids))
 	{
 		result = (OpExpr *) make_opclause(operatorid,
 										  opExpr->opresulttype,
@@ -253,7 +257,7 @@ canonicalOpExpr(OpExpr *opExpr, RelOptInfo *baserel)
 										  (Expr *) l, (Expr *) r,
 										  opExpr->opcollid,
 										  opExpr->inputcollid);
-	} 
+	}
 	return result;
 }
 

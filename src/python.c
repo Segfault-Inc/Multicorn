@@ -752,10 +752,20 @@ pyobjectToDatum(PyObject *object, StringInfo buffer,
 
 	if (buffer->len >= 0)
 	{
-		value = InputFunctionCall(cinfo->attinfunc,
-								  buffer->data,
-								  cinfo->attioparam,
-								  cinfo->atttypmod);
+		if (cinfo->atttypoid == BYTEAOID || cinfo->atttypoid == TEXTOID ||
+			cinfo->atttypoid == VARCHAROID)
+		{
+			/* Special case, since the value is already a byte string. */
+			value = PointerGetDatum(cstring_to_text_with_len(buffer->data,
+															 buffer->len));
+		}
+		else
+		{
+			value = InputFunctionCall(cinfo->attinfunc,
+									  buffer->data,
+									  cinfo->attioparam,
+									  cinfo->atttypmod);
+		}
 	}
 	return value;
 }
@@ -943,6 +953,7 @@ pathKeys(MulticornPlanState * state)
 			for (k = 0; k < state->numattrs; k++)
 			{
 				ConversionInfo *cinfo = state->cinfos[k];
+
 				if (p_key != Py_None &&
 					strcmp(cinfo->attrname, PyString_AsString(p_key)) == 0)
 				{

@@ -152,12 +152,14 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	MulticornPlanState *planstate = palloc0(sizeof(MulticornPlanState));
 	ForeignTable *ftable = GetForeignTable(foreigntableid);
 	ListCell   *lc;
-	baserel->fdw_private = planstate; 
+
+	baserel->fdw_private = planstate;
 	planstate->foreigntableid = foreigntableid;
 	/* Initialize the conversion info array */
 	{
 		Relation	rel = RelationIdGetRelation(ftable->relid);
 		AttInMetadata *attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
+
 		planstate->numattrs = RelationGetNumberOfAttributes(rel);
 		planstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 									planstate->numattrs);
@@ -367,6 +369,7 @@ void *
 serializePlanState(MulticornPlanState * state)
 {
 	List	   *result = NULL;
+
 	result = lappend_int(result, state->numattrs);
 	result = lappend_int(result, state->foreigntableid);
 	result = lappend(result, state->target_list);
