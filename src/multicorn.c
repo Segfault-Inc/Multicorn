@@ -179,7 +179,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	}
 	foreach(lc, baserel->baserestrictinfo)
 	{
-		extractRestrictions(root, baserel, (RestrictInfo *) lfirst(lc),
+		extractRestrictions(root, baserel, ((RestrictInfo *) lfirst(lc))->clause,
 							&planstate->qual_list,
 							&planstate->param_list);
 
@@ -234,14 +234,20 @@ multicornGetForeignPlan(PlannerInfo *root,
 {
 	Index		scan_relid = baserel->relid;
 	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
+
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
-	// Extract the the quals coming from a parameterized path, if any
-	if(best_path->path.param_info)
+	/* Extract the quals coming from a parameterized path, if any */
+	if (best_path->path.param_info)
 	{
-		ListCell *lc;
-		foreach(lc, best_path->path.param_info->ppi_clauses)
+		List	   *ri = best_path->path.param_info->ppi_clauses;
+		List	   *clauses = extract_actual_clauses(ri, false);
+		ListCell   *lc;
+
+		/* Replace outer vars by params. */
+		/* clauses = replace_nestloop_params(root, clauses); */
+		foreach(lc, clauses)
 		{
-			extractRestrictions(root, baserel, (RestrictInfo *) lfirst(lc),
+			extractRestrictions(root, baserel, (Expr *) lfirst(lc),
 								&planstate->qual_list,
 								&planstate->param_list);
 		}

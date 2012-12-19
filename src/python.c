@@ -414,11 +414,13 @@ execute(ForeignScanState *node)
 		Datum		value = 0;
 		Oid			type = param->paramtype;
 		PyObject   *p_param;
+
 		switch (param->paramkind)
 		{
 			case PARAM_EXTERN:
 				{
 					ParamExternData *prm = &params->params[param->paramid];
+
 					value = prm->value;
 				}
 				break;

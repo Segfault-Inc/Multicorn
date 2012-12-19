@@ -315,12 +315,10 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 void
 extractRestrictions(PlannerInfo *root,
 					RelOptInfo *baserel,
-					RestrictInfo *restrictinfo,
+					Expr *node,
 					List **quals,
 					List **params)
 {
-	Expr	   *node = restrictinfo->clause;
-
 	switch (nodeTag(node))
 	{
 		case T_OpExpr:
@@ -391,14 +389,16 @@ extractClauseFromOpExpr(PlannerInfo *root,
 				break;
 				/* Var: somevar == someothervar. */
 			case T_Var:
-				// This job could/should? be done in the core by
-				// replace_nestloop_vars. Infortunately, this is private.
+				/* This job could/should? be done in the core by */
+				/* replace_nestloop_vars. Infortunately, this is private. */
+				if (bms_is_member(((Var *) right)->varno, root->curOuterRels))
 				{
-					Param * param = assign_nestloop_param_var(root,
-															  (Var*)right);
+					Param	   *param = assign_nestloop_param_var(root,
+															  (Var *) right);
+
 					*params = lappend(*params, makeQual(left->varattno,
-													getOperatorString(op->opno),
-														(Expr*) param,
+												 getOperatorString(op->opno),
+														(Expr *) param,
 														false,
 														false));
 				}
