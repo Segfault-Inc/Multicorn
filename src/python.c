@@ -429,7 +429,8 @@ execute(ForeignScanState *node)
 			case PARAM_EXEC:
 				{
 					ParamExecData prm = exec_params[param->paramid];
-					if(exec_params[param->paramid].isnull)
+
+					if (exec_params[param->paramid].isnull)
 					{
 						value = 0;
 					}

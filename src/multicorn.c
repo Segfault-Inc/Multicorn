@@ -242,6 +242,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 		List	   *ri = best_path->path.param_info->ppi_clauses;
 		List	   *clauses = extract_actual_clauses(ri, false);
 		ListCell   *lc;
+
 		foreach(lc, scan_clauses)
 		{
 			extractRestrictions(root, baserel, (Expr *) lfirst(lc),
