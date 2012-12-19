@@ -2,6 +2,7 @@
 #include "optimizer/var.h"
 #include "optimizer/clauses.h"
 #include "optimizer/pathnode.h"
+#include "optimizer/subselect.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_operator.h"
 #include "mb/pg_wchar.h"
@@ -390,6 +391,17 @@ extractClauseFromOpExpr(PlannerInfo *root,
 				break;
 				/* Var: somevar == someothervar. */
 			case T_Var:
+				// This job could/should? be done in the core by
+				// replace_nestloop_vars. Infortunately, this is private.
+				{
+					Param * param = assign_nestloop_param_var(root,
+															  (Var*)right);
+					*params = lappend(*params, makeQual(left->varattno,
+													getOperatorString(op->opno),
+														(Expr*) param,
+														false,
+														false));
+				}
 				break;
 				/* Ignore other node types. */
 			default:
@@ -630,22 +642,29 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths)
 		/* the parameterized path and add it to the plan. */
 		if (allclauses != NIL)
 		{
-			ParamPathInfo *ppi = makeNode(ParamPathInfo);
-			ForeignPath *foreignPath = create_foreignscan_path(
-															   root, baserel,
-															   nbrows,
-									  baserel->baserestrictcost.startup + 10,
-													 nbrows * baserel->width,
-															   NIL,
-															   NULL,
-															   NULL);
-
-			ppi->ppi_req_outer = bms_difference(outer_relids,
+			Bitmapset  *req_outer = bms_difference(outer_relids,
 										 bms_make_singleton(baserel->relid));
-			ppi->ppi_rows = nbrows;
-			ppi->ppi_clauses = list_concat(ppi->ppi_clauses, allclauses);
-			foreignPath->path.param_info = ppi;
-			add_path(baserel, (Path *) foreignPath);
+			ParamPathInfo *ppi;
+			ForeignPath *foreignPath;
+
+			if (!bms_is_empty(req_outer))
+			{
+				ppi = makeNode(ParamPathInfo);
+				ppi->ppi_req_outer = req_outer;
+				ppi->ppi_rows = nbrows;
+				ppi->ppi_clauses = list_concat(ppi->ppi_clauses, allclauses);
+				foreignPath = create_foreignscan_path(
+													  root, baserel,
+													  nbrows,
+									  baserel->baserestrictcost.startup + 10,
+													  nbrows * baserel->width,
+													  NIL,
+													  NULL,
+													  NULL);
+
+				foreignPath->path.param_info = ppi;
+				add_path(baserel, (Path *) foreignPath);
+			}
 		}
 	}
 }

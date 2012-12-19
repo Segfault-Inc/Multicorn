@@ -233,13 +233,24 @@ multicornGetForeignPlan(PlannerInfo *root,
 						List *scan_clauses)
 {
 	Index		scan_relid = baserel->relid;
-
+	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
+	// Extract the the quals coming from a parameterized path, if any
+	if(best_path->path.param_info)
+	{
+		ListCell *lc;
+		foreach(lc, best_path->path.param_info->ppi_clauses)
+		{
+			extractRestrictions(root, baserel, (RestrictInfo *) lfirst(lc),
+								&planstate->qual_list,
+								&planstate->param_list);
+		}
+	}
 	return make_foreignscan(tlist,
 							scan_clauses,
 							scan_relid,
 							NIL,	/* no expressions to evaluate */
-							serializePlanState(baserel->fdw_private));
+							serializePlanState(planstate));
 }
 
 /*

@@ -67,14 +67,13 @@ explain select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 =
 (4 rows)
 
 explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
- Nested Loop Left Join  (cost=20.00..40.01 rows=500000000000 width=128)
-   ->  Foreign Scan on testmulticorn m1  (cost=10.00..20.00 rows=1 width=20)
-         Filter: ((test1)::text = (test1)::text)
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ Nested Loop Left Join  (cost=10.00..400100000.00 rows=500000000000 width=128)
+   ->  Foreign Scan on testmulticorn m1  (cost=0.00..200000000.00 rows=10000000 width=20)
    ->  Foreign Scan on testmulticorn m2  (cost=10.00..20.00 rows=1 width=20)
          Filter: ((m1.test1)::text = (test1)::text)
-(5 rows)
+(4 rows)
 
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 3 other objects
