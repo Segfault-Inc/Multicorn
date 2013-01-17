@@ -19,7 +19,7 @@ PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\.| 9\.0" && echo no
 PG_CPPFLAGS  = -I/usr/include/python$(PYVERSION) $(python_includespec) $(CPPFLAGS)
 PROFILE      = -lpython$(PYVERSION)
 ifeq ($(PG91),yes)
-all: sql/$(EXTENSION)--$(EXTVERSION).sql
+all: preflight-check sql/$(EXTENSION)--$(EXTVERSION).sql
 
 ifndef NO_PYTHON
 install: python_code
@@ -27,6 +27,9 @@ endif
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
+
+preflight-check:
+	./preflight-check.sh
 
 python_code: setup.py
 	cp ./setup.py ./setup--$(EXTVERSION).py
