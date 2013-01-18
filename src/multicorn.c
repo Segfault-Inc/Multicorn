@@ -239,8 +239,6 @@ multicornGetForeignPlan(PlannerInfo *root,
 	/* Extract the quals coming from a parameterized path, if any */
 	if (best_path->path.param_info)
 	{
-		List	   *ri = best_path->path.param_info->ppi_clauses;
-		List	   *clauses = extract_actual_clauses(ri, false);
 		ListCell   *lc;
 
 		foreach(lc, scan_clauses)
