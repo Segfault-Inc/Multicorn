@@ -4,7 +4,7 @@ Multicorn
 Synopsis
 --------
 
-Multicorn is a PostgreSQL 9.1+ extension allowing to write Foreign Data Wrappers
+Multicorn is a PostgreSQL 9.2+ extension allowing to write Foreign Data Wrappers
 in python.
 It is bundled with some foreign data wrappers.
 
