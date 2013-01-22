@@ -56,7 +56,7 @@ class LdapFdw(ForeignDataWrapper):
 	    return "SCOPE_ONELEVEL"
 	elif scope == "sub":
 	    return "SCOPE_SUBTREE"
-	elif scope == "base"
+	elif scope == "base":
 	    return "SCOPE_BASE"
 	else:
 	    log_to_postgres("Invalid scope specified: %s" % scope,ERROR)	
