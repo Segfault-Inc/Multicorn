@@ -42,21 +42,21 @@ class LdapFdw(ForeignDataWrapper):
                 request = "(&%s(%s=%s))" % (
                     request, qual.field_name, val)
         for _, item in self.ldap.search_s(
-            self.path, ldap.SCOPE_ONELEVEL, request):
+            self.path, self.scope, request):
             yield [
                item.get(field, [None])[0]
                for field in self.field_list]
 
-    def parse_scope(scope):
+    def parse_scope(self,scope):
 	if scope == None:
-	    return "SCOPE_ONELEVEL"
+	    return ldap.SCOPE_ONELEVEL
 	elif scope == "":
-	    return "SCOPE_ONELEVEL"
+	    return ldap.SCOPE_ONELEVEL
 	elif scope == "one":
-	    return "SCOPE_ONELEVEL"
+	    return ldap.SCOPE_ONELEVEL
 	elif scope == "sub":
-	    return "SCOPE_SUBTREE"
+	    return ldap.SCOPE_SUBTREE
 	elif scope == "base":
-	    return "SCOPE_BASE"
+	    return ldap.SCOPE_BASE
 	else:
 	    log_to_postgres("Invalid scope specified: %s" % scope,ERROR)	
