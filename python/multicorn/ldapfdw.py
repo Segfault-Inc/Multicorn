@@ -23,7 +23,7 @@ class LdapFdw(ForeignDataWrapper):
 
     def __init__(self, fdw_options, fdw_columns):
         super(LdapFdw, self).__init__(fdw_options, fdw_columns)
-	if fdw_options["address"] = None:
+	if fdw_options["address"] == None:
 	    self.ldapuri = fdw_options["uri"]
 	else:
 	    self.ldapuri = "ldap://" + fdw_options["address"]
