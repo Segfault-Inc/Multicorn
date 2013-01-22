@@ -18,6 +18,8 @@ class LdapFdw(ForeignDataWrapper):
     path        -- the ldap path (ex: ou=People,dc=example,dc=com)
     objectClass -- the ldap object class (ex: 'inetOrgPerson')
     scope	-- the ldap scope (one, sub or base)
+    binddn	-- the ldap bind DN (ex: 'cn=Admin,dc=example,dc=com')
+    bindpwd	-- the ldap bind Password
 
     """
 
@@ -35,6 +37,15 @@ class LdapFdw(ForeignDataWrapper):
 	    self.scope = self.parse_scope()
         self.object_class = fdw_options["objectclass"]
         self.field_list = fdw_columns
+	if "binddn" in fdw_options:
+	    self.binddn = fdw_options["binddn"]
+	else
+	    self.binddn = None
+        if "bindpwd" in fdw_options:
+            self.bindpwd = fdw_options["bindpwd"]
+	else
+	    self.binddn = None
+	self.bind()
 
     def execute(self, quals, columns):
         request = "(objectClass=%s)" % self.object_class
@@ -49,6 +60,18 @@ class LdapFdw(ForeignDataWrapper):
             yield [
                item.get(field, [None])[0]
                for field in self.field_list]
+
+    def bind(self):
+        try:
+    	    if self.binddn != None:
+    	        if self.bindpwd != None:
+    	            self.ldap.simple_bind_s(who=self.binddn,cred=self.bindpwd)
+                else:	
+    	            self.ldap.simple_bind_s(who=self.binddn)
+	except ldap.INVALID_CREDENTIALS, msg:
+	    log_to_postgres("LDAP BIND Error: %s" % msg,ERROR)	
+	except ldap.UNWILLING_TO_PERFORM, msg:
+	    log_to_postgres("LDAP BIND Error: %s" % msg,ERROR)	
 
     def parse_scope(self,scope = None):
 	if scope == None:
