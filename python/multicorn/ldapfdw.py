@@ -50,7 +50,7 @@ class LdapFdw(ForeignDataWrapper):
                item.get(field, [None])[0]
                for field in self.field_list]
 
-    def parse_scope(self,scope):
+    def parse_scope(self,scope = None):
 	if scope == None:
 	    return ldap.SCOPE_ONELEVEL
 	elif scope == "":
