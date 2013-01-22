@@ -54,7 +54,7 @@ class LdapFdw(ForeignDataWrapper):
 	    return "SCOPE_ONELEVEL"
 	elif scope == "one":
 	    return "SCOPE_ONELEVEL"
-	elif scope == "sub"
+	elif scope == "sub":
 	    return "SCOPE_SUBTREE"
 	elif scope == "base"
 	    return "SCOPE_BASE"
