@@ -39,11 +39,11 @@ class LdapFdw(ForeignDataWrapper):
         self.field_list = fdw_columns
 	if "binddn" in fdw_options:
 	    self.binddn = fdw_options["binddn"]
-	else
+	else:
 	    self.binddn = None
         if "bindpwd" in fdw_options:
             self.bindpwd = fdw_options["bindpwd"]
-	else
+	else:
 	    self.binddn = None
 	self.bind()
 
