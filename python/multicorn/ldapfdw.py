@@ -29,7 +29,10 @@ class LdapFdw(ForeignDataWrapper):
 	    self.ldapuri = "ldap://" + fdw_options["address"]
         self.ldap = ldap.initialize(self.ldapuri)
         self.path = fdw_options["path"]
-	self.scope = self.parse_scope(fdw_options["scope"])
+	if "scope" in fdw_options:
+	    self.scope = self.parse_scope(fdw_options["scope"])
+	else:
+	    self.scope = self.parse_scope()
         self.object_class = fdw_options["objectclass"]
         self.field_list = fdw_columns
 
