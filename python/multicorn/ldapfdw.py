@@ -57,8 +57,12 @@ class LdapFdw(ForeignDataWrapper):
                     request, qual.field_name, val)
         for _, item in self.ldap.search_s(
             self.path, self.scope, request):
+	    # Case insensitive lookup for the attributes
+            litem = dict()
+            for key,value in item.iteritems():
+                litem[key.lower()] = value
             yield [
-               item.get(field, [None])[0]
+               litem.get(field, [None])[0]
                for field in self.field_list]
 
     def bind(self):
