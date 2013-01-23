@@ -431,5 +431,87 @@ definition:
      2011-02-03 23:35:55 | Jabber Room and iPhone Support   | http://radicale.org/news#2011-02-03@23:35:55
     (10 lignes)
 
+LDAP Foreign Data Wrapper
+========================
+
+Class: ``multicorn.ldapfdw.LdapFdw``
+
+Source code: `multicorn/ldapfdw.py`_
+
+.. _multicorn/rssfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/ldapfdw.py
+
+Purpose
+-------
+
+This fdw can be used to access directory servers via the LDAP protocol.
+Tested with OpenLDAP.
+It supports: simple bind, multiple scopes (subtree, base, etc)
+
+Dependencies
+------------
+
+You will need the `ldap`_ library.
+
+.. _ldap: http://www.python-ldap.org/
+
+Required options
+-----------------
+
+``uri`` (string)
+The URI for the server, for example "ldap://localhost".
+
+``path``  (string)
+The base in which the search is performed, for example "dc=example,dc=com".
+
+``objectclass`` (string)
+The objectClass for which is searched, for example "inetOrgPerson".
+
+``scope`` (string)
+The scope: one, sub or base.
+
+Optional options
+----------------
+
+``binddn`` (string)
+The binddn for example 'cn=admin,dc=example,dc=com'.
+
+``bindpwd`` (string)
+The credentials for the binddn.
+
+Usage Example
+-------------
+
+To search for a person
+definition:
+
+.. code-block:: sql
+
+    CREATE SERVER ldap_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.ldapfdw.LdapFdw'
+    );
+    
+    CREATE FOREIGN TABLE ldapexample (
+      	mail character varying,
+	cn character varying,
+	description character varying
+    ) server ldap_srv options (
+	uri 'ldap://localhost',
+	path 'dc=lab,dc=example,dc=com',
+	scope 'sub',
+	binddn 'cn=Admin,dc=example,dc=com',
+	bindpwd 'admin',
+	objectClass '*'
+    );
+
+    select * from ldapexample;
+
+.. code-block:: bash
+
+             mail          |        cn      |    description     
+    -----------------------+----------------+--------------------
+     test@example.com      | test           | 
+     admin@example.com     | admin          | LDAP administrator
+     someuser@example.com  | Some Test User | 
+    (3 rows)
 
 .. _radicale: http://radicale.org/
