@@ -237,7 +237,7 @@ getInstance(Oid foreigntableid)
 	}
 	entry = hash_search(InstancesHash, &foreigntableid, HASH_ENTER,
 						&found);
-	if (!found)
+	if (!found || entry->value == NULL)
 	{
 		int			i;
 		ForeignTable *ftable = GetForeignTable(foreigntableid);
