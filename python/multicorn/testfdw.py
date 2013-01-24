@@ -1,5 +1,5 @@
 from multicorn import ForeignDataWrapper
-from .utils import log_to_postgres
+from .utils import log_to_postgres, WARNING, ERROR
 from itertools import cycle
 from datetime import datetime
 
@@ -13,6 +13,9 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         log_to_postgres(str(options))
         log_to_postgres(str(dict([(key, column.type_name) for key, column in
                                   columns.items()])))
+        if self.test_type == 'logger':
+            log_to_postgres(u"An error is about to occur", WARNING)
+            log_to_postgres(u"An error occured", ERROR)
 
     def execute(self, quals, columns):
         log_to_postgres(str(quals))
