@@ -239,13 +239,9 @@ multicornGetForeignPlan(PlannerInfo *root,
 	/* Extract the quals coming from a parameterized path, if any */
 	if (best_path->path.param_info)
 	{
-		List	   *ri = best_path->path.param_info->ppi_clauses;
-		List	   *clauses = extract_actual_clauses(ri, false);
 		ListCell   *lc;
 
-		/* Replace outer vars by params. */
-		/* clauses = replace_nestloop_params(root, clauses); */
-		foreach(lc, clauses)
+		foreach(lc, scan_clauses)
 		{
 			extractRestrictions(root, baserel, (Expr *) lfirst(lc),
 								&planstate->qual_list,

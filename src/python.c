@@ -11,6 +11,7 @@
 #include "utils/catcache.h"
 #include "utils/resowner.h"
 #include "utils/rel.h"
+#include "executor/nodeSubplan.h"
 
 PyObject   *getOptions(Oid foreigntableid);
 PyObject   *getClass(PyObject *className);
@@ -236,7 +237,7 @@ getInstance(Oid foreigntableid)
 	}
 	entry = hash_search(InstancesHash, &foreigntableid, HASH_ENTER,
 						&found);
-	if (!found)
+	if (!found || entry->value == NULL)
 	{
 		int			i;
 		ForeignTable *ftable = GetForeignTable(foreigntableid);
@@ -422,11 +423,21 @@ execute(ForeignScanState *node)
 					ParamExternData *prm = &params->params[param->paramid];
 
 					value = prm->value;
+
 				}
 				break;
 			case PARAM_EXEC:
 				{
-					value = exec_params[param->paramid].value;
+					ParamExecData prm = exec_params[param->paramid];
+
+					if (exec_params[param->paramid].isnull)
+					{
+						value = 0;
+					}
+					else
+					{
+						value = prm.value;
+					}
 				}
 				break;
 			default:
