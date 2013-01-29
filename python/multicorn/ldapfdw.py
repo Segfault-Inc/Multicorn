@@ -4,8 +4,9 @@ An LDAP foreign data wrapper.
 """
 
 from . import ForeignDataWrapper
-from .utils import log_to_postgres, ERROR
+
 import ldap
+from multicorn.utils import log_to_postgres, ERROR
 
 
 SPECIAL_CHARS = {
@@ -44,19 +45,27 @@ class LdapFdw(ForeignDataWrapper):
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
         self.field_list = fdw_columns
-        self.field_definitions = dict((field.lower(), field)
-                                      for field in self.field_list)
+        self.field_definitions = dict((name.lower(), field)
+                                      for name, field
+                                      in self.field_list.iteritems())
         self.binddn = fdw_options.get("binddn", None)
         self.bindpwd = fdw_options.get("bindpwd", None)
+        self.array_columns = [col.column_name for name, col
+                              in self.field_definitions.iteritems()
+                              if col.type_name.endswith('[]')]
         self.bind()
 
     def execute(self, quals, columns):
         request = u"(objectClass=%s)" % self.object_class
         for qual in quals:
-            if qual.operator in (u"=", u"~~"):
+            if isinstance(qual.operator, tuple):
+                operator = qual.operator[0]
+            else:
+                operator = qual.operator
+            if operator in (u"=", u"~~"):
                 baseval = qual.value.translate(SPECIAL_CHARS)
                 val = (baseval.replace(u"%", u"*")
-                       if qual.operator == u"~~" else baseval)
+                       if operator == u"~~" else baseval)
                 request = u"(&%s(%s=%s))" % (
                     request, qual.field_name, val)
         request = request.encode('utf8')
@@ -65,7 +74,12 @@ class LdapFdw(ForeignDataWrapper):
             litem = dict()
             for key, value in item.iteritems():
                 if key.lower() in self.field_definitions:
-                    litem[self.field_definitions[key.lower()]] = value[0]
+                    pgcolname = self.field_definitions[key.lower()].column_name
+                    if pgcolname in self.array_columns:
+                        value = value
+                    else:
+                        value = value[0]
+                    litem[pgcolname] = value
             yield litem
 
     def bind(self):
