@@ -43,12 +43,13 @@ class LdapFdw(ForeignDataWrapper):
     def execute(self, quals, columns):
         request = "(objectClass=%s)" % self.object_class
         for qual in quals:
-            if qual.operator in ("=", "~~"):
-                val = (qual.value.replace("%", "*")
+            if qual.operator in (u"=", u"~~"):
+                val = (qual.value.replace(u"%", u"*")
                        if qual.operator == "~~" else qual.value)
-                request = "(&%s(%s=%s))" % (
+                request = u"(&%s(%s=%s))" % (
                     request, qual.field_name, val)
-        for _, item in self.ldap.search_s(self.path, self.scope, request):
+        for _, item in self.ldap.search_s(self.path, self.scope,
+                                          request.encode('utf8')):
             # Case insensitive lookup for the attributes
             litem = dict()
             for key, value in item.iteritems():
