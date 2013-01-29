@@ -9,7 +9,7 @@ To run the tests the following software is required:
 
 Other requirements:
 - pg_config must be in your path
-- client_min_messages = notice
+- client_min_messages = warning
 - trust authentication for your user. This is for the sqlalchemy connection to localhost.
 
 To run the tests
