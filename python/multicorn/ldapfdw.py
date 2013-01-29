@@ -8,6 +8,16 @@ from .utils import log_to_postgres, ERROR
 import ldap
 
 
+SPECIAL_CHARS = {
+    ord(u'*'): u'\\2a',
+    ord(u'('): u'\\28',
+    ord(u')'): u'\29',
+    ord(u'\\'): u'\\5c',
+    ord(u'\x00'): u'\\00',
+    ord(u'/'): u'\\2f'
+}
+
+
 class LdapFdw(ForeignDataWrapper):
     """An Ldap Foreign Wrapper.
 
@@ -41,15 +51,16 @@ class LdapFdw(ForeignDataWrapper):
         self.bind()
 
     def execute(self, quals, columns):
-        request = "(objectClass=%s)" % self.object_class
+        request = u"(objectClass=%s)" % self.object_class
         for qual in quals:
             if qual.operator in (u"=", u"~~"):
-                val = (qual.value.replace(u"%", u"*")
-                       if qual.operator == "~~" else qual.value)
+                baseval = qual.value.translate(SPECIAL_CHARS)
+                val = (baseval.replace(u"%", u"*")
+                       if qual.operator == u"~~" else baseval)
                 request = u"(&%s(%s=%s))" % (
                     request, qual.field_name, val)
-        for _, item in self.ldap.search_s(self.path, self.scope,
-                                          request.encode('utf8')):
+        request = request.encode('utf8')
+        for _, item in self.ldap.search_s(self.path, self.scope, request):
             # Case insensitive lookup for the attributes
             litem = dict()
             for key, value in item.iteritems():
