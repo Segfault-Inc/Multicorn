@@ -250,7 +250,8 @@ canonicalOpExpr(OpExpr *opExpr, RelOptInfo *baserel)
 		r = unnestClause(list_nth(opExpr->args, 1));
 		swapOperandsAsNeeded(&l, &r, &operatorid, baserel);
 	}
-	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids))
+	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
+		&& ((Var *) l)->varattno >= 1)
 	{
 		result = (OpExpr *) make_opclause(operatorid,
 										  opExpr->opresulttype,
@@ -276,7 +277,7 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 	Oid			operatorid = opExpr->opno;
 	Node	   *l,
 			   *r;
-	ScalarArrayOpExpr *result = opExpr;
+	ScalarArrayOpExpr *result = NULL;
 	Relids		base_relids = baserel->relids;
 	HeapTuple	tp;
 	Form_pg_operator op;
@@ -293,7 +294,8 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 		op = (Form_pg_operator) GETSTRUCT(tp);
 		ReleaseSysCache(tp);
 	}
-	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids))
+	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
+		&& ((Var *) l)->varattno >= 1)
 	{
 		result = makeNode(ScalarArrayOpExpr);
 		result->opno = operatorid;
@@ -302,7 +304,6 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 		result->args = lappend(result->args, l);
 		result->args = lappend(result->args, r);
 		result->location = opExpr->location;
-
 	}
 	return result;
 }
@@ -377,6 +378,7 @@ extractClauseFromOpExpr(PlannerInfo *root,
 		{
 				/* The simplest case: somevar == a constant */
 			case T_Const:
+
 				*quals = lappend(*quals, makeQual(left->varattno,
 												  getOperatorString(op->opno),
 												  right, false, false));
@@ -468,6 +470,10 @@ extractClauseFromNullTest(PlannerInfo *root,
 		List	   *result;
 		char	   *opname = NULL;
 
+		if (var->varattno < 1)
+		{
+			return;
+		}
 		if (node->nulltesttype == IS_NULL)
 		{
 			opname = "=";

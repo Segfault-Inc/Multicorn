@@ -125,8 +125,11 @@ qualDefsToPyList(List *qual_list, ConversionInfo ** cinfos)
 		List	   *qual_def = (List *) lfirst(lc);
 		PyObject   *python_qual = qualdefToPython(qual_def, cinfos);
 
-		PyList_Append(p_quals, python_qual);
-		Py_DECREF(python_qual);
+		if (python_qual != NULL)
+		{
+			PyList_Append(p_quals, python_qual);
+			Py_DECREF(python_qual);
+		}
 	}
 	return p_quals;
 }
@@ -258,14 +261,18 @@ getInstance(Oid foreigntableid)
 			Form_pg_attribute att = desc->attrs[i];
 			Oid			typOid = att->atttypid;
 			char	   *key = NameStr(att->attname);
-			PyObject   *column = PyObject_CallFunction(p_columnclass,
-													   "(s,i,s)",
-													   key,
-													   typOid,
+
+			if (!att->attisdropped)
+			{
+				PyObject   *column = PyObject_CallFunction(p_columnclass,
+														   "(s,i,s)",
+														   key,
+														   typOid,
 													 format_type_be(typOid));
 
-			PyMapping_SetItemString(p_columns, key, column);
-			Py_DECREF(column);
+				PyMapping_SetItemString(p_columns, key, column);
+				Py_DECREF(column);
+			}
 		}
 		RelationClose(rel);
 		entry->value = PyObject_CallFunction(p_class, "(O,O)", p_options,
@@ -658,7 +665,13 @@ pythonDictToTuple(PyObject *p_value,
 
 	for (i = 0; i < state->numattrs; i++)
 	{
-		char	   *key = state->cinfos[i]->attrname;
+		char	   *key;
+
+		if (state->cinfos[i] == NULL)
+		{
+			continue;
+		}
+		key = state->cinfos[i]->attrname;
 		PyObject   *p_object = PyMapping_GetItemString(p_value, key);
 
 		if (p_object != NULL && p_object != Py_None)
@@ -707,6 +720,10 @@ pythonSequenceToTuple(PyObject *p_value,
 		{
 			PyObject   *p_object;
 
+			if (state->cinfos[i] == NULL)
+			{
+				continue;
+			}
 			p_object = PySequence_GetItem(p_value, i);
 			resetStringInfo(state->buffer);
 			state->values[i] = pyobjectToDatum(p_object, state->buffer,
@@ -965,6 +982,10 @@ pathKeys(MulticornPlanState * state)
 			{
 				ConversionInfo *cinfo = state->cinfos[k];
 
+				if (cinfo == NULL)
+				{
+					continue;
+				}
 				if (p_key != Py_None &&
 					strcmp(cinfo->attrname, PyString_AsString(p_key)) == 0)
 				{

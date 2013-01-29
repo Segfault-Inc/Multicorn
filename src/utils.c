@@ -21,7 +21,7 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 {
 	const char *message;
 	char	   *hintstr;
-	int	level = 1;
+	int			level = 1;
 	int			severity;
 	PyObject   *hint;
 
