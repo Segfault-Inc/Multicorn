@@ -662,7 +662,7 @@ pythonDictToTuple(PyObject *p_value,
 				  MulticornExecState * state)
 {
 	int			i;
-
+	PyObject   * p_object;
 	for (i = 0; i < state->numattrs; i++)
 	{
 		char	   *key;
@@ -672,7 +672,7 @@ pythonDictToTuple(PyObject *p_value,
 			continue;
 		}
 		key = state->cinfos[i]->attrname;
-		PyObject   *p_object = PyMapping_GetItemString(p_value, key);
+		p_object = PyMapping_GetItemString(p_value, key);
 
 		if (p_object != NULL && p_object != Py_None)
 		{
