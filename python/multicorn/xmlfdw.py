@@ -5,7 +5,6 @@ An XML Foreign Data Wrapper.
 from . import ForeignDataWrapper
 from xml.sax import ContentHandler, make_parser
 
-
 class MulticornXMLHandler(ContentHandler):
 
     def __init__(self, elem_tag, columns):
@@ -60,15 +59,19 @@ class XMLFdw(ForeignDataWrapper):
         super(XMLFdw, self).__init__(fdw_options, fdw_columns)
         self.filename = fdw_options['filename']
         self.elem_tag = fdw_options['elem_tag']
-        self.parser = make_parser()
-        self.handler = MulticornXMLHandler(self.elem_tag, fdw_columns)
-        self.parser.setContentHandler(self.handler)
+        self.buffer_size = fdw_options.get('buffer_size', 4096)
+        self.columns = fdw_columns
 
     def execute(self, quals, columns):
+        parser = make_parser()
+        handler = MulticornXMLHandler(self.elem_tag, self.columns)
+        parser.setContentHandler(handler)
         with open(self.filename) as stream:
-            for inputline in stream:
-                self.parser.feed(inputline)
-                for row in self.handler.get_rows():
+            while(True):
+                a = stream.read(self.buffer_size)
+                if not a:
+                    break
+                parser.feed(a)
+                for row in handler.get_rows():
                     yield row
-        self.parser.close()
-        self.parser.reset()
+        parser.close()
