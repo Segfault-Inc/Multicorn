@@ -292,17 +292,17 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 			elog(ERROR, "cache lookup failed for operator %u", operatorid);
 		op = (Form_pg_operator) GETSTRUCT(tp);
 		ReleaseSysCache(tp);
-	}
-	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids))
-	{
-		result = makeNode(ScalarArrayOpExpr);
-		result->opno = operatorid;
-		result->opfuncid = op->oprcode;
-		result->useOr = opExpr->useOr;
-		result->args = lappend(result->args, l);
-		result->args = lappend(result->args, r);
-		result->location = opExpr->location;
+		if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids))
+		{
+			result = makeNode(ScalarArrayOpExpr);
+			result->opno = operatorid;
+			result->opfuncid = op->oprcode;
+			result->useOr = opExpr->useOr;
+			result->args = lappend(result->args, l);
+			result->args = lappend(result->args, r);
+			result->location = opExpr->location;
 
+		}
 	}
 	return result;
 }
