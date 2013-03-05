@@ -1,3 +1,4 @@
+SET client_min_messages=NOTICE;
 CREATE EXTENSION multicorn;
 
 create or replace function create_foreign_server() returns void as $block$

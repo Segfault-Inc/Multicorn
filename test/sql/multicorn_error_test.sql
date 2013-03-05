@@ -1,3 +1,4 @@
+SET client_min_messages=NOTICE;
 CREATE EXTENSION multicorn;
 -- Test that the wrapper option is required on the server.
 CREATE server multicorn_srv foreign data wrapper multicorn;
