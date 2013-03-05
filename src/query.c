@@ -583,7 +583,7 @@ clausesInvolvingAttr(Index relid, AttrNumber attnum,
 }
 
 void
-findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths)
+findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int startupCost)
 {
 	ListCell   *lc;
 
@@ -663,7 +663,7 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths)
 				foreignPath = create_foreignscan_path(
 													  root, baserel,
 													  nbrows,
-									  baserel->baserestrictcost.startup + 10,
+													  startupCost,
 													  nbrows * baserel->width,
 													  NIL,
 													  NULL,

@@ -207,11 +207,11 @@ multicornGetForeignPaths(PlannerInfo *root,
 	/* Extract a friendly version of the pathkeys. */
 	List	   *possiblePaths = pathKeys(planstate);
 
-	findPaths(root, baserel, possiblePaths);
+	findPaths(root, baserel, possiblePaths, planstate->startupCost);
 	/* Add a default path */
 	path = (Path *) create_foreignscan_path(root, baserel,
 											baserel->rows,
-											baserel->baserestrictcost.startup,
+											planstate->startupCost,
 											baserel->rows * baserel->width,
 											NIL,		/* no pathkeys */
 											NULL,		/* no outer rel either */

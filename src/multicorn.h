@@ -43,6 +43,7 @@ typedef struct MulticornPlanState
 	List	   *target_list;
 	List	   *qual_list;
 	List	   *param_list;
+	int			startupCost;
 	ConversionInfo **cinfos;
 }	MulticornPlanState;
 
@@ -95,6 +96,6 @@ void initConversioninfo(ConversionInfo ** cinfo,
 				   AttInMetadata *attinmeta);
 Value	   *colnameFromVar(Var *var, PlannerInfo *root);
 
-void		findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths);
+void		findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int startupCost);
 
 #endif   /* PG_MULTICORN_H */

@@ -292,8 +292,6 @@ getInstance(Oid foreigntableid)
  *	Returns the relation estimated size, in term of number of rows and width.
  *	This is done by calling the getRelSize python method.
  *
- *
- *	TODO: actually implement it
  */
 void
 getRelSize(MulticornPlanState * state,
@@ -305,7 +303,8 @@ getRelSize(MulticornPlanState * state,
 			   *p_quals,
 			   *p_rows_and_width,
 			   *p_rows,
-			   *p_width;
+			   *p_width,
+			   *p_startup_cost;
 
 	p_targets_set = valuesToPySet(state->target_list);
 	p_quals = qualDefsToPyList(state->qual_list, state->cinfos);
@@ -314,8 +313,11 @@ getRelSize(MulticornPlanState * state,
 	errorCheck();
 	p_rows = PyNumber_Long(PyTuple_GetItem(p_rows_and_width, 0));
 	p_width = PyNumber_Int(PyTuple_GetItem(p_rows_and_width, 1));
+	p_startup_cost = PyNumber_Long(
+			   PyObject_GetAttrString(state->fdw_instance, "_startup_cost"));
 	*rows = PyLong_AsDouble(p_rows);
 	*width = (int) PyInt_AsLong(p_width);
+	state->startupCost = (int) PyInt_AsLong(p_startup_cost);
 	Py_DECREF(p_rows);
 	Py_DECREF(p_width);
 	Py_DECREF(p_rows_and_width);
@@ -662,7 +664,8 @@ pythonDictToTuple(PyObject *p_value,
 				  MulticornExecState * state)
 {
 	int			i;
-	PyObject   * p_object;
+	PyObject   *p_object;
+
 	for (i = 0; i < state->numattrs; i++)
 	{
 		char	   *key;

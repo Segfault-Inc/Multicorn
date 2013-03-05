@@ -6,6 +6,8 @@ from datetime import datetime
 
 class TestForeignDataWrapper(ForeignDataWrapper):
 
+    _startup_cost = 10
+
     def __init__(self, options, columns):
         super(TestForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns

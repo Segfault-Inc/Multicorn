@@ -87,6 +87,8 @@ class Qual(object):
 class ForeignDataWrapper(object):
     """Base class for all foreign data wrapper instances."""
 
+    _startup_cost = 20
+
     def __init__(self, fdw_options, fdw_columns):
         """The foreign data wrapper is initialized on the first query.
 
