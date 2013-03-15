@@ -432,7 +432,7 @@ definition:
     (10 lignes)
 
 LDAP Foreign Data Wrapper
-========================
+=========================
 
 Class: ``multicorn.ldapfdw.LdapFdw``
 
