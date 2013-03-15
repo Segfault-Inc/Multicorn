@@ -238,7 +238,7 @@ You can access those files using a foreign table like this:
 
 .. code-block:: sql
 
-    CREATE SERVER filesytem_srv foreign data wrapper multicorn options (
+    CREATE SERVER filesystem_srv foreign data wrapper multicorn options (
         wrapper 'multicorn.fsfdw.FilesystemFdw'
     );
 
