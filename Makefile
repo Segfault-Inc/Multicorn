@@ -6,6 +6,8 @@ ifeq ($(PYmajor), 3)
 	PYEXEC = python2
 endif
 PYVERSION    = 2.7
+PY_CONFIG    = $(shell which python$(PYVERSION)-config)
+PY_INCLUDES  = $(shell $(PY_CONFIG) --includes)
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)
@@ -16,7 +18,7 @@ OBJS =  src/errors.o src/python.o src/query.o src/multicorn.o
 SHLIB_LINK   = -lpython$(PYVERSION)
 PG_CONFIG    = `which pg_config`
 PG91         = $(shell $(PG_CONFIG) --version | grep -qE " 8\.| 9\.0" && echo no || echo yes)
-PG_CPPFLAGS  = -I/usr/include/python$(PYVERSION) $(python_includespec) $(CPPFLAGS)
+PG_CPPFLAGS  = $(PY_INCLUDES) $(python_includespec) $(CPPFLAGS)
 PROFILE      = -lpython$(PYVERSION)
 ifeq ($(PG91),yes)
 all: preflight-check sql/$(EXTENSION)--$(EXTVERSION).sql
@@ -33,7 +35,7 @@ preflight-check:
 
 python_code: setup.py
 	cp ./setup.py ./setup--$(EXTVERSION).py
-	sed "s/__VERSION__/$(EXTVERSION)-dev/g" ./setup--$(EXTVERSION).py -i
+	sed -e "s/__VERSION__/$(EXTVERSION)-dev/g" -i "" ./setup--$(EXTVERSION).py
 	$(PYEXEC) ./setup--$(EXTVERSION).py install
 	rm ./setup--$(EXTVERSION).py
 
@@ -41,7 +43,7 @@ release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
 	unzip ./multicorn-$(EXTVERSION).zip
 	rm ./multicorn-$(EXTVERSION).zip
-	sed "s/__VERSION__/$(EXTVERSION)/g" ./multicorn-$(EXTVERSION)/META.json  ./multicorn-$(EXTVERSION)/setup.py  ./multicorn-$(EXTVERSION)/python/multicorn/__init__.py -i
+	sed -e "s/__VERSION__/$(EXTVERSION)/g" -i "" ./multicorn-$(EXTVERSION)/META.json  ./multicorn-$(EXTVERSION)/setup.py  ./multicorn-$(EXTVERSION)/python/multicorn/__init__.py
 	zip -r ./multicorn-$(EXTVERSION).zip ./multicorn-$(EXTVERSION)/
 	rm ./multicorn-$(EXTVERSION) -rf
 
