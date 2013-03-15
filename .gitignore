@@ -1,8 +1,9 @@
 *.sw?
 tags
 *.so
+*.o
 *egg-info
-sql/multicorn--0.0.2.sql
+sql/multicorn--*.sql
 *.pyc
 /build
 /dist
