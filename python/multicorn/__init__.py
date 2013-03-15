@@ -134,6 +134,24 @@ class ForeignDataWrapper(object):
         """
         pass
 
+    @property
+    def rowid_column(self):
+        """Returns a column name which will act as a rowid column, for delete/update
+        operations. This can be either an existing column name, or a made-up one.
+        This column name should be subsequently present in every returned resultset.
+        """
+        raise NotImplementedError("This FDW does not support the writable API")
+
+    def insert(self, values):
+        raise NotImplementedError("This FDW does not support the writable API")
+
+    def update(self, oldvalues, newvalues):
+        raise NotImplementedError("This FDW does not support the writable API")
+
+    def delete(self, oldvalues):
+        raise NotImplementedError("This FDW does not support the writable API")
+
+
 """Code from python2.7 importlib.import_module."""
 """Backport of importlib.import_module from 3.x."""
 # While not critical (and in no way guaranteed!), it would be nice to keep this

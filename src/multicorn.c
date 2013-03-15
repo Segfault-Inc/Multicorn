@@ -13,11 +13,13 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "access/reloptions.h"
+#include "access/relscan.h"
+#include "access/sysattr.h"
 #include "nodes/makefuncs.h"
 #include "catalog/pg_type.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
-#include "access/relscan.h"
+#include "parser/parsetree.h"
 
 
 PG_MODULE_MAGIC;
@@ -40,6 +42,7 @@ void		_PG_fini(void);
 /*
  * FDW functions declarations
  */
+
 static void multicornGetForeignRelSize(PlannerInfo *root,
 						   RelOptInfo *baserel,
 						   Oid foreigntableid);
@@ -58,6 +61,30 @@ static void multicornBeginForeignScan(ForeignScanState *node, int eflags);
 static TupleTableSlot *multicornIterateForeignScan(ForeignScanState *node);
 static void multicornReScanForeignScan(ForeignScanState *node);
 static void multicornEndForeignScan(ForeignScanState *node);
+
+#if PG_VERSION_NUM >= 90300
+static void multicornAddForeignUpdateTargets(Query *parsetree,
+								 RangeTblEntry *target_rte,
+								 Relation target_relation);
+
+static List *multicornPlanForeignModify(PlannerInfo *root,
+						   ModifyTable *plan,
+						   Index resultRelation,
+						   int subplan_index);
+static void multicornBeginForeignModify(ModifyTableState *mtstate,
+							ResultRelInfo *resultRelInfo,
+							List *fdw_private,
+							int subplan_index,
+							int eflags);
+static TupleTableSlot *multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
+						   TupleTableSlot *slot,
+						   TupleTableSlot *planslot);
+static TupleTableSlot *multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
+						   TupleTableSlot *slot, TupleTableSlot *planSlot);
+static TupleTableSlot *multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
+						   TupleTableSlot *slot, TupleTableSlot *planSlot);
+static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
+#endif
 
 /*	Helpers functions */
 void	   *serializePlanState(MulticornPlanState * planstate);
@@ -93,6 +120,17 @@ multicorn_handler(PG_FUNCTION_ARGS)
 	fdw_routine->ReScanForeignScan = multicornReScanForeignScan;
 	fdw_routine->EndForeignScan = multicornEndForeignScan;
 
+#if PG_VERSION_NUM >= 90300
+	/* Code for 9.3 */
+	fdw_routine->AddForeignUpdateTargets = multicornAddForeignUpdateTargets;
+	/* Writable API */
+	fdw_routine->PlanForeignModify = multicornPlanForeignModify;
+	fdw_routine->BeginForeignModify = multicornBeginForeignModify;
+	fdw_routine->ExecForeignInsert = multicornExecForeignInsert;
+	fdw_routine->ExecForeignDelete = multicornExecForeignDelete;
+	fdw_routine->ExecForeignUpdate = multicornExecForeignUpdate;
+	fdw_routine->EndForeignModify = multicornEndForeignModify;
+#endif
 
 	PG_RETURN_POINTER(fdw_routine);
 }
@@ -139,6 +177,7 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
+
 /*
  * multicornGetForeignRelSize
  *		Obtain relation size estimates for a foreign table.
@@ -154,29 +193,35 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	ListCell   *lc;
 
 	baserel->fdw_private = planstate;
+	planstate->fdw_instance = getInstance(foreigntableid);
 	planstate->foreigntableid = foreigntableid;
 	/* Initialize the conversion info array */
 	{
 		Relation	rel = RelationIdGetRelation(ftable->relid);
-		AttInMetadata *attinmeta = TupleDescGetAttInMetadata(rel->rd_att);
+		AttInMetadata *attinmeta = TupleDescGetAttInMetadata(RelationGetDescr(rel));
 
 		planstate->numattrs = RelationGetNumberOfAttributes(rel);
+
 		planstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 									planstate->numattrs);
 		initConversioninfo(planstate->cinfos, attinmeta);
 		RelationClose(rel);
 	}
 
-	planstate->fdw_instance = getInstance(foreigntableid);
 	/* Pull "var" clauses to build an appropriate target list */
-	foreach(lc, extractColumns(root, baserel))
+	foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
 	{
 		Var		   *var = (Var *) lfirst(lc);
+		Value	   *colname;
 
 		/* Store only a Value node containing the string name of the column. */
-		planstate->target_list = lappend(planstate->target_list,
-										 colnameFromVar(var, root));
+		colname = colnameFromVar(var, root, planstate);
+		if (colname != NULL && strVal(colname) != NULL)
+		{
+			planstate->target_list = lappend(planstate->target_list, colname);
+		}
 	}
+	/* Extract the restrictions from the plan. */
 	foreach(lc, baserel->baserestrictinfo)
 	{
 		extractRestrictions(root, baserel, ((RestrictInfo *) lfirst(lc))->clause,
@@ -184,7 +229,6 @@ multicornGetForeignRelSize(PlannerInfo *root,
 							&planstate->param_list);
 
 	}
-	/* Extract the restrictions from the plan. */
 	/* Inject the "rows" and "width" attribute into the baserel */
 	getRelSize(planstate, root, &baserel->rows, &baserel->width);
 }
@@ -218,6 +262,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 											(void *) baserel->fdw_private);
 
 	add_path(baserel, path);
+	errorCheck();
 }
 
 /*
@@ -277,12 +322,11 @@ static void
 multicornBeginForeignScan(ForeignScanState *node, int eflags)
 {
 	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
-	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	MulticornExecState *execstate;
 
 	execstate = initializeExecState(fscan->fdw_private);
 	{
-		TupleDesc	tupdesc = slot->tts_tupleDescriptor;
+		TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
 
 		execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
 		execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
@@ -332,11 +376,12 @@ multicornIterateForeignScan(ForeignScanState *node)
 		}
 		return slot;
 	}
-	pythonResultToTuple(p_value, execstate);
 	slot->tts_values = execstate->values;
 	slot->tts_isnull = execstate->nulls;
+	pythonResultToTuple(p_value, slot, execstate->cinfos, execstate->buffer);
 	ExecStoreVirtualTuple(slot);
 	Py_DECREF(p_value);
+
 	return slot;
 }
 
@@ -375,6 +420,211 @@ multicornEndForeignScan(ForeignScanState *node)
 
 
 /*
+ * multicornPlanForeignModify
+ *		Plan a foreign write operation.
+ *		This is done by checking the "supported operations" attribute
+ *		on the python class.
+ */
+static List *
+multicornPlanForeignModify(PlannerInfo *root,
+						   ModifyTable *plan,
+						   Index resultRelation,
+						   int subplan_index)
+{
+	return NULL;
+}
+
+#if PG_VERSION_NUM >= 90300
+/*
+ * multicornAddForeigUpdateTargets
+ *		Add resjunk columns needed for update/delete.
+ */
+static void
+multicornAddForeignUpdateTargets(Query *parsetree,
+								 RangeTblEntry *target_rte,
+								 Relation target_relation)
+{
+	Var		   *var = NULL;
+	TargetEntry *tle;
+	PyObject   *instance = getInstance(target_relation->rd_id);
+	const char *attrname = getRowIdColumn(instance);
+	TupleDesc	desc = target_relation->rd_att;
+	int			i;
+
+	for (i = 0; i < desc->natts; i++)
+	{
+		Form_pg_attribute att = desc->attrs[i];
+
+		if (!att->attisdropped)
+		{
+			if (strcmp(NameStr(att->attname), attrname) == 0)
+			{
+				var = makeVar(parsetree->resultRelation,
+							  att->attnum,
+							  att->atttypid,
+							  att->atttypmod,
+							  att->attcollation,
+							  0);
+				break;
+			}
+		}
+	}
+	if (var == NULL)
+	{
+		ereport(ERROR, (errmsg("%s", "The rowid attribute does not exist")));
+	}
+	tle = makeTargetEntry((Expr *) var,
+						  list_length(parsetree->targetList) + 1,
+						  strdup(attrname),
+						  true);
+	parsetree->targetList = lappend(parsetree->targetList, tle);
+	Py_DECREF(instance);
+}
+
+
+/*
+ * multicornBeginForeignModify
+ *		Initialize a foreign write operation.
+ */
+static void
+multicornBeginForeignModify(ModifyTableState *mtstate,
+							ResultRelInfo *resultRelInfo,
+							List *fdw_private,
+							int subplan_index,
+							int eflags)
+{
+	MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
+	Relation	rel = resultRelInfo->ri_RelationDesc;
+	TupleDesc	desc = RelationGetDescr(rel);
+	Plan	   *subplan = mtstate->mt_plans[subplan_index]->plan;
+	int			i;
+
+	modstate->attinmeta = TupleDescGetAttInMetadata(desc);
+	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
+							   desc->natts);
+	modstate->buffer = makeStringInfo();
+	modstate->fdw_instance = getInstance(rel->rd_id);
+	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
+	initConversioninfo(modstate->cinfos, modstate->attinmeta);
+	for (i = 0; i < desc->natts; i++)
+	{
+		Form_pg_attribute att = desc->attrs[i];
+
+		if (!att->attisdropped)
+		{
+			if (strcmp(NameStr(att->attname), modstate->rowidAttrName) == 0)
+			{
+				modstate->rowidCinfo = modstate->cinfos[i];
+				break;
+			}
+		}
+	}
+	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
+	resultRelInfo->ri_FdwState = modstate;
+}
+
+/*
+ * multicornExecForeignInsert
+ *		Execute a foreign insert operation
+ *		This is done by calling the python "insert" method.
+ */
+static TupleTableSlot *
+multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
+						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+{
+	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+	PyObject   *fdw_instance = modstate->fdw_instance;
+	PyObject   *values = tupleTableSlotToPyObject(slot, modstate);
+	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
+
+	if (p_new_value && p_new_value != Py_None)
+	{
+		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+		Py_DECREF(p_new_value);
+	}
+	Py_DECREF(values);
+	errorCheck();
+	return slot;
+}
+
+/*
+ * multicornExecForeignDelete
+ *		Execute a foreign delete operation
+ *		This is done by calling the python "delete" method, with the opaque
+ *		rowid that was supplied.
+ */
+static TupleTableSlot *
+multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
+						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+{
+	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+	PyObject   *fdw_instance = modstate->fdw_instance,
+			   *p_row_id,
+			   *p_new_value;
+	bool		is_null;
+	ConversionInfo *cinfo = modstate->rowidCinfo;
+	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
+
+	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
+	p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
+	errorCheck();
+	if (p_new_value && p_new_value != Py_None)
+	{
+		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+		Py_DECREF(p_new_value);
+	}
+	Py_DECREF(p_row_id);
+	errorCheck();
+	return planSlot;
+}
+
+/*
+ * multicornExecForeignUpdate
+ *		Execute a foreign update operation
+ *		This is done by calling the python "update" method, with the opaque
+ *		rowid that was supplied.
+ */
+static TupleTableSlot *
+multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
+						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+{
+	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+	PyObject   *fdw_instance = modstate->fdw_instance,
+			   *p_value = tupleTableSlotToPyObject(planSlot, modstate),
+			   *p_row_id,
+			   *p_new_value;
+	bool		is_null;
+	ConversionInfo *cinfo = modstate->rowidCinfo;
+	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
+
+	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
+	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
+									  p_value);
+	errorCheck();
+	if (p_new_value && p_new_value != Py_None)
+	{
+		ExecClearTuple(slot);
+		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+		Py_DECREF(p_new_value);
+	}
+	Py_DECREF(p_value);
+	Py_DECREF(p_row_id);
+	errorCheck();
+	return slot;
+}
+
+/*
+ * multicornEndForeignModify
+ *		Clean internal state after a modify operation.
+ */
+static void
+multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
+{
+}
+#endif
+
+
+/*
  *	"Serialize" a MulticornPlanState, so that it is safe to be carried
  *	between the plan and the execution safe.
  */
@@ -409,11 +659,9 @@ initializeExecState(void *internalstate)
 	execstate->qual_list = copyObject(lfourth(values));
 	execstate->param_list = copyObject(list_nth(values, 4));
 	execstate->fdw_instance = getInstance(foreigntableid);
-	execstate->numattrs = attnum;
 	execstate->buffer = makeStringInfo();
-	execstate->cinfos = palloc0(sizeof(ConversionInfo *) *
-								attnum);
+	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
 	execstate->values = palloc(attnum * sizeof(Datum));
-	execstate->nulls = palloc(execstate->numattrs * sizeof(bool));
+	execstate->nulls = palloc(attnum * sizeof(bool));
 	return execstate;
 }

@@ -12,6 +12,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         super(TestForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns
         self.test_type = options.get('test_type', None)
+        self._row_id_column = options.get('row_id_column', self.columns.keys()[0])
         log_to_postgres(str(options))
         log_to_postgres(str(dict([(key, column.type_name) for key, column in
                                   columns.items()])))
@@ -59,3 +60,31 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         if self.test_type == 'planner':
             return [(('test1',), 1)]
         return []
+
+    def update(self, rowid, newvalues):
+        if self.test_type == 'nowrite':
+            super(TestForeignDataWrapper, self).update(rowid, newvalues)
+        log_to_postgres("UPDATING: %s with %s" % (rowid, newvalues))
+        if self.test_type == 'returning':
+            for key in newvalues:
+                newvalues[key] = "UPDATED: %s" % newvalues[key]
+            return newvalues
+
+    def delete(self, rowid):
+        if self.test_type == 'nowrite':
+            super(TestForeignDataWrapper, self).delete(rowid)
+
+        log_to_postgres("DELETING: %s" % rowid)
+
+    def insert(self, values):
+        if self.test_type == 'nowrite':
+            super(TestForeignDataWrapper, self).insert(values)
+        log_to_postgres("INSERTING: %s" % values)
+        if self.test_type == 'returning':
+            for key in values:
+                values[key] = "INSERTED: %s" % values[key]
+            return values
+
+    @property
+    def rowid_column(self):
+        return self._row_id_column

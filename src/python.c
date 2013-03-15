@@ -43,12 +43,15 @@ PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumArrayToPython(Datum datum, ConversionInfo * cinfo);
 
-
-
 void pythonDictToTuple(PyObject *p_value,
-				  MulticornExecState * state);
+				  TupleTableSlot *slot,
+				  ConversionInfo **cinfos,
+				  StringInfo buffer);
+
 void pythonSequenceToTuple(PyObject *p_value,
-					  MulticornExecState * state);
+				  TupleTableSlot *slot,
+				  ConversionInfo **cinfos,
+				  StringInfo buffer);
 
 /*	Python to cstring functions */
 void pyobjectToCString(PyObject *pyobject, StringInfo buffer,
@@ -661,43 +664,46 @@ pyobjectToCString(PyObject *pyobject, StringInfo buffer,
 
 void
 pythonDictToTuple(PyObject *p_value,
-				  MulticornExecState * state)
+				  TupleTableSlot *slot,
+				  ConversionInfo **cinfos,
+				  StringInfo buffer)
 {
 	int			i;
 	PyObject   *p_object;
+	Datum * values = slot->tts_values;
+	bool * nulls = slot->tts_isnull;
 
-	for (i = 0; i < state->numattrs; i++)
+	for (i = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		char	   *key;
 
-		if (state->cinfos[i] == NULL)
+		if (cinfos[i] == NULL)
 		{
 			continue;
 		}
-		key = state->cinfos[i]->attrname;
+		key = cinfos[i]->attrname;
 		p_object = PyMapping_GetItemString(p_value, key);
-
 		if (p_object != NULL && p_object != Py_None)
 		{
-			resetStringInfo(state->buffer);
-			state->values[i] = pyobjectToDatum(p_object,
-											   state->buffer,
-											   state->cinfos[i]);
-			if (state->values[i] == (Datum) NULL)
+			resetStringInfo(buffer);
+			values[i] = pyobjectToDatum(p_object,
+										buffer,
+										cinfos[i]);
+			if (values[i] == (Datum) NULL)
 			{
-				state->nulls[i] = true;
+				nulls[i] = true;
 			}
 			else
 			{
-				state->nulls[i] = false;
+				nulls[i] = false;
 			}
 		}
 		else
 		{
 			/* "KeyError", doesnt matter. */
 			PyErr_Clear();
-			state->values[i] = (Datum) NULL;
-			state->nulls[i] = true;
+			values[i] = (Datum) NULL;
+			nulls[i] = true;
 		}
 		if (p_object != NULL)
 		{
@@ -708,67 +714,61 @@ pythonDictToTuple(PyObject *p_value,
 
 void
 pythonSequenceToTuple(PyObject *p_value,
-					  MulticornExecState * state)
+				  TupleTableSlot *slot,
+				  ConversionInfo **cinfos,
+				  StringInfo buffer)
 {
 	int			i;
+	Datum * values = slot->tts_values;
+	bool * nulls = slot->tts_isnull;
+	for (i = 0; i < slot->tts_tupleDescriptor->natts; i++)
+	{
+		PyObject   *p_object;
 
-	if (PySequence_Size(p_value) != state->attinmeta->tupdesc->natts)
-	{
-		elog(ERROR, "The python backend did not return a valid sequence");
-		return;
-	}
-	else
-	{
-		for (i = 0; i < state->numattrs; i++)
+		if (cinfos[i] == NULL)
 		{
-			PyObject   *p_object;
-
-			if (state->cinfos[i] == NULL)
-			{
-				continue;
-			}
-			p_object = PySequence_GetItem(p_value, i);
-			resetStringInfo(state->buffer);
-			state->values[i] = pyobjectToDatum(p_object, state->buffer,
-											   state->cinfos[i]);
-			if (state->values[i] == (Datum) NULL)
-			{
-				state->nulls[i] = true;
-			}
-			else
-			{
-				state->nulls[i] = false;
-			}
-			errorCheck();
-			Py_DECREF(p_object);
+			continue;
 		}
+		p_object = PySequence_GetItem(p_value, i);
+		resetStringInfo(buffer);
+		values[i] = pyobjectToDatum(p_object, buffer,
+										   cinfos[i]);
+		if (values[i] == (Datum) NULL)
+		{
+			nulls[i] = true;
+		}
+		else
+		{
+			nulls[i] = false;
+		}
+		errorCheck();
+		Py_DECREF(p_object);
 	}
 }
 
 /*
  * Convert a python result (a sequence or a dictionary) to a tupletableslot.
  */
-void
-pythonResultToTuple(PyObject *p_value,
-					MulticornExecState * state)
+void pythonResultToTuple(PyObject *p_value,
+				  TupleTableSlot *slot,
+				  ConversionInfo **cinfos,
+				  StringInfo buffer)
 {
 	if (PyMapping_Check(p_value))
 	{
-		pythonDictToTuple(p_value, state);
+		pythonDictToTuple(p_value, slot, cinfos, buffer);
 	}
 	else
 	{
-
 		if (PySequence_Check(p_value))
 		{
-			pythonSequenceToTuple(p_value, state);
+			pythonSequenceToTuple(p_value, slot, cinfos, buffer);
 		}
 		else
 		{
 			elog(ERROR, "Cannot transform anything else than mappings and"
 				 "sequences to rows");
 		}
-
 	}
 }
 
@@ -783,6 +783,7 @@ pyobjectToDatum(PyObject *object, StringInfo buffer,
 
 	if (buffer->len >= 0)
 	{
+
 		if (cinfo->atttypoid == BYTEAOID || cinfo->atttypoid == TEXTOID ||
 			cinfo->atttypoid == VARCHAROID)
 		{
@@ -826,7 +827,8 @@ PyObject *
 datumNumberToPython(Datum datum, ConversionInfo * cinfo)
 {
 	ssize_t		numvalue = (ssize_t) DatumGetNumeric(datum);
-	char	   *tempvalue = (char *) DirectFunctionCall1(numeric_out, numvalue);
+	char	   *tempvalue = (char *) DirectFunctionCall1(numeric_out,
+														 numvalue);
 	PyObject   *buffer = PyString_FromString(tempvalue),
 			   *value = PyFloat_FromString(buffer, NULL);
 
@@ -859,7 +861,8 @@ datumTimestampToPython(Datum datum, ConversionInfo * cinfo)
 	fsec_t		fsec;
 
 	PyDateTime_IMPORT;
-	timestamp2tm(DatumGetTimestamp(datum), NULL, pg_tm_value, &fsec, NULL, NULL);
+	timestamp2tm(DatumGetTimestamp(datum), NULL, pg_tm_value, &fsec,
+				 NULL, NULL);
 	result = PyDateTime_FromDateAndTime(pg_tm_value->tm_year,
 										pg_tm_value->tm_mon,
 										pg_tm_value->tm_mday,
@@ -1008,4 +1011,57 @@ pathKeys(MulticornPlanState * state)
 	}
 	Py_DECREF(p_pathkeys);
 	return result;
+}
+
+PyObject *
+tupleTableSlotToPyObject(TupleTableSlot *slot, MulticornModifyState * state)
+{
+	PyObject   *result = PyDict_New();
+	TupleDesc	tupdesc = state->attinmeta->tupdesc;
+	int			i;
+
+	for (i = 0; i < tupdesc->natts; i++)
+	{
+		Form_pg_attribute attr = tupdesc->attrs[i];
+		bool		isnull;
+		Datum		value;
+		PyObject   *item;
+
+		if (attr->attisdropped)
+		{
+			continue;
+		}
+		value = slot_getattr(slot, i + 1, &isnull);
+		if (isnull)
+		{
+			item = Py_None;
+		}
+		else
+		{
+			item = datumToPython(value, state->cinfos[i]->atttypoid,
+								 state->cinfos[i]);
+		}
+		PyDict_SetItemString(result, state->cinfos[i]->attrname, item);
+		Py_DECREF(item);
+	}
+	return result;
+}
+
+/*
+ * Get the rowid column name
+ */
+char *
+getRowIdColumn(PyObject *fdw_instance)
+{
+       PyObject   *value = PyObject_GetAttrString(fdw_instance, "rowid_column");
+       char       *result;
+
+       errorCheck();
+       if (value == Py_None)
+       {
+               elog(ERROR, "This FDW does not support the writable API");
+       }
+       result = PyString_AsString(value);
+       Py_DECREF(value);
+       return result;
 }

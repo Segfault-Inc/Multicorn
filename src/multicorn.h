@@ -37,7 +37,6 @@ typedef struct ConversionInfo
 typedef struct MulticornPlanState
 {
 	Oid			foreigntableid;
-	AttrNumber	rowid_attnum;
 	AttrNumber	numattrs;
 	PyObject   *fdw_instance;
 	List	   *target_list;
@@ -59,11 +58,23 @@ typedef struct MulticornExecState
 	AttInMetadata *attinmeta;
 	Datum	   *values;
 	bool	   *nulls;
-	AttrNumber	numattrs;
 	ConversionInfo **cinfos;
 	/* Common buffer to avoid repeated allocations */
 	StringInfo	buffer;
+	AttrNumber	rowidAttno;
+	char	   *rowidAttrName;
 }	MulticornExecState;
+
+typedef struct MulticornModifyState
+{
+	AttInMetadata *attinmeta;
+	ConversionInfo **cinfos;
+	PyObject   *fdw_instance;
+	StringInfo	buffer;
+	AttrNumber	rowidAttno;
+	char	   *rowidAttrName;
+	ConversionInfo *rowidCinfo;
+}	MulticornModifyState;
 
 /*	errors.c */
 void		errorCheck(void);
@@ -75,7 +86,11 @@ PyObject   *qualToPyObject(Expr *expr, PlannerInfo *root);
 PyObject   *getClassString(char *className);
 PyObject   *execute(ForeignScanState *state);
 void pythonResultToTuple(PyObject *p_value,
-					MulticornExecState * state);
+					TupleTableSlot *slot,
+					ConversionInfo ** cinfos,
+					StringInfo buffer);
+PyObject   *tupleTableSlotToPyObject(TupleTableSlot *slot, MulticornModifyState * state);
+char	   *getRowIdColumn(PyObject *fdw_instance);
 
 void getRelSize(MulticornPlanState * state,
 		   PlannerInfo *root,
@@ -91,11 +106,15 @@ void extractRestrictions(PlannerInfo *root,
 					Expr *node,
 					List **quals,
 					List **params);
-List	   *extractColumns(PlannerInfo *root, RelOptInfo *baserel);
+List	   *extractColumns(List *reltargetlist, List *restrictinfolist);
 void initConversioninfo(ConversionInfo ** cinfo,
 				   AttInMetadata *attinmeta);
-Value	   *colnameFromVar(Var *var, PlannerInfo *root);
+
+Value *colnameFromVar(Var *var, PlannerInfo *root,
+			   MulticornPlanState * state);
 
 void		findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int startupCost);
+
+PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
 
 #endif   /* PG_MULTICORN_H */

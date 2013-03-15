@@ -1,7 +1,7 @@
 from logging import ERROR, INFO, DEBUG, WARNING, CRITICAL
 try:
     from ._utils import _log_to_postgres
-except ImportError:
+except ImportError as e:
     from warnings import warn
     warn("Not executed in a postgresql server,"
          " disabling log_to_postgres", ImportWarning)

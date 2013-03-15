@@ -48,7 +48,6 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
 	PyErr_NormalizeException(&pErrType, &pErrValue, &pErrTraceback);
 	pTemp = PyObject_GetAttrString(pErrType, "__name__");
 	errName = PyString_AsString(pTemp);
-	Py_DECREF(pTemp);
 	errValue = PyString_AsString(PyObject_Str(pErrValue));
 	if (pErrTraceback)
 	{
@@ -57,14 +56,15 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
 		Py_DECREF(pErrTraceback);
 		Py_DECREF(traceback_list);
 	}
+	ereport(ERROR, (errmsg("Error in python: %s", errName),
+					errdetail("%s", errValue),
+					errdetail_log("%s", errTraceback)));
 	Py_DECREF(pErrType);
 	Py_DECREF(pErrValue);
 	Py_DECREF(format_exception);
 	Py_DECREF(tracebackModule);
 	Py_DECREF(newline);
-	ereport(ERROR, (errmsg("Error in python: %s", errName),
-					errdetail("%s", errValue),
-					errdetail_log("%s", errTraceback)));
+	Py_DECREF(pTemp);
 }
 
 /*

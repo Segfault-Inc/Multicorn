@@ -7,6 +7,7 @@
 #include "catalog/pg_operator.h"
 #include "mb/pg_wchar.h"
 #include "utils/lsyscache.h"
+#include "parser/parsetree.h"
 
 const char *getEncodingFromAttribute(Form_pg_attribute attribute);
 
@@ -56,22 +57,22 @@ List *clausesInvolvingAttr(Index relid, AttrNumber attnum,
  *	- the restrictinfo
  */
 List *
-extractColumns(PlannerInfo *root, RelOptInfo *baserel)
+extractColumns(List* reltargetlist, List* restrictinfolist)
 {
 	ListCell   *lc;
 	List	   *columns = NULL;
-
-	foreach(lc, baserel->reltargetlist)
+	int i = 0;
+	foreach(lc, reltargetlist)
 	{
 		List	   *targetcolumns;
 		Node	   *node = (Node *) lfirst(lc);
-
 		targetcolumns = pull_var_clause(node,
 										PVC_RECURSE_AGGREGATES,
 										PVC_RECURSE_PLACEHOLDERS);
 		columns = list_union(columns, targetcolumns);
+		i++;
 	}
-	foreach(lc, baserel->baserestrictinfo)
+	foreach(lc, restrictinfolist)
 	{
 		List	   *targetcolumns;
 		RestrictInfo *node = (RestrictInfo *) lfirst(lc);
@@ -117,8 +118,6 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 	}
 }
 
-
-
 /*
  * Get a (python) encoding name for an attribute.
  */
@@ -128,10 +127,13 @@ getEncodingFromAttribute(Form_pg_attribute attribute)
 	HeapTuple	tp;
 	Form_pg_collation colltup;
 	const char *encoding_name;
-
+	if(attribute->attcollation == 0){
+		return "ascii";
+	}
 	tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));
 	if (!HeapTupleIsValid(tp))
-		return "ascii";
+		elog(ERROR, "cache lookup failed for collation %u",
+			 attribute->attcollation);
 	colltup = (Form_pg_collation) GETSTRUCT(tp);
 	ReleaseSysCache(tp);
 	if (colltup->collencoding == -1)
@@ -497,14 +499,14 @@ extractClauseFromNullTest(PlannerInfo *root,
  *	Returns a "Value" node containing the string name of the column from a var.
  */
 Value *
-colnameFromVar(Var *var, PlannerInfo *root)
+colnameFromVar(Var *var, PlannerInfo *root, MulticornPlanState * planstate)
 {
-	RangeTblEntry *rte = root->simple_rte_array[var->varno];
+	RangeTblEntry *rte = rte = planner_rt_fetch(var->varno, root);
 	char	   *attname = get_attname(rte->relid, var->varattno);
 
 	if (attname == NULL)
 	{
-		return makeString("");
+		return NULL;
 	}
 	else
 	{

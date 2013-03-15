@@ -66,6 +66,7 @@ class FilesystemFdw(ForeignDataWrapper):
                     WARNING, "Remove the following columns: %s "
                     % missing_columns)
 
+
     def get_rel_size(self, quals, columns):
         """Helps the planner by returning costs
         For the width, we assume 30 for every returned column, + 1 million for the content
@@ -141,6 +142,16 @@ class FilesystemFdw(ForeignDataWrapper):
             if has_filename:
                 new_item[filename_column] = item.filename
             yield new_item
+
+    def insert(self, value):
+        content = value.pop(self.content_column, "")
+        value.pop(self.filename_column, None)
+        item = structuredfs.Item(self.structured_directory, value)
+        item.write(content)
+
+    def delete(self, rowid):
+        full_path = os.path.join(self.structured_directory.root_dir, rowid)
+        os.remove(full_path)
 
 
 class ReStructuredTextFdw(FilesystemFdw):

@@ -136,3 +136,7 @@ select * from testalchemy where id not in (1, 2);
   4 | 11-02-1922 | Tue Jan 02 23:12:54 1962 |    -3000 | 
 (2 rows)
 
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to foreign table testalchemy
