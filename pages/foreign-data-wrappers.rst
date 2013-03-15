@@ -438,7 +438,7 @@ Class: ``multicorn.ldapfdw.LdapFdw``
 
 Source code: `multicorn/ldapfdw.py`_
 
-.. _multicorn/rssfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/ldapfdw.py
+.. _multicorn/ldapfdw.py: https://github.com/Kozea/Multicorn/blob/master/python/multicorn/ldapfdw.py
 
 Purpose
 -------
@@ -455,7 +455,7 @@ You will need the `ldap`_ library.
 .. _ldap: http://www.python-ldap.org/
 
 Required options
------------------
+----------------
 
 ``uri`` (string)
 The URI for the server, for example "ldap://localhost".
