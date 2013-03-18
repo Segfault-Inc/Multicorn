@@ -68,11 +68,10 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
 }
 
 /*
- * Test if an exception of the given type has been raised.
- * Returns:
- *	- false if no exception has been raised,
- *	- true if an exception of the given class has been raised
- *	- Abort with an error if another exception has been raised.
+ * Test if an exception of the given type has been raised. Returns: - false
+ * if no exception has been raised, - true if an exception of the given class
+ * has been raised - Abort with an error if another exception has been
+ * raised.
  */
 bool
 try_except(char *exceptionname)

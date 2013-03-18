@@ -57,15 +57,17 @@ List *clausesInvolvingAttr(Index relid, AttrNumber attnum,
  *	- the restrictinfo
  */
 List *
-extractColumns(List* reltargetlist, List* restrictinfolist)
+extractColumns(List *reltargetlist, List *restrictinfolist)
 {
 	ListCell   *lc;
 	List	   *columns = NULL;
-	int i = 0;
+	int			i = 0;
+
 	foreach(lc, reltargetlist)
 	{
 		List	   *targetcolumns;
 		Node	   *node = (Node *) lfirst(lc);
+
 		targetcolumns = pull_var_clause(node,
 										PVC_RECURSE_AGGREGATES,
 										PVC_RECURSE_PLACEHOLDERS);
@@ -127,7 +129,9 @@ getEncodingFromAttribute(Form_pg_attribute attribute)
 	HeapTuple	tp;
 	Form_pg_collation colltup;
 	const char *encoding_name;
-	if(attribute->attcollation == 0){
+
+	if (attribute->attcollation == 0)
+	{
 		return "ascii";
 	}
 	tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));

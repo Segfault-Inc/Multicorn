@@ -73,7 +73,6 @@ class TestForeignDataWrapper(ForeignDataWrapper):
     def delete(self, rowid):
         if self.test_type == 'nowrite':
             super(TestForeignDataWrapper, self).delete(rowid)
-
         log_to_postgres("DELETING: %s" % rowid)
 
     def insert(self, values):
@@ -81,8 +80,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
             super(TestForeignDataWrapper, self).insert(values)
         log_to_postgres("INSERTING: %s" % values)
         if self.test_type == 'returning':
-            for key in values:
-                values[key] = "INSERTED: %s" % values[key]
+            for key in self.columns:
+                values[key] = "INSERTED: %s" % values.get(key, None)
             return values
 
     @property

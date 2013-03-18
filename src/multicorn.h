@@ -55,7 +55,6 @@ typedef struct MulticornExecState
 	List	   *target_list;
 	List	   *qual_list;
 	List	   *param_list;
-	AttInMetadata *attinmeta;
 	Datum	   *values;
 	bool	   *nulls;
 	ConversionInfo **cinfos;
@@ -67,8 +66,8 @@ typedef struct MulticornExecState
 
 typedef struct MulticornModifyState
 {
-	AttInMetadata *attinmeta;
 	ConversionInfo **cinfos;
+	ConversionInfo **resultCinfos;
 	PyObject   *fdw_instance;
 	StringInfo	buffer;
 	AttrNumber	rowidAttno;
@@ -76,7 +75,7 @@ typedef struct MulticornModifyState
 	ConversionInfo *rowidCinfo;
 }	MulticornModifyState;
 
-/*	errors.c */
+/* errors.c */
 void		errorCheck(void);
 bool		try_except(char *exceptionname);
 
@@ -89,7 +88,7 @@ void pythonResultToTuple(PyObject *p_value,
 					TupleTableSlot *slot,
 					ConversionInfo ** cinfos,
 					StringInfo buffer);
-PyObject   *tupleTableSlotToPyObject(TupleTableSlot *slot, MulticornModifyState * state);
+PyObject   *tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos);
 char	   *getRowIdColumn(PyObject *fdw_instance);
 
 void getRelSize(MulticornPlanState * state,

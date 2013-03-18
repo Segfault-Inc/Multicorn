@@ -38,6 +38,8 @@ insert into testmulticorn_write(test1, test2) VALUES ('test', 'test2') RETURNING
 
 update testmulticorn_write set test1 = 'test' where test1 ilike 'test1 3%' RETURNING test1;
 
+delete from testmulticorn_write where test1 = 'test1 1 0' returning test2, test1;
+
 DROP foreign table testmulticorn_write;
 -- Now test with another column
 CREATE foreign table testmulticorn_write(

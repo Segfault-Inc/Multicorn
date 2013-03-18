@@ -330,9 +330,8 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 
 		execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
 		execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
-		execstate->attinmeta = TupleDescGetAttInMetadata(tupdesc);
+		initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
 	}
-	initConversioninfo(execstate->cinfos, execstate->attinmeta);
 	node->fdw_state = execstate;
 }
 
@@ -445,11 +444,22 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 								 Relation target_relation)
 {
 	Var		   *var = NULL;
-	TargetEntry *tle;
+	TargetEntry *tle,
+			   *returningTle;
 	PyObject   *instance = getInstance(target_relation->rd_id);
 	const char *attrname = getRowIdColumn(instance);
 	TupleDesc	desc = target_relation->rd_att;
 	int			i;
+	ListCell   *cell;
+
+	foreach(cell, parsetree->returningList)
+	{
+		returningTle = lfirst(cell);
+		tle = copyObject(returningTle);
+		tle->resjunk = true;
+		parsetree->targetList = lappend(parsetree->targetList, tle);
+	}
+
 
 	for (i = 0; i < desc->natts; i++)
 	{
@@ -496,16 +506,24 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
 	Relation	rel = resultRelInfo->ri_RelationDesc;
 	TupleDesc	desc = RelationGetDescr(rel);
-	Plan	   *subplan = mtstate->mt_plans[subplan_index]->plan;
+	PlanState  *ps = mtstate->mt_plans[subplan_index];
+	Plan	   *subplan = ps->plan;
 	int			i;
 
-	modstate->attinmeta = TupleDescGetAttInMetadata(desc);
 	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 							   desc->natts);
 	modstate->buffer = makeStringInfo();
 	modstate->fdw_instance = getInstance(rel->rd_id);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
-	initConversioninfo(modstate->cinfos, modstate->attinmeta);
+	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
+	if (ps->ps_ResultTupleSlot)
+	{
+		TupleDesc	resultTupleDesc = ps->ps_ResultTupleSlot->tts_tupleDescriptor;
+
+		modstate->resultCinfos = palloc0(sizeof(ConversionInfo *) *
+										 resultTupleDesc->natts);
+		initConversioninfo(modstate->resultCinfos, TupleDescGetAttInMetadata(resultTupleDesc));
+	}
 	for (i = 0; i < desc->natts; i++)
 	{
 		Form_pg_attribute att = desc->attrs[i];
@@ -534,12 +552,14 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *fdw_instance = modstate->fdw_instance;
-	PyObject   *values = tupleTableSlotToPyObject(slot, modstate);
+	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
 	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
 
 	if (p_new_value && p_new_value != Py_None)
 	{
+		ExecClearTuple(slot);
 		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+		ExecStoreVirtualTuple(slot);
 		Py_DECREF(p_new_value);
 	}
 	Py_DECREF(values);
@@ -568,14 +588,17 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
 	p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
 	errorCheck();
-	if (p_new_value && p_new_value != Py_None)
+	if (p_new_value == NULL || p_new_value == Py_None)
 	{
-		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
-		Py_DECREF(p_new_value);
+		p_new_value = tupleTableSlotToPyObject(planSlot, modstate->resultCinfos);
 	}
+	ExecClearTuple(slot);
+	pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+	ExecStoreVirtualTuple(slot);
+	Py_DECREF(p_new_value);
 	Py_DECREF(p_row_id);
 	errorCheck();
-	return planSlot;
+	return slot;
 }
 
 /*
@@ -590,9 +613,9 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *fdw_instance = modstate->fdw_instance,
-			   *p_value = tupleTableSlotToPyObject(planSlot, modstate),
 			   *p_row_id,
-			   *p_new_value;
+			   *p_new_value,
+			   *p_value = tupleTableSlotToPyObject(slot, modstate->cinfos);
 	bool		is_null;
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
@@ -601,13 +624,13 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
 									  p_value);
 	errorCheck();
-	if (p_new_value && p_new_value != Py_None)
+	if (p_new_value != NULL && p_new_value != Py_None)
 	{
 		ExecClearTuple(slot);
 		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
+		ExecStoreVirtualTuple(slot);
 		Py_DECREF(p_new_value);
 	}
-	Py_DECREF(p_value);
 	Py_DECREF(p_row_id);
 	errorCheck();
 	return slot;
