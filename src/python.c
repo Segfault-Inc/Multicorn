@@ -42,6 +42,7 @@ PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumArrayToPython(Datum datum, ConversionInfo * cinfo);
+PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
 
 
 
@@ -904,6 +905,17 @@ datumArrayToPython(Datum datum, ConversionInfo * cinfo)
 
 
 PyObject *
+datumByteaToPython(Datum datum, ConversionInfo * cinfo)
+{
+	text	   *txt = DatumGetByteaP(datum);
+	char	   *str = VARDATA(txt);
+	size_t		size = VARSIZE(txt) - VARHDRSZ;
+
+	return PyBytes_FromStringAndSize(str, size);
+}
+
+
+PyObject *
 datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 {
 	HeapTuple	tuple;
@@ -916,6 +928,8 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 	}
 	switch (type)
 	{
+		case BYTEAOID:
+			return datumByteaToPython(datum, cinfo);
 		case TEXTOID:
 		case VARCHAROID:
 			return datumStringToPython(datum, cinfo);
