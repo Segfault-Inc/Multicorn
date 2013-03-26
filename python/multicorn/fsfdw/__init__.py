@@ -7,7 +7,7 @@ https://github.com/Kozea/StructuredFS.
 """
 
 from multicorn import ForeignDataWrapper
-from multicorn.fsfdw.structuredfs import StructuredDirectory
+from multicorn.fsfdw.structuredfs import StructuredDirectory, Item
 from multicorn.utils import log_to_postgres
 from logging import ERROR, WARNING, DEBUG
 import os
@@ -143,15 +143,23 @@ class FilesystemFdw(ForeignDataWrapper):
                 new_item[filename_column] = item.filename
             yield new_item
 
-    def insert(self, value):
-        content = value.pop(self.content_column, "")
-        value.pop(self.filename_column, None)
-        item = structuredfs.Item(self.structured_directory, value)
+    def insert(self, newitem):
+        content = newitem.pop(self.content_column, "")
+        newitem.pop(self.filename_column, None)
+        newitem = {key: str(value) for key, value in newitem.items()}
+        item = Item(self.structured_directory, newitem)
         item.write(content)
+        newitem[self.filename_column] = item.filename
+        newitem[self.content_column] = content
+        return newitem
 
     def delete(self, rowid):
         full_path = os.path.join(self.structured_directory.root_dir, rowid)
         os.remove(full_path)
+
+    @property
+    def rowid_column(self):
+        return self.filename_column
 
 
 class ReStructuredTextFdw(FilesystemFdw):

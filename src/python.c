@@ -1062,6 +1062,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 		{
 			item = datumToPython(value, cinfos[cinfo_idx]->atttypoid,
 								 cinfos[cinfo_idx]);
+			errorCheck();
 		}
 		PyDict_SetItemString(result, cinfos[cinfo_idx]->attrname, item);
 		Py_DECREF(item);
