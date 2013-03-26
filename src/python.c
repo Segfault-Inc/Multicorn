@@ -42,6 +42,7 @@ PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumArrayToPython(Datum datum, ConversionInfo * cinfo);
+PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
 
 void pythonDictToTuple(PyObject *p_value,
 				  TupleTableSlot *slot,
@@ -171,6 +172,7 @@ getOptions(Oid foreigntableid)
 	ListCell   *lc;
 	bool		got_module = false;
 	PyObject   *p_options_dict = PyDict_New();
+	MemoryContext savedContext = CurrentMemoryContext;
 
 	f_table = GetForeignTable(foreigntableid);
 	f_server = GetForeignServer(f_table->serverid);
@@ -188,6 +190,7 @@ getOptions(Oid foreigntableid)
 	PG_CATCH();
 	{
 		FlushErrorState();
+		MemoryContextSwitchTo(savedContext);
 		/* DO NOTHING HERE */
 	}
 	PG_END_TRY();
@@ -913,6 +916,17 @@ datumArrayToPython(Datum datum, ConversionInfo * cinfo)
 
 
 PyObject *
+datumByteaToPython(Datum datum, ConversionInfo * cinfo)
+{
+	text	   *txt = DatumGetByteaP(datum);
+	char	   *str = VARDATA(txt);
+	size_t		size = VARSIZE(txt) - VARHDRSZ;
+
+	return PyBytes_FromStringAndSize(str, size);
+}
+
+
+PyObject *
 datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 {
 	HeapTuple	tuple;
@@ -925,6 +939,8 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 	}
 	switch (type)
 	{
+		case BYTEAOID:
+			return datumByteaToPython(datum, cinfo);
 		case TEXTOID:
 		case VARCHAROID:
 			return datumStringToPython(datum, cinfo);
