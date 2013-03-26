@@ -470,6 +470,7 @@ execute(ForeignScanState *node)
 									 "(O,O)",
 									 p_quals,
 									 p_targets_set);
+	errorCheck();
 	if (p_iterable == Py_None)
 	{
 		state->p_iterator = p_iterable;
