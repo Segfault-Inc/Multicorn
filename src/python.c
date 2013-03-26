@@ -170,6 +170,7 @@ getOptions(Oid foreigntableid)
 	ListCell   *lc;
 	bool		got_module = false;
 	PyObject   *p_options_dict = PyDict_New();
+	MemoryContext savedContext = CurrentMemoryContext;
 
 	f_table = GetForeignTable(foreigntableid);
 	f_server = GetForeignServer(f_table->serverid);
@@ -187,6 +188,7 @@ getOptions(Oid foreigntableid)
 	PG_CATCH();
 	{
 		FlushErrorState();
+		MemoryContextSwitchTo(savedContext);
 		/* DO NOTHING HERE */
 	}
 	PG_END_TRY();
