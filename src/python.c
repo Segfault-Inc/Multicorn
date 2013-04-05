@@ -235,7 +235,10 @@ compareOptions(List *options1, List *options2)
 {
 	ListCell   *lc1,
 			   *lc2;
-
+	if(options1->length != options2->length)
+	{
+		return false;
+	}
 	forboth(lc1, options1, lc2, options2)
 	{
 		DefElem    *def1 = (DefElem *) lfirst(lc1);
@@ -310,6 +313,10 @@ compareColumns(List *columns1, List *columns2)
 {
 	ListCell   *lc1,
 			   *lc2;
+	if(columns1->length != columns2->length)
+	{	
+		return false;
+	}
 
 	forboth(lc1, columns1, lc2, columns2)
 	{
