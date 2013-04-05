@@ -235,7 +235,8 @@ compareOptions(List *options1, List *options2)
 {
 	ListCell   *lc1,
 			   *lc2;
-	if(options1->length != options2->length)
+
+	if (options1->length != options2->length)
 	{
 		return false;
 	}
@@ -313,8 +314,9 @@ compareColumns(List *columns1, List *columns2)
 {
 	ListCell   *lc1,
 			   *lc2;
-	if(columns1->length != columns2->length)
-	{	
+
+	if (columns1->length != columns2->length)
+	{
 		return false;
 	}
 
