@@ -13,7 +13,13 @@
 #include "utils/rel.h"
 #include "executor/nodeSubplan.h"
 
-PyObject   *getOptions(Oid foreigntableid);
+List	   *getOptions(Oid foreigntableid);
+PyObject   *optionsListToPyDict(List *options);
+bool		compareOptions(List *options1, List *options2);
+
+void		getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns);
+bool		compareColumns(List *columns1, List *columns2);
+
 PyObject   *getClass(PyObject *className);
 PyObject   *valuesToPySet(List *targetlist);
 PyObject   *qualDefsToPyList(List *quallist, ConversionInfo ** cinfo);
@@ -75,6 +81,8 @@ typedef struct CacheEntry
 {
 	Oid			hashkey;
 	PyObject   *value;
+	List	   *options;
+	List	   *columns;
 }	CacheEntry;
 
 /*
@@ -153,23 +161,13 @@ getClassString(char *className)
 }
 
 
-/*
- * Collect and validate options.
- * Only one option is required "wrapper".
- *
- * Returns a new reference to a dictionary.
- *
- * */
-PyObject *
+List *
 getOptions(Oid foreigntableid)
 {
 	ForeignTable *f_table;
 	ForeignServer *f_server;
 	UserMapping *mapping;
 	List	   *options;
-	ListCell   *lc;
-	bool		got_module = false;
-	PyObject   *p_options_dict = PyDict_New();
 	MemoryContext savedContext = CurrentMemoryContext;
 
 	f_table = GetForeignTable(foreigntableid);
@@ -192,6 +190,22 @@ getOptions(Oid foreigntableid)
 		/* DO NOTHING HERE */
 	}
 	PG_END_TRY();
+	return options;
+}
+
+/*
+ * Collect and validate options.
+ * Only one option is required "wrapper".
+ *
+ * Returns a new reference to a dictionary.
+ *
+ * */
+PyObject *
+optionsListToPyDict(List *options)
+{
+	ListCell   *lc;
+	PyObject   *p_options_dict = PyDict_New();
+	bool		got_module = false;
 
 	foreach(lc, options)
 	{
@@ -216,6 +230,117 @@ getOptions(Oid foreigntableid)
 	return p_options_dict;
 }
 
+bool
+compareOptions(List *options1, List *options2)
+{
+	ListCell   *lc1,
+			   *lc2;
+
+	if (options1->length != options2->length)
+	{
+		return false;
+	}
+	forboth(lc1, options1, lc2, options2)
+	{
+		DefElem    *def1 = (DefElem *) lfirst(lc1);
+		DefElem    *def2 = (DefElem *) lfirst(lc2);
+
+		if (def1 == NULL || def2 == NULL || strcmp(def1->defname, def2->defname) != 0)
+		{
+			return false;
+		}
+		if (strcmp(defGetString(def1), defGetString(def2)) != 0)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+void
+getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
+{
+	PyObject   *columns_dict = *p_columns;
+	List	   *columns_list = *columns;
+
+	if ((columns_dict != NULL) && (columns_list != NULL))
+	{
+		return;
+	}
+	else
+	{
+		int			i;
+		PyObject   *p_columnclass = getClassString("multicorn."
+												   "ColumnDefinition"),
+				   *p_dictclass = getClassString("multicorn.ordered_dict.OrderedDict");
+
+		columns_dict = PyObject_CallFunction(p_dictclass, "()");
+
+		for (i = 0; i < desc->natts; i++)
+		{
+			Form_pg_attribute att = desc->attrs[i];
+
+			if (!att->attisdropped)
+			{
+				Oid			typOid = att->atttypid;
+				char	   *key = NameStr(att->attname);
+				char	   *formatted_type = format_type_be(typOid);
+				PyObject   *column = PyObject_CallFunction(p_columnclass,
+														   "(s,i,s)",
+														   key,
+														   typOid,
+														   formatted_type);
+				List	   *columnDef = NULL;
+
+				columnDef = lappend(columnDef, makeString(key));
+				columnDef = lappend_oid(columnDef, typOid);
+				columnDef = lappend(columnDef, makeString(formatted_type));
+				columns_list = lappend(columns_list, columnDef);
+				PyMapping_SetItemString(columns_dict, key, column);
+				Py_DECREF(column);
+			}
+		}
+		Py_DECREF(p_columnclass);
+		Py_DECREF(p_dictclass);
+		errorCheck();
+		*p_columns = columns_dict;
+		*columns = columns_list;
+	}
+
+}
+
+bool
+compareColumns(List *columns1, List *columns2)
+{
+	ListCell   *lc1,
+			   *lc2;
+
+	if (columns1->length != columns2->length)
+	{
+		return false;
+	}
+
+	forboth(lc1, columns1, lc2, columns2)
+	{
+		List	   *coldef1 = lfirst(lc1);
+		List	   *coldef2 = lfirst(lc2);
+
+		if (strcmp(strVal(linitial(coldef1)), strVal(linitial(coldef2))) != 0)
+		{
+			return false;
+		}
+		if (lsecond_oid(coldef1) != lsecond_oid(coldef2))
+		{
+			return false;
+		}
+		if (strcmp(strVal(lthird(coldef1)), strVal(lthird(coldef2))) != 0)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 /*
  *	Returns the fdw_instance associated with the foreigntableid.
  *
@@ -224,8 +349,16 @@ getOptions(Oid foreigntableid)
 PyObject *
 getInstance(Oid foreigntableid)
 {
+	MemoryContext oldContext = MemoryContextSwitchTo(CacheMemoryContext);
 	CacheEntry *entry = NULL;
 	bool		found = false;
+	List	   *options = getOptions(foreigntableid);
+	List	   *columns = NULL;
+	PyObject   *p_columns = NULL;
+	ForeignTable *ftable = GetForeignTable(foreigntableid);
+	Relation	rel = RelationIdGetRelation(ftable->relid);
+	TupleDesc	desc = rel->rd_att;
+	bool		needInitialization = false;
 
 	/* Initialize hash table if needed. */
 	if (InstancesHash == NULL)
@@ -241,53 +374,53 @@ getInstance(Oid foreigntableid)
 									&ctl,
 									HASH_ELEM | HASH_FUNCTION);
 	}
+
 	entry = hash_search(InstancesHash, &foreigntableid, HASH_ENTER,
 						&found);
+
 	if (!found || entry->value == NULL)
 	{
-		int			i;
-		ForeignTable *ftable = GetForeignTable(foreigntableid);
-		Relation	rel = RelationIdGetRelation(ftable->relid);
-		TupleDesc	desc = rel->rd_att;
-		PyObject   *p_options = getOptions(foreigntableid),
-				   *p_class = getClass(PyDict_GetItemString(p_options,
-															"wrapper")),
-				   *p_columnclass = getClassString("multicorn."
-												   "ColumnDefinition"),
-				   *p_dictclass = getClassString("multicorn.ordered_dict."
-												 "OrderedDict"),
-				   *p_columns = PyObject_CallFunction(p_dictclass, "()");
-
-		PyDict_DelItemString(p_options, "wrapper");
-		for (i = 0; i < desc->natts; i++)
+		needInitialization = true;
+	}
+	else
+	{
+		if (!compareOptions(entry->options, options))
 		{
-			Form_pg_attribute att = desc->attrs[i];
-			Oid			typOid = att->atttypid;
-			char	   *key = NameStr(att->attname);
-
-			if (!att->attisdropped)
+			/* Options have changed, we must purge the cache. */
+			Py_DECREF(entry->value);
+			needInitialization = true;
+		}
+		else
+		{
+			/* Options have not changed, we should look at columns. */
+			getColumnsFromTable(desc, &p_columns, &columns);
+			if (!compareColumns(columns, entry->columns))
 			{
-				PyObject   *column = PyObject_CallFunction(p_columnclass,
-														   "(s,i,s)",
-														   key,
-														   typOid,
-													 format_type_be(typOid));
-
-				PyMapping_SetItemString(p_columns, key, column);
-				Py_DECREF(column);
+				Py_DECREF(entry->value);
+				needInitialization = true;
 			}
 		}
-		RelationClose(rel);
+	}
+	if (needInitialization)
+	{
+		PyObject   *p_options = optionsListToPyDict(options),
+				   *p_class = getClass(PyDict_GetItemString(p_options,
+															"wrapper"));
+
+		getColumnsFromTable(desc, &p_columns, &columns);
+		PyDict_DelItemString(p_options, "wrapper");
 		entry->value = PyObject_CallFunction(p_class, "(O,O)", p_options,
 											 p_columns);
+		entry->options = options;
+		entry->columns = columns;
 		Py_DECREF(p_class);
 		Py_DECREF(p_options);
 		Py_DECREF(p_columns);
-		Py_DECREF(p_columnclass);
-		Py_DECREF(p_dictclass);
 		errorCheck();
 	}
+	RelationClose(rel);
 	Py_INCREF(entry->value);
+	MemoryContextSwitchTo(oldContext);
 	return entry->value;
 }
 
@@ -470,7 +603,6 @@ execute(ForeignScanState *node)
 									 "(O,O)",
 									 p_quals,
 									 p_targets_set);
-	errorCheck();
 	if (p_iterable == Py_None)
 	{
 		state->p_iterator = p_iterable;

@@ -2,6 +2,7 @@
 tags
 *.o
 *.so
+*.o
 *egg-info
 sql/multicorn--*.sql
 *.pyc
