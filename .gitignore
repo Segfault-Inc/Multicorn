@@ -1,5 +1,6 @@
 *.sw?
 tags
+*.o
 *.so
 *.o
 *egg-info
