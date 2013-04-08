@@ -9,6 +9,7 @@
 #include "utils/timestamp.h"
 #include "utils/array.h"
 #include "utils/catcache.h"
+#include "utils/memutils.h"
 #include "utils/resowner.h"
 #include "utils/rel.h"
 #include "executor/nodeSubplan.h"
@@ -83,6 +84,8 @@ typedef struct CacheEntry
 	PyObject   *value;
 	List	   *options;
 	List	   *columns;
+	/* Keep the "options" and "columns" in a specific context to avoid leaks. */
+	MemoryContext cacheContext;
 }	CacheEntry;
 
 /*
@@ -349,7 +352,17 @@ compareColumns(List *columns1, List *columns2)
 PyObject *
 getInstance(Oid foreigntableid)
 {
-	MemoryContext oldContext = MemoryContextSwitchTo(CacheMemoryContext);
+	/*
+	 * create a temporary context. If we have to (re)create the python
+	 * instance, it will be promoted to a cachememorycontext. Otherwise, it
+	 * will be freed before returning the instance
+	 */
+	MemoryContext tempContext = AllocSetContextCreate(CurrentMemoryContext,
+												  "multicorn temporary data",
+													  ALLOCSET_SMALL_MINSIZE,
+													  ALLOCSET_SMALL_INITSIZE,
+													  ALLOCSET_SMALL_MAXSIZE),
+				oldContext = MemoryContextSwitchTo(tempContext);
 	CacheEntry *entry = NULL;
 	bool		found = false;
 	List	   *options = getOptions(foreigntableid);
@@ -380,10 +393,14 @@ getInstance(Oid foreigntableid)
 
 	if (!found || entry->value == NULL)
 	{
+		entry->options = NULL;
+		entry->columns = NULL;
+		entry->cacheContext = NULL;
 		needInitialization = true;
 	}
 	else
 	{
+		/* Even if found, we have to check several things */
 		if (!compareOptions(entry->options, options))
 		{
 			/* Options have changed, we must purge the cache. */
@@ -399,6 +416,10 @@ getInstance(Oid foreigntableid)
 				Py_DECREF(entry->value);
 				needInitialization = true;
 			}
+			else
+			{
+				Py_DECREF(p_columns);
+			}
 		}
 	}
 	if (needInitialization)
@@ -411,12 +432,25 @@ getInstance(Oid foreigntableid)
 		PyDict_DelItemString(p_options, "wrapper");
 		entry->value = PyObject_CallFunction(p_class, "(O,O)", p_options,
 											 p_columns);
+		/* Cleanup the old context, containing the old columns and options */
+		/* values */
+		if (entry->cacheContext != NULL)
+		{
+			MemoryContextDelete(entry->cacheContext);
+		}
+		/* Promote this tempcontext. */
+		MemoryContextSetParent(tempContext, CacheMemoryContext);
+		entry->cacheContext = tempContext;
 		entry->options = options;
 		entry->columns = columns;
 		Py_DECREF(p_class);
 		Py_DECREF(p_options);
 		Py_DECREF(p_columns);
 		errorCheck();
+	}
+	else
+	{
+		MemoryContextDelete(tempContext);
 	}
 	RelationClose(rel);
 	Py_INCREF(entry->value);
