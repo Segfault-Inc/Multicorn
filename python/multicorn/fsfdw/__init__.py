@@ -9,7 +9,7 @@ https://github.com/Kozea/StructuredFS.
 from multicorn import TransactionAwareForeignDataWrapper
 from multicorn.fsfdw.structuredfs import StructuredDirectory
 from multicorn.utils import log_to_postgres
-from logging import ERROR, WARNING, DEBUG
+from logging import ERROR, WARNING
 import os
 import errno
 
@@ -189,6 +189,14 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         item.content = content
         return item
 
+    def _report_pk_violation(self, item):
+        log_to_postgres("Duplicate key value violates filesystem"
+                        " integrity.",
+                        detail="Key (%s)=(%s) already exists" %
+                        (', '.join(item.keys()),
+                            ', '.join(item.values())),
+                        level=ERROR)
+
     def insert(self, values):
         item = self._item_from_dml(values)
         # Ensure that the file is created.
@@ -196,31 +204,38 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
             item.open(shared_lock=False, fail_if='exists')
         except OSError as e:
             if e.errno == errno.EEXIST:
-                log_to_postgres("Duplicate key value violates filesystem"
-                                " integrity.",
-                                detail="Key (%s)=(%s) already exists" %
-                                (', '.join(item.keys()),
-                                 ', '.join(item.values())),
-                                level=ERROR)
+                self._report_pk_violation(item)
             else:
                 raise
         # Keep track of it for pre_commit time.
-        super(FilesystemFdw, self).insert(item)
-        # Update the "generated" column values.
-        values[self.filename_column] = item.filename
-        values[self.content_column] = item.content
         self.invisible_files.discard(item.full_filename)
         self.updated_content[item.full_filename] = item.content
-        return values
+        super(FilesystemFdw, self).insert(item)
+        # Update the "generated" column values.
+        return_value = dict(item)
+        return_value[self.filename_column] = item.filename
+        return_value[self.content_column] = item.content
+        return return_value
 
     def update(self, oldfilename, newvalues):
         # The "oldfilename" file should exist.
         olditem = self.structured_directory.from_filename(oldfilename)
         new_filename = newvalues.get(self.filename_column, oldfilename)
         filename_changed = new_filename != oldfilename
-        values = {key: str(value) for key, value in newvalues.items()
+        values = {key: (None if value is None else str(value))
+                  for key, value in newvalues.items()
                   if key not in (self.filename_column, self.content_column)}
         values_changed = dict(olditem) != values
+        # Check for null values in the "important" parts
+        null_columns = [key for key in self.structured_directory.properties
+                        if values[key] is None]
+        if null_columns:
+            log_to_postgres("Null value in columns (%s) are not allowed" %
+                            ', '.join(null_columns),
+                            level=ERROR,
+                            detail="Failing row contains (%s)" %
+                            ', '.join(val if val is not None else 'NULL'
+                                      for val in values.values()))
         if filename_changed:
             if values_changed:
                 # Keep everything to not bypass conflict detection
@@ -237,11 +252,20 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         # Ensure that the new file doesnt exists if they are
         # not the same.
         if olditem.full_filename != newitem.full_filename:
-            newitem.open(shared_lock=False, fail_if='exists')
+            try:
+                newitem.open(shared_lock=False, fail_if='exists')
+            except OSError as e:
+                if e.errno == errno.EEXIST:
+                    self._report_pk_violation(newitem)
+                else:
+                    raise
             self.invisible_files.add(olditem.full_filename)
             self.invisible_files.discard(newitem.full_filename)
         super(FilesystemFdw, self).update(olditem, newitem)
-        return newvalues
+        return_value = dict(newitem)
+        return_value[self.filename_column] = newitem.filename
+        return_value[self.content_column] = newitem.content
+        return return_value
 
     def delete(self, rowid):
         item = self.structured_directory.from_filename(rowid)
@@ -259,10 +283,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
     def pre_commit(self):
         for operation, values in self.current_transaction_state:
             if operation == 'insert':
-                # The file descriptor should be open, even if the file already
-                # exists, or has been deleted by a previous "delete" operation.
-                fd = values.open(shared_lock=False)
-                os.write(fd, values.content)
+                values.write()
             elif operation == 'update':
                 olditem, newitem = values
                 if olditem.full_filename == newitem.full_filename:
@@ -272,7 +293,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                     os.unlink(olditem.full_filename)
                     self.structured_directory.clear_cache_entry(
                         olditem.full_filename)
-                os.write(fd, newitem.content)
+                newitem.write(fd)
             elif operation == 'delete':
                 os.unlink(values.full_filename)
                 self.structured_directory.clear_cache_entry(
@@ -288,8 +309,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                 old_value, new_value = values
                 if new_value.full_filename != old_value.full_filename:
                     os.unlink(new_value.full_filename)
-                fd = old_value.open(shared_lock=False)
-                os.write(fd, old_value.content)
+                old_value.write()
         self._post_xact_cleanup()
 
     @property

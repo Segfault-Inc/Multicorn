@@ -259,6 +259,14 @@ class Item(collections.Mapping):
         iof.close()
         return content
 
+    def write(self, fd=None):
+        if fd is None:
+            fd = self.open(False)
+        os.ftruncate(fd, 0)
+        os.lseek(fd, 0, os.SEEK_SET)
+        iof = io.open(fd, 'wb', closefd=False)
+        iof.write(self.content)
+        iof.close()
 
     # collections.Mapping interface:
 
