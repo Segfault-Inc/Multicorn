@@ -216,17 +216,20 @@ class Item(collections.Mapping):
 
     def open(self, shared_lock=True, fail_if=None):
         """Open the file underlying this item, if it is not in the cache.
-        Shared_lock is a boolean indicating whether a shared or exclusive lock should be acquired.
+        Shared_lock is a boolean indicating whether a shared or exclusive lock
+        should be acquired.
         fail_if can be either None, "exists", or "missing".
         """
-        self._fd, is_shared = self.directory.cache.get(self.full_filename, (None, False))
+        self._fd, is_shared = self.directory.cache.get(self.full_filename,
+                                                       (None, False))
         if shared_lock:
             if self._fd is None:
                 # Open it with a shared lock
                 self._fd = os.open(self.full_filename,
                                    os.O_RDWR | os.O_SYNC)
                 fcntl.flock(self._fd, fcntl.LOCK_SH)
-                self.directory.cache[self.full_filename] = (self._fd, shared_lock)
+                self.directory.cache[self.full_filename] = (self._fd,
+                                                            shared_lock)
             # Do nothing if we already have a file descriptor
         else:
             if self._fd is None:
@@ -244,7 +247,6 @@ class Item(collections.Mapping):
             fcntl.flock(self._fd, fcntl.LOCK_EX)
             self.directory.cache[self.full_filename] = (self._fd, shared_lock)
         return self._fd
-
 
     def read(self):
         """
@@ -295,7 +297,7 @@ class StructuredDirectory(object):
         self._path_parts_re = parts_re
         self._path_parts_properties = parts_properties
         self.properties = set(prop for part in parts_properties
-                                   for prop in part)
+                              for prop in part)
 
     def create(self, **values):
         """
@@ -365,7 +367,6 @@ class StructuredDirectory(object):
             fixed.append((fixed_part, fixed_part_values))
 
         return self._walk((), (), fixed)
-
 
     def clear_cache_entry(self, key):
         value, shared = self.cache.pop(key)
