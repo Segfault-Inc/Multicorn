@@ -6,7 +6,7 @@ except ImportError as e:
     warn("Not executed in a postgresql server,"
          " disabling log_to_postgres", ImportWarning)
 
-    def _log_to_postgres(message, level=0, hint=None):
+    def _log_to_postgres(message, level=0, hint=None, detail=None):
         pass
 
 
@@ -19,8 +19,8 @@ REPORT_CODES = {
 }
 
 
-def log_to_postgres(message, level=INFO, hint=None):
+def log_to_postgres(message, level=INFO, hint=None, detail=None):
     code = REPORT_CODES.get(level, None)
     if code is None:
         raise KeyError("Not a valid log level")
-    _log_to_postgres(message, code, hint=hint)
+    _log_to_postgres(message, code, hint=hint, detail=detail)
