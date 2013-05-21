@@ -11,6 +11,7 @@ from multicorn.fsfdw.structuredfs import StructuredDirectory
 from multicorn.utils import log_to_postgres
 from logging import ERROR, WARNING, DEBUG
 import os
+import errno
 
 
 class FilesystemFdw(TransactionAwareForeignDataWrapper):
@@ -40,6 +41,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         # Keep a set of files that should not be seen inside the transaction,
         # because they have "logically" been deleted, but are not yet commited
         self.invisible_files = set()
+        # Keep a dictionary of updated content.
+        self.updated_content = dict()
         # Assume 100 files/folder per folder
         self.total_files = 100 ** len(pattern.split('/'))
         if self.filename_column:
@@ -143,30 +146,37 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                 continue
             new_item = dict(item)
             if has_content:
-                new_item[content_column] = item.read()
+                content = self.updated_content.get(item.full_filename, None)
+                if content is None:
+                    content = item.read()
+                new_item[content_column] = content
             if has_filename:
                 new_item[filename_column] = item.filename
             yield new_item
 
     def _item_from_dml(self, values):
         content = values.pop(self.content_column, "")
-        filename = values.pop(self.filename_column, "")
+        filename = values.pop(self.filename_column, None)
         item_from_filename = None
         item_from_values = None
         if filename:
             item_from_filename = self.structured_directory.from_filename(
                 filename)
-        folder_columns = set(self.folder_columns)
-        supplied_keys = set(values.keys())
+        properties_columns = self.structured_directory.properties
+        supplied_keys = set(key for (key, value) in values.items()
+                            if value is not None)
         if len(supplied_keys) != 0:
-            if not (folder_columns == supplied_keys):
+            if properties_columns != supplied_keys:
                 log_to_postgres("The following columns are necessary: %s" %
-                                folder_columns.difference(supplied_keys),
+                                properties_columns.difference(supplied_keys),
                                 level=ERROR,
                                 hint="You can also insert an item by providing"
                                 " only the filename and content columns")
             values = {key: str(value) for key, value in values.items()}
             item_from_values = self.structured_directory.create(**values)
+        elif item_from_filename is None:
+            log_to_postgres("The filename, or all pattern columns are needed.",
+                            level=ERROR)
         if item_from_filename and item_from_values:
             if item_from_filename != item_from_values:
                 log_to_postgres("The columns inferred from the"
@@ -182,13 +192,25 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
     def insert(self, values):
         item = self._item_from_dml(values)
         # Ensure that the file is created.
-        item.open(shared_lock=False, fail_if='exists')
+        try:
+            item.open(shared_lock=False, fail_if='exists')
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                log_to_postgres("Duplicate key value violates filesystem"
+                                " integrity.",
+                                detail="Key (%s)=(%s) already exists" %
+                                (', '.join(item.keys()),
+                                 ', '.join(item.values())),
+                                level=ERROR)
+            else:
+                raise
         # Keep track of it for pre_commit time.
         super(FilesystemFdw, self).insert(item)
         # Update the "generated" column values.
         values[self.filename_column] = item.filename
         values[self.content_column] = item.content
         self.invisible_files.discard(item.full_filename)
+        self.updated_content[item.full_filename] = item.content
         return values
 
     def update(self, oldfilename, newvalues):
@@ -210,9 +232,10 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
             values = dict(olditem.items() + values.items())
         newitem = self._item_from_dml(values)
         newitem.content = newvalues.get(self.content_column, olditem.content)
+        self.updated_content[newitem.full_filename] = newitem.content
         olditem.open(shared_lock=False, fail_if='missing')
-        # Ensure that: the old file exists, the new file doesnt, if they are not
-        # the same.
+        # Ensure that the new file doesnt exists if they are
+        # not the same.
         if olditem.full_filename != newitem.full_filename:
             newitem.open(shared_lock=False, fail_if='exists')
             self.invisible_files.add(olditem.full_filename)
@@ -226,6 +249,12 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         item.open(False, fail_if='missing')
         self.invisible_files.add(item.full_filename)
         super(FilesystemFdw, self).delete(item)
+
+    def _post_xact_cleanup(self):
+        self._init_transaction_state()
+        self.invisible_files = set()
+        self.structured_directory.clear_cache(only_shared=False)
+        self.updated_content = {}
 
     def pre_commit(self):
         for operation, values in self.current_transaction_state:
@@ -248,9 +277,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                 os.unlink(values.full_filename)
                 self.structured_directory.clear_cache_entry(
                     values.full_filename)
-        self._init_transaction_state()
-        self.structured_directory.clear_cache(only_shared=False)
-        self.invisible_files = set()
+        self._post_xact_cleanup()
 
     def rollback(self):
         for operation, values in (
@@ -263,8 +290,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                     os.unlink(new_value.full_filename)
                 fd = old_value.open(shared_lock=False)
                 os.write(fd, old_value.content)
-        self.structured_directory.clear_cache(only_shared=False)
-        self.invisible_files = set()
+        self._post_xact_cleanup()
 
     @property
     def rowid_column(self):
