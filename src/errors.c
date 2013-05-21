@@ -13,6 +13,7 @@
  *-------------------------------------------------------------------------
  */
 #include "multicorn.h"
+#include "access/xact.h"
 
 void reportException(PyObject *pErrType,
 				PyObject *pErrValue,
@@ -56,9 +57,18 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
 		Py_DECREF(pErrTraceback);
 		Py_DECREF(traceback_list);
 	}
-	ereport(ERROR, (errmsg("Error in python: %s", errName),
-					errdetail("%s", errValue),
-					errdetail_log("%s", errTraceback)));
+	if (IsAbortedTransactionBlockState())
+	{
+		ereport(WARNING, (errmsg("Error in python: %s", errName),
+						  errdetail("%s", errValue),
+						  errdetail_log("%s", errTraceback)));
+	}
+	else
+	{
+		ereport(ERROR, (errmsg("Error in python: %s", errName),
+						errdetail("%s", errValue),
+						errdetail_log("%s", errTraceback)));
+	}
 	Py_DECREF(pErrType);
 	Py_DECREF(pErrValue);
 	Py_DECREF(format_exception);

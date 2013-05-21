@@ -10,6 +10,7 @@ postgresql (usually, the system wide python installation).
 """
 
 import sys
+from collections import defaultdict
 
 __version__ = '__VERSION__'
 
@@ -150,6 +151,43 @@ class ForeignDataWrapper(object):
 
     def delete(self, oldvalues):
         raise NotImplementedError("This FDW does not support the writable API")
+
+    def pre_commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+    def commit(self):
+        pass
+
+    def end_scan(self):
+        pass
+
+    def end_modify(self):
+        pass
+
+
+class TransactionAwareForeignDataWrapper(ForeignDataWrapper):
+
+    def __init__(self, fdw_options, fdw_columns):
+        super(TransactionAwareForeignDataWrapper, self).__init__(fdw_options, fdw_columns)
+        self._init_transaction_state()
+
+    def _init_transaction_state(self):
+        self.current_transaction_state = []
+
+    def insert(self, values):
+        self.current_transaction_state.append(('insert', values))
+
+    def update(self, oldvalues, newvalues):
+        self.current_transaction_state.append(('update', (oldvalues, newvalues)))
+
+    def delete(self, oldvalues):
+        self.current_transaction_state.append(('delete', oldvalues))
+
+    def rollback(self):
+        self._init_transaction_state()
 
 
 """Code from python2.7 importlib.import_module."""

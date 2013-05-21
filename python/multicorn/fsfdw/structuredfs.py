@@ -3,14 +3,13 @@
 Handle nicely a set of files in a structured directory.
 
 """
-
-
 import os
+import io
 import re
 import errno
 import string
 import collections
-import shutil
+import fcntl
 
 
 vformat = string.Formatter().vformat
@@ -179,7 +178,7 @@ class Item(collections.Mapping):
     Note that at a given point in time, the actual file for an Item may or
     may not exist in the filesystem.
     """
-    def __init__(self, directory, properties):
+    def __init__(self, directory, properties, content=b''):
         properties = dict(properties)
         keys = set(properties)
         missing = directory.properties - keys
@@ -188,9 +187,9 @@ class Item(collections.Mapping):
         extra = keys - directory.properties
         if extra:
             raise ValueError('Unknown properties: %s', ', '.join(extra))
-
         self.directory = directory
         self._properties = {}
+        self.content = content
         # TODO: check for ambiguities.
         # eg. with pattern = '{a}_{b}', values {'a': '1_2', 'b': '3'} and
         # {'a': '1', 'b': '2_3'} both give the same filename.
@@ -215,48 +214,51 @@ class Item(collections.Mapping):
         """
         return self.directory._join(self.filename.split('/'))
 
+    def open(self, shared_lock=True, fail_if=None):
+        """Open the file underlying this item, if it is not in the cache.
+        Shared_lock is a boolean indicating whether a shared or exclusive lock should be acquired.
+        fail_if can be either None, "exists", or "missing".
+        """
+        self._fd, is_shared = self.directory.cache.get(self.full_filename, (None, False))
+        if shared_lock:
+            if self._fd is None:
+                # Open it with a shared lock
+                self._fd = os.open(self.full_filename,
+                                   os.O_RDWR | os.O_SYNC)
+                fcntl.flock(self._fd, fcntl.LOCK_SH)
+                self.directory.cache[self.full_filename] = (self._fd, shared_lock)
+            # Do nothing if we already have a file descriptor
+        else:
+            if self._fd is None:
+                # Open it with an exclusive lock, sync mode, and fail if the
+                # file already exists.
+                dirname = os.path.dirname(self.full_filename)
+                if not os.path.exists(dirname):
+                    os.makedirs(dirname)
+                flags = os.O_SYNC | os.O_RDWR
+                if fail_if == 'exists':
+                    flags = flags | os.O_CREAT | os.O_EXCL
+                elif fail_if is None:
+                    flags = flags | os.O_CREAT
+                self._fd = os.open(self.full_filename, flags)
+            fcntl.flock(self._fd, fcntl.LOCK_EX)
+            self.directory.cache[self.full_filename] = (self._fd, shared_lock)
+        return self._fd
+
+
     def read(self):
         """
         Return the content of the file as a bytestring.
 
         :raises IOError: if the file does not exist in the filesystem.
         """
-        with open(self.full_filename, 'rb') as file_:
-            return file_.read()
+        fd = self.open(True, fail_if='missing')
+        os.lseek(fd, 0, os.SEEK_SET)
+        iof = io.open(fd, 'rb', closefd=False)
+        content = iof.read()
+        iof.close()
+        return content
 
-    def write(self, content):
-        """
-        Create or overwrite the file with the ``content`` bytestring or
-        fileobject.
-        """
-        filename = self.full_filename
-        directory = os.path.dirname(filename)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        with open(filename, 'wb') as file_:
-            if hasattr(content, 'read'):
-                shutil.copyfileobj(content,  file_)
-            else:
-                file_.write(content)
-
-    def remove(self):
-        """
-        Remove the file from the filesystem.
-
-        :raises OSError: if the file does not exist in the filesystem.
-        """
-        os.remove(self.full_filename)
-
-        # Remove empty directories up to (but not including) root_dir
-        path_parts = self.filename.split('/')
-        path_parts.pop()  # Last part is the file name, only keep directories.
-        while path_parts:
-            directory = self.directory._join(path_parts)
-            if os.listdir(directory):
-                break
-            else:
-                os.rmdir(directory)
-            path_parts.pop()  # Go to the parent directory
 
     # collections.Mapping interface:
 
@@ -279,7 +281,8 @@ class StructuredDirectory(object):
     def __init__(self, root_dir, pattern):
         self.root_dir = unicode_(root_dir)
         self.pattern = unicode_(pattern)
-
+        # Cache for file descriptors.
+        self.cache = {}
         parts_re, parts_properties = _parse_pattern(self.pattern)
         self._path_parts_re = parts_re
         self._path_parts_properties = parts_properties
@@ -354,6 +357,16 @@ class StructuredDirectory(object):
             fixed.append((fixed_part, fixed_part_values))
 
         return self._walk((), (), fixed)
+
+
+    def clear_cache_entry(self, key):
+        value, shared = self.cache.pop(key)
+        os.close(value)
+
+    def clear_cache(self, only_shared=False):
+        for key, (value, shared) in self.cache.items():
+            if (not only_shared) or shared:
+                self.clear_cache_entry(key)
 
     def _walk(self, previous_path_parts, previous_values, fixed):
         """

@@ -15,6 +15,7 @@
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
+#include "access/xact.h"
 #include "nodes/makefuncs.h"
 #include "catalog/pg_type.h"
 #include "utils/memutils.h"
@@ -84,11 +85,15 @@ static TupleTableSlot *multicornExecForeignDelete(EState *estate, ResultRelInfo 
 static TupleTableSlot *multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 						   TupleTableSlot *slot, TupleTableSlot *planSlot);
 static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
+
+static void multicorn_xact_callback(XactEvent event, void *arg);
 #endif
 
 /*	Helpers functions */
 void	   *serializePlanState(MulticornPlanState * planstate);
 MulticornExecState *initializeExecState(void *internal_plan_state);
+
+
 
 void
 _PG_init()
@@ -408,7 +413,10 @@ static void
 multicornEndForeignScan(ForeignScanState *node)
 {
 	MulticornExecState *state = node->fdw_state;
+	PyObject   *result = PyObject_CallMethod(state->fdw_instance, "end_scan", "()");
 
+	errorCheck();
+	Py_DECREF(result);
 	Py_DECREF(state->fdw_instance);
 	if (state->p_iterator != NULL)
 	{
@@ -514,6 +522,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 							   desc->natts);
 	modstate->buffer = makeStringInfo();
 	modstate->fdw_instance = getInstance(rel->rd_id);
+	RegisterXactCallback(multicorn_xact_callback, rel->rd_id);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
 	if (ps->ps_ResultTupleSlot)
@@ -555,6 +564,7 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
 	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
 
+	errorCheck();
 	if (p_new_value && p_new_value != Py_None)
 	{
 		ExecClearTuple(slot);
@@ -642,7 +652,15 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
  */
 static void
 multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
+
 {
+	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+	Relation	rel = resultRelInfo->ri_RelationDesc;
+	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
+
+	errorCheck();
+	Py_DECREF(modstate->fdw_instance);
+	Py_DECREF(result);
 }
 #endif
 
@@ -687,4 +705,39 @@ initializeExecState(void *internalstate)
 	execstate->values = palloc(attnum * sizeof(Datum));
 	execstate->nulls = palloc(attnum * sizeof(bool));
 	return execstate;
+}
+
+/*
+ * Callback used to propagate pre-commit / commit / rollback.
+ */
+static void
+multicorn_xact_callback(XactEvent event, void *arg)
+{
+	PyObject   *instance;
+
+	switch (event)
+	{
+		case XACT_EVENT_PRE_COMMIT:
+			instance = getInstance((Oid) arg);
+			PyObject_CallMethod(instance, "pre_commit", "()");
+			errorCheck();
+			Py_DECREF(instance);
+			break;
+		case XACT_EVENT_COMMIT:
+			instance = getInstance((Oid) arg);
+			PyObject_CallMethod(instance, "commit", "()");
+			errorCheck();
+			Py_DECREF(instance);
+			UnregisterXactCallback(multicorn_xact_callback, arg);
+			break;
+		case XACT_EVENT_ABORT:
+			UnregisterXactCallback(multicorn_xact_callback, arg);
+			instance = getInstance((Oid) arg);
+			PyObject_CallMethod(instance, "rollback", "()");
+			errorCheck();
+			Py_DECREF(instance);
+			break;
+		default:
+			break;
+	}
 }

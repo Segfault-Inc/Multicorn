@@ -6,14 +6,14 @@ https://github.com/Kozea/StructuredFS.
 
 """
 
-from multicorn import ForeignDataWrapper
-from multicorn.fsfdw.structuredfs import StructuredDirectory, Item
+from multicorn import TransactionAwareForeignDataWrapper
+from multicorn.fsfdw.structuredfs import StructuredDirectory
 from multicorn.utils import log_to_postgres
 from logging import ERROR, WARNING, DEBUG
 import os
 
 
-class FilesystemFdw(ForeignDataWrapper):
+class FilesystemFdw(TransactionAwareForeignDataWrapper):
     """A filesystem foreign data wrapper.
 
     The foreign data wrapper accepts the following options:
@@ -37,6 +37,9 @@ class FilesystemFdw(ForeignDataWrapper):
         self.folder_columns = [key[0] for key in
                                self.structured_directory._path_parts_properties
                                if key]
+        # Keep a set of files that should not be seen inside the transaction,
+        # because they have "logically" been deleted, but are not yet commited
+        self.invisible_files = set()
         # Assume 100 files/folder per folder
         self.total_files = 100 ** len(pattern.split('/'))
         if self.filename_column:
@@ -61,16 +64,16 @@ class FilesystemFdw(ForeignDataWrapper):
                 columns.pop(self.content_column)
         if len(self.structured_directory.properties) < len(columns):
             missing_columns = set(columns.keys()).difference(
-                    self.structured_directory.properties)
+                self.structured_directory.properties)
             log_to_postgres("Some columns are not mapped in the structured fs",
-                    WARNING, "Remove the following columns: %s "
-                    % missing_columns)
-
+                            level=WARNING,
+                            hint="Remove the following columns: %s " %
+                            missing_columns)
 
     def get_rel_size(self, quals, columns):
         """Helps the planner by returning costs
-        For the width, we assume 30 for every returned column, + 1 million for the content
-        column.
+        For the width, we assume 30 for every returned column, + 1 million
+        for the content column.
 
         For the number of rows, we assume 100 files per folder.
         So, if we filter down to the last folder, thats only 100 files.
@@ -92,7 +95,7 @@ class FilesystemFdw(ForeignDataWrapper):
 
     def _equals_cond(self, quals):
         return dict((qual.field_name, unicode(qual.value)) for
-                qual in quals if qual.operator == '=')
+                    qual in quals if qual.operator == '=')
 
     def get_path_keys(self):
         """Return the path keys for parameterized path.
@@ -136,6 +139,8 @@ class FilesystemFdw(ForeignDataWrapper):
         has_content = content_column and content_column in columns
         has_filename = filename_column and filename_column in columns
         for item in items:
+            if item.full_filename in self.invisible_files:
+                continue
             new_item = dict(item)
             if has_content:
                 new_item[content_column] = item.read()
@@ -143,23 +148,130 @@ class FilesystemFdw(ForeignDataWrapper):
                 new_item[filename_column] = item.filename
             yield new_item
 
-    def insert(self, newitem):
-        content = newitem.pop(self.content_column, "")
-        newitem.pop(self.filename_column, None)
-        newitem = {key: str(value) for key, value in newitem.items()}
-        item = Item(self.structured_directory, newitem)
-        item.write(content)
-        newitem[self.filename_column] = item.filename
-        newitem[self.content_column] = content
-        return newitem
+    def _item_from_dml(self, values):
+        content = values.pop(self.content_column, "")
+        filename = values.pop(self.filename_column, "")
+        item_from_filename = None
+        item_from_values = None
+        if filename:
+            item_from_filename = self.structured_directory.from_filename(
+                filename)
+        folder_columns = set(self.folder_columns)
+        supplied_keys = set(values.keys())
+        if len(supplied_keys) != 0:
+            if not (folder_columns == supplied_keys):
+                log_to_postgres("The following columns are necessary: %s" %
+                                folder_columns.difference(supplied_keys),
+                                level=ERROR,
+                                hint="You can also insert an item by providing"
+                                " only the filename and content columns")
+            values = {key: str(value) for key, value in values.items()}
+            item_from_values = self.structured_directory.create(**values)
+        if item_from_filename and item_from_values:
+            if item_from_filename != item_from_values:
+                log_to_postgres("The columns inferred from the"
+                                " filename do not match the supplied columns.",
+                                level=ERROR,
+                                hint="Remove either the filename column"
+                                " or the properties column from your "
+                                " statement, or ensure they match")
+        item = item_from_filename or item_from_values
+        item.content = content
+        return item
+
+    def insert(self, values):
+        item = self._item_from_dml(values)
+        # Ensure that the file is created.
+        item.open(shared_lock=False, fail_if='exists')
+        # Keep track of it for pre_commit time.
+        super(FilesystemFdw, self).insert(item)
+        # Update the "generated" column values.
+        values[self.filename_column] = item.filename
+        values[self.content_column] = item.content
+        self.invisible_files.discard(item.full_filename)
+        return values
+
+    def update(self, oldfilename, newvalues):
+        # The "oldfilename" file should exist.
+        olditem = self.structured_directory.from_filename(oldfilename)
+        new_filename = newvalues.get(self.filename_column, oldfilename)
+        filename_changed = new_filename != oldfilename
+        values = {key: str(value) for key, value in newvalues.items()
+                  if key not in (self.filename_column, self.content_column)}
+        values_changed = dict(olditem) != values
+        if filename_changed:
+            if values_changed:
+                # Keep everything to not bypass conflict detection
+                values = dict(olditem.items() + values.items())
+            else:
+                # Keep only the filename
+                values = {self.filename_column: new_filename}
+        else:
+            values = dict(olditem.items() + values.items())
+        newitem = self._item_from_dml(values)
+        newitem.content = newvalues.get(self.content_column, olditem.content)
+        olditem.open(shared_lock=False, fail_if='missing')
+        # Ensure that: the old file exists, the new file doesnt, if they are not
+        # the same.
+        if olditem.full_filename != newitem.full_filename:
+            newitem.open(shared_lock=False, fail_if='exists')
+            self.invisible_files.add(olditem.full_filename)
+            self.invisible_files.discard(newitem.full_filename)
+        super(FilesystemFdw, self).update(olditem, newitem)
+        return newvalues
 
     def delete(self, rowid):
-        full_path = os.path.join(self.structured_directory.root_dir, rowid)
-        os.remove(full_path)
+        item = self.structured_directory.from_filename(rowid)
+        # Ensure that the file exists, and is locked.
+        item.open(False, fail_if='missing')
+        self.invisible_files.add(item.full_filename)
+        super(FilesystemFdw, self).delete(item)
+
+    def pre_commit(self):
+        for operation, values in self.current_transaction_state:
+            if operation == 'insert':
+                # The file descriptor should be open, even if the file already
+                # exists, or has been deleted by a previous "delete" operation.
+                fd = values.open(shared_lock=False)
+                os.write(fd, values.content)
+            elif operation == 'update':
+                olditem, newitem = values
+                if olditem.full_filename == newitem.full_filename:
+                    fd = olditem.open(shared_lock=False)
+                else:
+                    fd = newitem.open(shared_lock=False)
+                    os.unlink(olditem.full_filename)
+                    self.structured_directory.clear_cache_entry(
+                        olditem.full_filename)
+                os.write(fd, newitem.content)
+            elif operation == 'delete':
+                os.unlink(values.full_filename)
+                self.structured_directory.clear_cache_entry(
+                    values.full_filename)
+        self._init_transaction_state()
+        self.structured_directory.clear_cache(only_shared=False)
+        self.invisible_files = set()
+
+    def rollback(self):
+        for operation, values in (
+                self.current_transaction_state[::-1]):
+            if operation == 'insert':
+                os.unlink(values.full_filename)
+            elif operation == 'update':
+                old_value, new_value = values
+                if new_value.full_filename != old_value.full_filename:
+                    os.unlink(new_value.full_filename)
+                fd = old_value.open(shared_lock=False)
+                os.write(fd, old_value.content)
+        self.structured_directory.clear_cache(only_shared=False)
+        self.invisible_files = set()
 
     @property
     def rowid_column(self):
         return self.filename_column
+
+    def end_scan(self):
+        self.structured_directory.clear_cache(only_shared=True)
 
 
 class ReStructuredTextFdw(FilesystemFdw):

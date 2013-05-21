@@ -31,9 +31,6 @@ PyObject *pythonQual(char *operatorname, Datum dvalue,
 		   bool use_or);
 
 
-
-
-
 Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
 				ConversionInfo * cinfo);
 PyObject   *qualdefToPython(List *qualdef, ConversionInfo ** cinfo);
@@ -346,6 +343,7 @@ compareColumns(List *columns1, List *columns2)
 	}
 	return true;
 }
+
 
 /*
  * Returns the fdw_instance associated with the foreigntableid.
