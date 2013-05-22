@@ -266,7 +266,10 @@ class Item(collections.Mapping):
             fd = self.open(False)
         os.ftruncate(fd, 0)
         os.lseek(fd, 0, os.SEEK_SET)
-        iof = io.open(fd, 'wb', closefd=False)
+        # Do not use a buffer, to ensure that the file is written in one
+        # syscall.
+        iof = io.open(fd, 'wb', closefd=False,
+                      buffering=0)
         iof.write(self.content)
         iof.close()
 
