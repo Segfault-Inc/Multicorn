@@ -127,6 +127,7 @@ BEGIN;
     SELECT count(1) from testmulticorn where name = 'square';
 ROLLBACK;
 
+
 -- O lines
 SELECT count(1) from testmulticorn where name = 'square';
 
@@ -142,6 +143,15 @@ ROLLBACK;
 
 -- 0 lines
 SELECT count(1) from testmulticorn where data ilike '% UPDATED!';
+
+BEGIN;
+    UPDATE testmulticorn set data = data || ' UPDATED!';
+    UPDATE testmulticorn set data = data || ' TWICE!';
+    SELECT data from testmulticorn; 
+ROLLBACK;
+
+-- No 'UPDATED! or 'TWICE!'
+SELECT data from testmulticorn;
 
 -- Test successive update to the same files.
 BEGIN;

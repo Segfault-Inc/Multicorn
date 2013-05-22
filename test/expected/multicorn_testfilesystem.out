@@ -303,6 +303,57 @@ SELECT count(1) from testmulticorn where data ilike '% UPDATED!';
      0
 (1 row)
 
+BEGIN;
+    UPDATE testmulticorn set data = data || ' UPDATED!';
+    UPDATE testmulticorn set data = data || ' TWICE!';
+    SELECT data from testmulticorn; 
+                   data                   
+------------------------------------------
+ Im a small red round                    +
+  UPDATED! TWICE!
+ Im a small red square                   +
+  UPDATED! TWICE!
+ Im a big red round                      +
+  UPDATED! TWICE!
+ Im a big red square                     +
+  UPDATED! TWICE!
+ Im a small blue round                   +
+  UPDATED! TWICE!
+ Im a small blue square                  +
+  UPDATED! TWICE!
+ Im a big blue triangle UPDATED! TWICE!
+ Im a big blue round                     +
+  UPDATED! TWICE!
+ Im an updated rectangle UPDATED! TWICE!
+ Im a small yellow square UPDATED! TWICE!
+ Im a big yellow square UPDATED! TWICE!
+(11 rows)
+
+ROLLBACK;
+-- No 'UPDATED! or 'TWICE!'
+SELECT data from testmulticorn;
+           data           
+--------------------------
+ Im a small red round    +
+ 
+ Im a small red square   +
+ 
+ Im a big red round      +
+ 
+ Im a big red square     +
+ 
+ Im a small blue round   +
+ 
+ Im a small blue square  +
+ 
+ Im a big blue triangle
+ Im a big blue round     +
+ 
+ Im an updated rectangle
+ Im a small yellow square
+ Im a big yellow square
+(11 rows)
+
 -- Test successive update to the same files.
 BEGIN;
     UPDATE testmulticorn set color = 'cyan' where filename = 'blue/big/rectangle.txt';
@@ -374,6 +425,144 @@ SELECT filename, data from testmulticorn where color = 'cyan';
 (0 rows)
 
 -- DELETE test
+DELETE from testmulticorn where color = 'yellow' returning filename;
+          filename          
+----------------------------
+ yellow/small/rectangle.txt
+ yellow/big/rectangle.text
+(2 rows)
+
+-- Should have no rows
+select count(1) from testmulticorn where color = 'yellow';
+ count 
+-------
+     0
+(1 row)
+
+-- DELETE in transaction
+BEGIN;
+    DELETE FROM testmulticorn where color = 'red' returning filename;
+        filename         
+-------------------------
+ red/small/round.ini
+ red/small/rectangle.txt
+ red/big/round.ini
+ red/big/rectangle.txt
+(4 rows)
+
+    select count(1) from testmulticorn where color = 'red';
+ count 
+-------
+     0
+(1 row)
+
+ROLLBACK;
+-- Should have 4 rows
+select count(1) from testmulticorn where color = 'red';
+ count 
+-------
+     4
+(1 row)
+
+-- Test various combinations of INSERT/UPDATE/DELETE
+BEGIN;
+    INSERT INTO testmulticorn (color, size, name, ext, data) VALUES
+        ('cyan', 'medium', 'triangle', 'jpg', 'Im a triangle');
+    INSERT INTO testmulticorn (color, size, name, ext, data) VALUES
+        ('cyan', 'large', 'triangle', 'jpg', 'Im a triangle');
+    -- 2 lines
+    SELECT * from testmulticorn where color = 'cyan';
+ color |  size  |   name   | ext |         filename         |     data      
+-------+--------+----------+-----+--------------------------+---------------
+ cyan  | medium | triangle | jpg | cyan/medium/triangle.jpg | Im a triangle
+ cyan  | large  | triangle | jpg | cyan/large/triangle.jpg  | Im a triangle
+(2 rows)
+
+    UPDATE testmulticorn set color = 'magenta' where size = 'large' and color = 'cyan' returning filename;
+          filename          
+----------------------------
+ magenta/large/triangle.jpg
+(1 row)
+
+    -- 2 lines, one cyan, one magenta
+    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+  color  |  size  |   name   | ext |          filename          |     data      
+---------+--------+----------+-----+----------------------------+---------------
+ magenta | large  | triangle | jpg | magenta/large/triangle.jpg | Im a triangle
+ cyan    | medium | triangle | jpg | cyan/medium/triangle.jpg   | Im a triangle
+(2 rows)
+
+    UPDATE testmulticorn set data = 'Im magenta' where color = 'magenta';
+    DELETE FROM testmulticorn where color = 'cyan' RETURNING filename;
+         filename         
+--------------------------
+ cyan/medium/triangle.jpg
+(1 row)
+
+    -- One magenta line
+    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+  color  | size  |   name   | ext |          filename          |    data    
+---------+-------+----------+-----+----------------------------+------------
+ magenta | large | triangle | jpg | magenta/large/triangle.jpg | Im magenta
+(1 row)
+
+COMMIT;
+-- Result should be the same as precommit
+SELECT * from testmulticorn where color in ('cyan', 'magenta');
+  color  | size  |   name   | ext |          filename          |    data    
+---------+-------+----------+-----+----------------------------+------------
+ magenta | large | triangle | jpg | magenta/large/triangle.jpg | Im magenta
+(1 row)
+
+DELETE from testmulticorn where color = 'magenta';
+-- Same as before, but rollbacking
+BEGIN;
+    INSERT INTO testmulticorn (color, size, name, ext, data) VALUES
+        ('cyan', 'medium', 'triangle', 'jpg', 'Im a triangle');
+    INSERT INTO testmulticorn (color, size, name, ext, data) VALUES
+        ('cyan', 'large', 'triangle', 'jpg', 'Im a triangle');
+    -- 2 lines
+    SELECT * from testmulticorn where color = 'cyan';
+ color |  size  |   name   | ext |         filename         |     data      
+-------+--------+----------+-----+--------------------------+---------------
+ cyan  | medium | triangle | jpg | cyan/medium/triangle.jpg | Im a triangle
+ cyan  | large  | triangle | jpg | cyan/large/triangle.jpg  | Im a triangle
+(2 rows)
+
+    UPDATE testmulticorn set color = 'magenta' where size = 'large' and color = 'cyan' returning filename;
+          filename          
+----------------------------
+ magenta/large/triangle.jpg
+(1 row)
+
+    -- 2 lines, one cyan, one magenta
+    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+  color  |  size  |   name   | ext |          filename          |     data      
+---------+--------+----------+-----+----------------------------+---------------
+ magenta | large  | triangle | jpg | magenta/large/triangle.jpg | Im a triangle
+ cyan    | medium | triangle | jpg | cyan/medium/triangle.jpg   | Im a triangle
+(2 rows)
+
+    UPDATE testmulticorn set data = 'Im magenta' where color = 'magenta';
+    DELETE FROM testmulticorn where color = 'cyan' RETURNING filename;
+         filename         
+--------------------------
+ cyan/medium/triangle.jpg
+(1 row)
+
+    -- One magenta line
+    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+  color  | size  |   name   | ext |          filename          |    data    
+---------+-------+----------+-----+----------------------------+------------
+ magenta | large | triangle | jpg | magenta/large/triangle.jpg | Im magenta
+(1 row)
+
+ROLLBACK;
+SELECT * from testmulticorn where color in ('cyan', 'magenta');
+ color | size | name | ext | filename | data 
+-------+------+------+-----+----------+------
+(0 rows)
+
 -- Cleanup everything we've done
 CREATE OR REPLACE FUNCTION cleanup_dir() RETURNS VOID AS $$
     import shutil

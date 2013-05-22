@@ -149,6 +149,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                 content = self.updated_content.get(item.full_filename, None)
                 if content is None:
                     content = item.read()
+                    self.updated_content[item.full_filename] = content
                 new_item[content_column] = content
             if has_filename:
                 new_item[filename_column] = item.filename
@@ -220,6 +221,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
     def update(self, oldfilename, newvalues):
         # The "oldfilename" file should exist.
         olditem = self.structured_directory.from_filename(oldfilename)
+        olditem.content = self.updated_content.get(olditem.full_filename,
+                                                   olditem.content)
         new_filename = newvalues.get(self.filename_column, oldfilename)
         filename_changed = new_filename != oldfilename
         values = {key: (None if value is None else str(value))
