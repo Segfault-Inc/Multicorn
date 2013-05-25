@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+__doc__ = """
+test-syapsefdw -- test script for multicorn.syapsefdw
+
+See syapse.com.
+
+License: PostgreSQL (http://www.postgresql.org/about/licence/)
+
+2013-05-24 Reece Hart <reecehart@gmail.com>
+"""
+
+
+import argparse
+import ConfigParser
+import sys
+
+from multicorn.syapsefdw import SyapseFDW
+
+
+def parse_args(argv):
+    ap = argparse.ArgumentParser(
+        description = __doc__,
+        formatter_class = argparse.ArgumentDefaultsHelpFormatter,
+        )
+
+    ap.add_argument('--conf-file', '-C',
+                    metavar="FILE",
+                    action = 'append',
+                    help="config file")
+    ap.add_argument('--kb-class', '-c',
+                    type = unicode,
+                    required = True,
+                    help = 'name of Syapse class to test')
+
+    return ap.parse_args( argv )
+    
+
+
+if __name__ == '__main__':
+    opts = parse_args(sys.argv[1:])
+
+    cp = ConfigParser.SafeConfigParser()
+    for fn in opts.conf_file:
+        cp.readfp(open(fn))
+
+    fdw = SyapseFDW(
+        options = {
+            'syapse_hostname': cp.get('syapse','hostname'),
+            'syapse_email':    cp.get('syapse','email'),
+            'syapse_password': cp.get('syapse','password'),
+            'syapse_class':    opts.kb_class
+            }, 
+        )
+
+    import IPython; IPython.embed()
+
+    for row in fdw.execute( quals=[], columns=[] ):
+        print(row)
