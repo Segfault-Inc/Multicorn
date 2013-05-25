@@ -7,21 +7,27 @@ import collections, re
 
 # TODO: create a singleton connection
 # TODO: type maps by type, prop (date)
-# TODO: flesh out lifecycle
+# TODO: flesh out flow
+# TODO: add support for saved queries
 
 
 ColDef = collections.namedtuple('ColDef', ['syapse_property', 'syapse_type', 'syapse_cardinality', 
                                            'column', 'type'])
 
 class SyapseFDW(ForeignDataWrapper):
-    def __init__(self, options, columns):
+    def __init__(self, options, columns={}):
+        assert options['syapse_hostname'] is not None
+        assert options['syapse_email'] is not None
+        assert options['syapse_password'] is not None
+        assert options['syapse_class'] is not None
+
         super(SyapseFDW, self).__init__(options, columns)
         self.options = options
         self.columns = columns
+        self.syapse_class = options.get('syapse_class')
         self.conn = syapse_client.SyapseConnection(options['syapse_hostname'],
                                                    options['syapse_email'],
                                                    options['syapse_password'])
-        self.syapse_class = options.get('syapse_class')
         self.coldefs = self._build_coldef_table()
         log_to_postgres(message = 'connected to Syapse for class '+self.syapse_class)
 
