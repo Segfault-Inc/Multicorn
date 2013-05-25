@@ -7,12 +7,15 @@ Synopsis
 Syapse (syapse.com) is an RDF-based data store for semi-structured data.
 SyapseFDW provides a PostgreSQL foreign data wrapper to Syapse.
  
-The Syapse Python-based API provide one-at-a-time record lookup.  It does
-not support querying.  As a result, SyapseFDW is fairly slow (apx 1
-second/row for small rows).
+The Syapse (Python) API does not currently provide filtering or bulk
+fetching.  As a result, SyapseFDW is fairly slow (apx 1 second/row for
+small rows).
 
-The current code obeys Syapse cardinality: properties with cardinality AtMostOne or ExactlyOne are returned as values or None; properties with cardinality are returned as lists (potentially empty).
+The current code obeys Syapse cardinality: properties with cardinality
+AtMostOne or ExactlyOne are returned as values or None; properties with
+cardinality Any are returned as PostgreSQL arrays (potentially empty).
 
+2013-05-24 Reece Hart <reecehart@gmail.com>
 
 Installation
 ------------
