@@ -7,6 +7,13 @@ syapsefdw-ddl -- generate CREATE FOREIGN TABLE DDL for Syapse Foreign Data Wrapp
 
 See PostgreSQL's FDW documentation and syapse.com.
 
+Example:
+$ ./bin/syapsefdw-ddl -C ../support/syapsefdw.conf -s fdw:AnalysisJob -s fdw:AnalysisTask \
+  -s fdw:Blood -s fdw:EnrichedLibrary -s fdw:Experiment -s fdw:GenomicSample \
+  -s fdw:InstrumentRun -s fdw:Patient -s fdw:PooledLibrary -s fdw:PreReport \
+  -s fdw:Study -s fdw:Workflow  >|../support/syapsefdw.sql
+$ psql ../support/syapsefdw.sql
+
 License: PostgreSQL (http://www.postgresql.org/about/licence/)
 
 2013-05-24 Reece Hart <reecehart@gmail.com>
@@ -14,6 +21,7 @@ License: PostgreSQL (http://www.postgresql.org/about/licence/)
 
 import argparse
 import ConfigParser
+import logging
 import os
 import sys
 
@@ -48,11 +56,24 @@ def parse_args(argv):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level = logging.INFO)
+
     opts = parse_args(sys.argv[1:])
 
     cp = ConfigParser.SafeConfigParser()
     for fn in opts.conf_file:
         cp.readfp(open(fn))
+
+print("""
+SET search_path = lims;
+
+DROP SERVER syapse cascade;
+ 
+CREATE SERVER syapse
+FOREIGN DATA WRAPPER multicorn options (
+    wrapper  'multicorn.syapsefdw.SyapseFDWFactory'
+);
+""")
 
     for src in opts.source:
         fdw = SyapseFDWFactory(
@@ -65,3 +86,4 @@ if __name__ == '__main__':
             columns = {}
             )
         print(fdw.table_ddl())
+        logging.info('wrote DDL for '+src)

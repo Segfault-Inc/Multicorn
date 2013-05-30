@@ -129,7 +129,7 @@ CREATE FOREIGN TABLE {tablename} (
   syapse_password '{self.options[syapse_password]}',
   source      	  '{self.options[source]}'
 );
-""".format( tablename = camelcase_to_underscore(self.syapse_saved_query),
+""".format( tablename = savedquery_to_tablename(self.syapse_saved_query),
             cols = "\n  , ".join(cols),
             self=self )
         
@@ -195,9 +195,14 @@ def _transform_value(coldef,v):
     return v[0] if len(v)>0 else None
 
 def camelcase_to_underscore(t):
-    """e.g., camelCase -> camel_case, SyapseFDW -> syapse_fdw, fdw:Blood -> fdw_blood"""
-    return re.sub(r'([a-z])([A-Z]+)(?=[a-z]*)', r'\1_\2', t).lower().replace(':','_')
+    """e.g., camelCase -> camel_case, SyapseFDW -> syapse_fdw"""
+    return re.sub(r'([a-z])([A-Z]+)(?=[a-z]*)', r'\1_\2', t).lower()
 
+def savedquery_to_tablename(t):
+    """fdw:Blood -> fdw_blood"""
+    if t.startswith('fdw:'):
+        t = t[4:]
+    return camelcase_to_underscore(t)
 
 ############################################################################
 
