@@ -22,7 +22,7 @@ import IPython
 root = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(root,'python'))
 
-from multicorn.syapsefdw import create_fdw
+from multicorn.syapsefdw import SyapseFDWFactory
 
 
 def parse_args(argv):
@@ -55,10 +55,13 @@ if __name__ == '__main__':
         cp.readfp(open(fn))
 
     for src in opts.source:
-        fdw = create_fdw(
-            syapse_hostname = cp.get('syapse','hostname'),
-            syapse_email = cp.get('syapse','email'),
-            syapse_password = cp.get('syapse','password'),
-            source = src
+        fdw = SyapseFDWFactory(
+            options = {
+                'syapse_hostname' : cp.get('syapse','hostname'),
+                'syapse_email'    : cp.get('syapse','email'),
+                'syapse_password' : cp.get('syapse','password'),
+                'source'          : src
+                },
+            columns = {}
             )
         print(fdw.table_ddl())

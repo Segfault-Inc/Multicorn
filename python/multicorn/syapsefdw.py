@@ -1,4 +1,4 @@
-import csv, collections, re
+import collections, re
 
 from multicorn import ForeignDataWrapper
 from multicorn.utils import log_to_postgres
@@ -15,6 +15,7 @@ def create_fdw(options,columns):
     fdw = cl(options,columns)
     log_to_postgres(message = 'created '+str(type(fdw)))
     return fdw
+
 
 class SyapseFDWFactory(object):
     """Attempting to create an instance of this class actually returns
@@ -50,6 +51,11 @@ class SyapseFDW(ForeignDataWrapper):
 
 
 class ClassTable(SyapseFDW):
+    """Represents a Syapse class-based data source.  The current Syapse
+    API has no filtering or bulk fetch mechanism.  Therefore, records are
+    returned by fetching them one-by-one.  This interface is extremely
+    slow -- consider making a saved query instead."""
+
     def __init__(self,options,columns):
         super(ClassTable, self).__init__(options,columns)
         self.syapse_class = options['source']
@@ -65,9 +71,11 @@ class ClassTable(SyapseFDW):
             yield row
 
     def _build_coldef_table(self):
-        """returns a dict of syapse property name => ColDef record"""
+        """builds a dict of syapse property name => ColDef record"""
+
         def __syapse_type(ps):
             return ps.prop.range if isinstance(ps.prop.range,unicode) else None
+
         def _make_coldef_record(ps):
             return ColDef(syapse_property = ps.prop.id, 
                           syapse_type = __syapse_type(ps),
@@ -90,7 +98,7 @@ CREATE FOREIGN TABLE {tablename} (
   syapse_hostname '{self.options[syapse_hostname]}',
   syapse_email    '{self.options[syapse_email]}',
   syapse_password '{self.options[syapse_password]}',
-  syapse_class	  '{self.options[source]}'
+  source      	  '{self.options[source]}'
 );
 """.format( tablename = camelcase_to_underscore(self.syapse_class),
             cols = "\n  , ".join(cols),
@@ -98,10 +106,38 @@ CREATE FOREIGN TABLE {tablename} (
 
 
 class SavedQueryTable(SyapseFDW):
+    def __init__(self,options,columns):
+        super(SavedQueryTable, self).__init__(options,columns)
+        sqs = dict( self.conn.getAllSavedQueries() )
+        self.syapse_saved_query = options['source']
+        self.syapse_saved_query_id = sqs[ self.syapse_saved_query ]
+
+        ds = self.conn.kb.executeSavedQuery( self.syapse_saved_query_id )
+        self.ds_headers = ds.headers
+        self.headers = [ camelcase_to_underscore(h.split(':')[-1]) 
+                         for h in self.ds_headers ]
+
     def table_ddl(self):
-        raise NotImplemented()
+        cols = [ '{column:30} {type:10}'.format(column = h, type = 'TEXT')
+                 for h in self.headers ]
+        return """DROP FOREIGN TABLE {tablename};
+CREATE FOREIGN TABLE {tablename} (
+    {cols}
+) server syapse options (
+  syapse_hostname '{self.options[syapse_hostname]}',
+  syapse_email    '{self.options[syapse_email]}',
+  syapse_password '{self.options[syapse_password]}',
+  source      	  '{self.options[source]}'
+);
+""".format( tablename = camelcase_to_underscore(self.syapse_saved_query),
+            cols = "\n  , ".join(cols),
+            self=self )
+        
     def execute(self, quals, columns):
-        raise NotImplemented()
+        ds = self.conn.kb.executeSavedQuery( self.syapse_saved_query_id )
+        for row in ds.rows:
+            yield dict(zip(self.headers,row))
+
 
 ############################################################################
 
@@ -159,8 +195,8 @@ def _transform_value(coldef,v):
     return v[0] if len(v)>0 else None
 
 def camelcase_to_underscore(t):
-    """e.g., camelCase -> camel_case, SyapseFDW -> syapse_fdw"""
-    return re.sub(r'(\w)([A-Z]+)(?=[a-z]*)', r'\1_\2', t).lower()
+    """e.g., camelCase -> camel_case, SyapseFDW -> syapse_fdw, fdw:Blood -> fdw_blood"""
+    return re.sub(r'([a-z])([A-Z]+)(?=[a-z]*)', r'\1_\2', t).lower().replace(':','_')
 
 
 ############################################################################
