@@ -662,6 +662,41 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 	Py_DECREF(modstate->fdw_instance);
 	Py_DECREF(result);
 }
+
+/*
+ * Callback used to propagate pre-commit / commit / rollback.
+ */
+static void
+multicorn_xact_callback(XactEvent event, void *arg)
+{
+	PyObject   *instance;
+
+	switch (event)
+	{
+		case XACT_EVENT_PRE_COMMIT:
+			instance = getInstance((Oid) arg);
+			PyObject_CallMethod(instance, "pre_commit", "()");
+			errorCheck();
+			Py_DECREF(instance);
+			break;
+		case XACT_EVENT_COMMIT:
+			instance = getInstance((Oid) arg);
+			PyObject_CallMethod(instance, "commit", "()");
+			errorCheck();
+			Py_DECREF(instance);
+			UnregisterXactCallback(multicorn_xact_callback, arg);
+			break;
+		case XACT_EVENT_ABORT:
+			UnregisterXactCallback(multicorn_xact_callback, arg);
+			instance = getInstance((Oid) arg);
+			PyObject_CallMethod(instance, "rollback", "()");
+			errorCheck();
+			Py_DECREF(instance);
+			break;
+		default:
+			break;
+	}
+}
 #endif
 
 
@@ -705,39 +740,4 @@ initializeExecState(void *internalstate)
 	execstate->values = palloc(attnum * sizeof(Datum));
 	execstate->nulls = palloc(attnum * sizeof(bool));
 	return execstate;
-}
-
-/*
- * Callback used to propagate pre-commit / commit / rollback.
- */
-static void
-multicorn_xact_callback(XactEvent event, void *arg)
-{
-	PyObject   *instance;
-
-	switch (event)
-	{
-		case XACT_EVENT_PRE_COMMIT:
-			instance = getInstance((Oid) arg);
-			PyObject_CallMethod(instance, "pre_commit", "()");
-			errorCheck();
-			Py_DECREF(instance);
-			break;
-		case XACT_EVENT_COMMIT:
-			instance = getInstance((Oid) arg);
-			PyObject_CallMethod(instance, "commit", "()");
-			errorCheck();
-			Py_DECREF(instance);
-			UnregisterXactCallback(multicorn_xact_callback, arg);
-			break;
-		case XACT_EVENT_ABORT:
-			UnregisterXactCallback(multicorn_xact_callback, arg);
-			instance = getInstance((Oid) arg);
-			PyObject_CallMethod(instance, "rollback", "()");
-			errorCheck();
-			Py_DECREF(instance);
-			break;
-		default:
-			break;
-	}
 }
