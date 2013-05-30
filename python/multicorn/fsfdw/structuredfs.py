@@ -226,13 +226,14 @@ class Item(collections.Mapping):
             if self._fd is None:
                 # Open it with a shared lock
                 self._fd = os.open(self.full_filename,
-                                   os.O_RDWR | os.O_SYNC)
+                                   os.O_RDONLY | os.O_SYNC)
                 fcntl.flock(self._fd, fcntl.LOCK_SH)
                 self.directory.cache[self.full_filename] = (self._fd,
                                                             shared_lock)
             # Do nothing if we already have a file descriptor
         else:
-            if self._fd is None:
+            if (self._fd is None or
+                    not  (fcntl.fcntl(self._fd, fcntl.F_GETFL) & os.O_RDWR)):
                 # Open it with an exclusive lock, sync mode, and fail if the
                 # file already exists.
                 dirname = os.path.dirname(self.full_filename)
@@ -243,6 +244,8 @@ class Item(collections.Mapping):
                     flags = flags | os.O_CREAT | os.O_EXCL
                 elif fail_if is None:
                     flags = flags | os.O_CREAT
+                if self._fd is not None:
+                    os.close(self._fd)
                 self._fd = os.open(self.full_filename, flags)
             fcntl.flock(self._fd, fcntl.LOCK_EX)
             self.directory.cache[self.full_filename] = (self._fd, shared_lock)
