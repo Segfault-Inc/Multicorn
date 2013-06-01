@@ -64,7 +64,7 @@ if __name__ == '__main__':
     for fn in opts.conf_file:
         cp.readfp(open(fn))
 
-print("""
+    print("""
 SET search_path = lims;
 
 DROP SERVER syapse cascade;

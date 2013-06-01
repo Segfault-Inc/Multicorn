@@ -3,21 +3,28 @@
 from __future__ import print_function
 
 __doc__ = """
-test-syapsefdw -- test script for multicorn.syapsefdw
+syapsefdw-ddl -- generate CREATE FOREIGN TABLE DDL for Syapse Foreign Data Wrappers
 
-See syapse.com.
+See PostgreSQL's FDW documentation and syapse.com.
 
 License: PostgreSQL (http://www.postgresql.org/about/licence/)
 
 2013-05-24 Reece Hart <reecehart@gmail.com>
 """
 
-
 import argparse
 import ConfigParser
+import logging
+import os
+import pprint
 import sys
 
-from multicorn.syapsefdw import SyapseFDW
+import IPython
+
+root = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(root,'python'))
+
+from multicorn.syapsefdw import SyapseFDWFactory
 
 
 def parse_args(argv):
@@ -29,33 +36,36 @@ def parse_args(argv):
     ap.add_argument('--conf-file', '-C',
                     metavar="FILE",
                     action = 'append',
+                    required = True,
                     help="config file")
-    ap.add_argument('--kb-class', '-c',
+    ap.add_argument('--source', '-s',
+                    metavar = 'CLASS_OR_QUERY',
                     type = unicode,
                     required = True,
-                    help = 'name of Syapse class to test')
+                    help = 'name of Syapse class or Saved Query')
 
     return ap.parse_args( argv )
     
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level = logging.INFO)
+
     opts = parse_args(sys.argv[1:])
 
     cp = ConfigParser.SafeConfigParser()
     for fn in opts.conf_file:
         cp.readfp(open(fn))
 
-    fdw = SyapseFDW(
+    src = opts.source
+    fdw = SyapseFDWFactory(
         options = {
-            'syapse_hostname': cp.get('syapse','hostname'),
-            'syapse_email':    cp.get('syapse','email'),
-            'syapse_password': cp.get('syapse','password'),
-            'syapse_class':    opts.kb_class
-            }, 
+            'syapse_hostname' : cp.get('syapse','hostname'),
+            'syapse_email'    : cp.get('syapse','email'),
+            'syapse_password' : cp.get('syapse','password'),
+            'source'          : src
+            },
+        columns = {}
         )
-
-    import IPython; IPython.embed()
-
-    for row in fdw.execute( quals=[], columns=[] ):
-        print(row)
+    for row in fdw.execute(None,None):
+        pprint.pprint(row)

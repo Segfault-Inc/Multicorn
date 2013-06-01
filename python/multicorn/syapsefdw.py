@@ -114,8 +114,30 @@ class SavedQueryTable(SyapseFDW):
 
         ds = self.conn.kb.executeSavedQuery( self.syapse_saved_query_id )
         self.ds_headers = ds.headers
-        self.headers = [ camelcase_to_underscore(h.split(':')[-1]) 
-                         for h in self.ds_headers ]
+        self.headers = ['aii']  # app ind id
+        self.headers += [ camelcase_to_underscore(h.split(':')[-1]) 
+                          for h in self.ds_headers ]
+
+    def execute(self, quals, columns):
+        def _process_ds_row(ds_row):
+            # horrors. The AII is buried in "AnnotatedValue" records,
+            # which are returned for system properties when the saved
+            # query is executed with annotate_meta=True.  These AV
+            # instances happen to contain the AII for the current
+            # record. We fish the AII out of any of these AVs.
+            vals = [ v.value if isinstance(v,syapse_client.sem.advq.AnnotatedValue) else v
+                     for v in ds_row ]
+            avs = [ v for v in ds_row 
+                    if isinstance(v,syapse_client.sem.advq.AnnotatedValue) ]
+            aii = avs[0].app_ind_id if len(avs) > 0 else None
+            row = dict(zip(self.headers,[aii] + vals))
+            return row
+            
+        ds = self.conn.kb.executeSavedQuery( self.syapse_saved_query_id,
+                                             annotate_meta = True)
+        for ds_row in ds.rows:
+            row = _process_ds_row(ds_row)
+            yield row
 
     def table_ddl(self):
         cols = [ '{column:30} {type:10}'.format(column = h, type = 'TEXT')
@@ -133,12 +155,7 @@ CREATE FOREIGN TABLE {tablename} (
             cols = "\n  , ".join(cols),
             self=self )
         
-    def execute(self, quals, columns):
-        ds = self.conn.kb.executeSavedQuery( self.syapse_saved_query_id )
-        for row in ds.rows:
-            yield dict(zip(self.headers,row))
-
-
+                    
 ############################################################################
 
 ColDef = collections.namedtuple('ColDef', [
