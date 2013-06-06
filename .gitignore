@@ -6,5 +6,6 @@
 *~
 /build
 /dist
+archive
 sql/multicorn--*.sql
 tags
