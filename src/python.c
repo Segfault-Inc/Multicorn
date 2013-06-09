@@ -881,38 +881,44 @@ void
 pythonSequenceToTuple(PyObject *p_value,
 					  MulticornExecState * state)
 {
-	int			i;
+	int			i,
+				j;
 
-	if (PySequence_Size(p_value) != state->attinmeta->tupdesc->natts)
+	for (i = 0, j = 0; i < state->numattrs; i++)
 	{
-		elog(ERROR, "The python backend did not return a valid sequence");
-		return;
-	}
-	else
-	{
-		for (i = 0; i < state->numattrs; i++)
+		PyObject   *p_object;
+
+		if (state->cinfos[i] == NULL)
 		{
-			PyObject   *p_object;
-
-			if (state->cinfos[i] == NULL)
-			{
-				continue;
-			}
-			p_object = PySequence_GetItem(p_value, i);
-			resetStringInfo(state->buffer);
-			state->values[i] = pyobjectToDatum(p_object, state->buffer,
-											   state->cinfos[i]);
-			if (state->values[i] == (Datum) NULL)
-			{
-				state->nulls[i] = true;
-			}
-			else
-			{
-				state->nulls[i] = false;
-			}
-			errorCheck();
-			Py_DECREF(p_object);
+			/* The attribute has been dropped, skip it */
+			continue;
 		}
+		p_object = PySequence_GetItem(p_value, j);
+		if (p_object == NULL)
+		{
+			PyErr_Clear();
+			/* The sequence is too short */
+			elog(ERROR, "The python backend did not return a valid sequence (not enough values)");
+		}
+		resetStringInfo(state->buffer);
+		state->values[i] = pyobjectToDatum(p_object, state->buffer,
+										   state->cinfos[i]);
+		if (state->values[i] == (Datum) NULL)
+		{
+			state->nulls[i] = true;
+		}
+		else
+		{
+			state->nulls[i] = false;
+		}
+		errorCheck();
+		Py_DECREF(p_object);
+		j++;
+	}
+	if (PySequence_Size(p_value) != j)
+	{
+		elog(ERROR, "The python backend did not return a valid sequence (too much values)");
+		return;
 	}
 }
 
