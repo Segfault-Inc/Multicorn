@@ -7,4 +7,5 @@ The Multicorn Foreign Data Wrapper allows you to fetch foreign data in Python in
 
 Documentation available at : http://multicorn.org
 
-Kozea 2011
+Multicorn is distributed under the PostgreSQL license. See the LICENSE file for
+details. 
