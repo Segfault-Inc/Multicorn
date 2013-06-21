@@ -888,11 +888,12 @@ pythonSequenceToTuple(PyObject *p_value,
 					  ConversionInfo ** cinfos,
 					  StringInfo buffer)
 {
-	int			i;
+	int			i,
+				j;
 	Datum	   *values = slot->tts_values;
 	bool	   *nulls = slot->tts_isnull;
 
-	for (i = 0; i < slot->tts_tupleDescriptor->natts; i++)
+	for (i = 0, j = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		PyObject   *p_object;
 		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
@@ -902,7 +903,7 @@ pythonSequenceToTuple(PyObject *p_value,
 		{
 			continue;
 		}
-		p_object = PySequence_GetItem(p_value, i);
+		p_object = PySequence_GetItem(p_value, j);
 		resetStringInfo(buffer);
 		values[i] = pyobjectToDatum(p_object, buffer,
 									cinfos[cinfo_idx]);
@@ -916,6 +917,7 @@ pythonSequenceToTuple(PyObject *p_value,
 		}
 		errorCheck();
 		Py_DECREF(p_object);
+		j++;
 	}
 }
 

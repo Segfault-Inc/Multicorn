@@ -38,4 +38,13 @@ ALTER foreign table testmulticorn options (DROP option2);
 
 select * from testmulticorn;
 
+-- Test dropping column when returning sequences (issue #15)
+ALTER foreign table testmulticorn options (ADD test_type 'sequence');
+
+select * from testmulticorn;
+
+ALTER foreign table testmulticorn drop test3;
+
+select * from testmulticorn;
+
 DROP extension multicorn cascade;
