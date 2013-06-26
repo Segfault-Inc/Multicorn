@@ -16,8 +16,9 @@
 #include "postgres.h"
 
 
-struct module_state {
-    PyObject *error;
+struct module_state
+{
+	PyObject   *error;
 };
 
 #if PY_MAJOR_VERSION >= 3
@@ -38,22 +39,25 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 	PyObject   *hint,
 			   *p_message,
 			   *detail;
+
 	if (!PyArg_ParseTuple(args, "O|i", &p_message, &level))
 	{
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
-	if(PyBytes_Check(p_message))
+	if (PyBytes_Check(p_message))
 	{
 		message = strdup(PyBytes_AsString(p_message));
 	}
-	else if(PyUnicode_Check(p_message)) 
+	else if (PyUnicode_Check(p_message))
 	{
 
 		message = PyUnicode_AsPgString(p_message);
 	}
-	else {
-		PyObject * temp = PyObject_Str(p_message);
+	else
+	{
+		PyObject   *temp = PyObject_Str(p_message);
+
 		message = PyUnicode_AsPgString(temp);
 		errorCheck();
 		Py_DECREF(temp);
@@ -97,7 +101,7 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 			Py_DECREF(detail);
 		}
 		errfinish(0);
-	}	
+	}
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 	Py_INCREF(Py_None);
@@ -112,22 +116,21 @@ static PyMethodDef UtilsMethods[] = {
 #if PY_MAJOR_VERSION >= 3
 
 static struct PyModuleDef moduledef = {
-        PyModuleDef_HEAD_INIT,
-        "multicorn._utils",
-        NULL,
-        sizeof(struct module_state),
-        UtilsMethods,
-        NULL,
-		NULL,
-        NULL,
-        NULL
+	PyModuleDef_HEAD_INIT,
+	"multicorn._utils",
+	NULL,
+	sizeof(struct module_state),
+	UtilsMethods,
+	NULL,
+	NULL,
+	NULL,
+	NULL
 };
 
 #define INITERROR return NULL
 
 PyObject *
 PyInit__utils(void)
-
 #else
 #define INITERROR return
 
@@ -136,16 +139,16 @@ init_utils(void)
 #endif
 {
 #if PY_MAJOR_VERSION >= 3
-    PyObject *module = PyModule_Create(&moduledef);
+	PyObject   *module = PyModule_Create(&moduledef);
 #else
-    PyObject *module = Py_InitModule("multicorn._utils", UtilsMethods);
+	PyObject   *module = Py_InitModule("multicorn._utils", UtilsMethods);
 #endif
 
-    if (module == NULL)
-        INITERROR;
-    struct module_state *st = GETSTATE(module);
+	if (module == NULL)
+		INITERROR;
+	struct module_state *st = GETSTATE(module);
 
 #if PY_MAJOR_VERSION >= 3
-    return module;
+	return module;
 #endif
 }

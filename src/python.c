@@ -93,13 +93,14 @@ typedef struct CacheEntry
 
 
 char *
-PyUnicode_AsPgString(PyObject* p_unicode)
+PyUnicode_AsPgString(PyObject *p_unicode)
 {
-	Py_ssize_t unicode_size = PyUnicode_GET_SIZE(p_unicode);
-	char* message = NULL;
-	PyObject *pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
-								unicode_size,
-								GetDatabaseEncodingName(), NULL);
+	Py_ssize_t	unicode_size = PyUnicode_GET_SIZE(p_unicode);
+	char	   *message = NULL;
+	PyObject   *pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
+											unicode_size,
+											GetDatabaseEncodingName(), NULL);
+
 	errorCheck();
 	message = strdup(PyBytes_AsString(pTempStr));
 	errorCheck();
@@ -122,7 +123,7 @@ PyString_FromStringAndSize(const char *s, Py_ssize_t size)
 													strlen(s),
 													GetDatabaseEncoding(),
 													PG_UTF8);
-	if(size < 0)
+	if (size < 0)
 	{
 		o = PyUnicode_FromString(utf8string);
 	}
@@ -145,21 +146,22 @@ PyString_FromString(const char *s)
 char *
 PyString_AsString(PyObject *unicode)
 {
-	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(),	NULL);
+	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
 	char	   *rv = pstrdup(PyBytes_AsString(o));
+
 	Py_XDECREF(o);
 	return rv;
 }
 
-int 
-PyString_AsStringAndSize(PyObject *unicode, char** buffer, Py_ssize_t *length)
+int
+PyString_AsStringAndSize(PyObject *unicode, char **buffer, Py_ssize_t *length)
 {
 	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
-	int rv = PyBytes_AsStringAndSize(o, buffer, length);
+	int			rv = PyBytes_AsStringAndSize(o, buffer, length);
+
 	Py_XDECREF(o);
 	return rv;
 }
-
 #endif   /* PY_MAJOR_VERSION >= 3 */
 
 /*
@@ -232,6 +234,7 @@ getClassString(char *className)
 {
 	PyObject   *p_classname = PyString_FromString(className),
 			   *p_class = getClass(p_classname);
+
 	Py_DECREF(p_classname);
 	return p_class;
 }
@@ -758,6 +761,7 @@ pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
 	else
 	{
 		PyObject   *pTempStr;
+
 		pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(pyobject),
 									unicode_size,
 									cinfo->encodingname, NULL);
@@ -964,11 +968,13 @@ pythonSequenceToTuple(PyObject *p_value,
 				j;
 	Datum	   *values = slot->tts_values;
 	bool	   *nulls = slot->tts_isnull;
+
 	for (i = 0, j = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		PyObject   *p_object;
 		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
 		AttrNumber	cinfo_idx = attr->attnum - 1;
+
 		if (cinfos[cinfo_idx] == NULL)
 		{
 			continue;
@@ -1079,11 +1085,11 @@ datumNumberToPython(Datum datum, ConversionInfo * cinfo)
 	char	   *tempvalue = (char *) DirectFunctionCall1(numeric_out,
 														 numvalue);
 	PyObject   *buffer = PyString_FromString(tempvalue),
-	#if PY_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION >= 3
 			   *value = PyFloat_FromString(buffer);
-	#else
+#else
 			   *value = PyFloat_FromString(buffer, NULL);
-	#endif
+#endif
 	Py_DECREF(buffer);
 	return value;
 }

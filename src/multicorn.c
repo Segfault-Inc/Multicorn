@@ -90,9 +90,8 @@ static void multicorn_xact_callback(XactEvent event, void *arg);
 
 typedef struct MulticornCallbackData
 {
-	Oid foreigntableid;
-} MulticornCallbackData;
-
+	Oid			foreigntableid;
+}	MulticornCallbackData;
 #endif
 
 /*	Helpers functions */
@@ -184,7 +183,7 @@ multicorn_validator(PG_FUNCTION_ARGS)
 		p_class = getClassString(className);
 		errorCheck();
 		Py_DECREF(p_class);
-	}	
+	}
 	PG_RETURN_VOID();
 }
 
@@ -524,8 +523,8 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	TupleDesc	desc = RelationGetDescr(rel);
 	PlanState  *ps = mtstate->mt_plans[subplan_index];
 	Plan	   *subplan = ps->plan;
-	MulticornCallbackData * cb_data = MemoryContextAlloc(TopMemoryContext,
-														 sizeof(MulticornCallbackData));
+	MulticornCallbackData *cb_data = MemoryContextAlloc(TopMemoryContext,
+											  sizeof(MulticornCallbackData));
 	int			i;
 
 	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
@@ -533,7 +532,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	modstate->buffer = makeStringInfo();
 	modstate->fdw_instance = getInstance(rel->rd_id);
 	cb_data->foreigntableid = rel->rd_id;
-	RegisterXactCallback(multicorn_xact_callback, (void*) cb_data);
+	RegisterXactCallback(multicorn_xact_callback, (void *) cb_data);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
 	if (ps->ps_ResultTupleSlot)
@@ -667,6 +666,7 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
+
 	errorCheck();
 	Py_DECREF(modstate->fdw_instance);
 	Py_DECREF(result);
@@ -679,7 +679,8 @@ static void
 multicorn_xact_callback(XactEvent event, void *arg)
 {
 	PyObject   *instance;
-	Oid foreigntableid = ((MulticornCallbackData *) arg)->foreigntableid;
+	Oid			foreigntableid = ((MulticornCallbackData *) arg)->foreigntableid;
+
 	switch (event)
 	{
 		case XACT_EVENT_PRE_COMMIT:
