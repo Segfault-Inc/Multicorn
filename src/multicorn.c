@@ -426,20 +426,6 @@ multicornEndForeignScan(ForeignScanState *node)
 }
 
 
-/*
- * multicornPlanForeignModify
- *		Plan a foreign write operation.
- *		This is done by checking the "supported operations" attribute
- *		on the python class.
- */
-static List *
-multicornPlanForeignModify(PlannerInfo *root,
-						   ModifyTable *plan,
-						   Index resultRelation,
-						   int subplan_index)
-{
-	return NULL;
-}
 
 #if PG_VERSION_NUM >= 90300
 /*
@@ -497,6 +483,22 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 						  true);
 	parsetree->targetList = lappend(parsetree->targetList, tle);
 	Py_DECREF(instance);
+}
+
+
+/*
+ * multicornPlanForeignModify
+ *		Plan a foreign write operation.
+ *		This is done by checking the "supported operations" attribute
+ *		on the python class.
+ */
+static List *
+multicornPlanForeignModify(PlannerInfo *root,
+						   ModifyTable *plan,
+						   Index resultRelation,
+						   int subplan_index)
+{
+	return NULL;
 }
 
 
