@@ -83,6 +83,6 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             statement = statement.where(and_(*clauses))
         columns = [self.table.c[col] for col in columns]
         statement = statement.with_only_columns(columns)
-        log_to_postgres(unicode(statement), DEBUG)
+        log_to_postgres(str(statement), DEBUG)
         for item in self.engine.execute(statement):
             yield item

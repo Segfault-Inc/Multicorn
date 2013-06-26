@@ -13,6 +13,9 @@
 #include "utils/resowner.h"
 #include "utils/rel.h"
 #include "executor/nodeSubplan.h"
+#include "bytesobject.h"
+#include "mb/pg_wchar.h"
+
 
 List	   *getOptions(Oid foreigntableid);
 PyObject   *optionsListToPyDict(List *options);
@@ -88,6 +91,77 @@ typedef struct CacheEntry
 	MemoryContext cacheContext;
 }	CacheEntry;
 
+
+char *
+PyUnicode_AsPgString(PyObject* p_unicode)
+{
+	Py_ssize_t unicode_size = PyUnicode_GET_SIZE(p_unicode);
+	char* message = NULL;
+	PyObject *pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
+								unicode_size,
+								GetDatabaseEncodingName(), NULL);
+	errorCheck();
+	message = strdup(PyBytes_AsString(pTempStr));
+	errorCheck();
+	Py_DECREF(pTempStr);
+	return message;
+}
+
+#if PY_MAJOR_VERSION >= 3
+/*
+ * Convert a C string in the PostgreSQL server encoding to a Python
+ * unicode object.	Reference ownership is passed to the caller.
+ */
+PyObject *
+PyString_FromStringAndSize(const char *s, Py_ssize_t size)
+{
+	char	   *utf8string;
+	PyObject   *o;
+
+	utf8string = (char *) pg_do_encoding_conversion((unsigned char *) s,
+													strlen(s),
+													GetDatabaseEncoding(),
+													PG_UTF8);
+	if(size < 0)
+	{
+		o = PyUnicode_FromString(utf8string);
+	}
+	else
+	{
+		o = PyUnicode_FromStringAndSize(utf8string, size);
+	}
+	if (utf8string != s)
+		pfree(utf8string);
+
+	return o;
+}
+
+PyObject *
+PyString_FromString(const char *s)
+{
+	return PyString_FromStringAndSize(s, -1);
+}
+
+char *
+PyString_AsString(PyObject *unicode)
+{
+	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(),	NULL);
+	char	   *rv = pstrdup(PyBytes_AsString(o));
+	Py_XDECREF(o);
+	return rv;
+}
+
+int 
+PyString_AsStringAndSize(PyObject *unicode, char** buffer, Py_ssize_t *length)
+{
+	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
+	int rv = PyBytes_AsStringAndSize(o, buffer, length);
+	Py_XDECREF(o);
+	return rv;
+}
+
+#endif   /* PY_MAJOR_VERSION >= 3 */
+
 /*
  * Utility function responsible for importing, and returning, a class by name
  *
@@ -158,7 +232,6 @@ getClassString(char *className)
 {
 	PyObject   *p_classname = PyString_FromString(className),
 			   *p_class = getClass(p_classname);
-
 	Py_DECREF(p_classname);
 	return p_class;
 }
@@ -483,12 +556,12 @@ getRelSize(MulticornPlanState * state,
 										   "(O,O)", p_quals, p_targets_set);
 	errorCheck();
 	p_rows = PyNumber_Long(PyTuple_GetItem(p_rows_and_width, 0));
-	p_width = PyNumber_Int(PyTuple_GetItem(p_rows_and_width, 1));
+	p_width = PyNumber_Long(PyTuple_GetItem(p_rows_and_width, 1));
 	p_startup_cost = PyNumber_Long(
 			   PyObject_GetAttrString(state->fdw_instance, "_startup_cost"));
 	*rows = PyLong_AsDouble(p_rows);
-	*width = (int) PyInt_AsLong(p_width);
-	state->startupCost = (int) PyInt_AsLong(p_startup_cost);
+	*width = (int) PyLong_AsLong(p_width);
+	state->startupCost = (int) PyLong_AsLong(p_startup_cost);
 	Py_DECREF(p_rows);
 	Py_DECREF(p_width);
 	Py_DECREF(p_rows_and_width);
@@ -685,11 +758,10 @@ pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
 	else
 	{
 		PyObject   *pTempStr;
-
 		pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(pyobject),
 									unicode_size,
 									cinfo->encodingname, NULL);
-		PyString_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
+		PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
 		appendBinaryStringInfo(buffer, tempbuffer, strlength);
 		Py_DECREF(pTempStr);
 	}
@@ -794,7 +866,7 @@ pyobjectToCString(PyObject *pyobject, StringInfo buffer,
 		pyunicodeToCString(pyobject, buffer, cinfo);
 		return;
 	}
-	if (PyString_Check(pyobject))
+	if (PyBytes_Check(pyobject))
 	{
 		pystringToCString(pyobject, buffer, cinfo);
 		return;
@@ -817,11 +889,11 @@ pyobjectToCString(PyObject *pyobject, StringInfo buffer,
 	}
 	/* Default handling for unknown objects */
 	{
-		PyObject   *pTempStr = PyObject_Str(pyobject);
+		PyObject   *pTempStr = PyObject_Bytes(pyobject);
 		char	   *tempbuffer;
 		Py_ssize_t	strlength;
 
-		PyString_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
+		PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
 		appendBinaryStringInfo(buffer, tempbuffer, strlength);
 		Py_DECREF(pTempStr);
 		return;
@@ -892,13 +964,11 @@ pythonSequenceToTuple(PyObject *p_value,
 				j;
 	Datum	   *values = slot->tts_values;
 	bool	   *nulls = slot->tts_isnull;
-
 	for (i = 0, j = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		PyObject   *p_object;
 		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
 		AttrNumber	cinfo_idx = attr->attnum - 1;
-
 		if (cinfos[cinfo_idx] == NULL)
 		{
 			continue;
@@ -930,15 +1000,16 @@ pythonResultToTuple(PyObject *p_value,
 					ConversionInfo ** cinfos,
 					StringInfo buffer)
 {
-	if (PyMapping_Check(p_value))
+	if (PySequence_Check(p_value))
 	{
-		pythonDictToTuple(p_value, slot, cinfos, buffer);
+		pythonSequenceToTuple(p_value, slot, cinfos, buffer);
 	}
 	else
 	{
-		if (PySequence_Check(p_value))
+
+		if (PyMapping_Check(p_value))
 		{
-			pythonSequenceToTuple(p_value, slot, cinfos, buffer);
+			pythonDictToTuple(p_value, slot, cinfos, buffer);
 		}
 		else
 		{
@@ -1008,8 +1079,11 @@ datumNumberToPython(Datum datum, ConversionInfo * cinfo)
 	char	   *tempvalue = (char *) DirectFunctionCall1(numeric_out,
 														 numvalue);
 	PyObject   *buffer = PyString_FromString(tempvalue),
+	#if PY_MAJOR_VERSION >= 3
+			   *value = PyFloat_FromString(buffer);
+	#else
 			   *value = PyFloat_FromString(buffer, NULL);
-
+	#endif
 	Py_DECREF(buffer);
 	return value;
 }
@@ -1054,7 +1128,7 @@ datumTimestampToPython(Datum datum, ConversionInfo * cinfo)
 PyObject *
 datumIntToPython(Datum datum, ConversionInfo * cinfo)
 {
-	return PyInt_FromLong(DatumGetInt32(datum));
+	return PyLong_FromLong(DatumGetInt32(datum));
 }
 
 PyObject *
@@ -1091,7 +1165,7 @@ datumByteaToPython(Datum datum, ConversionInfo * cinfo)
 	char	   *str = VARDATA(txt);
 	size_t		size = VARSIZE(txt) - VARHDRSZ;
 
-	return PyBytes_FromStringAndSize(str, size);
+	return PyString_FromStringAndSize(str, size);
 }
 
 

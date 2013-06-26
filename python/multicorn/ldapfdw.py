@@ -91,9 +91,9 @@ class LdapFdw(ForeignDataWrapper):
                     args['cred'] = self.bindpwd
             self.ldap.simple_bind_s(**args)
 
-        except ldap.INVALID_CREDENTIALS, msg:
+        except ldap.INVALID_CREDENTIALS as msg:
             log_to_postgres("LDAP BIND Error: %s" % msg, ERROR)
-        except ldap.UNWILLING_TO_PERFORM, msg:
+        except ldap.UNWILLING_TO_PERFORM as msg:
             log_to_postgres("LDAP BIND Error: %s" % msg, ERROR)
 
     def parse_scope(self, scope=None):

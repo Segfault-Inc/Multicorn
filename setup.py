@@ -1,10 +1,10 @@
-import popen2
+import subprocess
 from setuptools import setup, find_packages, Extension
 
 # hum... borrowed from psycopg2
 def get_pg_config(kind, pg_config="pg_config"):
-    p = popen2.popen3(pg_config + " --" + kind)
-    r = p[0].readline().strip()
+    r = subprocess.check_output([pg_config, '--%s' % kind])
+    r = r.strip().decode('utf8')
     if not r:
         raise Warning(p[2].readline())
     return r

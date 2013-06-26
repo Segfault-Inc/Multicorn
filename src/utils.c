@@ -16,21 +16,47 @@
 #include "postgres.h"
 
 
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
+
 static PyObject *
 log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-	char	   *message;
+	char	   *message = NULL;
 	char	   *hintstr = NULL,
 			   *detailstr = NULL;
 	int			level = 1;
 	int			severity;
 	PyObject   *hint,
+			   *p_message,
 			   *detail;
-
-	if (!PyArg_ParseTuple(args, "s|i", &message, &level))
+	if (!PyArg_ParseTuple(args, "O|i", &p_message, &level))
 	{
 		Py_INCREF(Py_None);
 		return Py_None;
+	}
+	if(PyBytes_Check(p_message))
+	{
+		message = strdup(PyBytes_AsString(p_message));
+	}
+	else if(PyUnicode_Check(p_message)) 
+	{
+
+		message = PyUnicode_AsPgString(p_message);
+	}
+	else {
+		PyObject * temp = PyObject_Str(p_message);
+		message = PyUnicode_AsPgString(temp);
+		errorCheck();
+		Py_DECREF(temp);
 	}
 	switch (level)
 	{
@@ -71,7 +97,7 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 			Py_DECREF(detail);
 		}
 		errfinish(0);
-	}
+	}	
 	Py_DECREF(args);
 	Py_DECREF(kwargs);
 	Py_INCREF(Py_None);
@@ -79,12 +105,47 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 static PyMethodDef UtilsMethods[] = {
-	{"_log_to_postgres", log_to_postgres, METH_VARARGS | METH_KEYWORDS, "Log to postresql client"},
+	{"_log_to_postgres", (PyCFunction) log_to_postgres, METH_VARARGS | METH_KEYWORDS, "Log to postresql client"},
 	{NULL, NULL, 0, NULL}
 };
 
-PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "multicorn._utils",
+        NULL,
+        sizeof(struct module_state),
+        UtilsMethods,
+        NULL,
+		NULL,
+        NULL,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyObject *
+PyInit__utils(void)
+
+#else
+#define INITERROR return
+
+void
 init_utils(void)
+#endif
 {
-	(void) Py_InitModule("multicorn._utils", UtilsMethods);
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("multicorn._utils", UtilsMethods);
+#endif
+
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }

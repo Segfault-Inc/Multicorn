@@ -80,6 +80,9 @@ void		errorCheck(void);
 bool		try_except(char *exceptionname);
 
 /* python.c */
+PyObject   *pgstringToPyUnicode(const char *string);
+char *     *pyUnicodeToPgString(PyObject* pyobject);
+
 PyObject   *getInstance(Oid foreigntableid);
 PyObject   *qualToPyObject(Expr *expr, PlannerInfo *root);
 PyObject   *getClassString(char *className);
@@ -117,3 +120,13 @@ void		findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int
 PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
 
 #endif   /* PG_MULTICORN_H */
+
+char * PyUnicode_AsPgString(PyObject* p_unicode);
+
+#if PY_MAJOR_VERSION >= 3
+PyObject * PyString_FromString(const char* s);
+PyObject * PyString_FromStringAndSize(const char* s, Py_ssize_t size);
+char * PyString_AsString(PyObject *unicode);
+int PyString_AsStringAndSize(PyObject *unicode, char** tempbuffer, Py_ssize_t *length);
+#endif
+

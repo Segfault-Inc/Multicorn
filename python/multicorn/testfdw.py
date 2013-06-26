@@ -12,7 +12,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         super(TestForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns
         self.test_type = options.get('test_type', None)
-        self._row_id_column = options.get('row_id_column', self.columns.keys()[0])
+        self._row_id_column = options.get('row_id_column',
+                                          list(self.columns.keys())[0])
         log_to_postgres(str(options))
         log_to_postgres(str(dict([(key, column.type_name) for key, column in
                                   columns.items()])))

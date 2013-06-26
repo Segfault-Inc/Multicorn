@@ -178,7 +178,7 @@ multicorn_validator(PG_FUNCTION_ARGS)
 		p_class = getClassString(className);
 		errorCheck();
 		Py_DECREF(p_class);
-	}
+	}	
 	PG_RETURN_VOID();
 }
 
@@ -367,7 +367,7 @@ multicornIterateForeignScan(ForeignScanState *node)
 		return slot;
 	}
 	p_value = PyIter_Next(execstate->p_iterator);
-	if (try_except("exceptions.StopIteration"))
+	if (try_except("builtins.StopIteration"))
 	{
 		return slot;
 	}
@@ -522,7 +522,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 							   desc->natts);
 	modstate->buffer = makeStringInfo();
 	modstate->fdw_instance = getInstance(rel->rd_id);
-	RegisterXactCallback(multicorn_xact_callback, rel->rd_id);
+	RegisterXactCallback(multicorn_xact_callback, (void*) rel->rd_id);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
 	if (ps->ps_ResultTupleSlot)
@@ -655,9 +655,7 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	Relation	rel = resultRelInfo->ri_RelationDesc;
 	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
-
 	errorCheck();
 	Py_DECREF(modstate->fdw_instance);
 	Py_DECREF(result);
