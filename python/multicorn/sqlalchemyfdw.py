@@ -85,4 +85,4 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         statement = statement.with_only_columns(columns)
         log_to_postgres(str(statement), DEBUG)
         for item in self.engine.execute(statement):
-            yield item
+            yield dict(item)
