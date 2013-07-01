@@ -12,37 +12,31 @@
 const char *getEncodingFromAttribute(Form_pg_attribute attribute);
 
 
-void extractClauseFromOpExpr(PlannerInfo *root,
-						RelOptInfo *baserel,
+void extractClauseFromOpExpr(Relids base_relids,
 						OpExpr *node,
-						List **quals,
-						List **params);
+						List **quals);
 
-void extractClauseFromNullTest(PlannerInfo *root,
-						  RelOptInfo *baserel,
+void extractClauseFromNullTest(Relids base_relids,
 						  NullTest *node,
-						  List **quals,
-						  List **params);
+						  List **quals);
 
-void extractClauseFromScalarArrayOpExpr(PlannerInfo *root,
-								   RelOptInfo *baserel,
+void extractClauseFromScalarArrayOpExpr(Relids base_relids,
 								   ScalarArrayOpExpr *node,
-								   List **quals,
-								   List **params);
+								   List **quals);
 
 char	   *getOperatorString(Oid opoid);
 
-List *makeQual(AttrNumber varattno, char *opname, Expr *value,
+MulticornBaseQual *makeQual(AttrNumber varattno, char *opname, Expr *value,
 		 bool isarray,
 		 bool useOr);
 
 
 Node	   *unnestClause(Node *node);
 void swapOperandsAsNeeded(Node **left, Node **right, Oid *opoid,
-					 RelOptInfo *baserel);
-OpExpr	   *canonicalOpExpr(OpExpr *opExpr, RelOptInfo *baserel);
+					 Relids base_relids);
+OpExpr	   *canonicalOpExpr(OpExpr *opExpr, Relids base_relids);
 ScalarArrayOpExpr *canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
-						   RelOptInfo *baserel);
+						   Relids base_relids);
 
 bool isAttrInRestrictInfo(Index relid, AttrNumber attno,
 					 RestrictInfo *restrictinfo);
@@ -191,11 +185,10 @@ unnestClause(Node *node)
 
 void
 swapOperandsAsNeeded(Node **left, Node **right, Oid *opoid,
-					 RelOptInfo *baserel)
+					 Relids base_relids)
 {
 	HeapTuple	tp;
 	Form_pg_operator op;
-	Relids		base_relids = baserel->relids;
 	Node	   *l = *left,
 			   *r = *right;
 
@@ -241,20 +234,19 @@ swapOperandsAsNeeded(Node **left, Node **right, Oid *opoid,
  *	- a Var from another relation
  */
 OpExpr *
-canonicalOpExpr(OpExpr *opExpr, RelOptInfo *baserel)
+canonicalOpExpr(OpExpr *opExpr, Relids base_relids)
 {
 	Oid			operatorid = opExpr->opno;
 	Node	   *l,
 			   *r;
 	OpExpr	   *result = NULL;
-	Relids		base_relids = baserel->relids;
 
 	/* Only treat binary operators for now. */
 	if (list_length(opExpr->args) == 2)
 	{
 		l = unnestClause(list_nth(opExpr->args, 0));
 		r = unnestClause(list_nth(opExpr->args, 1));
-		swapOperandsAsNeeded(&l, &r, &operatorid, baserel);
+		swapOperandsAsNeeded(&l, &r, &operatorid, base_relids);
 	}
 	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
 		&& ((Var *) l)->varattno >= 1)
@@ -278,13 +270,12 @@ canonicalOpExpr(OpExpr *opExpr, RelOptInfo *baserel)
  */
 ScalarArrayOpExpr *
 canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
-						   RelOptInfo *baserel)
+						   Relids base_relids)
 {
 	Oid			operatorid = opExpr->opno;
 	Node	   *l,
 			   *r;
 	ScalarArrayOpExpr *result = NULL;
-	Relids		base_relids = baserel->relids;
 	HeapTuple	tp;
 	Form_pg_operator op;
 
@@ -293,7 +284,7 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 	{
 		l = unnestClause(list_nth(opExpr->args, 0));
 		r = unnestClause(list_nth(opExpr->args, 1));
-		swapOperandsAsNeeded(&l, &r, &operatorid, baserel);
+		swapOperandsAsNeeded(&l, &r, &operatorid, base_relids);
 		tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(operatorid));
 		if (!HeapTupleIsValid(tp))
 			elog(ERROR, "cache lookup failed for operator %u", operatorid);
@@ -321,27 +312,24 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
  *
  */
 void
-extractRestrictions(PlannerInfo *root,
-					RelOptInfo *baserel,
+extractRestrictions(Relids base_relids,
 					Expr *node,
-					List **quals,
-					List **params)
+					List **quals)
 {
 	switch (nodeTag(node))
 	{
 		case T_OpExpr:
-			extractClauseFromOpExpr(root, baserel,
-									(OpExpr *) node, quals, params);
+			extractClauseFromOpExpr(base_relids,
+									(OpExpr *) node, quals);
 			break;
 		case T_NullTest:
-			extractClauseFromNullTest(root, baserel,
-									  (NullTest *) node, quals, params);
+			extractClauseFromNullTest(base_relids,
+									  (NullTest *) node, quals);
 			break;
 		case T_ScalarArrayOpExpr:
-			extractClauseFromScalarArrayOpExpr(root, baserel,
+			extractClauseFromScalarArrayOpExpr(base_relids,
 											   (ScalarArrayOpExpr *) node,
-											   quals,
-											   params);
+											   quals);
 			break;
 		default:
 			{
@@ -365,97 +353,43 @@ extractRestrictions(PlannerInfo *root,
  *	- Var or Const value: the value.
  */
 void
-extractClauseFromOpExpr(PlannerInfo *root,
-						RelOptInfo *baserel,
+extractClauseFromOpExpr(Relids base_relids,
 						OpExpr *op,
-						List **quals,
-						List **params)
+						List **quals)
 {
 	Var		   *left;
 	Expr	   *right;
 
 	/* Use a "canonical" version of the op expression, to ensure that the */
 	/* left operand is a Var on our relation. */
-	op = canonicalOpExpr(op, baserel);
+	op = canonicalOpExpr(op, base_relids);
 	if (op)
 	{
 		left = list_nth(op->args, 0);
 		right = list_nth(op->args, 1);
-		switch (right->type)
-		{
-				/* The simplest case: somevar == a constant */
-			case T_Const:
-
-				*quals = lappend(*quals, makeQual(left->varattno,
-												  getOperatorString(op->opno),
-												  right, false, false));
-				break;
-				/* Param: somevar == an outer param. */
-			case T_Param:
-				*params = lappend(*params, makeQual(left->varattno,
-												 getOperatorString(op->opno),
-													right, false, false));
-				break;
-				/* Var: somevar == someothervar. */
-			case T_Var:
-				/* This job could/should? be done in the core by */
-				/* replace_nestloop_vars. Infortunately, this is private. */
-				if (bms_is_member(((Var *) right)->varno, root->curOuterRels))
-				{
-					Param	   *param = assign_nestloop_param_var(root,
-															  (Var *) right);
-
-					*params = lappend(*params, makeQual(left->varattno,
-												 getOperatorString(op->opno),
-														(Expr *) param,
-														false,
-														false));
-				}
-				break;
-				/* Ignore other node types. */
-			default:
-				break;
-		}
+		*quals = lappend(*quals, makeQual(left->varattno,
+										  getOperatorString(op->opno),
+										  right, false, false));
 	}
 }
 
 void
-extractClauseFromScalarArrayOpExpr(PlannerInfo *root,
-								   RelOptInfo *baserel,
+extractClauseFromScalarArrayOpExpr(Relids base_relids,
 								   ScalarArrayOpExpr *op,
-								   List **quals,
-								   List **params)
+								   List **quals)
 {
 	Var		   *left;
 	Expr	   *right;
 
-	op = canonicalScalarArrayOpExpr(op, baserel);
+	op = canonicalScalarArrayOpExpr(op, base_relids);
 	if (op)
 	{
 		left = list_nth(op->args, 0);
 		right = list_nth(op->args, 1);
-		switch (right->type)
-		{
-				/* The simplest case: somevar == a constant */
-			case T_Const:
-				*quals = lappend(*quals, makeQual(left->varattno,
-												  getOperatorString(op->opno),
-												  right, true,
-												  op->useOr));
-				break;
-				/* Param: somevar == an outer param. */
-			case T_Param:
-				*params = lappend(*params, makeQual(left->varattno,
-												 getOperatorString(op->opno),
-													right, false, false));
-				break;
-				/* Var: somevar == someothervar. */
-			case T_Var:
-				break;
-				/* Ignore other node types. */
-			default:
-				break;
-		}
+		*quals = lappend(*quals, makeQual(left->varattno,
+										  getOperatorString(op->opno),
+										  right, true,
+										  op->useOr));
 	}
 }
 
@@ -465,16 +399,14 @@ extractClauseFromScalarArrayOpExpr(PlannerInfo *root,
  *	to a suitable intermediate representation.
  */
 void
-extractClauseFromNullTest(PlannerInfo *root,
-						  RelOptInfo *baserel,
+extractClauseFromNullTest(Relids base_relids,
 						  NullTest *node,
-						  List **quals,
-						  List **params)
+						  List **quals)
 {
 	if (IsA(node->arg, Var))
 	{
 		Var		   *var = (Var *) node->arg;
-		List	   *result;
+		MulticornBaseQual *result;
 		char	   *opname = NULL;
 
 		if (var->varattno < 1)
@@ -521,18 +453,36 @@ colnameFromVar(Var *var, PlannerInfo *root, MulticornPlanState * planstate)
 /*
  *	Build an opaque "qual" object.
  */
-List *
+MulticornBaseQual *
 makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 		 bool useOr)
 {
-	List	   *result = NULL;
+	MulticornBaseQual *qual;
 
-	result = lappend_int(result, varattno - 1);
-	result = lappend(result, makeString(opname));
-	result = lappend(result, copyObject(value));
-	result = lappend_int(result, isarray);
-	result = lappend_int(result, useOr);
-	return result;
+	switch (value->type)
+	{
+		case T_Const:
+			qual = palloc0(sizeof(MulticornConstQual));
+			qual->right_type = T_Const;
+			qual->typeoid = ((Const *) value)->consttype;
+			((MulticornConstQual *) qual)->value = ((Const *) value)->constvalue;
+			break;
+		case T_Var:
+			qual = palloc0(sizeof(MulticornVarQual));
+			qual->right_type = T_Var;
+			((MulticornVarQual *) qual)->rightvarattno = ((Var *) value)->varattno;
+			break;
+		default:
+			qual = palloc0(sizeof(MulticornParamQual));
+			qual->right_type = T_Param;
+			((MulticornParamQual *) qual)->expr = value;
+			break;
+	}
+	qual->varattno = varattno;
+	qual->opname = opname;
+	qual->isArray = isarray;
+	qual->useOr = useOr;
+	return qual;
 }
 
 /*

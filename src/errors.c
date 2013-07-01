@@ -85,7 +85,7 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
  * raised.
  */
 bool
-try_except(char *exceptionname)
+try_except(const char *exceptionname)
 {
 	PyObject   *p_errtype,
 			   *p_errvalue,
@@ -111,4 +111,15 @@ try_except(char *exceptionname)
 		Py_DECREF(p_errvalue);
 	}
 	return result;
+}
+
+bool
+try_stopiteration()
+{
+#if PY_MAJOR_VERSION >= 3
+	const char *exception_name = "builtins.StopIteration";
+#else
+	const char *exception_name = "exceptions.StopIteration";
+#endif   /* PY_MAJOR_VERSION >= 3 */
+	return try_except(exception_name);
 }

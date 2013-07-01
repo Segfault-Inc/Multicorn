@@ -28,15 +28,15 @@ PyObject   *getClass(PyObject *className);
 PyObject   *valuesToPySet(List *targetlist);
 PyObject   *qualDefsToPyList(List *quallist, ConversionInfo ** cinfo);
 PyObject *pythonQual(char *operatorname, Datum dvalue,
-		   Oid consttype,
 		   ConversionInfo * cinfo,
 		   bool is_array,
-		   bool use_or);
+		   bool use_or,
+		   Oid typeoid);
 
 
 Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
 				ConversionInfo * cinfo);
-PyObject   *qualdefToPython(List *qualdef, ConversionInfo ** cinfo);
+PyObject   *qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfo);
 PyObject *paramDefToPython(List *paramdef, ConversionInfo ** cinfos,
 				 Oid typeoid,
 				 Datum value);
@@ -210,13 +210,17 @@ qualDefsToPyList(List *qual_list, ConversionInfo ** cinfos)
 
 	foreach(lc, qual_list)
 	{
-		List	   *qual_def = (List *) lfirst(lc);
-		PyObject   *python_qual = qualdefToPython(qual_def, cinfos);
+		MulticornBaseQual *qual_def = (MulticornBaseQual *) lfirst(lc);
 
-		if (python_qual != NULL)
+		if (qual_def->right_type == T_Const)
 		{
-			PyList_Append(p_quals, python_qual);
-			Py_DECREF(python_qual);
+			PyObject   *python_qual = qualdefToPython((MulticornConstQual *) qual_def, cinfos);
+
+			if (python_qual != NULL)
+			{
+				PyList_Append(p_quals, python_qual);
+				Py_DECREF(python_qual);
+			}
 		}
 	}
 	return p_quals;
@@ -230,7 +234,7 @@ qualDefsToPyList(List *qual_list, ConversionInfo ** cinfos)
  * Returns a new reference to the class.
  */
 PyObject *
-getClassString(char *className)
+getClassString(const char *className)
 {
 	PyObject   *p_classname = PyString_FromString(className),
 			   *p_class = getClass(p_classname);
@@ -573,42 +577,34 @@ getRelSize(MulticornPlanState * state,
 }
 
 PyObject *
-qualdefToPython(List *qualdef, ConversionInfo ** cinfos)
+qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfos)
 {
-	int			arrayindex = list_nth_int(qualdef, 0);
-	char	   *operatorname = strVal(((Const *) list_nth(qualdef, 1)));
+	int			arrayindex = qualdef->base.varattno - 1;
+	char	   *operatorname = qualdef->base.opname;
 	ConversionInfo *cinfo = cinfos[arrayindex];
-	Const	   *cvalue = list_nth(qualdef, 2);
-	bool		is_array = list_nth_int(qualdef, 3),
-				use_or = list_nth_int(qualdef, 4);
+	bool		is_array = qualdef->base.isArray,
+				use_or = qualdef->base.useOr;
+	Oid			typeoid = qualdef->base.typeoid;
+	Datum		value = qualdef->value;
 
-	return pythonQual(operatorname, cvalue->constvalue,
-					  cvalue->consttype, cinfo, is_array, use_or);
-}
-
-PyObject *
-paramDefToPython(List *paramdef, ConversionInfo ** cinfos,
-				 Oid typeoid,
-				 Datum value)
-{
-	int			arrayindex = list_nth_int(paramdef, 0);
-	char	   *operatorname = strVal(((Const *) list_nth(paramdef, 1)));
-	ConversionInfo *cinfo = cinfos[arrayindex];
-	bool		is_array = list_nth_int(paramdef, 3),
-				use_or = list_nth_int(paramdef, 4);
+	if (typeoid <= 0)
+	{
+		typeoid = cinfo->atttypoid;
+	}
 
 	return pythonQual(operatorname, value,
-					  typeoid, cinfo, is_array, use_or);
+					  cinfo, is_array, use_or, typeoid);
 }
+
 
 PyObject *
 pythonQual(char *operatorname, Datum dvalue,
-		   Oid consttype,
 		   ConversionInfo * cinfo,
 		   bool is_array,
-		   bool use_or)
+		   bool use_or,
+		   Oid typeoid)
 {
-	PyObject   *value = datumToPython(dvalue, consttype,
+	PyObject   *value = datumToPython(dvalue, typeoid,
 									  cinfo),
 			   *qualClass = getClassString("multicorn.Qual"),
 			   *qualInstance,
@@ -653,62 +649,52 @@ execute(ForeignScanState *node)
 {
 	MulticornExecState *state = node->fdw_state;
 	PyObject   *p_targets_set,
-			   *p_quals,
+			   *p_quals = PyList_New(0),
 			   *p_iterable;
-
-	ParamListInfo params = node->ss.ps.state->es_param_list_info;
-	ParamExecData *exec_params = node->ss.ps.state->es_param_exec_vals;
 	ListCell   *lc;
 
-	/* Transform every object to a suitable python representation */
-	p_targets_set = valuesToPySet(state->target_list);
-	p_quals = qualDefsToPyList(state->qual_list, state->cinfos);
-	/* Do the same thing with params */
-	foreach(lc, state->param_list)
+	ExprContext *econtext = node->ss.ps.ps_ExprContext;
+
+	foreach(lc, state->qual_list)
 	{
-		List	   *param_def = (List *) lfirst(lc);
-		Param	   *param = (Param *) lthird(param_def);
-		Datum		value = 0;
-		Oid			type = param->paramtype;
-		PyObject   *p_param;
+		MulticornBaseQual *qual = lfirst(lc);
+		MulticornConstQual *newqual = NULL;
+		bool		isNull;
+		ExprState  *expr_state = NULL;
 
-		switch (param->paramkind)
+		switch (qual->right_type)
 		{
-			case PARAM_EXTERN:
-				{
-					ParamExternData *prm = &params->params[param->paramid];
-
-					value = prm->value;
-
-				}
+			case T_Param:
+				expr_state = ExecInitExpr(((MulticornParamQual *) qual)->expr,
+										  (PlanState *) node);
+				newqual = palloc0(sizeof(MulticornConstQual));
+				newqual->base.right_type = T_Const;
+				newqual->base.varattno = qual->varattno;
+				newqual->base.opname = qual->opname;
+				newqual->base.isArray = qual->isArray;
+				newqual->base.useOr = qual->useOr;
+				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull, NULL);
+				newqual->base.typeoid = qual->typeoid;
 				break;
-			case PARAM_EXEC:
-				{
-					ParamExecData prm = exec_params[param->paramid];
-
-					if (exec_params[param->paramid].isnull)
-					{
-						value = 0;
-					}
-					else
-					{
-						value = prm.value;
-					}
-				}
+			case T_Const:
+				newqual = (MulticornConstQual *) qual;
 				break;
 			default:
 				break;
 		}
-		if (value)
+		if (newqual != NULL)
 		{
-			p_param = paramDefToPython(param_def,
-									   state->cinfos,
-									   type,
-									   value);
-			PyList_Append(p_quals, p_param);
-			Py_DECREF(p_param);
+			PyObject   *python_qual = qualdefToPython((MulticornConstQual *) newqual, state->cinfos);
+
+			if (python_qual != NULL)
+			{
+				PyList_Append(p_quals, python_qual);
+				Py_DECREF(python_qual);
+			}
 		}
 	}
+	/* Transform every object to a suitable python representation */
+	p_targets_set = valuesToPySet(state->target_list);
 	p_iterable = PyObject_CallMethod(state->fdw_instance,
 									 "execute",
 									 "(O,O)",

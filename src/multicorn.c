@@ -234,9 +234,8 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	/* Extract the restrictions from the plan. */
 	foreach(lc, baserel->baserestrictinfo)
 	{
-		extractRestrictions(root, baserel, ((RestrictInfo *) lfirst(lc))->clause,
-							&planstate->qual_list,
-							&planstate->param_list);
+		extractRestrictions(baserel->relids, ((RestrictInfo *) lfirst(lc))->clause,
+							&planstate->qual_list);
 
 	}
 	/* Inject the "rows" and "width" attribute into the baserel */
@@ -298,15 +297,14 @@ multicornGetForeignPlan(PlannerInfo *root,
 
 		foreach(lc, scan_clauses)
 		{
-			extractRestrictions(root, baserel, (Expr *) lfirst(lc),
-								&planstate->qual_list,
-								&planstate->param_list);
+			extractRestrictions(baserel->relids, (Expr *) lfirst(lc),
+								&planstate->qual_list);
 		}
 	}
 	return make_foreignscan(tlist,
 							scan_clauses,
 							scan_relid,
-							NIL,	/* no expressions to evaluate */
+							scan_clauses,		/* no expressions to evaluate */
 							serializePlanState(planstate));
 }
 
@@ -333,15 +331,20 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 {
 	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
 	MulticornExecState *execstate;
+	TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
+	ListCell   *lc;
 
 	execstate = initializeExecState(fscan->fdw_private);
+	execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
+	execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
+	execstate->qual_list = NULL;
+	foreach(lc, fscan->fdw_exprs)
 	{
-		TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
-
-		execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
-		execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
-		initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
+		extractRestrictions(bms_make_singleton(fscan->scan.scanrelid),
+							((Expr *) lfirst(lc)),
+							&execstate->qual_list);
 	}
+	initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
 	node->fdw_state = execstate;
 }
 
@@ -372,7 +375,7 @@ multicornIterateForeignScan(ForeignScanState *node)
 		return slot;
 	}
 	p_value = PyIter_Next(execstate->p_iterator);
-	if (try_except("builtins.StopIteration"))
+	if (try_stopiteration())
 	{
 		return slot;
 	}
@@ -724,8 +727,6 @@ serializePlanState(MulticornPlanState * state)
 	result = lappend_int(result, state->numattrs);
 	result = lappend_int(result, state->foreigntableid);
 	result = lappend(result, state->target_list);
-	result = lappend(result, state->qual_list);
-	result = lappend(result, state->param_list);
 	return result;
 }
 
@@ -744,8 +745,6 @@ initializeExecState(void *internalstate)
 	/* Those list must be copied, because their memory context can become */
 	/* invalid during the execution (in particular with the cursor interface) */
 	execstate->target_list = copyObject(lthird(values));
-	execstate->qual_list = copyObject(lfourth(values));
-	execstate->param_list = copyObject(list_nth(values, 4));
 	execstate->fdw_instance = getInstance(foreigntableid);
 	execstate->buffer = makeStringInfo();
 	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);

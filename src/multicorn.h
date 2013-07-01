@@ -41,7 +41,6 @@ typedef struct MulticornPlanState
 	PyObject   *fdw_instance;
 	List	   *target_list;
 	List	   *qual_list;
-	List	   *param_list;
 	int			startupCost;
 	ConversionInfo **cinfos;
 }	MulticornPlanState;
@@ -54,7 +53,6 @@ typedef struct MulticornExecState
 	/* Information carried from the plan phase. */
 	List	   *target_list;
 	List	   *qual_list;
-	List	   *param_list;
 	Datum	   *values;
 	bool	   *nulls;
 	ConversionInfo **cinfos;
@@ -75,17 +73,47 @@ typedef struct MulticornModifyState
 	ConversionInfo *rowidCinfo;
 }	MulticornModifyState;
 
+
+typedef struct MulticornBaseQual
+{
+	AttrNumber	varattno;
+	NodeTag		right_type;
+	Oid			typeoid;
+	char	   *opname;
+	bool		isArray;
+	bool		useOr;
+}	MulticornBaseQual;
+
+typedef struct MulticornConstQual
+{
+	MulticornBaseQual base;
+	Datum		value;
+}	MulticornConstQual;
+
+typedef struct MulticornVarQual
+{
+	MulticornBaseQual base;
+	AttrNumber	rightvarattno;
+}	MulticornVarQual;
+
+typedef struct MulticornParamQual
+{
+	MulticornBaseQual base;
+	Expr	   *expr;
+}	MulticornParamQual;
+
 /* errors.c */
 void		errorCheck(void);
-bool		try_except(char *exceptionname);
+bool		try_except(const char *exceptionname);
+bool		try_stopiteration(void);
 
 /* python.c */
 PyObject   *pgstringToPyUnicode(const char *string);
-char *     *pyUnicodeToPgString(PyObject* pyobject);
+char	  **pyUnicodeToPgString(PyObject *pyobject);
 
 PyObject   *getInstance(Oid foreigntableid);
 PyObject   *qualToPyObject(Expr *expr, PlannerInfo *root);
-PyObject   *getClassString(char *className);
+PyObject   *getClassString(const char *className);
 PyObject   *execute(ForeignScanState *state);
 void pythonResultToTuple(PyObject *p_value,
 					TupleTableSlot *slot,
@@ -103,11 +131,9 @@ List	   *pathKeys(MulticornPlanState * state);
 
 
 /* query.c */
-void extractRestrictions(PlannerInfo *root,
-					RelOptInfo *baserel,
+void extractRestrictions(Relids base_relids,
 					Expr *node,
-					List **quals,
-					List **params);
+					List **quals);
 List	   *extractColumns(List *reltargetlist, List *restrictinfolist);
 void initConversioninfo(ConversionInfo ** cinfo,
 				   AttInMetadata *attinmeta);
@@ -118,15 +144,14 @@ Value *colnameFromVar(Var *var, PlannerInfo *root,
 void		findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int startupCost);
 
 PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
-
 #endif   /* PG_MULTICORN_H */
 
-char * PyUnicode_AsPgString(PyObject* p_unicode);
+char	   *PyUnicode_AsPgString(PyObject *p_unicode);
 
 #if PY_MAJOR_VERSION >= 3
-PyObject * PyString_FromString(const char* s);
-PyObject * PyString_FromStringAndSize(const char* s, Py_ssize_t size);
-char * PyString_AsString(PyObject *unicode);
-int PyString_AsStringAndSize(PyObject *unicode, char** tempbuffer, Py_ssize_t *length);
-#endif
+PyObject   *PyString_FromString(const char *s);
+PyObject   *PyString_FromStringAndSize(const char *s, Py_ssize_t size);
+char	   *PyString_AsString(PyObject *unicode);
+int			PyString_AsStringAndSize(PyObject *unicode, char **tempbuffer, Py_ssize_t *length);
 
+#endif
