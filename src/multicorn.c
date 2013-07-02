@@ -12,6 +12,8 @@
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
+#include "optimizer/clauses.h"
+#include "optimizer/var.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
@@ -288,12 +290,12 @@ multicornGetForeignPlan(PlannerInfo *root,
 {
 	Index		scan_relid = baserel->relid;
 	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
+	ListCell   *lc;
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 	/* Extract the quals coming from a parameterized path, if any */
 	if (best_path->path.param_info)
 	{
-		ListCell   *lc;
 
 		foreach(lc, scan_clauses)
 		{

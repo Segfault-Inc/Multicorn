@@ -367,9 +367,15 @@ extractClauseFromOpExpr(Relids base_relids,
 	{
 		left = list_nth(op->args, 0);
 		right = list_nth(op->args, 1);
-		*quals = lappend(*quals, makeQual(left->varattno,
-										  getOperatorString(op->opno),
-										  right, false, false));
+		/* Do not add it if it either contains a mutable function, or makes */
+		/* self references in the right hand side. */
+		if (!(contain_volatile_functions((Node *) right) ||
+			  bms_is_subset(base_relids, pull_varnos((Node *) right))))
+		{
+			*quals = lappend(*quals, makeQual(left->varattno,
+											  getOperatorString(op->opno),
+											  right, false, false));
+		}
 	}
 }
 
@@ -386,10 +392,14 @@ extractClauseFromScalarArrayOpExpr(Relids base_relids,
 	{
 		left = list_nth(op->args, 0);
 		right = list_nth(op->args, 1);
-		*quals = lappend(*quals, makeQual(left->varattno,
-										  getOperatorString(op->opno),
-										  right, true,
-										  op->useOr));
+		if (!(contain_volatile_functions((Node *) right) ||
+			  bms_is_subset(base_relids, pull_varnos((Node *) right))))
+		{
+			*quals = lappend(*quals, makeQual(left->varattno,
+											  getOperatorString(op->opno),
+											  right, true,
+											  op->useOr));
+		}
 	}
 }
 

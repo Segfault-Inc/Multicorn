@@ -47,6 +47,33 @@ CREATE foreign table testmulticorn2 (
 
 select * from testmulticorn union all select * from testmulticorn2;
 
+create function test_function_immutable () returns varchar as $$
+    BEGIN
+        RETURN 'test';
+    END
+$$ immutable language plpgsql;
+
+create function test_function_stable () returns varchar as $$
+    BEGIN
+        RETURN 'test';
+    END
+$$  stable language plpgsql;
+
+create function test_function_volatile () returns varchar as $$
+    BEGIN
+        RETURN 'test';
+    END
+$$  volatile language plpgsql;
+
+select * from testmulticorn where test1 like test_function_immutable();
+
+select * from testmulticorn where test1 like test_function_stable();
+
+select * from testmulticorn where test1 like test_function_volatile();
+
+select * from testmulticorn where test1 like length(test2)::varchar;
+
+
 \set FETCH_COUNT 1000
 select * from testmulticorn;
 

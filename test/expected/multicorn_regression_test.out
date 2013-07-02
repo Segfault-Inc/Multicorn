@@ -329,6 +329,49 @@ NOTICE:  set(['test1', 'test2'])
  test1 3 19 | test2 1 19
 (40 rows)
 
+create function test_function_immutable () returns varchar as $$
+    BEGIN
+        RETURN 'test';
+    END
+$$ immutable language plpgsql;
+create function test_function_stable () returns varchar as $$
+    BEGIN
+        RETURN 'test';
+    END
+$$  stable language plpgsql;
+create function test_function_volatile () returns varchar as $$
+    BEGIN
+        RETURN 'test';
+    END
+$$  volatile language plpgsql;
+select * from testmulticorn where test1 like test_function_immutable();
+NOTICE:  [test1 ~~ test]
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 like test_function_stable();
+NOTICE:  [test1 ~~ test]
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 like test_function_volatile();
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 like length(test2)::varchar;
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
+
 \set FETCH_COUNT 1000
 select * from testmulticorn;
 NOTICE:  []
