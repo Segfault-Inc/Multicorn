@@ -298,7 +298,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                         olditem.full_filename)
                 newitem.write(fd)
             elif operation == 'delete':
-                os.unlink(values.full_filename)
+                values.remove()
                 self.structured_directory.clear_cache_entry(
                     values.full_filename)
         self._post_xact_cleanup()
@@ -307,7 +307,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         for operation, values in (
                 self.current_transaction_state[::-1]):
             if operation == 'insert':
-                os.unlink(values.full_filename)
+                values.remove()
             elif operation == 'update':
                 old_value, new_value = values
                 if new_value.full_filename != old_value.full_filename:

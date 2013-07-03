@@ -276,6 +276,9 @@ class Item(collections.Mapping):
         iof.write(self.content)
         iof.close()
 
+    def remove(self):
+        os.unlink(self.full_filename)
+
     # collections.Mapping interface:
 
     def __len__(self):
