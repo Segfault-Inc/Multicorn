@@ -149,14 +149,13 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                 content = self.updated_content.get(item.full_filename, None)
                 if content is None:
                     content = item.read()
-                    self.updated_content[item.full_filename] = content
                 new_item[content_column] = content
             if has_filename:
                 new_item[filename_column] = item.filename
             yield new_item
 
     def _item_from_dml(self, values):
-        content = values.pop(self.content_column, "")
+        content = values.pop(self.content_column, None)
         filename = values.pop(self.filename_column, None)
         item_from_filename = None
         item_from_values = None
@@ -223,6 +222,9 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         olditem = self.structured_directory.from_filename(oldfilename)
         olditem.content = self.updated_content.get(olditem.full_filename,
                                                    olditem.content)
+        if not olditem.content:
+            # No content yet
+            olditem.content = olditem.read()
         new_filename = newvalues.get(self.filename_column, oldfilename)
         filename_changed = new_filename != oldfilename
         values = {key: (None if value is None else str(value))
