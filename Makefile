@@ -8,9 +8,10 @@ DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test --load-language=plpgsql
+PY_LIBSPEC ?= $(python_libspec)
 PY_INCLUDESPEC ?= $(python_includespec)
 PY_ADDITIONAL_LIBS ?= $(python_additional_libs)
-SHLIB_LINK = $(PY_INCLUDESPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
+SHLIB_LINK = $(PY_LIBSPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
 PG_CPPFLAGS  = $(PY_INCLUDESPEC) $(CPPFLAGS)
 
 EXTENSION    = multicorn
@@ -25,6 +26,9 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
 preflight-check:
+	echo $(PY_INCLUDESPEC)
+	echo $(PY_ADDITIONAL_LIBS)
+	echo $(PY_LIBSPEC)
 	./preflight-check.sh
 
 python_code: setup.py
