@@ -30,7 +30,7 @@ With the `pgxn client`_::
 
 From pgxn::
 
-   wget http://api.pgxn.org/dist/multicorn/1.0.0beta1/multicorn-1.0.0beta1.zip
+   wget http://api.pgxn.org/dist/multicorn/1.0.0-beta1/multicorn-1.0.0-beta1.zip
    unzip multicorn-1.0.0beta1.zip
    cd multicorn-1.0.0beta1/
    make && sudo make install
