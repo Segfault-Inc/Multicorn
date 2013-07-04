@@ -26,9 +26,6 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
 preflight-check:
-	echo $(PY_INCLUDESPEC)
-	echo $(PY_ADDITIONAL_LIBS)
-	echo $(PY_LIBSPEC)
 	./preflight-check.sh
 
 python_code: setup.py
