@@ -8,9 +8,10 @@ DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test --load-language=plpgsql
-
-SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
-PG_CPPFLAGS  = $(python_includespec) $(CPPFLAGS)
+PY_INCLUDESPEC ?= $(python_includespec)
+PY_ADDITIONAL_LIBS ?= $(python_additional_libs)
+SHLIB_LINK = $(PY_INCLUDESPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
+PG_CPPFLAGS  = $(PY_INCLUDESPEC) $(CPPFLAGS)
 
 EXTENSION    = multicorn
 EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
