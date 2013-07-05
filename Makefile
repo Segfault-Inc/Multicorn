@@ -8,14 +8,33 @@ DOCS         = $(wildcard doc/*.md)
 TESTS        = $(wildcard test/sql/*.sql)
 REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test --load-language=plpgsql
+
 PY_LIBSPEC ?= $(python_libspec)
 PY_INCLUDESPEC ?= $(python_includespec)
 PY_ADDITIONAL_LIBS ?= $(python_additional_libs)
+
+ifdef PYTHON_OVERRIDE
+	override PYTHON = ${PYTHON_OVERRIDE}
+endif
+
+PY_VERSION = $(shell ${PYTHON} --version 2>&1 | awk '{ print substr($$2,1,3)}')
+
+PYTHON_CONFIG ?= python-config-${PY_VERSION}
+
+ifeq (${PY_LIBSPEC}, )
+	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
+endif
+
+ifeq ($(PY_INCLUDESPEC), )
+	PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
+endif
+
 SHLIB_LINK = $(PY_LIBSPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
 PG_CPPFLAGS  = $(PY_INCLUDESPEC) $(CPPFLAGS)
 
 EXTENSION    = multicorn
 EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
+
 
 
 all: preflight-check sql/$(EXTENSION)--$(EXTVERSION).sql
@@ -27,6 +46,7 @@ sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 
 preflight-check:
 	./preflight-check.sh
+
 
 python_code: setup.py
 	cp ./setup.py ./setup--$(EXTVERSION).py
@@ -47,3 +67,7 @@ EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
+
+ifeq (${PYTHON}, )
+	override PYTHON = python
+endif
