@@ -54,7 +54,7 @@ ifeq (${PYTHON}, )
 endif
 
 PY_VERSION = $(shell ${PYTHON} --version 2>&1 | awk '{ print substr($$2,1,3)}')
-PYTHON_CONFIG ?= python-config-${PY_VERSION}
+PYTHON_CONFIG ?= python${PY_VERSION}-config
 PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
 PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
 
