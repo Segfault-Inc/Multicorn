@@ -71,13 +71,14 @@ class ImapFdw(ForeignDataWrapper):
         self.login = options.get('login', None)
         self.password = options.get('password', None)
         self.folder = options.get('folder', 'INBOX')
+        self.imap_server_charset = options.get('imap_server_charset', 'UTF8')
         self.columns = columns
         self.payload_column = options.get('payload_column', None)
         self.flags_column = options.get('flags_column', None)
         self.internaldate_column = options.get('internaldate_column', None)
 
     def get_rel_size(self, quals, columns):
-        """Inform the planner that it can be EXTREMELY costly to use the 
+        """Inform the planner that it can be EXTREMELY costly to use the
         payload column, and that a query on Message-ID will return only one row."""
         width = len(columns) * 100
         nb_rows = 1000000
@@ -212,8 +213,9 @@ class ImapFdw(ForeignDataWrapper):
         except NoMatchPossible:
             matching_mails = []
         else:
-            matching_mails = self.imap_agent.search(charset="UTF8",
-                                                    criteria=conditions)
+            matching_mails = self.imap_agent.search(
+                charset=self.imap_server_charset,
+                criteria=conditions)
         if matching_mails:
             data = self.imap_agent.fetch(list(compact_fetch(matching_mails)),
                                          col_to_imap.values())
