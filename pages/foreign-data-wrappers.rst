@@ -333,6 +333,10 @@ Allowed options
 ``ssl`` (boolean)
   Wether to use ssl or not
 
+``imap_server_charset`` (string)
+  The name of the charset used for IMAP search commands. Defaults to UTF8. For
+  the cyrus IMAP server, it should be set to "utf-8".
+
 Server side filtering
 ---------------------
 
