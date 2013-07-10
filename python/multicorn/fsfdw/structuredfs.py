@@ -173,7 +173,7 @@ class Item(collections.Mapping):
     """
     Represents a single file in a :class:`StructuredDirectory`.
 
-    Can be used as a read-only mapping (dict-like) to access properties.
+    Can be used as a mapping (dict-like) to access properties.
 
     Note that at a given point in time, the actual file for an Item may or
     may not exist in the filesystem.
@@ -289,6 +289,9 @@ class Item(collections.Mapping):
 
     def __getitem__(self, name):
         return self._properties[name]
+
+    def __setitem__(self, name, value):
+        self._properties[name] = value
 
 
 class StructuredDirectory(object):

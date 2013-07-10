@@ -353,7 +353,6 @@ class ReStructuredTextFdw(FilesystemFdw):
         extract_meta = self.extract_meta
         for item in items:
             meta = extract_meta(item.full_filename)
-            item = dict(item)
             for column, key in keys:
                 item[column] = meta.get(key)
             yield item
