@@ -274,7 +274,8 @@ class Item(collections.Mapping):
         # syscall.
         iof = io.open(fd, 'wb', closefd=False,
                       buffering=0)
-        iof.write(self.content)
+        if self.content is not None:
+            iof.write(self.content)
         iof.close()
 
     def remove(self):
