@@ -238,7 +238,7 @@ class Item(collections.Mapping):
                 # file already exists.
                 dirname = os.path.dirname(self.full_filename)
                 if not os.path.exists(dirname):
-                    os.makedirs(dirname)
+                    os.makedirs(dirname, self.directory.file_mode)
                 flags = os.O_SYNC | os.O_RDWR
                 if fail_if == 'exists':
                     flags = flags | os.O_CREAT | os.O_EXCL
@@ -246,7 +246,8 @@ class Item(collections.Mapping):
                     flags = flags | os.O_CREAT
                 if self._fd is not None:
                     os.close(self._fd)
-                self._fd = os.open(self.full_filename, flags)
+                self._fd = os.open(self.full_filename, flags,
+                                   self.directory.file_mode)
             fcntl.flock(self._fd, fcntl.LOCK_EX)
             self.directory.cache[self.full_filename] = (self._fd, shared_lock)
         return self._fd
@@ -300,12 +301,13 @@ class StructuredDirectory(object):
     :param pattern: Pattern for files in this directory,
                     eg. '{category}/{number}_{name}.txt'
     """
-    def __init__(self, root_dir, pattern):
+    def __init__(self, root_dir, pattern, file_mode=0o700):
         self.root_dir = unicode_(root_dir)
         self.pattern = unicode_(pattern)
         # Cache for file descriptors.
         self.cache = {}
         parts_re, parts_properties = _parse_pattern(self.pattern)
+        self.file_mode = file_mode
         self._path_parts_re = parts_re
         self._path_parts_properties = parts_properties
         self.properties = set(prop for part in parts_properties
