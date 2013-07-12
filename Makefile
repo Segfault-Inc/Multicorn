@@ -45,21 +45,26 @@ PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
-ifdef PYTHON_OVERRIDE
-	override PYTHON = ${PYTHON_OVERRIDE}
+ifeq ($(with_python),yes)
+	SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
+	override CPPFLAGS := -I. -I$(srcdir) $(python_includespec) $(CPPFLAGS)
+else
+	ifdef PYTHON_OVERRIDE
+		override PYTHON = ${PYTHON_OVERRIDE}
+	endif
+
+	ifeq (${PYTHON}, )
+		override PYTHON = python
+	endif
+
+	PY_VERSION = $(shell ${PYTHON} --version 2>&1 | awk '{ print substr($$2,1,3)}')
+	PYTHON_CONFIG ?= python${PY_VERSION}-config
+
+	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
+	PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
+	PY_CFLAGS = $(shell ${PYTHON_CONFIG} --cflags)
+	PY_LDFLAGS = $(shell ${PYTHON_CONFIG} --ldflags)
+	SHLIB_LINK = $(PY_LIBSPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
+	override PG_CPPFLAGS  := $(PY_INCLUDESPEC) $(PG_CPPFLAGS)
+	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
-
-ifeq (${PYTHON}, )
-	override PYTHON = python
-endif
-
-PY_VERSION = $(shell ${PYTHON} --version 2>&1 | awk '{ print substr($$2,1,3)}')
-PYTHON_CONFIG ?= python${PY_VERSION}-config
-PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
-PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
-PY_CFLAGS = $(shell ${PYTHON_CONFIG} --cflags)
-PY_LDFLAGS = $(shell ${PYTHON_CONFIG} --ldflags)
-
-SHLIB_LINK = $(PY_LIBSPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS)) $(PY_LDFLAGS)
-override PG_CPPFLAGS  := $(PY_INCLUDESPEC) $(PG_CPPFLAGS) $(PY_CFLAGS)
-override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
