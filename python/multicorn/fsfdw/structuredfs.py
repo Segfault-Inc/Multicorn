@@ -238,7 +238,9 @@ class Item(collections.Mapping):
                 # file already exists.
                 dirname = os.path.dirname(self.full_filename)
                 if not os.path.exists(dirname):
+                    umask = os.umask(0)
                     os.makedirs(dirname, self.directory.file_mode)
+                    os.umask(umask)
                 flags = os.O_SYNC | os.O_RDWR
                 if fail_if == 'exists':
                     flags = flags | os.O_CREAT | os.O_EXCL
@@ -246,8 +248,11 @@ class Item(collections.Mapping):
                     flags = flags | os.O_CREAT
                 if self._fd is not None:
                     os.close(self._fd)
+
+                umask = os.umask(0)
                 self._fd = os.open(self.full_filename, flags,
                                    self.directory.file_mode)
+                os.umask(umask)
             fcntl.flock(self._fd, fcntl.LOCK_EX)
             self.directory.cache[self.full_filename] = (self._fd, shared_lock)
         return self._fd
