@@ -18,8 +18,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         log_to_postgres(str(dict([(key, column.type_name) for key, column in
                                   columns.items()])))
         if self.test_type == 'logger':
-            log_to_postgres(u"An error is about to occur", WARNING)
-            log_to_postgres(u"An error occured", ERROR)
+            log_to_postgres("An error is about to occur", WARNING)
+            log_to_postgres("An error occured", ERROR)
 
     def execute(self, quals, columns):
         log_to_postgres(str(quals))

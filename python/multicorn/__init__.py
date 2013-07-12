@@ -71,7 +71,7 @@ class Qual(object):
         else:
             value = self.value
             operator = self.operator
-        return (u"%s %s %s" % (self.field_name, operator, value))
+        return ("%s %s %s" % (self.field_name, operator, value))
 
     def __eq__(self, other):
         if isinstance(other, Qual):
