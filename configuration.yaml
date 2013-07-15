@@ -9,9 +9,6 @@ menu:
       link: /
   - News:
       link: /news/
-  # Not online yet
-#  - Demo:
-#      link: http://trymulticorn.org/
   - Documentation:
       link: /documentation/
   - Contribute:
@@ -30,9 +27,8 @@ vcs (git):
 code browser (github):
   project name: Kozea/Multicorn
 
-bug tracker (redmine):
-  base url: http://redmine.kozea.fr/
-  project name: multicorn
+bug tracker (github):
+  project name: Kozea/Multicorn
 
 continuous integration (jenkins):
   base url: http://jenkins.kozea.org/
