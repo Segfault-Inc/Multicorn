@@ -400,6 +400,19 @@ NOTICE:  set(['test1', 'test2'])
  test1 3 19 | test2 1 19
 (20 rows)
 
+-- Test that zero values are converted to zero and not null
+ALTER FOREIGN TABLE testmulticorn options (add test_type 'int');
+ALTER FOREIGN TABLE testmulticorn alter test1 type integer;
+select * from testmulticorn limit 1;
+NOTICE:  {'test_type': 'int', 'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'integer', 'test2': 'character varying'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+     0 | 0
+(1 row)
+
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 4 other objects
 DETAIL:  drop cascades to server multicorn_srv

@@ -921,7 +921,7 @@ pythonDictToTuple(PyObject *p_value,
 			values[i] = pyobjectToDatum(p_object,
 										buffer,
 										cinfos[cinfo_idx]);
-			if (values[i] == (Datum) NULL)
+			if (buffer->data == NULL)
 			{
 				nulls[i] = true;
 			}
@@ -969,7 +969,7 @@ pythonSequenceToTuple(PyObject *p_value,
 		resetStringInfo(buffer);
 		values[i] = pyobjectToDatum(p_object, buffer,
 									cinfos[cinfo_idx]);
-		if (values[i] == (Datum) NULL)
+		if (buffer->data == NULL)
 		{
 			nulls[i] = true;
 		}
