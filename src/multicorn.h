@@ -31,6 +31,9 @@ typedef struct ConversionInfo
 	Oid			attioparam;
 	int32		atttypmod;
 	int			attnum;
+	bool		is_array;
+	int			attndims;
+	bool		need_quote;
 }	ConversionInfo;
 
 

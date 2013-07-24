@@ -97,7 +97,6 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 		if (!attr->attisdropped)
 		{
 			ConversionInfo *cinfo = palloc0(sizeof(ConversionInfo));
-
 			cinfo->atttypoid = attr->atttypid;
 			cinfo->atttypmod = attinmeta->atttypmods[i];
 			cinfo->attioparam = attinmeta->attioparams[i];
@@ -105,6 +104,8 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 			cinfo->encodingname = getEncodingFromAttribute(attr);
 			cinfo->attrname = NameStr(attr->attname);
 			cinfo->attnum = i + 1;
+			cinfo->attndims = attr->attndims;
+			cinfo->need_quote = false;
 			cinfos[i] = cinfo;
 		}
 		else

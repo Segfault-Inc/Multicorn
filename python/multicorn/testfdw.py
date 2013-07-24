@@ -36,17 +36,21 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                 for column_name in self.columns:
                     if self.test_type == 'list':
                         line[column_name] = [column_name, next(random_thing),
-                                             index]
+                                             index, '%s,"%s"' % (column_name, index),
+                                             "{some value, 2}"]
                     elif self.test_type == 'dict':
                         line[column_name] = {"column_name": column_name,
                                              "repeater": next(random_thing),
-                                             "index": index}
+                                             "index": index,
+                                             "maybe_hstore": "a => b"}
                     elif self.test_type == 'date':
                         line[column_name] = datetime(2011, (index % 12) + 1,
                                                      next(random_thing), 14,
                                                      30, 25)
                     elif self.test_type == 'int':
                         line[column_name] = index
+                    elif self.test_type == 'nested_list':
+                        line[column_name] = [[column_name], [next(random_thing), "{some value, 2}"], [index, '%s,"%s"' % (column_name, index)]]
                     else:
                         line[column_name] = '%s %s %s' % (column_name,
                                                           next(random_thing),
