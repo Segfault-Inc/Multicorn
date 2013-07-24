@@ -81,6 +81,14 @@ void pymappingToCString(PyObject *pyobject, StringInfo buffer,
 void pydateToCString(PyObject *pyobject, StringInfo buffer,
 				ConversionInfo * cinfo);
 
+void pyunknownToCstring(PyObject *pyobject, StringInfo buffer,
+				   ConversionInfo * cinfo);
+
+void appendBinaryStringInfoQuote(StringInfo buffer,
+							char *tempbuffer,
+							Py_ssize_t strlength,
+							bool need_quote);
+
 /* Hash table mapping oid to fdw instances */
 static HTAB *InstancesHash;
 
@@ -198,6 +206,41 @@ getClass(PyObject *className)
 	errorCheck();
 	Py_DECREF(p_multicorn);
 	return p_class;
+}
+
+void
+appendBinaryStringInfoQuote(StringInfo buffer,
+							char *tempbuffer,
+							Py_ssize_t strlength,
+							bool need_quote)
+{
+	if (need_quote)
+	{
+		char	   *c;
+		int			i;
+
+		appendStringInfoChar(buffer, '"');
+		for (c = tempbuffer, i = 0; i < strlength; ++i, ++c)
+		{
+			if (*c == '"')
+			{
+				appendBinaryStringInfo(buffer, "\\\"", 2);
+			}
+			else if (*c == '\\')
+			{
+				appendBinaryStringInfo(buffer, "\\\\", 2);
+			}
+			else
+			{
+				appendStringInfoChar(buffer, *c);
+			}
+		}
+		appendStringInfoChar(buffer, '"');
+	}
+	else
+	{
+		appendBinaryStringInfo(buffer, tempbuffer, strlength);
+	}
 }
 
 /*
@@ -772,7 +815,6 @@ pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
 	Py_ssize_t	unicode_size;
 	char	   *tempbuffer;
 	Py_ssize_t	strlength = 0;
-
 	PyObject   *pTempStr;
 
 	unicode_size = PyUnicode_GET_SIZE(pyobject);
@@ -781,7 +823,7 @@ pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
 								getPythonEncodingName(), NULL);
 	errorCheck();
 	PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
-	appendBinaryStringInfo(buffer, tempbuffer, strlength);
+	appendBinaryStringInfoQuote(buffer, tempbuffer, strlength, cinfo->need_quote);
 	Py_DECREF(pTempStr);
 }
 
@@ -799,7 +841,7 @@ pystringToCString(PyObject *pyobject, StringInfo buffer,
 						cinfo->attrname),
 				 errhint("You should maybe return unicode instead?")));
 	}
-	appendBinaryStringInfo(buffer, tempbuffer, strlength);
+	appendBinaryStringInfoQuote(buffer, tempbuffer, strlength, cinfo->need_quote);
 }
 
 void
@@ -810,8 +852,19 @@ pysequenceToCString(PyObject *pyobject, StringInfo buffer,
 	Py_ssize_t	i,
 				size = PySequence_Size(pyobject);
 	PyObject   *p_item;
+	int			previous_dims = cinfo->attndims,
+				previous_needquote = cinfo->need_quote;
 
+	if (cinfo->attndims == 0)
+	{
+		/* We are not supposed to be converted to an array. */
+		pyunknownToCstring(pyobject, buffer, cinfo);
+		return;
+	}
 	appendStringInfoChar(buffer, '{');
+	/* We are an array, so we need to quote stuff */
+	cinfo->need_quote = true;
+	cinfo->attndims = cinfo->attndims - 1;
 	for (i = 0; i < size; i++)
 	{
 		p_item = PySequence_GetItem(pyobject, i);
@@ -823,6 +876,8 @@ pysequenceToCString(PyObject *pyobject, StringInfo buffer,
 		}
 	}
 	appendStringInfoChar(buffer, '}');
+	cinfo->attndims = previous_dims;
+	cinfo->need_quote = previous_needquote;
 }
 
 void
@@ -833,7 +888,9 @@ pymappingToCString(PyObject *pyobject, StringInfo buffer,
 	PyObject   *current_tuple;
 	Py_ssize_t	i;
 	Py_ssize_t	size = PyList_Size(items);
+	bool		need_quote = cinfo->need_quote;
 
+	cinfo->need_quote = true;
 	for (i = 0; i < size; i++)
 	{
 		current_tuple = PySequence_GetItem(items, i);
@@ -849,6 +906,7 @@ pymappingToCString(PyObject *pyobject, StringInfo buffer,
 		Py_DECREF(current_tuple);
 	}
 	Py_DECREF(items);
+	cinfo->need_quote = need_quote;
 }
 
 void
@@ -905,20 +963,22 @@ pyobjectToCString(PyObject *pyobject, StringInfo buffer,
 		pydateToCString(pyobject, buffer, cinfo);
 		return;
 	}
-	/* Default handling for unknown objects */
-	{
-		PyObject   *pTempStr = PyObject_Bytes(pyobject);
-		char	   *tempbuffer;
-		Py_ssize_t	strlength;
-
-		PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
-		appendBinaryStringInfo(buffer, tempbuffer, strlength);
-		Py_DECREF(pTempStr);
-		return;
-	}
-
+	pyunknownToCstring(pyobject, buffer, cinfo);
 }
 
+void
+pyunknownToCstring(PyObject *pyobject, StringInfo buffer,
+				   ConversionInfo * cinfo)
+{
+	PyObject   *pTempStr = PyObject_Bytes(pyobject);
+	char	   *tempbuffer;
+	Py_ssize_t	strlength;
+
+	PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
+	appendBinaryStringInfoQuote(buffer, tempbuffer, strlength, cinfo->need_quote);
+	Py_DECREF(pTempStr);
+	return;
+}
 
 void
 pythonDictToTuple(PyObject *p_value,

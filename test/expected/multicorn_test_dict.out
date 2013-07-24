@@ -18,28 +18,28 @@ NOTICE:  {'test_type': 'dict', 'usermapping': 'test', 'option1': 'option1'}
 NOTICE:  {'test1': 'hstore', 'test2': 'hstore'}
 NOTICE:  []
 NOTICE:  set(['test1', 'test2'])
-                         test1                          |                         test2                          
---------------------------------------------------------+--------------------------------------------------------
- "index"=>"0", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"0", "repeater"=>"2", "column_name"=>"test2"
- "index"=>"1", "repeater"=>"3", "column_name"=>"test1"  | "index"=>"1", "repeater"=>"1", "column_name"=>"test2"
- "index"=>"2", "repeater"=>"2", "column_name"=>"test1"  | "index"=>"2", "repeater"=>"3", "column_name"=>"test2"
- "index"=>"3", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"3", "repeater"=>"2", "column_name"=>"test2"
- "index"=>"4", "repeater"=>"3", "column_name"=>"test1"  | "index"=>"4", "repeater"=>"1", "column_name"=>"test2"
- "index"=>"5", "repeater"=>"2", "column_name"=>"test1"  | "index"=>"5", "repeater"=>"3", "column_name"=>"test2"
- "index"=>"6", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"6", "repeater"=>"2", "column_name"=>"test2"
- "index"=>"7", "repeater"=>"3", "column_name"=>"test1"  | "index"=>"7", "repeater"=>"1", "column_name"=>"test2"
- "index"=>"8", "repeater"=>"2", "column_name"=>"test1"  | "index"=>"8", "repeater"=>"3", "column_name"=>"test2"
- "index"=>"9", "repeater"=>"1", "column_name"=>"test1"  | "index"=>"9", "repeater"=>"2", "column_name"=>"test2"
- "index"=>"10", "repeater"=>"3", "column_name"=>"test1" | "index"=>"10", "repeater"=>"1", "column_name"=>"test2"
- "index"=>"11", "repeater"=>"2", "column_name"=>"test1" | "index"=>"11", "repeater"=>"3", "column_name"=>"test2"
- "index"=>"12", "repeater"=>"1", "column_name"=>"test1" | "index"=>"12", "repeater"=>"2", "column_name"=>"test2"
- "index"=>"13", "repeater"=>"3", "column_name"=>"test1" | "index"=>"13", "repeater"=>"1", "column_name"=>"test2"
- "index"=>"14", "repeater"=>"2", "column_name"=>"test1" | "index"=>"14", "repeater"=>"3", "column_name"=>"test2"
- "index"=>"15", "repeater"=>"1", "column_name"=>"test1" | "index"=>"15", "repeater"=>"2", "column_name"=>"test2"
- "index"=>"16", "repeater"=>"3", "column_name"=>"test1" | "index"=>"16", "repeater"=>"1", "column_name"=>"test2"
- "index"=>"17", "repeater"=>"2", "column_name"=>"test1" | "index"=>"17", "repeater"=>"3", "column_name"=>"test2"
- "index"=>"18", "repeater"=>"1", "column_name"=>"test1" | "index"=>"18", "repeater"=>"2", "column_name"=>"test2"
- "index"=>"19", "repeater"=>"3", "column_name"=>"test1" | "index"=>"19", "repeater"=>"1", "column_name"=>"test2"
+                                      test1                                       |                                      test2                                       
+----------------------------------------------------------------------------------+----------------------------------------------------------------------------------
+ "index"=>"0", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"0", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"1", "repeater"=>"3", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"1", "repeater"=>"1", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"2", "repeater"=>"2", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"2", "repeater"=>"3", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"3", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"3", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"4", "repeater"=>"3", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"4", "repeater"=>"1", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"5", "repeater"=>"2", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"5", "repeater"=>"3", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"6", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"6", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"7", "repeater"=>"3", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"7", "repeater"=>"1", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"8", "repeater"=>"2", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"8", "repeater"=>"3", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"9", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"9", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"10", "repeater"=>"3", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"10", "repeater"=>"1", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"11", "repeater"=>"2", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"11", "repeater"=>"3", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"12", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"12", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"13", "repeater"=>"3", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"13", "repeater"=>"1", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"14", "repeater"=>"2", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"14", "repeater"=>"3", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"15", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"15", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"16", "repeater"=>"3", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"16", "repeater"=>"1", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"17", "repeater"=>"2", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"17", "repeater"=>"3", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"18", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"18", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
+ "index"=>"19", "repeater"=>"3", "column_name"=>"test1", "maybe_hstore"=>"a => b" | "index"=>"19", "repeater"=>"1", "column_name"=>"test2", "maybe_hstore"=>"a => b"
 (20 rows)
 
 select test1 -> 'repeater' as r from testmulticorn order by r;

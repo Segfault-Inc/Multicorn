@@ -101,6 +101,8 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 			cinfo->attinfunc = &attinmeta->attinfuncs[i];
 			cinfo->attrname = NameStr(attr->attname);
 			cinfo->attnum = i + 1;
+			cinfo->attndims = attr->attndims;
+			cinfo->need_quote = false;
 			cinfos[i] = cinfo;
 		}
 		else
