@@ -413,6 +413,20 @@ NOTICE:  set(['test1', 'test2'])
      0 | 0
 (1 row)
 
+ALTER FOREIGN TABLE testmulticorn options (drop test_type);
+-- Test operations with bytea
+ALTER FOREIGN TABLE testmulticorn alter test2 type bytea;
+ALTER FOREIGN TABLE testmulticorn alter test1 type bytea;
+select encode(test1, 'escape') from testmulticorn where test2 = 'test2 1 19'::bytea;
+NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'bytea', 'test2': 'bytea'}
+NOTICE:  [test2 = test2 1 19]
+NOTICE:  set(['test1', 'test2'])
+   encode   
+------------
+ test1 3 19
+(1 row)
+
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 4 other objects
 DETAIL:  drop cascades to server multicorn_srv

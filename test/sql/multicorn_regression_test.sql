@@ -84,4 +84,12 @@ ALTER FOREIGN TABLE testmulticorn alter test1 type integer;
 
 select * from testmulticorn limit 1;
 
+ALTER FOREIGN TABLE testmulticorn options (drop test_type);
+
+-- Test operations with bytea
+ALTER FOREIGN TABLE testmulticorn alter test2 type bytea;
+ALTER FOREIGN TABLE testmulticorn alter test1 type bytea;
+
+select encode(test1, 'escape') from testmulticorn where test2 = 'test2 1 19'::bytea;
+
 DROP EXTENSION multicorn cascade;
