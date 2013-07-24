@@ -1,0 +1,62 @@
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE foreign table testmulticorn (
+    test1 character varying options (prefix 'test'),
+    test2 character varying
+) server multicorn_srv options (
+    option1 'option1'
+);
+select * from testmulticorn limit 1;
+NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  Column test1 options: {'prefix': 'test'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+   test1   |   test2   
+-----------+-----------
+ test1 1 0 | test2 2 0
+(1 row)
+
+ALTER foreign table testmulticorn alter test1 options (set prefix 'test2');
+select * from testmulticorn limit 1;
+NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  Column test1 options: {'prefix': 'test2'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+   test1   |   test2   
+-----------+-----------
+ test1 1 0 | test2 2 0
+(1 row)
+
+ALTER foreign table testmulticorn alter test1 options (drop prefix);
+select * from testmulticorn limit 1;
+NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+   test1   |   test2   
+-----------+-----------
+ test1 1 0 | test2 2 0
+(1 row)
+
+ALTER foreign table testmulticorn alter test1 options (add prefix 'test3');
+select * from testmulticorn limit 1;
+NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  Column test1 options: {'prefix': 'test3'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+   test1   |   test2   
+-----------+-----------
+ test1 1 0 | test2 2 0
+(1 row)
+
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to user mapping for postgres
+drop cascades to foreign table testmulticorn

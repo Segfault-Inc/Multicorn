@@ -17,6 +17,10 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         log_to_postgres(str(options))
         log_to_postgres(str(dict([(key, column.type_name) for key, column in
                                   columns.items()])))
+        for column in columns.values():
+            if column.options:
+                log_to_postgres('Column %s options: %s' %
+                                (column.column_name, column.options))
         if self.test_type == 'logger':
             log_to_postgres("An error is about to occur", WARNING)
             log_to_postgres("An error occured", ERROR)
@@ -33,7 +37,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                                               next(random_thing), index))
             else:
                 line = {}
-                for column_name in self.columns:
+                for column_name, column in self.columns.items():
                     if self.test_type == 'list':
                         line[column_name] = [column_name, next(random_thing),
                                              index]

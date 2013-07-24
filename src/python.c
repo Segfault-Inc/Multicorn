@@ -18,7 +18,7 @@
 
 
 List	   *getOptions(Oid foreigntableid);
-PyObject   *optionsListToPyDict(List *options);
+PyObject   *optionsListToPyDict(List *options, bool check_wrapper);
 bool		compareOptions(List *options1, List *options2);
 
 void		getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns);
@@ -284,7 +284,7 @@ getOptions(Oid foreigntableid)
  *
  * */
 PyObject *
-optionsListToPyDict(List *options)
+optionsListToPyDict(List *options, bool check_wrapper)
 {
 	ListCell   *lc;
 	PyObject   *p_options_dict = PyDict_New();
@@ -295,14 +295,14 @@ optionsListToPyDict(List *options)
 		DefElem    *def = (DefElem *) lfirst(lc);
 		PyObject   *pStr = PyString_FromString((char *) defGetString(def));
 
-		if (strcmp(def->defname, "wrapper") == 0)
+		if (check_wrapper && strcmp(def->defname, "wrapper") == 0)
 		{
 			got_module = true;
 		}
 		PyDict_SetItemString(p_options_dict, def->defname, pStr);
 		Py_DECREF(pStr);
 	}
-	if (!got_module)
+	if (check_wrapper && !got_module)
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_OPTION_NAME_NOT_FOUND),
@@ -319,7 +319,8 @@ compareOptions(List *options1, List *options2)
 	ListCell   *lc1,
 			   *lc2;
 
-	if (options1->length != options2->length)
+
+	if (list_length(options1) != list_length(options2))
 	{
 		return false;
 	}
@@ -368,18 +369,25 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 				Oid			typOid = att->atttypid;
 				char	   *key = NameStr(att->attname);
 				char	   *formatted_type = format_type_be(typOid);
+				List	   *options = GetForeignColumnOptions(att->attrelid,
+															  att->attnum);
+				PyObject   *p_options = optionsListToPyDict(options, false);
 				PyObject   *column = PyObject_CallFunction(p_columnclass,
-														   "(s,i,s)",
+														   "(s,i,s,O)",
 														   key,
 														   typOid,
-														   formatted_type);
+														   formatted_type,
+														   p_options);
 				List	   *columnDef = NULL;
 
+				errorCheck();
 				columnDef = lappend(columnDef, makeString(key));
 				columnDef = lappend_oid(columnDef, typOid);
 				columnDef = lappend(columnDef, makeString(formatted_type));
+				columnDef = lappend(columnDef, options);
 				columns_list = lappend(columns_list, columnDef);
 				PyMapping_SetItemString(columns_dict, key, column);
+				Py_DECREF(p_options);
 				Py_DECREF(column);
 			}
 		}
@@ -417,6 +425,10 @@ compareColumns(List *columns1, List *columns2)
 			return false;
 		}
 		if (strcmp(strVal(lthird(coldef1)), strVal(lthird(coldef2))) != 0)
+		{
+			return false;
+		}
+		if (!compareOptions(lfourth(coldef1), lfourth(coldef2)))
 		{
 			return false;
 		}
@@ -505,7 +517,7 @@ getInstance(Oid foreigntableid)
 	}
 	if (needInitialization)
 	{
-		PyObject   *p_options = optionsListToPyDict(options),
+		PyObject   *p_options = optionsListToPyDict(options, true),
 				   *p_class = getClass(PyDict_GetItemString(p_options,
 															"wrapper"));
 
