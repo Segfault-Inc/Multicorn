@@ -39,6 +39,10 @@ release-zip: all
 	zip -r ./multicorn-$(EXTVERSION).zip ./multicorn-$(EXTVERSION)/
 	rm ./multicorn-$(EXTVERSION) -rf
 
+coverage:
+	lcov -d . -c -o lcov.info
+	genhtml --show-details --legend --output-directory=coverage --title=PostgreSQL --num-spaces=4 --prefix=./src/ `find . -name lcov.info -print`
+
 DATA = $(wildcard sql/*--*.sql)
 EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip
 PG_CONFIG ?= pg_config
