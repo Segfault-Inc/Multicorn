@@ -33,6 +33,9 @@ PyObject *pythonQual(char *operatorname, Datum dvalue,
 		   bool use_or,
 		   Oid typeoid);
 
+const char *getPythonEncodingName(void);
+
+
 
 Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
 				ConversionInfo * cinfo);
@@ -90,6 +93,22 @@ typedef struct CacheEntry
 	/* Keep the "options" and "columns" in a specific context to avoid leaks. */
 	MemoryContext cacheContext;
 }	CacheEntry;
+
+
+/*
+ * Get a (python) encoding name for an attribute.
+ */
+const char *
+getPythonEncodingName()
+{
+	const char *encoding_name = GetDatabaseEncodingName();
+
+	if (strcmp(encoding_name, "SQL_ASCII") == 0)
+	{
+		encoding_name = "ascii";
+	}
+	return encoding_name;
+}
 
 
 char *
@@ -415,20 +434,29 @@ compareColumns(List *columns1, List *columns2)
 	{
 		List	   *coldef1 = lfirst(lc1);
 		List	   *coldef2 = lfirst(lc2);
+		ListCell   *cell1 = list_head(coldef1),
+				   *cell2 = list_head(coldef2);
 
-		if (strcmp(strVal(linitial(coldef1)), strVal(linitial(coldef2))) != 0)
+		if (strcmp(strVal(lfirst(cell1)), strVal(lfirst(cell2))) != 0)
 		{
 			return false;
 		}
-		if (lsecond_oid(coldef1) != lsecond_oid(coldef2))
+		cell1 = lnext(cell1);
+		cell2 = lnext(cell2);
+		if (lfirst_oid(cell1) != lfirst_oid(cell2))
 		{
 			return false;
 		}
-		if (strcmp(strVal(lthird(coldef1)), strVal(lthird(coldef2))) != 0)
+		cell1 = lnext(cell1);
+		cell2 = lnext(cell2);
+		if (strcmp(strVal(lfirst(cell1)), strVal(lfirst(cell2))) != 0)
 		{
 			return false;
 		}
-		if (!compareOptions(lfourth(coldef1), lfourth(coldef2)))
+		cell1 = lnext(cell1);
+		cell2 = lnext(cell2);
+		/* Compare column options */
+		if (!compareOptions(lfirst(cell1), lfirst(cell2)))
 		{
 			return false;
 		}
@@ -750,23 +778,16 @@ pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
 	char	   *tempbuffer;
 	Py_ssize_t	strlength = 0;
 
-	unicode_size = PyUnicode_GET_SIZE(pyobject);
-	if (!cinfo || !cinfo->encodingname)
-	{
-		PyString_AsStringAndSize(pyobject, &tempbuffer, &strlength);
-		appendBinaryStringInfo(buffer, tempbuffer, strlength);
-	}
-	else
-	{
-		PyObject   *pTempStr;
+	PyObject   *pTempStr;
 
-		pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(pyobject),
-									unicode_size,
-									cinfo->encodingname, NULL);
-		PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
-		appendBinaryStringInfo(buffer, tempbuffer, strlength);
-		Py_DECREF(pTempStr);
-	}
+	unicode_size = PyUnicode_GET_SIZE(pyobject);
+	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(pyobject),
+								unicode_size,
+								getPythonEncodingName(), NULL);
+	errorCheck();
+	PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
+	appendBinaryStringInfo(buffer, tempbuffer, strlength);
+	Py_DECREF(pTempStr);
 }
 
 void
@@ -1064,15 +1085,7 @@ datumStringToPython(Datum datum, ConversionInfo * cinfo)
 
 	temp = TextDatumGetCString(datum);
 	size = strlen(temp);
-	if (!cinfo || !cinfo->encodingname)
-	{
-		result = PyString_FromString(temp);
-	}
-	else
-	{
-		result = PyUnicode_Decode(temp, size, cinfo->encodingname,
-								  NULL);
-	}
+	result = PyUnicode_Decode(temp, size, getPythonEncodingName(), NULL);
 	return result;
 }
 

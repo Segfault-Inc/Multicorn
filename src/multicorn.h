@@ -25,7 +25,6 @@
 typedef struct ConversionInfo
 {
 	char	   *attrname;
-	const char *encodingname;
 	FmgrInfo   *attinfunc;
 	Oid			atttypoid;
 	Oid			attioparam;

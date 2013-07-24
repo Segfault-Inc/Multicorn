@@ -51,6 +51,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                                                      30, 25)
                     elif self.test_type == 'int':
                         line[column_name] = index
+                    elif self.test_type == 'encoding':
+                        line[column_name] = u'éà¤'
                     else:
                         line[column_name] = '%s %s %s' % (column_name,
                                                           next(random_thing),

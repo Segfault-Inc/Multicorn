@@ -9,9 +9,6 @@
 #include "utils/lsyscache.h"
 #include "parser/parsetree.h"
 
-const char *getEncodingFromAttribute(Form_pg_attribute attribute);
-
-
 void extractClauseFromOpExpr(Relids base_relids,
 						OpExpr *node,
 						List **quals);
@@ -102,7 +99,6 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 			cinfo->atttypmod = attinmeta->atttypmods[i];
 			cinfo->attioparam = attinmeta->attioparams[i];
 			cinfo->attinfunc = &attinmeta->attinfuncs[i];
-			cinfo->encodingname = getEncodingFromAttribute(attr);
 			cinfo->attrname = NameStr(attr->attname);
 			cinfo->attnum = i + 1;
 			cinfos[i] = cinfo;
@@ -114,41 +110,6 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 	}
 }
 
-/*
- * Get a (python) encoding name for an attribute.
- */
-const char *
-getEncodingFromAttribute(Form_pg_attribute attribute)
-{
-	HeapTuple	tp;
-	Form_pg_collation colltup;
-	const char *encoding_name;
-
-	if (attribute->attcollation == 0)
-	{
-		return "ascii";
-	}
-	tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(attribute->attcollation));
-	if (!HeapTupleIsValid(tp))
-		elog(ERROR, "cache lookup failed for collation %u",
-			 attribute->attcollation);
-	colltup = (Form_pg_collation) GETSTRUCT(tp);
-	ReleaseSysCache(tp);
-	if (colltup->collencoding == -1)
-	{
-		/* No encoding information, do stupid things */
-		encoding_name = GetDatabaseEncodingName();
-	}
-	else
-	{
-		encoding_name = (char *) pg_encoding_to_char(colltup->collencoding);
-	}
-	if (strcmp(encoding_name, "SQL_ASCII") == 0)
-	{
-		encoding_name = "ascii";
-	}
-	return encoding_name;
-}
 
 char *
 getOperatorString(Oid opoid)

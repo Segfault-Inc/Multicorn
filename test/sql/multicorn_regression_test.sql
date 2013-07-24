@@ -74,12 +74,15 @@ select * from testmulticorn where test1 like test_function_volatile();
 select * from testmulticorn where test1 like length(test2)::varchar;
 
 
-
 \set FETCH_COUNT 1000
 select * from testmulticorn;
 
+ALTER FOREIGN TABLE testmulticorn options (add test_type 'encoding');
+
+select * from testmulticorn limit 1;
+
 -- Test that zero values are converted to zero and not null
-ALTER FOREIGN TABLE testmulticorn options (add test_type 'int');
+ALTER FOREIGN TABLE testmulticorn options (set test_type 'int');
 ALTER FOREIGN TABLE testmulticorn alter test1 type integer;
 
 select * from testmulticorn limit 1;
