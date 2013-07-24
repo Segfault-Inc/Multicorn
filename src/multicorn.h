@@ -104,8 +104,6 @@ typedef struct MulticornParamQual
 
 /* errors.c */
 void		errorCheck(void);
-bool		try_except(const char *exceptionname);
-bool		try_stopiteration(void);
 
 /* python.c */
 PyObject   *pgstringToPyUnicode(const char *string);
