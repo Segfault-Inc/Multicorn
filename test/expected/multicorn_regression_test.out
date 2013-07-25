@@ -400,8 +400,19 @@ NOTICE:  set(['test1', 'test2'])
  test1 3 19 | test2 1 19
 (20 rows)
 
+ALTER FOREIGN TABLE testmulticorn options (add test_type 'encoding');
+select * from testmulticorn limit 1;
+NOTICE:  {'test_type': 'encoding', 'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+ éà¤   | éà¤
+(1 row)
+
 -- Test that zero values are converted to zero and not null
-ALTER FOREIGN TABLE testmulticorn options (add test_type 'int');
+ALTER FOREIGN TABLE testmulticorn options (set test_type 'int');
 ALTER FOREIGN TABLE testmulticorn alter test1 type integer;
 select * from testmulticorn limit 1;
 NOTICE:  {'test_type': 'int', 'usermapping': 'test', 'option1': 'option1'}
@@ -426,6 +437,27 @@ NOTICE:  set(['test1', 'test2'])
 ------------
  test1 3 19
 (1 row)
+
+-- Test operations with None
+ALTER FOREIGN TABLE testmulticorn options (add test_type 'None');
+select * from testmulticorn;
+NOTICE:  {'test_type': 'None', 'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'bytea', 'test2': 'bytea'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
+
+ALTER FOREIGN TABLE testmulticorn options (set test_type 'iter_none');
+select * from testmulticorn;
+NOTICE:  {'test_type': 'iter_none', 'usermapping': 'test', 'option1': 'option1'}
+NOTICE:  {'test1': 'bytea', 'test2': 'bytea'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+ test1 | test2 
+-------+-------
+(0 rows)
 
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 4 other objects

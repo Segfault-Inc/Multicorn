@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from multicorn import ForeignDataWrapper
 from .utils import log_to_postgres, WARNING, ERROR
 from itertools import cycle
@@ -25,9 +26,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
             log_to_postgres("An error is about to occur", WARNING)
             log_to_postgres("An error occured", ERROR)
 
-    def execute(self, quals, columns):
-        log_to_postgres(str(quals))
-        log_to_postgres(str(columns))
+    def _as_generator(self, quals, columns):
         random_thing = cycle([1, 2, 3])
         for index in range(20):
             if self.test_type == 'sequence':
@@ -58,6 +57,18 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                                                           next(random_thing),
                                                           index)
             yield line
+
+
+    def execute(self, quals, columns):
+        log_to_postgres(str(quals))
+        log_to_postgres(str(columns))
+        if self.test_type == 'None':
+            return None
+        elif self.test_type == 'iter_none':
+            return [None, None]
+        else:
+            return self._as_generator(quals, columns)
+
 
     def get_rel_size(self, quals, columns):
         if self.test_type == 'planner':

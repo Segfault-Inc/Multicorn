@@ -13,4 +13,9 @@ CREATE foreign table testmulticorn (
     option1 'option1',
     wrapper 'multicorn.evilwrapper.EvilDataWrapper'
 );
+
+ALTER server multicorn_srv options (DROP wrapper);
+
+CREATE server multicorn_empty_srv foreign data wrapper multicorn;
+
 DROP EXTENSION multicorn cascade;

@@ -4,7 +4,7 @@ CREATE server multicorn_srv foreign data wrapper multicorn options (
 );
 CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
 CREATE foreign table testmulticorn (
-    test1 character varying,
+    test1 character varying(20),
     test2 character varying
 ) server multicorn_srv options (
     option1 'option1'
@@ -12,7 +12,7 @@ CREATE foreign table testmulticorn (
 -- Test "normal" usage
 select * from testmulticorn;
 NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  {'test1': 'character varying(20)', 'test2': 'character varying'}
 NOTICE:  []
 NOTICE:  set(['test1', 'test2'])
    test1    |   test2    
@@ -279,6 +279,37 @@ NOTICE:  set(['test1', 'test2'])
  test2 1 18 | test1 2 18
  test2 3 19 | test1 1 19
 (20 rows)
+
+ALTER foreign table testmulticorn alter test1 type varchar(30);
+select * from testmulticorn limit 1;
+NOTICE:  {'test_type': 'sequence', 'usermapping': 'test', 'option1': 'option1_update'}
+NOTICE:  {'test1': 'character varying(30)', 'test2': 'character varying'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+   test2   |   test1   
+-----------+-----------
+ test2 1 0 | test1 2 0
+(1 row)
+
+ALTER foreign table testmulticorn alter test1 type text;
+select * from testmulticorn limit 1;
+NOTICE:  {'test_type': 'sequence', 'usermapping': 'test', 'option1': 'option1_update'}
+NOTICE:  {'test1': 'text', 'test2': 'character varying'}
+NOTICE:  []
+NOTICE:  set(['test1', 'test2'])
+   test2   |   test1   
+-----------+-----------
+ test2 1 0 | test1 2 0
+(1 row)
+
+ALTER foreign table testmulticorn rename test1 to testnew;
+select * from testmulticorn limit 1;
+NOTICE:  []
+NOTICE:  set(['testnew', 'test2'])
+   test2   |  testnew  
+-----------+-----------
+ test2 1 0 | test1 2 0
+(1 row)
 
 DROP extension multicorn cascade;
 NOTICE:  drop cascades to 3 other objects

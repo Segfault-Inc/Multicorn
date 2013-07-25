@@ -5,7 +5,7 @@ CREATE server multicorn_srv foreign data wrapper multicorn options (
 CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
 
 CREATE foreign table testmulticorn (
-    test1 character varying,
+    test1 character varying(20),
     test2 character varying
 ) server multicorn_srv options (
     option1 'option1'
@@ -46,5 +46,18 @@ select * from testmulticorn;
 ALTER foreign table testmulticorn drop test3;
 
 select * from testmulticorn;
+
+ALTER foreign table testmulticorn alter test1 type varchar(30);
+
+select * from testmulticorn limit 1;
+
+ALTER foreign table testmulticorn alter test1 type text;
+
+select * from testmulticorn limit 1;
+
+ALTER foreign table testmulticorn rename test1 to testnew;
+
+select * from testmulticorn limit 1;
+
 
 DROP extension multicorn cascade;

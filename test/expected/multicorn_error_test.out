@@ -16,5 +16,9 @@ CREATE foreign table testmulticorn (
 );
 ERROR:  Cannot set the wrapper class on the table
 HINT:  Set it on the server
+ALTER server multicorn_srv options (DROP wrapper);
+ERROR:  The wrapper parameter is mandatory, specify a valid class name
+CREATE server multicorn_empty_srv foreign data wrapper multicorn;
+ERROR:  The wrapper parameter is mandatory, specify a valid class name
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to server multicorn_srv

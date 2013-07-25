@@ -95,4 +95,14 @@ ALTER FOREIGN TABLE testmulticorn alter test1 type bytea;
 
 select encode(test1, 'escape') from testmulticorn where test2 = 'test2 1 19'::bytea;
 
+-- Test operations with None
+ALTER FOREIGN TABLE testmulticorn options (add test_type 'None');
+
+select * from testmulticorn;
+
+ALTER FOREIGN TABLE testmulticorn options (set test_type 'iter_none');
+
+select * from testmulticorn;
+
+
 DROP EXTENSION multicorn cascade;

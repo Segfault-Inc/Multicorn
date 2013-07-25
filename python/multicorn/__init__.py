@@ -249,10 +249,14 @@ def get_class(module_path):
 
 class ColumnDefinition(object):
 
-    def __init__(self, column_name, type_oid, type_name, options):
+    def __init__(self, column_name, type_oid, typmod, type_name,
+                 base_type_name,
+                 options):
         self.column_name = column_name
         self.type_oid = type_oid
+        self.typmod = typmod
         self.type_name = type_name
+        self.base_type_name = base_type_name
         self.options = options or {}
 
     def __repr__(self):
