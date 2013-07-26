@@ -40,7 +40,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                     if self.test_type == 'list':
                         line[column_name] = [column_name, next(random_thing),
                                              index, '%s,"%s"' % (column_name, index),
-                                             "{some value, 2}"]
+                                             '{some value, \\" \' 2}']
                     elif self.test_type == 'dict':
                         line[column_name] = {"column_name": column_name,
                                              "repeater": next(random_thing),
@@ -55,7 +55,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                     elif self.test_type == 'encoding':
                         line[column_name] = u'éà¤'
                     elif self.test_type == 'nested_list':
-                        line[column_name] = [[column_name], [next(random_thing), "{some value, 2}"],
+                        line[column_name] = [[column_name], [next(random_thing), '{some value, \\" 2}'],
                                              [index, '%s,"%s"' % (column_name, index)]]
                     else:
                         line[column_name] = '%s %s %s' % (column_name,

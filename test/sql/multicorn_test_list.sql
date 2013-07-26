@@ -24,11 +24,13 @@ select * from testmulticorn;
 
 alter foreign table testmulticorn options (set test_type 'nested_list');
 
-select * from testmulticorn;
+select * from testmulticorn limit 1;
 
 alter foreign table testmulticorn alter test1 type varchar[];
 alter foreign table testmulticorn alter test2 type varchar[][];
 
-select test1[2], test2[2][2], array_length(test1, 1), array_length(test2, 1), array_length(test2, 2) from testmulticorn;
+select test1[2], test2[2][2], array_length(test1, 1), array_length(test2, 1), array_length(test2, 2) from testmulticorn limit 1;
+
+select length(test1[2]) from testmulticorn limit 1;
 
 DROP EXTENSION multicorn cascade;
