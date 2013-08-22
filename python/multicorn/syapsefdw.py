@@ -60,6 +60,8 @@ class SyapseFDW(ForeignDataWrapper):
         self.conn = connection_pool.get(self.options['syapse_hostname'],
                                         self.options['syapse_email'],
                                         self.options['syapse_password'])
+        self.project = self.conn.retrieveProject("s:project/2")
+        self.conn.current_project = self.project
 
     def execute(self, quals, columns):
         raise NotImplemented('execute method must be subclassed')
