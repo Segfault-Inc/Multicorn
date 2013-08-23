@@ -1243,8 +1243,11 @@ datumByteaToPython(Datum datum, ConversionInfo * cinfo)
 	text	   *txt = DatumGetByteaP(datum);
 	char	   *str = VARDATA(txt);
 	size_t		size = VARSIZE(txt) - VARHDRSZ;
-
+#if PY_MAJOR_VERSION >= 3
+	return PyBytes_FromStringAndSize(str, size);
+#else
 	return PyString_FromStringAndSize(str, size);
+#endif
 }
 
 
