@@ -4,11 +4,13 @@ from .utils import log_to_postgres, ERROR, WARNING
 from imaplib import IMAP4
 
 import re
-
+from multicorn.compat import basestring_
 from email.header import decode_header
 
 from imapclient import IMAPClient
-from itertools import izip_longest, islice
+from itertools import zip_longest
+from functools import reduce
+
 
 STANDARD_FLAGS = {
         'seen': 'Seen',
@@ -29,7 +31,7 @@ def compact_fetch(messages):
 
     """
     first_i = messages[0]
-    for (i, inext) in izip_longest(messages, islice(messages, 1, None)):
+    for (i, inext) in zip_longest(messages, slice(messages, 1, None)):
         if inext == i + 1:
             continue
         elif first_i != i:
@@ -47,7 +49,7 @@ class NoMatchPossible(Exception):
 
 def make_or(values):
     """Create an imap OR filter based on a list of conditions to be or'ed"""
-    values = filter(lambda x: x not in (None, '()'), values)
+    values = [x for x in values if x not in (None, '()')]
     if values:
         if len(values) > 1:
             return reduce(lambda x, y: '(OR %s %s)' % (x, y), values)
@@ -121,7 +123,7 @@ class ImapFdw(ForeignDataWrapper):
             # Do not manage special operators
             return ''
         if operator in ('~~', '!~~', '~~*', '!~~*') and\
-                isinstance(value, basestring):
+                isinstance(value, basestring_):
             # 'Normalize' the sql like wildcards
             if value.startswith(('%', '_')):
                 value = value[1:]
@@ -136,7 +138,7 @@ class ImapFdw(ForeignDataWrapper):
                 prefix = 'UN'
             else:
                 prefix = 'NOT '
-            if isinstance(value, basestring):
+            if isinstance(value, basestring_):
                 if value.lower() in STANDARD_FLAGS:
                     prefix = ''
                     value = value.upper()
@@ -168,8 +170,6 @@ class ImapFdw(ForeignDataWrapper):
             value = '%s "%s"' % (key, value)
         return '%s%s' % (prefix, value)
 
-
-
     def extract_conditions(self, quals):
         """Build an imap search criteria string from a list of quals"""
         conditions = []
@@ -190,7 +190,7 @@ class ImapFdw(ForeignDataWrapper):
                 # its not a list, so everything is fine
                 conditions.append(self._make_condition(qual.field_name,
                     qual.operator, qual.value))
-        conditions = filter(lambda x: x not in (None, '()'), conditions)
+        conditions = [x for x in conditions if x not in (None, '()')]
         return conditions
 
     def execute(self, quals, columns):
@@ -218,10 +218,10 @@ class ImapFdw(ForeignDataWrapper):
                 criteria=conditions)
         if matching_mails:
             data = self.imap_agent.fetch(list(compact_fetch(matching_mails)),
-                                         col_to_imap.values())
+                                         list(col_to_imap.values()))
             item = {}
             for msg in data.values():
-                for column, key in col_to_imap.iteritems():
+                for column, key in col_to_imap.items():
                     item[column] = msg[key]
                     if column in headers:
                         item[column] = item[column].split(':', 1)[-1].strip()

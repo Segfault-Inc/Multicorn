@@ -10,7 +10,7 @@ import errno
 import string
 import collections
 import fcntl
-
+from multicorn.compat import unicode_, basestring_
 
 vformat = string.Formatter().vformat
 
@@ -36,18 +36,6 @@ else:
         Return whether the given string is a valid Python identifier.
         """
         return string.isidentifier()
-
-try:
-    unicode_ = unicode
-except NameError:
-    # Python3
-    unicode_ = str
-
-try:
-    basestring_ = basestring
-except NameError:
-    # Python3
-    basestring_ = str
 
 
 def _tokenize_pattern(pattern):
@@ -344,7 +332,7 @@ class StructuredDirectory(object):
 
         """
         values = {}
-        parts = filename.split(u'/')
+        parts = filename.split('/')
         if len(parts) != len(self._path_parts_re):
             return None
         for part, part_re in zip(parts, self._path_parts_re):
@@ -393,7 +381,7 @@ class StructuredDirectory(object):
         os.close(value)
 
     def clear_cache(self, only_shared=False):
-        for key, (value, shared) in self.cache.items():
+        for key, (value, shared) in list(self.cache.items()):
             if (not only_shared) or shared:
                 self.clear_cache_entry(key)
 
@@ -450,7 +438,7 @@ class StructuredDirectory(object):
             part_values = match.groupdict()
             if all(part_values[name] == value
                    for name, value in fixed_part_values):
-                yield name, part_values.items()
+                yield name, list(part_values.items())
 
     def _join(self, path_parts):
         """

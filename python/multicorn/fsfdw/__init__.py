@@ -9,6 +9,7 @@ https://github.com/Kozea/StructuredFS.
 from multicorn import TransactionAwareForeignDataWrapper
 from multicorn.fsfdw.structuredfs import StructuredDirectory
 from multicorn.utils import log_to_postgres
+from multicorn.compat import unicode_
 from logging import ERROR, WARNING
 import os
 import errno
@@ -99,7 +100,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         return (nb_rows, width)
 
     def _equals_cond(self, quals):
-        return dict((qual.field_name, unicode(qual.value)) for
+        return dict((qual.field_name, unicode_(qual.value)) for
                     qual in quals if qual.operator == '=')
 
     def get_path_keys(self):
@@ -128,14 +129,14 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         for qual in quals:
             if qual.field_name == filename_column and qual.operator == '=':
                 item = self.structured_directory.from_filename(
-                    unicode(qual.value))
+                    unicode_(qual.value))
                 if item is not None and os.path.exists(item.full_filename):
                     return [item]
                 else:
                     return []
         properties = self.structured_directory.properties
         return self.structured_directory.get_items(**dict(
-            (qual.field_name, unicode(qual.value)) for qual in quals
+            (qual.field_name, unicode_(qual.value)) for qual in quals
             if qual.operator == '=' and qual.field_name in properties))
 
     def items_to_dicts(self, items, columns):
@@ -246,12 +247,12 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         if filename_changed:
             if values_changed:
                 # Keep everything to not bypass conflict detection
-                values = dict(olditem.items() + values.items())
+                values = dict(olditem) + dict(values)
             else:
                 # Keep only the filename
                 values = {self.filename_column: new_filename}
         else:
-            values = dict(olditem.items() + values.items())
+            values = dict(olditem) + dict(values)
         newitem = self._item_from_dml(values)
         newitem.content = newvalues.get(self.content_column, olditem.content)
         self.updated_content[newitem.full_filename] = newitem.content

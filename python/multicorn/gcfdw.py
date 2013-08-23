@@ -2,6 +2,8 @@ from multicorn import ForeignDataWrapper
 import gc
 import sys
 import random
+from multicorn.compat import unicode_, basestring_
+
 
 class MyClass(object):
 
@@ -16,22 +18,22 @@ class GCForeignDataWrapper(ForeignDataWrapper):
         result = []
         for obj in gc.get_objects():
             tobj = type(obj)
-            if isinstance(obj, str):
+            if isinstance(obj, bytes):
                 obj = obj.decode('utf8')
-            elif isinstance(obj, unicode):
+            elif isinstance(obj, unicode_):
                 pass
             else:
                 try:
-                    obj = str(obj).decode('utf8')
+                    obj = bytes(obj).decode('utf8')
                 except (UnicodeEncodeError, UnicodeDecodeError):
                     try:
-                        obj = unicode(obj)
+                        obj = unicode_(obj)
                     except (UnicodeEncodeError, UnicodeDecodeError):
-                        obj = u"<NA>"
+                        obj = unicode_("<NA>")
             result.append({'object': obj,
-                   'type': unicode(tobj),
-                   'id': unicode(id(obj)),
-                   'refcount': unicode(sys.getrefcount(obj))})
+                   'type': unicode_(tobj),
+                   'id': unicode_(id(obj)),
+                   'refcount': unicode_(sys.getrefcount(obj))})
         return result
 
 class MemStressFDW(ForeignDataWrapper):

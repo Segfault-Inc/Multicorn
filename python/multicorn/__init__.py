@@ -10,7 +10,6 @@ postgresql (usually, the system wide python installation).
 """
 
 import sys
-from collections import defaultdict
 
 __version__ = '__VERSION__'
 
@@ -200,7 +199,7 @@ def _resolve_name(name, package, level):
     if not hasattr(package, 'rindex'):
         raise ValueError("'package' not set to a string")
     dot = len(package)
-    for x in xrange(level, 1, -1):
+    for x in range(level, 1, -1):
         try:
             dot = package.rindex('.', 0, dot)
         except ValueError:

@@ -13,7 +13,7 @@ import functools
 import tempfile
 import shutil
 from contextlib import contextmanager
-
+from multicorn.compat import unicode_
 import pytest
 
 from .structuredfs import StructuredDirectory, Item
@@ -163,7 +163,7 @@ def test_items(tempdir):
     assert dict(item_bar) == dict(category='lipsum', num='5', name='bar')
     assert item_bar.read() == 'BAR'
 
-    content = u'Hello, Wörld!'
+    content = unicode_('Hello, Wörld!')
     with pytest.raises(UnicodeError):
         item_foo.write(content)
     item_foo.write(content.encode('utf8'))
@@ -324,8 +324,8 @@ Second title
 
 Content
 '''
-    meta_1 = {'title': 'The main title', 'subtitle': u'Second title',
-              'author': u'Me'}
+    meta_1 = {'title': 'The main title', 'subtitle': 'Second title',
+              'author': 'Me'}
     rest_2 = '''
 First title
 ===========

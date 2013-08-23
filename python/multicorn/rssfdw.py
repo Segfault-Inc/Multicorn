@@ -3,10 +3,13 @@
 from . import ForeignDataWrapper
 from datetime import datetime, timedelta
 from lxml import etree
-import urllib
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib import urlopen
 from logging import ERROR
 from multicorn.utils import log_to_postgres
-import pickle
+
 
 class RssFdw(ForeignDataWrapper):
     """An rss foreign data wrapper.
@@ -51,7 +54,7 @@ class RssFdw(ForeignDataWrapper):
                 if (datetime.now() - date) < self.cache_duration:
                     return values
         try:
-            xml = etree.fromstring(urllib.urlopen(self.url).read())
+            xml = etree.fromstring(urlopen(self.url).read())
             items = [self.make_item_from_xml(elem, xml.nsmap)
                      for elem in xml.xpath('//item')]
             self.cache = (datetime.now(), items)

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from multicorn import ForeignDataWrapper
+from multicorn.compat import unicode_
 from .utils import log_to_postgres, WARNING, ERROR
 from itertools import cycle
 from datetime import datetime
@@ -53,7 +54,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                     elif self.test_type == 'int':
                         line[column_name] = index
                     elif self.test_type == 'encoding':
-                        line[column_name] = u'éà¤'
+                        line[column_name] = unicode_('éà¤')
                     elif self.test_type == 'nested_list':
                         line[column_name] = [[column_name], [next(random_thing), '{some value, \\" 2}'],
                                              [index, '%s,"%s"' % (column_name, index)]]
