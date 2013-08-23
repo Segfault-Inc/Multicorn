@@ -58,7 +58,7 @@ class SyapseFDW(ForeignDataWrapper):
         self.options = options
         self.columns = columns
         self.conf = ConfigParser.SafeConfigParser()
-        self.conf.readfp( open(self.options['conf'],'r') )
+        self.conf.readfp( open(self.options['conf_file'],'r') )
         self.conn = connection_pool.get(self.conf.get('syapse','hostname'),
                                         self.conf.get('syapse','email'),
                                         self.conf.get('syapse','password'))
