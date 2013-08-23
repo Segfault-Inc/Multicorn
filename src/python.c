@@ -174,6 +174,7 @@ char *
 PyString_AsString(PyObject *unicode)
 {
 	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
+	errorCheck();
 	char	   *rv = pstrdup(PyBytes_AsString(o));
 
 	Py_XDECREF(o);
@@ -184,6 +185,7 @@ int
 PyString_AsStringAndSize(PyObject *unicode, char **buffer, Py_ssize_t *length)
 {
 	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
+	errorCheck();
 	int			rv = PyBytes_AsStringAndSize(o, buffer, length);
 
 	Py_XDECREF(o);
