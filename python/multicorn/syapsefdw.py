@@ -1,4 +1,4 @@
-import collections, re
+import ConfigParser, collections, re
 
 from multicorn import ForeignDataWrapper
 from multicorn.utils import log_to_postgres
@@ -41,7 +41,7 @@ def create_fdw(options,columns):
     if options.get('source').startswith('fdw:'):
         cl = SavedQueryTable
     fdw = cl(options,columns)
-    log_to_postgres(message = 'created '+str(type(fdw))+' for '+options.get('source'))
+    pg_log('created '+str(type(fdw))+' for '+options.get('source'))
     return fdw
 
 
@@ -57,9 +57,11 @@ class SyapseFDW(ForeignDataWrapper):
         super(SyapseFDW, self).__init__(options, columns)
         self.options = options
         self.columns = columns
-        self.conn = connection_pool.get(self.options['syapse_hostname'],
-                                        self.options['syapse_email'],
-                                        self.options['syapse_password'])
+        self.conf = ConfigParser.SafeConfigParser()
+        self.conf.readfp( open(self.options['conf'],'r') )
+        self.conn = connection_pool.get(self.conf.get('syapse','hostname'),
+                                        self.conf.get('syapse','email'),
+                                        self.conf.get('syapse','password'))
 
     def execute(self, quals, columns):
         raise NotImplemented('execute method must be subclassed')
@@ -124,9 +126,6 @@ class SavedQueryTable(SyapseFDW):
         self.syapse_saved_query = options['source']
         self.syapse_saved_query_id = self.conn._sqs[ self.syapse_saved_query ]
         self.tablename = savedquery_to_tablename(self.syapse_saved_query)
-        if 'conf' in options:
-            self.conf = SafeConfigParser()
-            self.conf.read( open(options['conf'],'r') )
         self._build_coldefs()
 
     def execute(self, quals, columns):
@@ -206,7 +205,7 @@ class ConnectionPool(object):
         hep = (hostname,email,password)
         if hep not in self.pool:
             self.pool[hep] = syapse_client.SyapseConnection(hostname,email,password)
-            log_to_postgres(message = 'connected to Syapse ({hostname}/{email}:***)'.format(
+            pg_log('connected to Syapse ({hostname}/{email}:***)'.format(
                     hostname = hostname, email = email))
         return self.pool[hep]
 
@@ -214,6 +213,9 @@ connection_pool = ConnectionPool()
 
 ############################################################################
 ## UTILITIES
+
+def pg_log(msg):
+    log_to_postgres('syapsefdw: '+msg)
 
 def _map_values(vals):
     def _map_value(v):
