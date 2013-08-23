@@ -182,14 +182,18 @@ PyString_AsString(PyObject *unicode)
 }
 
 int
-PyString_AsStringAndSize(PyObject *unicode, char **buffer, Py_ssize_t *length)
+PyString_AsStringAndSize(PyObject *obj, char **buffer, Py_ssize_t *length)
 {
-	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
-	errorCheck();
-	int			rv = PyBytes_AsStringAndSize(o, buffer, length);
-
-	Py_XDECREF(o);
-	return rv;
+	PyObject *o;
+	int rv;
+	if (PyUnicode_Check(obj)) {
+		o = PyUnicode_AsEncodedString(obj, GetDatabaseEncodingName(), NULL);
+		errorCheck();
+		rv = PyBytes_AsStringAndSize(o, buffer, length);
+		Py_XDECREF(o);
+		return rv;
+	}
+	return PyBytes_AsStringAndSize(obj, buffer, length);
 }
 #endif   /* PY_MAJOR_VERSION >= 3 */
 
@@ -972,11 +976,12 @@ void
 pyunknownToCstring(PyObject *pyobject, StringInfo buffer,
 				   ConversionInfo * cinfo)
 {
-	PyObject   *pTempStr = PyObject_Bytes(pyobject);
+	PyObject   *pTempStr = PyObject_Str(pyobject);
 	char	   *tempbuffer;
 	Py_ssize_t	strlength;
 
-	PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
+	PyString_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
+	errorCheck();
 	appendBinaryStringInfoQuote(buffer, tempbuffer, strlength, cinfo->need_quote);
 	Py_DECREF(pTempStr);
 	return;
