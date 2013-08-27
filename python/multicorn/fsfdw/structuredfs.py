@@ -4,6 +4,7 @@ Handle nicely a set of files in a structured directory.
 
 """
 import os
+import sys
 import io
 import re
 import errno
@@ -267,6 +268,10 @@ class Item(collections.Mapping):
         # syscall.
         iof = io.open(fd, 'wb', closefd=False,
                       buffering=0)
+
+        if isinstance(self.content, unicode_):
+            self.content = self.content.encode(sys.getfilesystemencoding())
+
         if self.content is not None:
             iof.write(self.content)
         iof.close()

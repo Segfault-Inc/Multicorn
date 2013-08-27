@@ -247,12 +247,12 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         if filename_changed:
             if values_changed:
                 # Keep everything to not bypass conflict detection
-                values = dict(olditem) + dict(values)
+                values = dict(list(olditem.items()) + list(values.items()))
             else:
                 # Keep only the filename
                 values = {self.filename_column: new_filename}
         else:
-            values = dict(olditem) + dict(values)
+            values = dict(list(olditem.items()) + list(values.items()))
         newitem = self._item_from_dml(values)
         newitem.content = newvalues.get(self.content_column, olditem.content)
         self.updated_content[newitem.full_filename] = newitem.content
