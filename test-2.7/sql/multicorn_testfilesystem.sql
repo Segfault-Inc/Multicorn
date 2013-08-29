@@ -1,11 +1,10 @@
 -- Setup the test
-CREATE language plpython3u;
-
 CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.fsfdw.FilesystemFdw'
 );
 
+CREATE language plpythonu;
 
 CREATE TABLE temp_dir (dirname varchar);
 
@@ -41,7 +40,7 @@ CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
             for name, ext in (('square', 'txt'), ('round', 'ini')):
                 with open(os.path.join(dirname, '.'.join([name, ext])), 'a') as fd:
                     fd.write('Im a %s %s %s\n' % (size, color, name))
-$$ language plpython3u;
+$$ language plpythonu;
 
 select create_table();
 
@@ -69,7 +68,7 @@ INSERT INTO testmulticorn (color, size, name, ext, data, filename) VALUES ('yell
 INSERT INTO testmulticorn (data, filename) VALUES ('Im a big blue triangle', 'blue/big/triangle.txt') RETURNING color, size, name, ext;
 
 -- Should have 11 lines by now.
-SELECT * from testmulticorn order by color, ext;
+SELECT * from testmulticorn;
 
 
 -- Insertion with incoherent filename/properties (should fail)
@@ -87,7 +86,7 @@ INSERT INTO testmulticorn (color, size, name, filename) VALUES ('blue', 'small',
 INSERT INTO testmulticorn (color, size, name, ext, data) VALUES ('yellow', 'big', 'square', 'text', 'Im a duplicate big square');
 
 -- Should still have 11 lines by now.
-SELECT * from testmulticorn order by color, ext;
+SELECT * from testmulticorn;
 
 -- Test insertion in transaction
 BEGIN;
@@ -148,7 +147,7 @@ SELECT count(1) from testmulticorn where data ilike '% UPDATED!';
 BEGIN;
     UPDATE testmulticorn set data = data || ' UPDATED!';
     UPDATE testmulticorn set data = data || ' TWICE!';
-    SELECT data from testmulticorn order by data; 
+    SELECT data from testmulticorn; 
 ROLLBACK;
 
 -- No 'UPDATED! or 'TWICE!'
@@ -158,27 +157,27 @@ SELECT data from testmulticorn;
 BEGIN;
     UPDATE testmulticorn set color = 'cyan' where filename = 'blue/big/rectangle.txt';
     -- There should be one line with cyan color, 0 with the old filename
-    SELECT filename, data from testmulticorn where color = 'cyan' order by size;
-    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by size;
+    SELECT filename, data from testmulticorn where color = 'cyan';
+    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
 
     -- There should be one line with magenta, and 0 with cyan and the old
     -- filename
     UPDATE testmulticorn set color = 'magenta' where color = 'cyan';
-    SELECT filename, data from testmulticorn where color = 'magenta' order by size;
-    SELECT filename, data from testmulticorn where color = 'cyan' order by size;
-    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by size;
+    SELECT filename, data from testmulticorn where color = 'magenta';
+    SELECT filename, data from testmulticorn where color = 'cyan';
+    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
     UPDATE testmulticorn set color = 'blue' where color = 'magenta';
 
     -- There should be one line with the old filename, and zero with the rest
-    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by size;
-    SELECT filename, data from testmulticorn where color = 'magenta' order by size;
-    SELECT filename, data from testmulticorn where color = 'cyan' order by size;
+    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
+    SELECT filename, data from testmulticorn where color = 'magenta';
+    SELECT filename, data from testmulticorn where color = 'cyan';
 COMMIT;
 
 -- Result should be the same than pre-commit
-SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by size;
-SELECT filename, data from testmulticorn where color = 'magenta' order by size;
-SELECT filename, data from testmulticorn where color = 'cyan' order by size;
+SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
+SELECT filename, data from testmulticorn where color = 'magenta';
+SELECT filename, data from testmulticorn where color = 'cyan';
 
 
 -- DELETE test
@@ -244,7 +243,7 @@ CREATE OR REPLACE FUNCTION cleanup_dir() RETURNS VOID AS $$
     import shutil
     root_dir = plpy.execute("""SELECT dirname from temp_dir;""")[0]['dirname']
     shutil.rmtree(root_dir)
-$$ language plpython3u;
+$$ language plpythonu;
 
 select cleanup_dir();
 
@@ -252,4 +251,4 @@ DROP FUNCTION cleanup_dir();
 DROP TABLE temp_dir;
 DROP FUNCTION create_table();
 DROP EXTENSION multicorn cascade;
-DROP LANGUAGE plpython3u;
+DROP LANGUAGE plpythonu;

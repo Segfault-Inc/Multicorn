@@ -5,11 +5,6 @@ OBJS         =  src/errors.o src/python.o src/query.o src/multicorn.o
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 
 DOCS         = $(wildcard doc/*.md)
-TESTS        = $(wildcard test/sql/*.sql)
-REGRESS      = $(patsubst test/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test --load-language=plpgsql
-
-
 
 EXTENSION    = multicorn
 EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
@@ -47,7 +42,7 @@ DATA = $(wildcard sql/*--*.sql)
 EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
-include $(PGXS)
+
 
 ifeq ($(with_python),yes)
 	SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
@@ -72,3 +67,15 @@ else
 	override PG_CPPFLAGS  := $(PY_INCLUDESPEC) $(PG_CPPFLAGS)
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
+
+PY_VER = $(shell echo $(SHLIB_LINK) | sed "s/.*-lpython\([0-9]\.[0-9]\).*/\1/")
+
+$(info Python version is $(PY_VER))
+TESTS        = $(wildcard test-$(PY_VER)/sql/*.sql)
+REGRESS      = $(patsubst test-$(PY_VER)/sql/%.sql,%,$(TESTS))
+REGRESS_OPTS = --inputdir=test-$(PY_VER) --load-language=plpgsql
+
+include $(PGXS)
+
+
+

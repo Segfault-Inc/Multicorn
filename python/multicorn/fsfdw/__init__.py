@@ -193,12 +193,12 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         return item
 
     def _report_pk_violation(self, item):
+        keys = sorted(item.keys())
+        values = [item[key] for key in keys]
         log_to_postgres("Duplicate key value violates filesystem"
                         " integrity.",
                         detail="Key (%s)=(%s) already exists" %
-                        (', '.join(item.keys()),
-                            ', '.join(item.values())),
-                        level=ERROR)
+                        (', '.join(keys), ', '.join(values)), level=ERROR)
 
     def insert(self, values):
         item = self._item_from_dml(values)
@@ -242,8 +242,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                             ', '.join(null_columns),
                             level=ERROR,
                             detail="Failing row contains (%s)" %
-                            ', '.join(val if val is not None else 'NULL'
-                                      for val in values.values()))
+                            ', '.join(sorted(val if val is not None else 'NULL'
+                                      for val in values.values())))
         if filename_changed:
             if values_changed:
                 # Keep everything to not bypass conflict detection

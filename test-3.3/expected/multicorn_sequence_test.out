@@ -1,0 +1,338 @@
+SET client_min_messages=NOTICE;
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE foreign table testmulticorn (
+    test1 character varying,
+    test2 character varying
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'sequence'
+);
+-- Test "normal" usage
+select * from testmulticorn;
+NOTICE:  [('option1', 'option1'), ('test_type', 'sequence'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
+NOTICE:  []
+NOTICE:  ['test1', 'test2']
+   test1    |   test2    
+------------+------------
+ test1 1 0  | test2 2 0
+ test1 3 1  | test2 1 1
+ test1 2 2  | test2 3 2
+ test1 1 3  | test2 2 3
+ test1 3 4  | test2 1 4
+ test1 2 5  | test2 3 5
+ test1 1 6  | test2 2 6
+ test1 3 7  | test2 1 7
+ test1 2 8  | test2 3 8
+ test1 1 9  | test2 2 9
+ test1 3 10 | test2 1 10
+ test1 2 11 | test2 3 11
+ test1 1 12 | test2 2 12
+ test1 3 13 | test2 1 13
+ test1 2 14 | test2 3 14
+ test1 1 15 | test2 2 15
+ test1 3 16 | test2 1 16
+ test1 2 17 | test2 3 17
+ test1 1 18 | test2 2 18
+ test1 3 19 | test2 1 19
+(20 rows)
+
+-- Test quals
+select * from testmulticorn where test1 like '%0';
+NOTICE:  [test1 ~~ %0]
+NOTICE:  ['test1', 'test2']
+   test1    |   test2    
+------------+------------
+ test1 1 0  | test2 2 0
+ test1 3 10 | test2 1 10
+(2 rows)
+
+select * from testmulticorn where test1 ilike '%0';
+NOTICE:  [test1 ~~* %0]
+NOTICE:  ['test1', 'test2']
+   test1    |   test2    
+------------+------------
+ test1 1 0  | test2 2 0
+ test1 3 10 | test2 1 10
+(2 rows)
+
+-- Test columns
+select test2 from testmulticorn;
+NOTICE:  []
+NOTICE:  ['test2']
+   test2    
+------------
+ test2 2 0
+ test2 1 1
+ test2 3 2
+ test2 2 3
+ test2 1 4
+ test2 3 5
+ test2 2 6
+ test2 1 7
+ test2 3 8
+ test2 2 9
+ test2 1 10
+ test2 3 11
+ test2 2 12
+ test2 1 13
+ test2 3 14
+ test2 2 15
+ test2 1 16
+ test2 3 17
+ test2 2 18
+ test2 1 19
+(20 rows)
+
+-- Test subquery plan
+select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where substr(t2.test1, 7, 1)::int = substr(t1.test1, 7, 1)::int) as max
+from testmulticorn t1 order by max desc;
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  []
+NOTICE:  ['test1']
+   test1    | max 
+------------+-----
+ test1 1 12 |   9
+ test1 1 15 |   9
+ test1 1 6  |   9
+ test1 1 18 |   9
+ test1 1 0  |   9
+ test1 1 3  |   9
+ test1 1 9  |   9
+ test1 2 14 |   8
+ test1 2 11 |   8
+ test1 2 8  |   8
+ test1 2 17 |   8
+ test1 2 5  |   8
+ test1 2 2  |   8
+ test1 3 19 |   7
+ test1 3 1  |   7
+ test1 3 4  |   7
+ test1 3 7  |   7
+ test1 3 10 |   7
+ test1 3 13 |   7
+ test1 3 16 |   7
+(20 rows)
+
+select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where t2.test1 = t1.test1) as max
+from testmulticorn t1 order by max desc;
+NOTICE:  []
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 1 0]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 3 1]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 2 2]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 1 3]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 3 4]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 2 5]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 1 6]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 3 7]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 2 8]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 1 9]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 3 10]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 2 11]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 1 12]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 3 13]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 2 14]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 1 15]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 3 16]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 2 17]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 1 18]
+NOTICE:  ['test1']
+NOTICE:  [test1 = test1 3 19]
+NOTICE:  ['test1']
+   test1    | max 
+------------+-----
+ test1 1 9  |   9
+ test1 2 8  |   8
+ test1 3 7  |   7
+ test1 1 6  |   6
+ test1 2 5  |   5
+ test1 3 4  |   4
+ test1 1 3  |   3
+ test1 2 2  |   2
+ test1 3 16 |   1
+ test1 2 17 |   1
+ test1 1 18 |   1
+ test1 3 19 |   1
+ test1 3 1  |   1
+ test1 3 10 |   1
+ test1 2 11 |   1
+ test1 1 12 |   1
+ test1 3 13 |   1
+ test1 2 14 |   1
+ test1 1 15 |   1
+ test1 1 0  |   0
+(20 rows)
+
+select * from testmulticorn where test1 is null;
+NOTICE:  [test1 = None]
+NOTICE:  ['test1', 'test2']
+ test1 | test2 
+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 is not null;
+NOTICE:  [test1 <> None]
+NOTICE:  ['test1', 'test2']
+   test1    |   test2    
+------------+------------
+ test1 1 0  | test2 2 0
+ test1 3 1  | test2 1 1
+ test1 2 2  | test2 3 2
+ test1 1 3  | test2 2 3
+ test1 3 4  | test2 1 4
+ test1 2 5  | test2 3 5
+ test1 1 6  | test2 2 6
+ test1 3 7  | test2 1 7
+ test1 2 8  | test2 3 8
+ test1 1 9  | test2 2 9
+ test1 3 10 | test2 1 10
+ test1 2 11 | test2 3 11
+ test1 1 12 | test2 2 12
+ test1 3 13 | test2 1 13
+ test1 2 14 | test2 3 14
+ test1 1 15 | test2 2 15
+ test1 3 16 | test2 1 16
+ test1 2 17 | test2 3 17
+ test1 1 18 | test2 2 18
+ test1 3 19 | test2 1 19
+(20 rows)
+
+select * from testmulticorn where 'grou' > test1;
+NOTICE:  [test1 < grou]
+NOTICE:  ['test1', 'test2']
+ test1 | test2 
+-------+-------
+(0 rows)
+
+select * from testmulticorn where test1 < ANY(ARRAY['grou', 'MACHIN']);
+NOTICE:  [test1 < ANY(['grou', 'MACHIN'])]
+NOTICE:  ['test1', 'test2']
+ test1 | test2 
+-------+-------
+(0 rows)
+
+CREATE foreign table testmulticorn2 (
+    test1 character varying,
+    test2 character varying
+) server multicorn_srv options (
+    option1 'option2'
+);
+select * from testmulticorn union all select * from testmulticorn2;
+NOTICE:  [('option1', 'option2'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
+NOTICE:  []
+NOTICE:  ['test1', 'test2']
+NOTICE:  []
+NOTICE:  ['test1', 'test2']
+   test1    |   test2    
+------------+------------
+ test1 1 0  | test2 2 0
+ test1 3 1  | test2 1 1
+ test1 2 2  | test2 3 2
+ test1 1 3  | test2 2 3
+ test1 3 4  | test2 1 4
+ test1 2 5  | test2 3 5
+ test1 1 6  | test2 2 6
+ test1 3 7  | test2 1 7
+ test1 2 8  | test2 3 8
+ test1 1 9  | test2 2 9
+ test1 3 10 | test2 1 10
+ test1 2 11 | test2 3 11
+ test1 1 12 | test2 2 12
+ test1 3 13 | test2 1 13
+ test1 2 14 | test2 3 14
+ test1 1 15 | test2 2 15
+ test1 3 16 | test2 1 16
+ test1 2 17 | test2 3 17
+ test1 1 18 | test2 2 18
+ test1 3 19 | test2 1 19
+ test1 1 0  | test2 2 0
+ test1 3 1  | test2 1 1
+ test1 2 2  | test2 3 2
+ test1 1 3  | test2 2 3
+ test1 3 4  | test2 1 4
+ test1 2 5  | test2 3 5
+ test1 1 6  | test2 2 6
+ test1 3 7  | test2 1 7
+ test1 2 8  | test2 3 8
+ test1 1 9  | test2 2 9
+ test1 3 10 | test2 1 10
+ test1 2 11 | test2 3 11
+ test1 1 12 | test2 2 12
+ test1 3 13 | test2 1 13
+ test1 2 14 | test2 3 14
+ test1 1 15 | test2 2 15
+ test1 3 16 | test2 1 16
+ test1 2 17 | test2 3 17
+ test1 1 18 | test2 2 18
+ test1 3 19 | test2 1 19
+(40 rows)
+
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 4 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to user mapping for postgres
+drop cascades to foreign table testmulticorn
+drop cascades to foreign table testmulticorn2

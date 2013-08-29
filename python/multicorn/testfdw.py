@@ -16,9 +16,9 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         self.test_type = options.get('test_type', None)
         self._row_id_column = options.get('row_id_column',
                                           list(self.columns.keys())[0])
-        log_to_postgres(str(options))
-        log_to_postgres(str(dict([(key, column.type_name) for key, column in
-                                  columns.items()])))
+        log_to_postgres(str(sorted(options.items())))
+        log_to_postgres(str(sorted([(key, column.type_name) for key, column in
+                                    columns.items()])))
         for column in columns.values():
             if column.options:
                 log_to_postgres('Column %s options: %s' %
@@ -66,8 +66,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
 
 
     def execute(self, quals, columns):
-        log_to_postgres(str(quals))
-        log_to_postgres(str(columns))
+        log_to_postgres(str(sorted(quals)))
+        log_to_postgres(str(sorted(columns)))
         if self.test_type == 'None':
             return None
         elif self.test_type == 'iter_none':
@@ -89,7 +89,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
     def update(self, rowid, newvalues):
         if self.test_type == 'nowrite':
             super(TestForeignDataWrapper, self).update(rowid, newvalues)
-        log_to_postgres("UPDATING: %s with %s" % (rowid, newvalues))
+        log_to_postgres("UPDATING: %s with %s" % (
+            rowid, sorted(newvalues.items())))
         if self.test_type == 'returning':
             for key in newvalues:
                 newvalues[key] = "UPDATED: %s" % newvalues[key]
@@ -103,7 +104,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
     def insert(self, values):
         if self.test_type == 'nowrite':
             super(TestForeignDataWrapper, self).insert(values)
-        log_to_postgres("INSERTING: %s" % values)
+        log_to_postgres("INSERTING: %s" % sorted(values.items()))
         if self.test_type == 'returning':
             for key in self.columns:
                 values[key] = "INSERTED: %s" % values.get(key, None)

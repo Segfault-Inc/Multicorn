@@ -3,7 +3,7 @@ CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.fsfdw.FilesystemFdw'
 );
-CREATE language plpython3u;
+CREATE language plpythonu;
 CREATE TABLE temp_dir (dirname varchar);
 -- Create a table with the filesystem fdw in a temporary directory,
 -- and store the dirname in the temp_dir table.
@@ -37,7 +37,7 @@ CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
             for name, ext in (('square', 'txt'), ('round', 'ini')):
                 with open(os.path.join(dirname, '.'.join([name, ext])), 'a') as fd:
                     fd.write('Im a %s %s %s\n' % (size, color, name))
-$$ language plpython3u;
+$$ language plpythonu;
 select create_table();
  create_table 
 --------------
@@ -568,7 +568,7 @@ CREATE OR REPLACE FUNCTION cleanup_dir() RETURNS VOID AS $$
     import shutil
     root_dir = plpy.execute("""SELECT dirname from temp_dir;""")[0]['dirname']
     shutil.rmtree(root_dir)
-$$ language plpython3u;
+$$ language plpythonu;
 select cleanup_dir();
  cleanup_dir 
 -------------
@@ -582,4 +582,4 @@ DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv
 drop cascades to foreign table testmulticorn
-DROP LANGUAGE plpython3u;
+DROP LANGUAGE plpythonu;
