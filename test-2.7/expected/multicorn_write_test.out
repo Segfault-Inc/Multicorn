@@ -11,18 +11,18 @@ CREATE foreign table testmulticorn (
     test_type 'nowrite'
 );
 insert into testmulticorn(test1, test2) VALUES ('test', 'test2');
-NOTICE:  {'test_type': 'nowrite', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'nowrite'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
 update testmulticorn set test1 = 'test';
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
 delete from testmulticorn where test2 = 'test2 2 0';
 NOTICE:  [test2 = test2 2 0]
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
 CREATE foreign table testmulticorn_write (
@@ -34,26 +34,26 @@ CREATE foreign table testmulticorn_write (
 	test_type 'returning'
 );
 insert into testmulticorn_write(test1, test2) VALUES ('test', 'test2');
-NOTICE:  {'test_type': 'returning', 'row_id_column': 'test1', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
-NOTICE:  INSERTING: {'test1': u'test', 'test2': u'test2'}
+NOTICE:  [('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
+NOTICE:  INSERTING: [('test1', u'test'), ('test2', u'test2')]
 update testmulticorn_write set test1 = 'test' where test1 ilike 'test1 3%';
 NOTICE:  [test1 ~~* test1 3%]
-NOTICE:  set(['test1', 'test2'])
-NOTICE:  UPDATING: test1 3 1 with {'test1': u'test', 'test2': u'test2 1 1'}
-NOTICE:  UPDATING: test1 3 4 with {'test1': u'test', 'test2': u'test2 1 4'}
-NOTICE:  UPDATING: test1 3 7 with {'test1': u'test', 'test2': u'test2 1 7'}
-NOTICE:  UPDATING: test1 3 10 with {'test1': u'test', 'test2': u'test2 1 10'}
-NOTICE:  UPDATING: test1 3 13 with {'test1': u'test', 'test2': u'test2 1 13'}
-NOTICE:  UPDATING: test1 3 16 with {'test1': u'test', 'test2': u'test2 1 16'}
-NOTICE:  UPDATING: test1 3 19 with {'test1': u'test', 'test2': u'test2 1 19'}
+NOTICE:  ['test1', 'test2']
+NOTICE:  UPDATING: test1 3 1 with [('test1', u'test'), ('test2', u'test2 1 1')]
+NOTICE:  UPDATING: test1 3 4 with [('test1', u'test'), ('test2', u'test2 1 4')]
+NOTICE:  UPDATING: test1 3 7 with [('test1', u'test'), ('test2', u'test2 1 7')]
+NOTICE:  UPDATING: test1 3 10 with [('test1', u'test'), ('test2', u'test2 1 10')]
+NOTICE:  UPDATING: test1 3 13 with [('test1', u'test'), ('test2', u'test2 1 13')]
+NOTICE:  UPDATING: test1 3 16 with [('test1', u'test'), ('test2', u'test2 1 16')]
+NOTICE:  UPDATING: test1 3 19 with [('test1', u'test'), ('test2', u'test2 1 19')]
 delete from testmulticorn_write where test2 = 'test2 2 0';
 NOTICE:  [test2 = test2 2 0]
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
 NOTICE:  DELETING: test1 1 0
 -- Test returning
 insert into testmulticorn_write(test1, test2) VALUES ('test', 'test2') RETURNING test1;
-NOTICE:  INSERTING: {'test1': u'test', 'test2': u'test2'}
+NOTICE:  INSERTING: [('test1', u'test'), ('test2', u'test2')]
      test1      
 ----------------
  INSERTED: test
@@ -61,14 +61,14 @@ NOTICE:  INSERTING: {'test1': u'test', 'test2': u'test2'}
 
 update testmulticorn_write set test1 = 'test' where test1 ilike 'test1 3%' RETURNING test1;
 NOTICE:  [test1 ~~* test1 3%]
-NOTICE:  set(['test1', 'test2'])
-NOTICE:  UPDATING: test1 3 1 with {'test1': u'test', 'test2': u'test2 1 1'}
-NOTICE:  UPDATING: test1 3 4 with {'test1': u'test', 'test2': u'test2 1 4'}
-NOTICE:  UPDATING: test1 3 7 with {'test1': u'test', 'test2': u'test2 1 7'}
-NOTICE:  UPDATING: test1 3 10 with {'test1': u'test', 'test2': u'test2 1 10'}
-NOTICE:  UPDATING: test1 3 13 with {'test1': u'test', 'test2': u'test2 1 13'}
-NOTICE:  UPDATING: test1 3 16 with {'test1': u'test', 'test2': u'test2 1 16'}
-NOTICE:  UPDATING: test1 3 19 with {'test1': u'test', 'test2': u'test2 1 19'}
+NOTICE:  ['test1', 'test2']
+NOTICE:  UPDATING: test1 3 1 with [('test1', u'test'), ('test2', u'test2 1 1')]
+NOTICE:  UPDATING: test1 3 4 with [('test1', u'test'), ('test2', u'test2 1 4')]
+NOTICE:  UPDATING: test1 3 7 with [('test1', u'test'), ('test2', u'test2 1 7')]
+NOTICE:  UPDATING: test1 3 10 with [('test1', u'test'), ('test2', u'test2 1 10')]
+NOTICE:  UPDATING: test1 3 13 with [('test1', u'test'), ('test2', u'test2 1 13')]
+NOTICE:  UPDATING: test1 3 16 with [('test1', u'test'), ('test2', u'test2 1 16')]
+NOTICE:  UPDATING: test1 3 19 with [('test1', u'test'), ('test2', u'test2 1 19')]
      test1     
 ---------------
  UPDATED: test
@@ -82,7 +82,7 @@ NOTICE:  UPDATING: test1 3 19 with {'test1': u'test', 'test2': u'test2 1 19'}
 
 delete from testmulticorn_write where test1 = 'test1 1 0' returning test2, test1;
 NOTICE:  [test1 = test1 1 0]
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
 NOTICE:  DELETING: test1 1 0
    test2   |   test1   
 -----------+-----------
@@ -99,27 +99,27 @@ CREATE foreign table testmulticorn_write(
     row_id_column 'test2'
 );
 insert into testmulticorn_write(test1, test2) VALUES ('test', 'test2');
-NOTICE:  {'row_id_column': 'test2', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
-NOTICE:  INSERTING: {'test1': u'test', 'test2': u'test2'}
+NOTICE:  [('option1', 'option1'), ('row_id_column', 'test2'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
+NOTICE:  INSERTING: [('test1', u'test'), ('test2', u'test2')]
 update testmulticorn_write set test1 = 'test' where test1 ilike 'test1 3%';
 NOTICE:  [test1 ~~* test1 3%]
-NOTICE:  set(['test1', 'test2'])
-NOTICE:  UPDATING: test2 1 1 with {'test1': u'test', 'test2': u'test2 1 1'}
-NOTICE:  UPDATING: test2 1 4 with {'test1': u'test', 'test2': u'test2 1 4'}
-NOTICE:  UPDATING: test2 1 7 with {'test1': u'test', 'test2': u'test2 1 7'}
-NOTICE:  UPDATING: test2 1 10 with {'test1': u'test', 'test2': u'test2 1 10'}
-NOTICE:  UPDATING: test2 1 13 with {'test1': u'test', 'test2': u'test2 1 13'}
-NOTICE:  UPDATING: test2 1 16 with {'test1': u'test', 'test2': u'test2 1 16'}
-NOTICE:  UPDATING: test2 1 19 with {'test1': u'test', 'test2': u'test2 1 19'}
+NOTICE:  ['test1', 'test2']
+NOTICE:  UPDATING: test2 1 1 with [('test1', u'test'), ('test2', u'test2 1 1')]
+NOTICE:  UPDATING: test2 1 4 with [('test1', u'test'), ('test2', u'test2 1 4')]
+NOTICE:  UPDATING: test2 1 7 with [('test1', u'test'), ('test2', u'test2 1 7')]
+NOTICE:  UPDATING: test2 1 10 with [('test1', u'test'), ('test2', u'test2 1 10')]
+NOTICE:  UPDATING: test2 1 13 with [('test1', u'test'), ('test2', u'test2 1 13')]
+NOTICE:  UPDATING: test2 1 16 with [('test1', u'test'), ('test2', u'test2 1 16')]
+NOTICE:  UPDATING: test2 1 19 with [('test1', u'test'), ('test2', u'test2 1 19')]
 delete from testmulticorn_write where test2 = 'test2 2 0';
 NOTICE:  [test2 = test2 2 0]
-NOTICE:  set(['test2'])
+NOTICE:  ['test2']
 NOTICE:  DELETING: test2 2 0
 update testmulticorn_write set test2 = 'test' where test2 = 'test2 1 1';
 NOTICE:  [test2 = test2 1 1]
-NOTICE:  set(['test1', 'test2'])
-NOTICE:  UPDATING: test2 1 1 with {'test1': u'test1 3 1', 'test2': u'test'}
+NOTICE:  ['test1', 'test2']
+NOTICE:  UPDATING: test2 1 1 with [('test1', u'test1 3 1'), ('test2', u'test')]
 DROP foreign table testmulticorn_write;
 -- Now test with other types
 CREATE foreign table testmulticorn_write(
@@ -131,17 +131,17 @@ CREATE foreign table testmulticorn_write(
 	test_type 'date'
 );
 insert into testmulticorn_write(test1, test2) VALUES ('2012-01-01', '2012-01-01 00:00:00');
-NOTICE:  {'test_type': 'date', 'row_id_column': 'test2', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'date', 'test2': 'timestamp without time zone'}
-NOTICE:  INSERTING: {'test1': datetime.date(2012, 1, 1), 'test2': datetime.datetime(2012, 1, 1, 0, 0)}
+NOTICE:  [('option1', 'option1'), ('row_id_column', 'test2'), ('test_type', 'date'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
+NOTICE:  INSERTING: [('test1', datetime.date(2012, 1, 1)), ('test2', datetime.datetime(2012, 1, 1, 0, 0))]
 delete from testmulticorn_write where test2 > '2011-12-03';
 NOTICE:  [test2 > 2011-12-03 00:00:00]
-NOTICE:  set(['test2'])
+NOTICE:  ['test2']
 NOTICE:  DELETING: 2011-12-03 14:30:25
 update testmulticorn_write set test1 = date_trunc('day', test1) where test2 = '2011-09-03 14:30:25';
 NOTICE:  [test2 = 2011-09-03 14:30:25]
-NOTICE:  set(['test1', 'test2'])
-NOTICE:  UPDATING: 2011-09-03 14:30:25 with {'test1': datetime.date(2011, 9, 2), 'test2': datetime.datetime(2011, 9, 3, 14, 30, 25)}
+NOTICE:  ['test1', 'test2']
+NOTICE:  UPDATING: 2011-09-03 14:30:25 with [('test1', datetime.date(2011, 9, 2)), ('test2', datetime.datetime(2011, 9, 3, 14, 30, 25))]
 DROP foreign table testmulticorn_write;
 -- Test with unknown column
 CREATE foreign table testmulticorn_write(
@@ -153,8 +153,8 @@ CREATE foreign table testmulticorn_write(
 	test_type 'date'
 );
 delete from testmulticorn_write;
-NOTICE:  {'test_type': 'date', 'row_id_column': 'teststuff', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'date', 'test2': 'timestamp without time zone'}
+NOTICE:  [('option1', 'option1'), ('row_id_column', 'teststuff'), ('test_type', 'date'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
 ERROR:  The rowid attribute does not exist
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 4 other objects

@@ -12,8 +12,8 @@ CREATE foreign table testmulticorn (
 );
 -- Test "normal" usage
 select * from testmulticorn;
-NOTICE:  {'test_type': 'logger', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'logger')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 WARNING:  An error is about to occur
 ERROR:  An error occured
 DROP EXTENSION multicorn cascade;

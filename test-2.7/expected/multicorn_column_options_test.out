@@ -10,11 +10,11 @@ CREATE foreign table testmulticorn (
     option1 'option1'
 );
 select * from testmulticorn limit 1;
-NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 NOTICE:  Column test1 options: {'prefix': 'test'}
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
    test1   |   test2   
 -----------+-----------
  test1 1 0 | test2 2 0
@@ -22,11 +22,11 @@ NOTICE:  set(['test1', 'test2'])
 
 ALTER foreign table testmulticorn alter test1 options (set prefix 'test2');
 select * from testmulticorn limit 1;
-NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 NOTICE:  Column test1 options: {'prefix': 'test2'}
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
    test1   |   test2   
 -----------+-----------
  test1 1 0 | test2 2 0
@@ -34,10 +34,10 @@ NOTICE:  set(['test1', 'test2'])
 
 ALTER foreign table testmulticorn alter test1 options (drop prefix);
 select * from testmulticorn limit 1;
-NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
    test1   |   test2   
 -----------+-----------
  test1 1 0 | test2 2 0
@@ -45,11 +45,11 @@ NOTICE:  set(['test1', 'test2'])
 
 ALTER foreign table testmulticorn alter test1 options (add prefix 'test3');
 select * from testmulticorn limit 1;
-NOTICE:  {'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying'}
+NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 NOTICE:  Column test1 options: {'prefix': 'test3'}
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
    test1   |   test2   
 -----------+-----------
  test1 1 0 | test2 2 0

@@ -14,10 +14,10 @@ CREATE foreign table testmulticorn (
 );
 -- Test "normal" usage
 select * from testmulticorn;
-NOTICE:  {'test_type': 'dict', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'hstore', 'test2': 'hstore'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'dict'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'hstore'), ('test2', 'hstore')]
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
                                       test1                                       |                                      test2                                       
 ----------------------------------------------------------------------------------+----------------------------------------------------------------------------------
  "index"=>"0", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"0", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
@@ -44,7 +44,7 @@ NOTICE:  set(['test1', 'test2'])
 
 select test1 -> 'repeater' as r from testmulticorn order by r;
 NOTICE:  []
-NOTICE:  set(['test1'])
+NOTICE:  ['test1']
  r 
 ---
  1

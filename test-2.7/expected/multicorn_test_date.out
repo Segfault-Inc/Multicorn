@@ -13,10 +13,10 @@ CREATE foreign table testmulticorn (
 );
 -- Test "normal" usage
 select * from testmulticorn;
-NOTICE:  {'test_type': 'date', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'date', 'test2': 'timestamp without time zone'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'date'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
    test1    |          test2           
 ------------+--------------------------
  01-01-2011 | Sun Jan 02 14:30:25 2011
@@ -43,7 +43,7 @@ NOTICE:  set(['test1', 'test2'])
 
 select * from testmulticorn where test1 < '2011-06-01';
 NOTICE:  [test1 < 2011-06-01]
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
    test1    |          test2           
 ------------+--------------------------
  01-01-2011 | Sun Jan 02 14:30:25 2011
@@ -60,7 +60,7 @@ NOTICE:  set(['test1', 'test2'])
 
 select * from testmulticorn where test2 < '2011-06-01 00:00:00';
 NOTICE:  [test2 < 2011-06-01 00:00:00]
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
    test1    |          test2           
 ------------+--------------------------
  01-01-2011 | Sun Jan 02 14:30:25 2011

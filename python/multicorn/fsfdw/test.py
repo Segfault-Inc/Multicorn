@@ -163,7 +163,7 @@ def test_items(tempdir):
     assert dict(item_bar) == dict(category='lipsum', num='5', name='bar')
     assert item_bar.read() == 'BAR'
 
-    content = unicode_('Hello, Wörld!')
+    content = b'Hello,\xc2\xa0W\xc3\xb6rld!'.decode('utf-8')
     with pytest.raises(UnicodeError):
         item_foo.write(content)
     item_foo.write(content.encode('utf8'))

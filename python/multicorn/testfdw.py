@@ -54,7 +54,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                     elif self.test_type == 'int':
                         line[column_name] = index
                     elif self.test_type == 'encoding':
-                        line[column_name] = unicode_('éà¤')
+                        line[column_name] = b'\xc3\xa9\xc3\xa0\xc2\xa4'.decode('utf-8')
                     elif self.test_type == 'nested_list':
                         line[column_name] = [[column_name], [next(random_thing), '{some value, \\" 2}'],
                                              [index, '%s,"%s"' % (column_name, index)]]

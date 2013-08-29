@@ -13,10 +13,10 @@ CREATE foreign table testmulticorn (
 );
 -- Test "normal" usage
 select * from testmulticorn;
-NOTICE:  {'test_type': 'list', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying[]', 'test2': 'character varying[]'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'list'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying[]'), ('test2', 'character varying[]')]
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
                         test1                         |                        test2                         
 ------------------------------------------------------+------------------------------------------------------
  {test1,1,0,"test1,\"0\"","{some value, \\\" ' 2}"}   | {test2,2,0,"test2,\"0\"","{some value, \\\" ' 2}"}
@@ -43,7 +43,7 @@ NOTICE:  set(['test1', 'test2'])
 
 select test1[2] as c from testmulticorn order by c;
 NOTICE:  []
-NOTICE:  set(['test1'])
+NOTICE:  ['test1']
  c 
 ---
  1
@@ -70,10 +70,10 @@ NOTICE:  set(['test1'])
 
 alter foreign table testmulticorn alter test1 type varchar;
 select * from testmulticorn;
-NOTICE:  {'test_type': 'list', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying[]'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'list'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying[]')]
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
                           test1                           |                        test2                         
 ----------------------------------------------------------+------------------------------------------------------
  ['test1', 1, 0, 'test1,"0"', '{some value, \\" \' 2}']   | {test2,2,0,"test2,\"0\"","{some value, \\\" ' 2}"}
@@ -100,10 +100,10 @@ NOTICE:  set(['test1', 'test2'])
 
 alter foreign table testmulticorn options (set test_type 'nested_list');
 select * from testmulticorn limit 1;
-NOTICE:  {'test_type': 'nested_list', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying', 'test2': 'character varying[]'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'nested_list'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying[]')]
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
                            test1                           |                              test2                               
 -----------------------------------------------------------+------------------------------------------------------------------
  [['test1'], [1, '{some value, \\" 2}'], [0, 'test1,"0"']] | {['test2'],"[2, '{some value, \\\\\" 2}']","[0, 'test2,\"0\"']"}
@@ -112,10 +112,10 @@ NOTICE:  set(['test1', 'test2'])
 alter foreign table testmulticorn alter test1 type varchar[];
 alter foreign table testmulticorn alter test2 type varchar[][];
 select test1[2], test2[2][2], array_length(test1, 1), array_length(test2, 1), array_length(test2, 2) from testmulticorn limit 1;
-NOTICE:  {'test_type': 'nested_list', 'usermapping': 'test', 'option1': 'option1'}
-NOTICE:  {'test1': 'character varying[]', 'test2': 'character varying[]'}
+NOTICE:  [('option1', 'option1'), ('test_type', 'nested_list'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying[]'), ('test2', 'character varying[]')]
 NOTICE:  []
-NOTICE:  set(['test1', 'test2'])
+NOTICE:  ['test1', 'test2']
            test1            |       test2        | array_length | array_length | array_length 
 ----------------------------+--------------------+--------------+--------------+--------------
  [1, '{some value, \\" 2}'] | {some value, \" 2} |            3 |            3 |            2
@@ -123,7 +123,7 @@ NOTICE:  set(['test1', 'test2'])
 
 select length(test1[2]) from testmulticorn limit 1;
 NOTICE:  []
-NOTICE:  set(['test1'])
+NOTICE:  ['test1']
  length 
 --------
      26
