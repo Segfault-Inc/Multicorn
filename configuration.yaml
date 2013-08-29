@@ -14,7 +14,7 @@ menu:
   - Contribute:
       link: /contribute/
   - Issues:
-      link: http://redmine.kozea.fr/projects/multicorn/issues
+      link: https://github.com/Kozea/Multicorn/issues
 
 project (git):
   url: git://github.com/Kozea/Multicorn.git
