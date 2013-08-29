@@ -411,8 +411,9 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 		int			i;
 		PyObject   *p_columnclass = getClassString("multicorn."
 												   "ColumnDefinition"),
-				   *p_collections = PyImport_ImportModule("collections"),
-				   *p_dictclass = getClassString("collections.OrderedDict");
+				*p_collections = PyImport_ImportModule("collections"),
+				*p_dictclass = PyObject_GetAttrString(p_collections, "OrderedDict");
+
 		columns_dict = PyObject_CallFunction(p_dictclass, "()");
 
 		for (i = 0; i < desc->natts; i++)
@@ -452,6 +453,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 			}
 		}
 		Py_DECREF(p_columnclass);
+		Py_DECREF(p_collections);
 		Py_DECREF(p_dictclass);
 		errorCheck();
 		*p_columns = columns_dict;
