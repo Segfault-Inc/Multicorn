@@ -80,7 +80,7 @@ endif
 $(info Python version is $(PY_VERSION))
 TESTS        = $(wildcard test-$(PY_VERSION)/sql/*.sql)
 REGRESS      = $(patsubst test-$(PY_VERSION)/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test-$(PY_VER) --load-language=plpgsql
+REGRESS_OPTS = --inputdir=test-$(PY_VERSION) --load-language=plpgsql
 
 include $(PGXS)
 
