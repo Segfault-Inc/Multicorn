@@ -43,8 +43,17 @@ EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 
+with_python_no_override = no
 
 ifeq ($(with_python),yes)
+	with_python_no_override = yes
+endif
+
+ifdef PYTHON_OVERRIDE
+	with_python_no_override = no
+endif
+
+ifeq ($(with_python_no_override),yes)
 	SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
 	override CPPFLAGS := -I. -I$(srcdir) $(python_includespec) $(CPPFLAGS)
 else
@@ -68,11 +77,9 @@ else
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
 
-PY_VER = $(shell echo $(SHLIB_LINK) | sed "s/.*-lpython\([0-9]\.[0-9]\).*/\1/")
-
-$(info Python version is $(PY_VER))
-TESTS        = $(wildcard test-$(PY_VER)/sql/*.sql)
-REGRESS      = $(patsubst test-$(PY_VER)/sql/%.sql,%,$(TESTS))
+$(info Python version is $(PY_VERSION))
+TESTS        = $(wildcard test-$(PY_VERSION)/sql/*.sql)
+REGRESS      = $(patsubst test-$(PY_VERSION)/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test-$(PY_VER) --load-language=plpgsql
 
 include $(PGXS)
