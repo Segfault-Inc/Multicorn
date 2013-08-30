@@ -65,7 +65,7 @@ else
 		override PYTHON = python
 	endif
 
-	PY_VERSION = $(shell ${PYTHON} --version 2>&1 | awk '{ print substr($$2,1,3)}')
+	PY_VERSION = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
 	PYTHON_CONFIG ?= python${PY_VERSION}-config
 
 	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
