@@ -8,6 +8,8 @@ from multicorn.compat import basestring_
 from email.header import decode_header
 
 from imapclient import IMAPClient
+from itertools import islice
+
 try:
     from itertools import zip_longest
 except ImportError:
@@ -35,7 +37,7 @@ def compact_fetch(messages):
 
     """
     first_i = messages[0]
-    for (i, inext) in zip_longest(messages, slice(messages, 1, None)):
+    for (i, inext) in zip_longest(messages, islice(messages, 1, None)):
         if inext == i + 1:
             continue
         elif first_i != i:
