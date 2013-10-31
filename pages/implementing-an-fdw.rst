@@ -143,6 +143,63 @@ the line index.
 And that's it !
 
 
+Write API
+=========
+
+Since PostgreSQL 9.3, foreign data wrappers can implement a write API.
+
+In multicorn, this involves defining which column will be used as a primary key (mandatory) and implementing the following methods at your
+discretion:
+
+.. code-block:: python
+
+  def insert(self, new_values)
+  def update(self, old_values, new_values)
+  def delete(self, old_values)
+
+Each of these arguments will be dictionaries, containing at least the column you
+defined as a primary key, and the values to insert or those which have changed
+(for an update). In addition, other values may be present depending on the query
+involved.
+
+These methods should return a dictionary containing the new values (after
+insertion or update). This will be used in the case of RETURNING clauses of the
+form:
+
+.. code-block:: sql
+
+  INSERT INTO my_ft VALUES (some_value) RETURNING *;
+
+You can return new values if the values that were given in sql are not the ones
+that are actually stored (think about default values, triggers...).
+
+The row_id_column attribute must be set to the name of a column acting as a
+primary key. For example:
+
+.. code-block:: python
+
+  class MyFDW(ForeignDataWrapper):
+
+    def __init__(self, fdw_options, fdw_columns):
+      self.row_id_column = fdw_columns.keys()[0]
+
+If you want to handle transaction hooks, you can implement the following
+methods:
+
+.. code-block:: python
+
+  def commit(self)
+  def rollback(self)
+  def pre_commit(self)
+
+The pre_commit method will be called just before the local transaction commits.
+You can raise an exception here to abort the current transaction were your
+remote commit to fail.
+
+The commit method will be called just at commit time, while the rollback method
+will be called whenever the local transaction is rollbacked.
+
+
 Optimizations
 =============
 
