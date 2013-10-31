@@ -77,7 +77,7 @@ such as pymysql):
 .. code-block:: sql
 
   CREATE SERVER alchemy_srv foreign data wrapper multicorn options (
-      wrapper 'multicorn.alchemyfdw.SqlAlchemyFdw'
+      wrapper 'multicorn.sqlalchemyfdw.SqlAlchemyFdw'
   );
 
   create foreign table mysql_table (
