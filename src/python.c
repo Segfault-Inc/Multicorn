@@ -648,6 +648,13 @@ getRelSize(MulticornPlanState * state,
 	p_rows_and_width = PyObject_CallMethod(state->fdw_instance, "get_rel_size",
 										   "(O,O)", p_quals, p_targets_set);
 	errorCheck();
+	Py_DECREF(p_targets_set);
+	Py_DECREF(p_quals);
+    if((p_rows_and_width == Py_None) || PyTuple_Size(p_rows_and_width) != 2)
+    {
+      Py_DECREF(p_rows_and_width);
+      elog(ERROR, "The get_rel_size python method should return a tuple of length 2");
+    }
 	p_rows = PyNumber_Long(PyTuple_GetItem(p_rows_and_width, 0));
 	p_width = PyNumber_Long(PyTuple_GetItem(p_rows_and_width, 1));
 	p_startup_cost = PyNumber_Long(
@@ -658,8 +665,6 @@ getRelSize(MulticornPlanState * state,
 	Py_DECREF(p_rows);
 	Py_DECREF(p_width);
 	Py_DECREF(p_rows_and_width);
-	Py_DECREF(p_targets_set);
-	Py_DECREF(p_quals);
 }
 
 PyObject *
