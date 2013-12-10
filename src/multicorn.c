@@ -39,7 +39,10 @@ PG_FUNCTION_INFO_V1(multicorn_validator);
 void		_PG_init(void);
 void		_PG_fini(void);
 
-
+/*
+ * List of modified relations
+ */
+static List *multicorn_modified_relations = NULL;
 
 
 /*
@@ -106,6 +109,8 @@ void
 _PG_init()
 {
 	Py_Initialize();
+	multicorn_modified_relations = NULL;
+	RegisterXactCallback(multicorn_xact_callback, NULL);
 }
 
 void
@@ -524,18 +529,18 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	TupleDesc	desc = RelationGetDescr(rel);
 	PlanState  *ps = mtstate->mt_plans[subplan_index];
 	Plan	   *subplan = ps->plan;
-	MulticornCallbackData *cb_data = MemoryContextAlloc(TopMemoryContext,
-											  sizeof(MulticornCallbackData));
+	MemoryContext oldcontext;
 	int			i;
 
 	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 							   desc->natts);
 	modstate->buffer = makeStringInfo();
 	modstate->fdw_instance = getInstance(rel->rd_id);
-	cb_data->foreigntableid = rel->rd_id;
-	RegisterXactCallback(multicorn_xact_callback, (void *) cb_data);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
+	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+	multicorn_modified_relations = lappend_oid(multicorn_modified_relations, rel->rd_id);
+	MemoryContextSwitchTo(oldcontext);
 	if (ps->ps_ResultTupleSlot)
 	{
 		TupleDesc	resultTupleDesc = ps->ps_ResultTupleSlot->tts_tupleDescriptor;
@@ -680,35 +685,38 @@ static void
 multicorn_xact_callback(XactEvent event, void *arg)
 {
 	PyObject   *instance;
-	Oid			foreigntableid = ((MulticornCallbackData *) arg)->foreigntableid;
+	ListCell   *lc;
 
-	switch (event)
+	foreach(lc, multicorn_modified_relations)
 	{
-		case XACT_EVENT_PRE_COMMIT:
-			instance = getInstance(foreigntableid);
-			PyObject_CallMethod(instance, "pre_commit", "()");
-			errorCheck();
-			Py_DECREF(instance);
-			break;
-		case XACT_EVENT_COMMIT:
-			instance = getInstance(foreigntableid);
-			PyObject_CallMethod(instance, "commit", "()");
-			errorCheck();
-			Py_DECREF(instance);
-			UnregisterXactCallback(multicorn_xact_callback, arg);
-			pfree(arg);
-			break;
-		case XACT_EVENT_ABORT:
-			UnregisterXactCallback(multicorn_xact_callback, arg);
-			pfree(arg);
-			instance = getInstance(foreigntableid);
-			PyObject_CallMethod(instance, "rollback", "()");
-			errorCheck();
-			Py_DECREF(instance);
-			break;
-		default:
-			break;
+		Oid			foreigntableid = lfirst_oid(lc);
+
+		switch (event)
+		{
+			case XACT_EVENT_PRE_COMMIT:
+				instance = getInstance(foreigntableid);
+				PyObject_CallMethod(instance, "pre_commit", "()");
+				errorCheck();
+				Py_DECREF(instance);
+				break;
+			case XACT_EVENT_COMMIT:
+				instance = getInstance(foreigntableid);
+				PyObject_CallMethod(instance, "commit", "()");
+				errorCheck();
+				Py_DECREF(instance);
+				break;
+			case XACT_EVENT_ABORT:
+				instance = getInstance(foreigntableid);
+				PyObject_CallMethod(instance, "rollback", "()");
+				errorCheck();
+				Py_DECREF(instance);
+				break;
+			default:
+				break;
+		}
 	}
+	list_free(multicorn_modified_relations);
+	multicorn_modified_relations = NULL;
 }
 #endif
 
