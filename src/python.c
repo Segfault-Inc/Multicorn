@@ -443,8 +443,10 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 
 				errorCheck();
 				columnDef = lappend(columnDef, makeString(key));
-				columnDef = lappend_oid(columnDef, typOid);
-				columnDef = lappend_oid(columnDef, typmod);
+				columnDef = lappend(columnDef, makeConst(TYPEOID,
+								   -1, InvalidOid, -1, typOid, false, true));
+				columnDef = lappend(columnDef, makeConst(TYPEOID,
+								   -1, InvalidOid, -1, typmod, false, true));
 				columnDef = lappend(columnDef, options);
 				columns_list = lappend(columns_list, columnDef);
 				PyMapping_SetItemString(columns_dict, key, column);
@@ -488,14 +490,14 @@ compareColumns(List *columns1, List *columns2)
 		cell1 = lnext(cell1);
 		cell2 = lnext(cell2);
 		/* Compare typoid */
-		if (lfirst_oid(cell1) != lfirst_oid(cell2))
+		if (((Const *) (lfirst(cell1)))->constvalue != ((Const *) lfirst(cell2))->constvalue)
 		{
 			return false;
 		}
 		cell1 = lnext(cell1);
 		cell2 = lnext(cell2);
 		/* Compare typmod */
-		if (lfirst_oid(cell1) != lfirst_oid(cell2))
+		if (((Const *) (lfirst(cell1)))->constvalue != ((Const *) lfirst(cell2))->constvalue)
 		{
 			return false;
 		}
@@ -650,11 +652,11 @@ getRelSize(MulticornPlanState * state,
 	errorCheck();
 	Py_DECREF(p_targets_set);
 	Py_DECREF(p_quals);
-    if((p_rows_and_width == Py_None) || PyTuple_Size(p_rows_and_width) != 2)
-    {
-      Py_DECREF(p_rows_and_width);
-      elog(ERROR, "The get_rel_size python method should return a tuple of length 2");
-    }
+	if ((p_rows_and_width == Py_None) || PyTuple_Size(p_rows_and_width) != 2)
+	{
+		Py_DECREF(p_rows_and_width);
+		elog(ERROR, "The get_rel_size python method should return a tuple of length 2");
+	}
 	p_rows = PyNumber_Long(PyTuple_GetItem(p_rows_and_width, 0));
 	p_width = PyNumber_Long(PyTuple_GetItem(p_rows_and_width, 1));
 	p_startup_cost = PyNumber_Long(
@@ -1355,7 +1357,8 @@ pathKeys(MulticornPlanState * state)
 			Py_DECREF(p_key);
 		}
 		item = lappend(item, attnums);
-		item = lappend_int(item, rows);
+		item = lappend(item, makeConst(INT4OID,
+									 -1, InvalidOid, -1, rows, false, true));
 		result = lappend(result, item);
 		Py_DECREF(p_keys);
 		Py_DECREF(p_cost);

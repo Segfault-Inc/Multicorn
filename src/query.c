@@ -521,7 +521,7 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int start
 		List	   *item = lfirst(lc);
 		List	   *attrnos = linitial(item);
 		ListCell   *attno_lc;
-		int			nbrows = lsecond_int(item);
+		int			nbrows = ((Const *) lsecond(item))->constvalue;
 		List	   *allclauses = NULL;
 		Bitmapset  *outer_relids = NULL;
 

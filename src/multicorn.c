@@ -722,8 +722,10 @@ serializePlanState(MulticornPlanState * state)
 {
 	List	   *result = NULL;
 
-	result = lappend_int(result, state->numattrs);
-	result = lappend_int(result, state->foreigntableid);
+	result = lappend(result, makeConst(INT4OID,
+						  -1, InvalidOid, -1, state->numattrs, false, true));
+	result = lappend(result, makeConst(INT4OID,
+					-1, InvalidOid, -1, state->foreigntableid, false, true));
 	result = lappend(result, state->target_list);
 	return result;
 }
@@ -737,8 +739,8 @@ initializeExecState(void *internalstate)
 {
 	MulticornExecState *execstate = palloc0(sizeof(MulticornExecState));
 	List	   *values = (List *) internalstate;
-	AttrNumber	attnum = linitial_int(values);
-	Oid			foreigntableid = lsecond_int(values);
+	AttrNumber	attnum = ((Const *) linitial(values))->constvalue;
+	Oid			foreigntableid = ((Const *) lsecond(values))->constvalue;
 
 	/* Those list must be copied, because their memory context can become */
 	/* invalid during the execution (in particular with the cursor interface) */
