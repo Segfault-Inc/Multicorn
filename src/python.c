@@ -180,6 +180,7 @@ char *
 PyString_AsString(PyObject *unicode)
 {
 	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
+
 	errorCheck();
 	char	   *rv = pstrdup(PyBytes_AsString(o));
 
@@ -190,9 +191,11 @@ PyString_AsString(PyObject *unicode)
 int
 PyString_AsStringAndSize(PyObject *obj, char **buffer, Py_ssize_t *length)
 {
-	PyObject *o;
-	int rv;
-	if (PyUnicode_Check(obj)) {
+	PyObject   *o;
+	int			rv;
+
+	if (PyUnicode_Check(obj))
+	{
 		o = PyUnicode_AsEncodedString(obj, GetDatabaseEncodingName(), NULL);
 		errorCheck();
 		rv = PyBytes_AsStringAndSize(o, buffer, length);
@@ -454,8 +457,8 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 		int			i;
 		PyObject   *p_columnclass = getClassString("multicorn."
 												   "ColumnDefinition"),
-				*p_collections = PyImport_ImportModule("collections"),
-				*p_dictclass = PyObject_GetAttrString(p_collections, "OrderedDict");
+				   *p_collections = PyImport_ImportModule("collections"),
+				   *p_dictclass = PyObject_GetAttrString(p_collections, "OrderedDict");
 
 		columns_dict = PyObject_CallFunction(p_dictclass, "()");
 
@@ -1296,6 +1299,7 @@ datumByteaToPython(Datum datum, ConversionInfo * cinfo)
 	text	   *txt = DatumGetByteaP(datum);
 	char	   *str = VARDATA(txt);
 	size_t		size = VARSIZE(txt) - VARHDRSZ;
+
 #if PY_MAJOR_VERSION >= 3
 	return PyBytes_FromStringAndSize(str, size);
 #else
