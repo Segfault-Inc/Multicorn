@@ -3,6 +3,7 @@
 #include "postgres.h"
 #include "multicorn.h"
 #include "catalog/pg_user_mapping.h"
+#include "access/reloptions.h"
 #include "miscadmin.h"
 #include "utils/numeric.h"
 #include "utils/date.h"
@@ -11,6 +12,7 @@
 #include "utils/catcache.h"
 #include "utils/memutils.h"
 #include "utils/resowner.h"
+#include "utils/rel.h"
 #include "utils/rel.h"
 #include "executor/nodeSubplan.h"
 #include "bytesobject.h"
@@ -88,6 +90,10 @@ void appendBinaryStringInfoQuote(StringInfo buffer,
 							char *tempbuffer,
 							Py_ssize_t strlength,
 							bool need_quote);
+
+UserMapping *
+			multicorn_GetUserMapping(Oid userid, Oid serverid);
+
 
 /* Hash table mapping oid to fdw instances */
 static HTAB *InstancesHash;
@@ -319,7 +325,6 @@ getOptions(Oid foreigntableid)
 	ForeignServer *f_server;
 	UserMapping *mapping;
 	List	   *options;
-	MemoryContext savedContext = CurrentMemoryContext;
 
 	f_table = GetForeignTable(foreigntableid);
 	f_server = GetForeignServer(f_table->serverid);
@@ -329,20 +334,58 @@ getOptions(Oid foreigntableid)
 	options = list_concat(options, f_server->options);
 	/* An error might occur if no user mapping is defined. */
 	/* In that case, just ignore it */
-	PG_TRY();
-	{
-		mapping = GetUserMapping(GetUserId(), f_table->serverid);
+	mapping = multicorn_GetUserMapping(GetUserId(), f_table->serverid);
+	if (mapping)
 		options = list_concat(options, mapping->options);
-	}
-	PG_CATCH();
-	{
-		FlushErrorState();
-		MemoryContextSwitchTo(savedContext);
-		/* DO NOTHING HERE */
-	}
-	PG_END_TRY();
 	return options;
 }
+
+/*
+ * Reimplementation of GetUserMapping, which returns NULL instead of throwing an
+ * error when the mapping is not found.
+ */
+UserMapping *
+multicorn_GetUserMapping(Oid userid, Oid serverid)
+{
+	Datum		datum;
+	HeapTuple	tp;
+	bool		isnull;
+	UserMapping *um;
+
+	tp = SearchSysCache2(USERMAPPINGUSERSERVER,
+						 ObjectIdGetDatum(userid),
+						 ObjectIdGetDatum(serverid));
+
+	if (!HeapTupleIsValid(tp))
+	{
+		/* Not found for the specific user -- try PUBLIC */
+		tp = SearchSysCache2(USERMAPPINGUSERSERVER,
+							 ObjectIdGetDatum(InvalidOid),
+							 ObjectIdGetDatum(serverid));
+	}
+
+	if (!HeapTupleIsValid(tp))
+		return NULL;
+
+	um = (UserMapping *) palloc(sizeof(UserMapping));
+	um->userid = userid;
+	um->serverid = serverid;
+
+	/* Extract the umoptions */
+	datum = SysCacheGetAttr(USERMAPPINGUSERSERVER,
+							tp,
+							Anum_pg_user_mapping_umoptions,
+							&isnull);
+	if (isnull)
+		um->options = NIL;
+	else
+		um->options = untransformRelOptions(datum);
+
+	ReleaseSysCache(tp);
+
+	return um;
+}
+
 
 /*
  * Collect and validate options.
@@ -616,14 +659,15 @@ getInstance(Oid foreigntableid)
 		Py_DECREF(p_options);
 		Py_DECREF(p_columns);
 		errorCheck();
+		MemoryContextSwitchTo(oldContext);
 	}
 	else
 	{
+		MemoryContextSwitchTo(oldContext);
 		MemoryContextDelete(tempContext);
 	}
 	RelationClose(rel);
 	Py_INCREF(entry->value);
-	MemoryContextSwitchTo(oldContext);
 	return entry->value;
 }
 
