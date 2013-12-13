@@ -29,7 +29,7 @@ bool		compareColumns(List *columns1, List *columns2);
 PyObject   *getClass(PyObject *className);
 PyObject   *valuesToPySet(List *targetlist);
 PyObject   *qualDefsToPyList(List *quallist, ConversionInfo ** cinfo);
-PyObject *pythonQual(char *operatorname, Datum dvalue,
+PyObject *pythonQual(char *operatorname, PyObject *value,
 		   ConversionInfo * cinfo,
 		   bool is_array,
 		   bool use_or,
@@ -726,27 +726,41 @@ qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfos)
 				use_or = qualdef->base.useOr;
 	Oid			typeoid = qualdef->base.typeoid;
 	Datum		value = qualdef->value;
+	PyObject   *p_value;
+
+	if (qualdef->isnull)
+	{
+		p_value = Py_None;
+		Py_INCREF(Py_None);
+	}
+	else
+	{
+		if (typeoid == InvalidOid)
+		{
+			typeoid = cinfo->atttypoid;
+		}
+		p_value = datumToPython(value, typeoid, cinfo);
+	}
 
 	if (typeoid <= 0)
 	{
 		typeoid = cinfo->atttypoid;
 	}
 
-	return pythonQual(operatorname, value,
+	return pythonQual(operatorname, p_value,
 					  cinfo, is_array, use_or, typeoid);
 }
 
 
 PyObject *
-pythonQual(char *operatorname, Datum dvalue,
+pythonQual(char *operatorname,
+		   PyObject *value,
 		   ConversionInfo * cinfo,
 		   bool is_array,
 		   bool use_or,
 		   Oid typeoid)
 {
-	PyObject   *value = datumToPython(dvalue, typeoid,
-									  cinfo),
-			   *qualClass = getClassString("multicorn.Qual"),
+	PyObject   *qualClass = getClassString("multicorn.Qual"),
 			   *qualInstance,
 			   *operator;
 
@@ -815,6 +829,7 @@ execute(ForeignScanState *node)
 				newqual->base.useOr = qual->useOr;
 				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull, NULL);
 				newqual->base.typeoid = qual->typeoid;
+				newqual->isnull = isNull;
 				break;
 			case T_Const:
 				newqual = (MulticornConstQual *) qual;
@@ -1314,11 +1329,6 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 	HeapTuple	tuple;
 	Form_pg_type typeStruct;
 
-	if (!datum)
-	{
-		Py_INCREF(Py_None);
-		return Py_None;
-	}
 	switch (type)
 	{
 		case BYTEAOID:

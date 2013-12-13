@@ -439,6 +439,7 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 			qual->right_type = T_Const;
 			qual->typeoid = ((Const *) value)->consttype;
 			((MulticornConstQual *) qual)->value = ((Const *) value)->constvalue;
+			((MulticornConstQual *) qual)->isnull = ((Const *) value)->constisnull;
 			break;
 		case T_Var:
 			qual = palloc0(sizeof(MulticornVarQual));
@@ -449,6 +450,7 @@ makeQual(AttrNumber varattno, char *opname, Expr *value, bool isarray,
 			qual = palloc0(sizeof(MulticornParamQual));
 			qual->right_type = T_Param;
 			((MulticornParamQual *) qual)->expr = value;
+			qual->typeoid = InvalidOid;
 			break;
 	}
 	qual->varattno = varattno;

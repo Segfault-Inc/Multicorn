@@ -90,6 +90,7 @@ typedef struct MulticornConstQual
 {
 	MulticornBaseQual base;
 	Datum		value;
+    bool isnull;
 }	MulticornConstQual;
 
 typedef struct MulticornVarQual
