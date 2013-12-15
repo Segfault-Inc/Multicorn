@@ -17,6 +17,7 @@
 #include "executor/nodeSubplan.h"
 #include "bytesobject.h"
 #include "mb/pg_wchar.h"
+#include "access/xact.h"
 
 
 List	   *getOptions(Oid foreigntableid);
@@ -100,15 +101,7 @@ UserMapping *
 /* Hash table mapping oid to fdw instances */
 static HTAB *InstancesHash;
 
-typedef struct CacheEntry
-{
-	Oid			hashkey;
-	PyObject   *value;
-	List	   *options;
-	List	   *columns;
-	/* Keep the "options" and "columns" in a specific context to avoid leaks. */
-	MemoryContext cacheContext;
-}	CacheEntry;
+static void begin_remote_xact(CacheEntry *entry);
 
 
 /*
@@ -566,13 +559,8 @@ compareColumns(List *columns1, List *columns2)
 }
 
 
-/*
- * Returns the fdw_instance associated with the foreigntableid.
- *
- * For performance reasons, it is cached in hash table.
- */
-PyObject *
-getInstance(Oid foreigntableid)
+CacheEntry *
+getCacheEntry(Oid foreigntableid)
 {
 	/*
 	 * create a temporary context. If we have to (re)create the python
@@ -618,6 +606,7 @@ getInstance(Oid foreigntableid)
 		entry->options = NULL;
 		entry->columns = NULL;
 		entry->cacheContext = NULL;
+                entry->xact_depth = 0;
 		needInitialization = true;
 	}
 	else
@@ -665,6 +654,7 @@ getInstance(Oid foreigntableid)
 		entry->cacheContext = tempContext;
 		entry->options = options;
 		entry->columns = columns;
+                entry->xact_depth = 0;
 		Py_DECREF(p_class);
 		Py_DECREF(p_options);
 		Py_DECREF(p_columns);
@@ -678,8 +668,46 @@ getInstance(Oid foreigntableid)
 	}
 	RelationClose(rel);
 	Py_INCREF(entry->value);
-	return entry->value;
+
+        /*
+         * Start a new transaction or subtransaction if needed.
+         */
+        begin_remote_xact(entry);
+
+        return entry;
 }
+
+
+/*
+ * Returns the fdw_instance associated with the foreigntableid.
+ *
+ * For performance reasons, it is cached in hash table.
+ */
+PyObject *
+getInstance(Oid foreigntableid)
+{
+  return getCacheEntry(foreigntableid)->value;
+}
+
+
+static void begin_remote_xact(CacheEntry *entry)
+{
+        int curlevel = GetCurrentTransactionNestLevel();
+
+        /* Start main transaction if we haven't yet */
+        if (entry->xact_depth <= 0)
+        {
+          PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
+          entry->xact_depth = 1;
+        }
+
+        while (entry->xact_depth < curlevel)
+        {
+            entry->xact_depth++;
+            PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
+        }
+}
+
 
 /*
  * Returns the relation estimated size, in term of number of rows and width.

@@ -89,6 +89,9 @@ static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelIn
 
 static void multicorn_xact_callback(XactEvent event, void *arg);
 
+static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
+                                           SubTransactionId parentSubid, void *arg);
+
 typedef struct MulticornCallbackData
 {
 	Oid			foreigntableid;
@@ -113,6 +116,7 @@ _PG_init()
 #if PG_VERSION_NUM >= 90300
 	multicorn_modified_relations = NULL;
 	RegisterXactCallback(multicorn_xact_callback, NULL);
+    RegisterSubXactCallback(multicorn_subxact_callback, NULL);
 #endif
 }
 
@@ -542,7 +546,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
 	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
-	multicorn_modified_relations = lappend_oid(multicorn_modified_relations, rel->rd_id);
+	multicorn_modified_relations = list_append_unique_oid(multicorn_modified_relations, rel->rd_id);
 	MemoryContextSwitchTo(oldcontext);
 	if (ps->ps_ResultTupleSlot)
 	{
@@ -693,33 +697,75 @@ multicorn_xact_callback(XactEvent event, void *arg)
 	foreach(lc, multicorn_modified_relations)
 	{
 		Oid			foreigntableid = lfirst_oid(lc);
+                CacheEntry* entry  = getCacheEntry(foreigntableid);
+                instance = entry->value;
+
+                if (entry->xact_depth == 0)
+                        continue;
 
 		switch (event)
 		{
 			case XACT_EVENT_PRE_COMMIT:
-				instance = getInstance(foreigntableid);
 				PyObject_CallMethod(instance, "pre_commit", "()");
 				errorCheck();
-				Py_DECREF(instance);
 				break;
 			case XACT_EVENT_COMMIT:
-				instance = getInstance(foreigntableid);
 				PyObject_CallMethod(instance, "commit", "()");
 				errorCheck();
-				Py_DECREF(instance);
 				break;
 			case XACT_EVENT_ABORT:
-				instance = getInstance(foreigntableid);
 				PyObject_CallMethod(instance, "rollback", "()");
 				errorCheck();
-				Py_DECREF(instance);
 				break;
 			default:
 				break;
 		}
+                Py_DECREF(instance);
+
+                entry->xact_depth = 0;
 	}
 	list_free(multicorn_modified_relations);
 	multicorn_modified_relations = NULL;
+}
+
+
+/*
+ * Callback used to propagate a subtransaction end.
+ */
+static void
+multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
+                                           SubTransactionId parentSubid, void *arg)
+{
+  PyObject      *instance;
+  int           curlevel;
+  ListCell      *lc;
+
+
+  /* Nothing to do after commit or subtransaction start. */
+  if (event == SUBXACT_EVENT_COMMIT_SUB || event == SUBXACT_EVENT_START_SUB)
+    return;
+
+  curlevel = GetCurrentTransactionNestLevel();
+
+  foreach(lc, multicorn_modified_relations)
+  {
+    Oid foreigntableid = lfirst_oid(lc);
+    CacheEntry* entry  = getCacheEntry(foreigntableid);
+    instance = entry->value;
+
+    if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
+    {
+      PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
+    }
+    else
+    {
+      PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
+    }
+    errorCheck();
+    Py_DECREF(instance);
+
+    entry->xact_depth--;
+  }
 }
 #endif
 
