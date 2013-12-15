@@ -22,6 +22,18 @@
 
 /* Data structures */
 
+typedef struct CacheEntry
+{
+        Oid                     hashkey;
+        PyObject   *value;
+        List       *options;
+        List       *columns;
+        int        xact_depth;
+        /* Keep the "options" and "columns" in a specific context to avoid leaks. */
+        MemoryContext cacheContext;
+}       CacheEntry;
+
+
 typedef struct ConversionInfo
 {
 	char	   *attrname;
@@ -129,6 +141,9 @@ void getRelSize(MulticornPlanState * state,
 		   int *width);
 
 List	   *pathKeys(MulticornPlanState * state);
+
+CacheEntry * getCacheEntry(Oid foreigntableid);
+
 
 
 /* query.c */
