@@ -165,6 +165,18 @@ class ForeignDataWrapper(object):
     def end_modify(self):
         pass
 
+    def begin(self, serializable):
+        pass
+
+    def sub_begin(self, level):
+        pass
+
+    def sub_rollback(self, level):
+        pass
+
+    def sub_commit(self, level):
+        pass
+
 
 class TransactionAwareForeignDataWrapper(ForeignDataWrapper):
 
