@@ -124,7 +124,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         log_to_postgres('SUBROLLBACK')
 
     def sub_commit(self, level):
-        log_to_postgres('SUB ROLLBACK')
+        log_to_postgres('SUBCOMMIT')
 
     def commit(self):
         log_to_postgres('COMMIT')
