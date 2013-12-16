@@ -15,8 +15,11 @@ CREATE foreign table testmulticorn (
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('test_type', 'list'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying[]'), ('test2', 'character varying[]')]
+NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
+NOTICE:  PRECOMMIT
+NOTICE:  COMMIT
                         test1                         |                        test2                         
 ------------------------------------------------------+------------------------------------------------------
  {test1,1,0,"test1,\"0\"","{some value, \\\" ' 2}"}   | {test2,2,0,"test2,\"0\"","{some value, \\\" ' 2}"}
@@ -42,8 +45,11 @@ NOTICE:  ['test1', 'test2']
 (20 rows)
 
 select test1[2] as c from testmulticorn order by c;
+NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1']
+NOTICE:  PRECOMMIT
+NOTICE:  COMMIT
  c 
 ---
  1
@@ -72,8 +78,11 @@ alter foreign table testmulticorn alter test1 type varchar;
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('test_type', 'list'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying[]')]
+NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
+NOTICE:  PRECOMMIT
+NOTICE:  COMMIT
                           test1                           |                        test2                         
 ----------------------------------------------------------+------------------------------------------------------
  ['test1', 1, 0, 'test1,"0"', '{some value, \\" \' 2}']   | {test2,2,0,"test2,\"0\"","{some value, \\\" ' 2}"}
@@ -102,8 +111,11 @@ alter foreign table testmulticorn options (set test_type 'nested_list');
 select * from testmulticorn limit 1;
 NOTICE:  [('option1', 'option1'), ('test_type', 'nested_list'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying[]')]
+NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
+NOTICE:  PRECOMMIT
+NOTICE:  COMMIT
                            test1                           |                              test2                               
 -----------------------------------------------------------+------------------------------------------------------------------
  [['test1'], [1, '{some value, \\" 2}'], [0, 'test1,"0"']] | {['test2'],"[2, '{some value, \\\\\" 2}']","[0, 'test2,\"0\"']"}
@@ -114,16 +126,22 @@ alter foreign table testmulticorn alter test2 type varchar[][];
 select test1[2], test2[2][2], array_length(test1, 1), array_length(test2, 1), array_length(test2, 2) from testmulticorn limit 1;
 NOTICE:  [('option1', 'option1'), ('test_type', 'nested_list'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying[]'), ('test2', 'character varying[]')]
+NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
+NOTICE:  PRECOMMIT
+NOTICE:  COMMIT
            test1            |       test2        | array_length | array_length | array_length 
 ----------------------------+--------------------+--------------+--------------+--------------
  [1, '{some value, \\" 2}'] | {some value, \" 2} |            3 |            3 |            2
 (1 row)
 
 select length(test1[2]) from testmulticorn limit 1;
+NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1']
+NOTICE:  PRECOMMIT
+NOTICE:  COMMIT
  length 
 --------
      26
