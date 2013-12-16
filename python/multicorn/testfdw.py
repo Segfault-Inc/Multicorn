@@ -113,3 +113,24 @@ class TestForeignDataWrapper(ForeignDataWrapper):
     @property
     def rowid_column(self):
         return self._row_id_column
+
+    def begin(self, serializable):
+        log_to_postgres('BEGIN')
+
+    def sub_begin(self, level):
+        log_to_postgres('SUBBEGIN')
+
+    def sub_rollback(self, level):
+        log_to_postgres('SUBROLLBACK')
+
+    def sub_commit(self, level):
+        log_to_postgres('SUB ROLLBACK')
+
+    def commit(self):
+        log_to_postgres('COMMIT')
+
+    def pre_commit(self):
+        log_to_postgres('PRECOMMIT')
+
+    def rollback(self):
+        log_to_postgres('ROLLBACK')

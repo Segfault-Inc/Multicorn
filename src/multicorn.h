@@ -19,7 +19,6 @@
 #ifndef PG_MULTICORN_H
 #define PG_MULTICORN_H
 
-
 /* Data structures */
 
 typedef struct CacheEntry
@@ -145,6 +144,8 @@ List	   *pathKeys(MulticornPlanState * state);
 
 CacheEntry * getCacheEntry(Oid foreigntableid);
 
+/* Hash table mapping oid to fdw instances */
+extern PGDLLIMPORT HTAB *InstancesHash;
 
 
 /* query.c */

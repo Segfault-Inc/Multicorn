@@ -39,8 +39,6 @@ PG_FUNCTION_INFO_V1(multicorn_validator);
 void		_PG_init(void);
 void		_PG_fini(void);
 
-
-
 /*
  * FDW functions declarations
  */
@@ -90,7 +88,7 @@ static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelIn
 static void multicorn_xact_callback(XactEvent event, void *arg);
 
 static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
-                                           SubTransactionId parentSubid, void *arg);
+						   SubTransactionId parentSubid, void *arg);
 
 typedef struct MulticornCallbackData
 {
@@ -107,17 +105,32 @@ static List *multicorn_modified_relations = NULL;
 void	   *serializePlanState(MulticornPlanState * planstate);
 MulticornExecState *initializeExecState(void *internal_plan_state);
 
+/* Hash table mapping oid to fdw instances */
+HTAB	   *InstancesHash;
 
 
 void
 _PG_init()
 {
+	HASHCTL		ctl;
+	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
+
 	Py_Initialize();
 #if PG_VERSION_NUM >= 90300
 	multicorn_modified_relations = NULL;
 	RegisterXactCallback(multicorn_xact_callback, NULL);
     RegisterSubXactCallback(multicorn_subxact_callback, NULL);
 #endif
+	/* Initialize the global oid -> python instances hash */
+	MemSet(&ctl, 0, sizeof(ctl));
+	ctl.keysize = sizeof(Oid);
+	ctl.entrysize = sizeof(CacheEntry);
+	ctl.hash = oid_hash;
+	ctl.hcxt = CacheMemoryContext;
+	InstancesHash = hash_create("multicorn instances", 32,
+								&ctl,
+								HASH_ELEM | HASH_FUNCTION);
+	MemoryContextSwitchTo(oldctx);
 }
 
 void
@@ -546,7 +559,6 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
 	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
-	multicorn_modified_relations = list_append_unique_oid(multicorn_modified_relations, rel->rd_id);
 	MemoryContextSwitchTo(oldcontext);
 	if (ps->ps_ResultTupleSlot)
 	{
@@ -692,40 +704,35 @@ static void
 multicorn_xact_callback(XactEvent event, void *arg)
 {
 	PyObject   *instance;
-	ListCell   *lc;
+	HASH_SEQ_STATUS status;
+	CacheEntry *entry;
 
-	foreach(lc, multicorn_modified_relations)
+	hash_seq_init(&status, InstancesHash);
+
+	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
 	{
-		Oid			foreigntableid = lfirst_oid(lc);
-                CacheEntry* entry  = getCacheEntry(foreigntableid);
-                instance = entry->value;
-
-                if (entry->xact_depth == 0)
-                        continue;
+		instance = entry->value;
+		if (entry->xact_depth == 0)
+			continue;
 
 		switch (event)
 		{
 			case XACT_EVENT_PRE_COMMIT:
 				PyObject_CallMethod(instance, "pre_commit", "()");
-				errorCheck();
 				break;
 			case XACT_EVENT_COMMIT:
 				PyObject_CallMethod(instance, "commit", "()");
-				errorCheck();
+				entry->xact_depth = 0;
 				break;
 			case XACT_EVENT_ABORT:
 				PyObject_CallMethod(instance, "rollback", "()");
-				errorCheck();
+				entry->xact_depth = 0;
 				break;
 			default:
 				break;
 		}
-                Py_DECREF(instance);
-
-                entry->xact_depth = 0;
+		errorCheck();
 	}
-	list_free(multicorn_modified_relations);
-	multicorn_modified_relations = NULL;
 }
 
 
@@ -734,38 +741,37 @@ multicorn_xact_callback(XactEvent event, void *arg)
  */
 static void
 multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
-                                           SubTransactionId parentSubid, void *arg)
+						   SubTransactionId parentSubid, void *arg)
 {
-  PyObject      *instance;
-  int           curlevel;
-  ListCell      *lc;
+	PyObject   *instance;
+	int			curlevel;
+	HASH_SEQ_STATUS status;
+	CacheEntry *entry;
 
 
-  /* Nothing to do after commit or subtransaction start. */
-  if (event == SUBXACT_EVENT_COMMIT_SUB || event == SUBXACT_EVENT_START_SUB)
-    return;
+	/* Nothing to do after commit or subtransaction start. */
+	if (event == SUBXACT_EVENT_COMMIT_SUB || event == SUBXACT_EVENT_START_SUB)
+		return;
 
-  curlevel = GetCurrentTransactionNestLevel();
+	curlevel = GetCurrentTransactionNestLevel();
 
-  foreach(lc, multicorn_modified_relations)
-  {
-    Oid foreigntableid = lfirst_oid(lc);
-    CacheEntry* entry  = getCacheEntry(foreigntableid);
-    instance = entry->value;
+	hash_seq_init(&status, InstancesHash);
 
-    if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
-    {
-      PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
-    }
-    else
-    {
-      PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
-    }
-    errorCheck();
-    Py_DECREF(instance);
+	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
+	{
+		instance = entry->value;
 
-    entry->xact_depth--;
-  }
+		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
+		{
+			PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
+		}
+		else
+		{
+			PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
+		}
+		errorCheck();
+		entry->xact_depth--;
+	}
 }
 #endif
 

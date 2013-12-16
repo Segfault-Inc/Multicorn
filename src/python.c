@@ -98,10 +98,7 @@ UserMapping *
 			multicorn_GetUserMapping(Oid userid, Oid serverid);
 
 
-/* Hash table mapping oid to fdw instances */
-static HTAB *InstancesHash;
-
-static void begin_remote_xact(CacheEntry *entry);
+static void begin_remote_xact(CacheEntry * entry);
 
 
 /*
@@ -583,21 +580,6 @@ getCacheEntry(Oid foreigntableid)
 	TupleDesc	desc = rel->rd_att;
 	bool		needInitialization = false;
 
-	/* Initialize hash table if needed. */
-	if (InstancesHash == NULL)
-	{
-		HASHCTL		ctl;
-
-		MemSet(&ctl, 0, sizeof(ctl));
-		ctl.keysize = sizeof(Oid);
-		ctl.entrysize = sizeof(CacheEntry);
-		ctl.hash = oid_hash;
-		ctl.hcxt = CacheMemoryContext;
-		InstancesHash = hash_create("multicorn instances", 32,
-									&ctl,
-									HASH_ELEM | HASH_FUNCTION);
-	}
-
 	entry = hash_search(InstancesHash, &foreigntableid, HASH_ENTER,
 						&found);
 
@@ -606,7 +588,7 @@ getCacheEntry(Oid foreigntableid)
 		entry->options = NULL;
 		entry->columns = NULL;
 		entry->cacheContext = NULL;
-                entry->xact_depth = 0;
+		entry->xact_depth = 0;
 		needInitialization = true;
 	}
 	else
@@ -654,7 +636,7 @@ getCacheEntry(Oid foreigntableid)
 		entry->cacheContext = tempContext;
 		entry->options = options;
 		entry->columns = columns;
-                entry->xact_depth = 0;
+		entry->xact_depth = 0;
 		Py_DECREF(p_class);
 		Py_DECREF(p_options);
 		Py_DECREF(p_columns);
@@ -669,12 +651,12 @@ getCacheEntry(Oid foreigntableid)
 	RelationClose(rel);
 	Py_INCREF(entry->value);
 
-        /*
-         * Start a new transaction or subtransaction if needed.
-         */
-        begin_remote_xact(entry);
+	/*
+	 * Start a new transaction or subtransaction if needed.
+	 */
+	begin_remote_xact(entry);
 
-        return entry;
+	return entry;
 }
 
 
@@ -686,26 +668,29 @@ getCacheEntry(Oid foreigntableid)
 PyObject *
 getInstance(Oid foreigntableid)
 {
-  return getCacheEntry(foreigntableid)->value;
+	return getCacheEntry(foreigntableid)->value;
 }
 
 
-static void begin_remote_xact(CacheEntry *entry)
+static void
+begin_remote_xact(CacheEntry * entry)
 {
-        int curlevel = GetCurrentTransactionNestLevel();
+	int			curlevel = GetCurrentTransactionNestLevel();
 
-        /* Start main transaction if we haven't yet */
-        if (entry->xact_depth <= 0)
-        {
-          PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
-          entry->xact_depth = 1;
-        }
+	/* Start main transaction if we haven't yet */
+	if (entry->xact_depth <= 0)
+	{
+		PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
+		errorCheck();
+		entry->xact_depth = 1;
+	}
 
-        while (entry->xact_depth < curlevel)
-        {
-            entry->xact_depth++;
-            PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
-        }
+	while (entry->xact_depth < curlevel)
+	{
+		entry->xact_depth++;
+		PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
+		errorCheck();
+	}
 }
 
 
