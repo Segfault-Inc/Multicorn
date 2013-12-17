@@ -81,7 +81,10 @@ class SqlAlchemyFdw(ForeignDataWrapper):
                                 WARNING)
         if clauses:
             statement = statement.where(and_(*clauses))
-        columns = [self.table.c[col] for col in columns]
+        if columns:
+            columns = [self.table.c[col] for col in columns]
+        else:
+            columns = self.table.c.values()
         statement = statement.with_only_columns(columns)
         log_to_postgres(str(statement), DEBUG)
         for item in self.engine.execute(statement):
