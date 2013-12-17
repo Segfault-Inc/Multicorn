@@ -758,8 +758,8 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 
 	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
 	{
-                if( entry->xact_depth < curlevel)
-                        continue;
+		if (entry->xact_depth < curlevel)
+			continue;
 
 		instance = entry->value;
 
