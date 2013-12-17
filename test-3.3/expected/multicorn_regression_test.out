@@ -479,7 +479,10 @@ NOTICE:  ['test1', 'test2']
      0 | 0
 (1 row)
 
+NOTICE:  PRECOMMIT
+NOTICE:  COMMIT
 select * from testmulticorn where test1 = 0;
+NOTICE:  BEGIN
 NOTICE:  [test1 = 0]
 NOTICE:  ['test1', 'test2']
  test1 | test2 

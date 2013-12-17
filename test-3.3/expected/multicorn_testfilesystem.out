@@ -45,25 +45,26 @@ select create_table();
 (1 row)
 
 -- End of Setup
+\i test-common/multicorn_testfilesystem.include
 -- Should have 8 lines.
-SELECT * from testmulticorn;
+SELECT * from testmulticorn ORDER BY filename;
  color | size  |  name  | ext |       filename        |          data          
 -------+-------+--------+-----+-----------------------+------------------------
- red   | small | round  | ini | red/small/round.ini   | Im a small red round  +
+ blue  | big   | round  | ini | blue/big/round.ini    | Im a big blue round   +
        |       |        |     |                       | 
- red   | small | square | txt | red/small/square.txt  | Im a small red square +
-       |       |        |     |                       | 
- red   | big   | round  | ini | red/big/round.ini     | Im a big red round    +
-       |       |        |     |                       | 
- red   | big   | square | txt | red/big/square.txt    | Im a big red square   +
+ blue  | big   | square | txt | blue/big/square.txt   | Im a big blue square  +
        |       |        |     |                       | 
  blue  | small | round  | ini | blue/small/round.ini  | Im a small blue round +
        |       |        |     |                       | 
  blue  | small | square | txt | blue/small/square.txt | Im a small blue square+
        |       |        |     |                       | 
- blue  | big   | round  | ini | blue/big/round.ini    | Im a big blue round   +
+ red   | big   | round  | ini | red/big/round.ini     | Im a big red round    +
        |       |        |     |                       | 
- blue  | big   | square | txt | blue/big/square.txt   | Im a big blue square  +
+ red   | big   | square | txt | red/big/square.txt    | Im a big red square   +
+       |       |        |     |                       | 
+ red   | small | round  | ini | red/small/round.ini   | Im a small red round  +
+       |       |        |     |                       | 
+ red   | small | square | txt | red/small/square.txt  | Im a small red square +
        |       |        |     |                       | 
 (8 rows)
 
@@ -115,77 +116,77 @@ INSERT INTO testmulticorn (data, filename) VALUES ('Im a big blue triangle', 'bl
 (1 row)
 
 -- Should have 11 lines by now.
-SELECT * from testmulticorn;
+SELECT * from testmulticorn ORDER BY filename;
  color  | size  |   name   | ext  |        filename         |           data           
 --------+-------+----------+------+-------------------------+--------------------------
- yellow | small | square   | txt  | yellow/small/square.txt | Im a small yellow square
- yellow | big   | square   | text | yellow/big/square.text  | Im a big yellow square
- red    | small | round    | ini  | red/small/round.ini     | Im a small red round    +
+ blue   | big   | round    | ini  | blue/big/round.ini      | Im a big blue round     +
         |       |          |      |                         | 
- red    | small | square   | txt  | red/small/square.txt    | Im a small red square   +
+ blue   | big   | square   | txt  | blue/big/square.txt     | Im a big blue square    +
+        |       |          |      |                         | 
+ blue   | big   | triangle | txt  | blue/big/triangle.txt   | Im a big blue triangle
+ blue   | small | round    | ini  | blue/small/round.ini    | Im a small blue round   +
+        |       |          |      |                         | 
+ blue   | small | square   | txt  | blue/small/square.txt   | Im a small blue square  +
         |       |          |      |                         | 
  red    | big   | round    | ini  | red/big/round.ini       | Im a big red round      +
         |       |          |      |                         | 
  red    | big   | square   | txt  | red/big/square.txt      | Im a big red square     +
         |       |          |      |                         | 
- blue   | small | round    | ini  | blue/small/round.ini    | Im a small blue round   +
+ red    | small | round    | ini  | red/small/round.ini     | Im a small red round    +
         |       |          |      |                         | 
- blue   | small | square   | txt  | blue/small/square.txt   | Im a small blue square  +
+ red    | small | square   | txt  | red/small/square.txt    | Im a small red square   +
         |       |          |      |                         | 
- blue   | big   | triangle | txt  | blue/big/triangle.txt   | Im a big blue triangle
- blue   | big   | round    | ini  | blue/big/round.ini      | Im a big blue round     +
-        |       |          |      |                         | 
- blue   | big   | square   | txt  | blue/big/square.txt     | Im a big blue square    +
-        |       |          |      |                         | 
+ yellow | big   | square   | text | yellow/big/square.text  | Im a big yellow square
+ yellow | small | square   | txt  | yellow/small/square.txt | Im a small yellow square
 (11 rows)
 
 -- Insertion with incoherent filename/properties (should fail)
 INSERT INTO testmulticorn (color, size, name, ext, data, filename) VALUES ('blue', 'big', 'triangle', 'txt', 'Im a big blue triangle',
         'blue/small/triangle.txt');
-ERROR:  The columns inferred from the filename do not match the supplied columns.
+psql:test-common/multicorn_testfilesystem.include:28: ERROR:  The columns inferred from the filename do not match the supplied columns.
 HINT:  Remove either the filename column or the properties column from your  statement, or ensure they match
 -- Insertion with missing keys (should fail)
 INSERT INTO testmulticorn (color, size, name) VALUES ('blue', 'small', 'triangle');
-ERROR:  The following columns are necessary: {'ext'}
+psql:test-common/multicorn_testfilesystem.include:31: ERROR:  The following columns are necessary: {'ext'}
 HINT:  You can also insert an item by providing only the filename and content columns
 -- Insertion with missing keys and filename (should fail)
 INSERT INTO testmulticorn (color, size, name, filename) VALUES ('blue', 'small', 'triangle', 'blue/small/triangle.txt');
-ERROR:  The following columns are necessary: {'ext'}
+psql:test-common/multicorn_testfilesystem.include:34: ERROR:  The following columns are necessary: {'ext'}
 HINT:  You can also insert an item by providing only the filename and content columns
 -- Insertion which would overwrite a file.
 -- Normal insertion
 INSERT INTO testmulticorn (color, size, name, ext, data) VALUES ('yellow', 'big', 'square', 'text', 'Im a duplicate big square');
-ERROR:  Duplicate key value violates filesystem integrity.
+psql:test-common/multicorn_testfilesystem.include:38: ERROR:  Duplicate key value violates filesystem integrity.
 DETAIL:  Key (color, ext, name, size)=(yellow, text, square, big) already exists
 -- Should still have 11 lines by now.
-SELECT * from testmulticorn;
+SELECT * from testmulticorn ORDER BY filename;
  color  | size  |   name   | ext  |        filename         |           data           
 --------+-------+----------+------+-------------------------+--------------------------
- yellow | small | square   | txt  | yellow/small/square.txt | Im a small yellow square
- yellow | big   | square   | text | yellow/big/square.text  | Im a big yellow square
- red    | small | round    | ini  | red/small/round.ini     | Im a small red round    +
+ blue   | big   | round    | ini  | blue/big/round.ini      | Im a big blue round     +
         |       |          |      |                         | 
- red    | small | square   | txt  | red/small/square.txt    | Im a small red square   +
+ blue   | big   | square   | txt  | blue/big/square.txt     | Im a big blue square    +
+        |       |          |      |                         | 
+ blue   | big   | triangle | txt  | blue/big/triangle.txt   | Im a big blue triangle
+ blue   | small | round    | ini  | blue/small/round.ini    | Im a small blue round   +
+        |       |          |      |                         | 
+ blue   | small | square   | txt  | blue/small/square.txt   | Im a small blue square  +
         |       |          |      |                         | 
  red    | big   | round    | ini  | red/big/round.ini       | Im a big red round      +
         |       |          |      |                         | 
  red    | big   | square   | txt  | red/big/square.txt      | Im a big red square     +
         |       |          |      |                         | 
- blue   | small | round    | ini  | blue/small/round.ini    | Im a small blue round   +
+ red    | small | round    | ini  | red/small/round.ini     | Im a small red round    +
         |       |          |      |                         | 
- blue   | small | square   | txt  | blue/small/square.txt   | Im a small blue square  +
+ red    | small | square   | txt  | red/small/square.txt    | Im a small red square   +
         |       |          |      |                         | 
- blue   | big   | triangle | txt  | blue/big/triangle.txt   | Im a big blue triangle
- blue   | big   | round    | ini  | blue/big/round.ini      | Im a big blue round     +
-        |       |          |      |                         | 
- blue   | big   | square   | txt  | blue/big/square.txt     | Im a big blue square    +
-        |       |          |      |                         | 
+ yellow | big   | square   | text | yellow/big/square.text  | Im a big yellow square
+ yellow | small | square   | txt  | yellow/small/square.txt | Im a small yellow square
 (11 rows)
 
 -- Test insertion in transaction
 BEGIN;
     INSERT INTO testmulticorn (data, filename) VALUES ('Im a big red triangle', 'red/big/triangle.txt');
-    SELECT * from testmulticorn where name = 'triangle' and color = 'red';
+    SELECT * from testmulticorn where name = 'triangle' and color = 'red' ORDER BY filename;
  color | size |   name   | ext |       filename       |         data          
 -------+------+----------+-----+----------------------+-----------------------
  red   | big  | triangle | txt | red/big/triangle.txt | Im a big red triangle
@@ -193,21 +194,24 @@ BEGIN;
 
 ROLLBACK;
 -- The file should not be persisted.
-SELECT * from testmulticorn where name = 'triangle' and color = 'red';
+SELECT * from testmulticorn where name = 'triangle' and color = 'red' ORDER BY filename;
  color | size | name | ext | filename | data 
 -------+------+------+-----+----------+------
 (0 rows)
 
 -- Test Update
-UPDATE testmulticorn set name = 'rectangle' where name = 'square' RETURNING filename;
+WITH t as (
+  UPDATE testmulticorn set name = 'rectangle' where name = 'square' RETURNING filename
+)
+SELECT * from t order by filename;
           filename          
 ----------------------------
- yellow/small/rectangle.txt
- yellow/big/rectangle.text
- red/small/rectangle.txt
- red/big/rectangle.txt
- blue/small/rectangle.txt
  blue/big/rectangle.txt
+ blue/small/rectangle.txt
+ red/big/rectangle.txt
+ red/small/rectangle.txt
+ yellow/big/rectangle.text
+ yellow/small/rectangle.txt
 (6 rows)
 
 -- O lines
@@ -226,14 +230,17 @@ SELECT count(1) from testmulticorn where name = 'rectangle';
 
 -- Update should not work if it would override an existing file.
 UPDATE testmulticorn set filename = 'blue/big/triangle.txt' where filename = 'blue/big/rectangle.txt';
-ERROR:  Duplicate key value violates filesystem integrity.
+psql:test-common/multicorn_testfilesystem.include:65: ERROR:  Duplicate key value violates filesystem integrity.
 DETAIL:  Key (color, ext, name, size)=(blue, txt, triangle, big) already exists
 -- Update should not work when setting filename column to NULL
 UPDATE testmulticorn set filename = NULL where filename = 'blue/big/rectangle.txt';
-ERROR:  The filename, or all pattern columns are needed.
+psql:test-common/multicorn_testfilesystem.include:68: ERROR:  The filename, or all pattern columns are needed.
 -- Update should not work when setting a property column to NULL
-UPDATE testmulticorn set color = NULL where filename = 'blue/big/rectangle.txt' RETURNING color;
-ERROR:  Null value in columns (color) are not allowed
+WITH t as (
+  UPDATE testmulticorn set color = NULL where filename = 'blue/big/rectangle.txt' RETURNING color
+)
+SELECT * from t ORDER BY color;
+psql:test-common/multicorn_testfilesystem.include:73: ERROR:  Null value in columns (color) are not allowed
 DETAIL:  Failing row contains (NULL, big, rectangle, txt)
 -- Content column update.
 UPDATE testmulticorn set data = 'Im an updated rectangle' where filename = 'blue/big/rectangle.txt' RETURNING data;
@@ -306,65 +313,65 @@ SELECT count(1) from testmulticorn where data ilike '% UPDATED!';
 BEGIN;
     UPDATE testmulticorn set data = data || ' UPDATED!';
     UPDATE testmulticorn set data = data || ' TWICE!';
-    SELECT data from testmulticorn; 
+    SELECT data from testmulticorn order by filename; 
                    data                   
 ------------------------------------------
- Im a small yellow square UPDATED! TWICE!
- Im a big yellow square UPDATED! TWICE!
- Im a small red square                   +
+ Im an updated rectangle UPDATED! TWICE!
+ Im a big blue round                     +
   UPDATED! TWICE!
- Im a small red round                    +
+ Im a big blue triangle UPDATED! TWICE!
+ Im a small blue square                  +
+  UPDATED! TWICE!
+ Im a small blue round                   +
   UPDATED! TWICE!
  Im a big red square                     +
   UPDATED! TWICE!
  Im a big red round                      +
   UPDATED! TWICE!
- Im a small blue square                  +
+ Im a small red square                   +
   UPDATED! TWICE!
- Im a small blue round                   +
+ Im a small red round                    +
   UPDATED! TWICE!
- Im an updated rectangle UPDATED! TWICE!
- Im a big blue triangle UPDATED! TWICE!
- Im a big blue round                     +
-  UPDATED! TWICE!
+ Im a big yellow square UPDATED! TWICE!
+ Im a small yellow square UPDATED! TWICE!
 (11 rows)
 
 ROLLBACK;
 -- No 'UPDATED! or 'TWICE!'
-SELECT data from testmulticorn;
+SELECT data from testmulticorn order by filename;
            data           
 --------------------------
- Im a small yellow square
- Im a big yellow square
- Im a small red square   +
+ Im an updated rectangle
+ Im a big blue round     +
  
- Im a small red round    +
+ Im a big blue triangle
+ Im a small blue square  +
+ 
+ Im a small blue round   +
  
  Im a big red square     +
  
  Im a big red round      +
  
- Im a small blue square  +
+ Im a small red square   +
  
- Im a small blue round   +
+ Im a small red round    +
  
- Im an updated rectangle
- Im a big blue triangle
- Im a big blue round     +
- 
+ Im a big yellow square
+ Im a small yellow square
 (11 rows)
 
 -- Test successive update to the same files.
 BEGIN;
     UPDATE testmulticorn set color = 'cyan' where filename = 'blue/big/rectangle.txt';
     -- There should be one line with cyan color, 0 with the old filename
-    SELECT filename, data from testmulticorn where color = 'cyan';
+    SELECT filename, data from testmulticorn where color = 'cyan' order by filename;
         filename        |          data           
 ------------------------+-------------------------
  cyan/big/rectangle.txt | Im an updated rectangle
 (1 row)
 
-    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
+    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by filename;
  filename | data 
 ----------+------
 (0 rows)
@@ -372,64 +379,67 @@ BEGIN;
     -- There should be one line with magenta, and 0 with cyan and the old
     -- filename
     UPDATE testmulticorn set color = 'magenta' where color = 'cyan';
-    SELECT filename, data from testmulticorn where color = 'magenta';
+    SELECT filename, data from testmulticorn where color = 'magenta' order by filename;  
          filename          |          data           
 ---------------------------+-------------------------
  magenta/big/rectangle.txt | Im an updated rectangle
 (1 row)
 
-    SELECT filename, data from testmulticorn where color = 'cyan';
+    SELECT filename, data from testmulticorn where color = 'cyan' order by filename;
  filename | data 
 ----------+------
 (0 rows)
 
-    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
+    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by filename;
  filename | data 
 ----------+------
 (0 rows)
 
     UPDATE testmulticorn set color = 'blue' where color = 'magenta';
     -- There should be one line with the old filename, and zero with the rest
-    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
+    SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by filename;
         filename        |          data           
 ------------------------+-------------------------
  blue/big/rectangle.txt | Im an updated rectangle
 (1 row)
 
-    SELECT filename, data from testmulticorn where color = 'magenta';
+    SELECT filename, data from testmulticorn where color = 'magenta' order by filename;
  filename | data 
 ----------+------
 (0 rows)
 
-    SELECT filename, data from testmulticorn where color = 'cyan';
+    SELECT filename, data from testmulticorn where color = 'cyan' order by filename;
  filename | data 
 ----------+------
 (0 rows)
 
 COMMIT;
 -- Result should be the same than pre-commit
-SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt';
+SELECT filename, data from testmulticorn where filename = 'blue/big/rectangle.txt' order by filename;
         filename        |          data           
 ------------------------+-------------------------
  blue/big/rectangle.txt | Im an updated rectangle
 (1 row)
 
-SELECT filename, data from testmulticorn where color = 'magenta';
+SELECT filename, data from testmulticorn where color = 'magenta' order by filename;
  filename | data 
 ----------+------
 (0 rows)
 
-SELECT filename, data from testmulticorn where color = 'cyan';
+SELECT filename, data from testmulticorn where color = 'cyan' order by filename;
  filename | data 
 ----------+------
 (0 rows)
 
 -- DELETE test
-DELETE from testmulticorn where color = 'yellow' returning filename;
+WITH t as (
+  DELETE from testmulticorn where color = 'yellow' returning filename
+)
+SELECT * from t order by filename;
           filename          
 ----------------------------
- yellow/small/rectangle.txt
  yellow/big/rectangle.text
+ yellow/small/rectangle.txt
 (2 rows)
 
 -- Should have no rows
@@ -441,16 +451,19 @@ select count(1) from testmulticorn where color = 'yellow';
 
 -- DELETE in transaction
 BEGIN;
-    DELETE FROM testmulticorn where color = 'red' returning filename;
+  WITH t as (
+    DELETE from testmulticorn where color = 'red' returning filename
+  )
+  SELECT * from t order by filename;
         filename         
 -------------------------
- red/small/rectangle.txt
- red/small/round.ini
  red/big/rectangle.txt
  red/big/round.ini
+ red/small/rectangle.txt
+ red/small/round.ini
 (4 rows)
 
-    select count(1) from testmulticorn where color = 'red';
+  select count(1) from testmulticorn where color = 'red';
  count 
 -------
      0
@@ -471,7 +484,7 @@ BEGIN;
     INSERT INTO testmulticorn (color, size, name, ext, data) VALUES
         ('cyan', 'large', 'triangle', 'jpg', 'Im a triangle');
     -- 2 lines
-    SELECT * from testmulticorn where color = 'cyan';
+    SELECT * from testmulticorn where color = 'cyan' order by filename;
  color |  size  |   name   | ext |         filename         |     data      
 -------+--------+----------+-----+--------------------------+---------------
  cyan  | large  | triangle | jpg | cyan/large/triangle.jpg  | Im a triangle
@@ -485,22 +498,25 @@ BEGIN;
 (1 row)
 
     -- 2 lines, one cyan, one magenta
-    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+    SELECT * from testmulticorn where color in ('cyan', 'magenta') order by filename;
   color  |  size  |   name   | ext |          filename          |     data      
 ---------+--------+----------+-----+----------------------------+---------------
- magenta | large  | triangle | jpg | magenta/large/triangle.jpg | Im a triangle
  cyan    | medium | triangle | jpg | cyan/medium/triangle.jpg   | Im a triangle
+ magenta | large  | triangle | jpg | magenta/large/triangle.jpg | Im a triangle
 (2 rows)
 
     UPDATE testmulticorn set data = 'Im magenta' where color = 'magenta';
-    DELETE FROM testmulticorn where color = 'cyan' RETURNING filename;
+    WITH t as (
+      DELETE from testmulticorn where color = 'cyan' returning filename
+    )
+    SELECT * from t order by filename;
          filename         
 --------------------------
  cyan/medium/triangle.jpg
 (1 row)
 
     -- One magenta line
-    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+    SELECT * from testmulticorn where color in ('cyan', 'magenta') order by filename;
   color  | size  |   name   | ext |          filename          |    data    
 ---------+-------+----------+-----+----------------------------+------------
  magenta | large | triangle | jpg | magenta/large/triangle.jpg | Im magenta
@@ -508,7 +524,7 @@ BEGIN;
 
 COMMIT;
 -- Result should be the same as precommit
-SELECT * from testmulticorn where color in ('cyan', 'magenta');
+SELECT * from testmulticorn where color in ('cyan', 'magenta') order by filename;
   color  | size  |   name   | ext |          filename          |    data    
 ---------+-------+----------+-----+----------------------------+------------
  magenta | large | triangle | jpg | magenta/large/triangle.jpg | Im magenta
@@ -522,7 +538,7 @@ BEGIN;
     INSERT INTO testmulticorn (color, size, name, ext, data) VALUES
         ('cyan', 'large', 'triangle', 'jpg', 'Im a triangle');
     -- 2 lines
-    SELECT * from testmulticorn where color = 'cyan';
+    SELECT * from testmulticorn where color = 'cyan' order by filename;
  color |  size  |   name   | ext |         filename         |     data      
 -------+--------+----------+-----+--------------------------+---------------
  cyan  | large  | triangle | jpg | cyan/large/triangle.jpg  | Im a triangle
@@ -536,11 +552,11 @@ BEGIN;
 (1 row)
 
     -- 2 lines, one cyan, one magenta
-    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+    SELECT * from testmulticorn where color in ('cyan', 'magenta') order by filename;
   color  |  size  |   name   | ext |          filename          |     data      
 ---------+--------+----------+-----+----------------------------+---------------
- magenta | large  | triangle | jpg | magenta/large/triangle.jpg | Im a triangle
  cyan    | medium | triangle | jpg | cyan/medium/triangle.jpg   | Im a triangle
+ magenta | large  | triangle | jpg | magenta/large/triangle.jpg | Im a triangle
 (2 rows)
 
     UPDATE testmulticorn set data = 'Im magenta' where color = 'magenta';
@@ -551,14 +567,14 @@ BEGIN;
 (1 row)
 
     -- One magenta line
-    SELECT * from testmulticorn where color in ('cyan', 'magenta');
+    SELECT * from testmulticorn where color in ('cyan', 'magenta') order by filename;
   color  | size  |   name   | ext |          filename          |    data    
 ---------+-------+----------+-----+----------------------------+------------
  magenta | large | triangle | jpg | magenta/large/triangle.jpg | Im magenta
 (1 row)
 
 ROLLBACK;
-SELECT * from testmulticorn where color in ('cyan', 'magenta');
+SELECT * from testmulticorn where color in ('cyan', 'magenta') order by filename;
  color | size | name | ext | filename | data 
 -------+------+------+-----+----------+------
 (0 rows)
