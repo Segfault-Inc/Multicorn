@@ -179,11 +179,11 @@ PyString_FromString(const char *s)
 char *
 PyString_AsString(PyObject *unicode)
 {
+	char	   *rv;
 	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
 
 	errorCheck();
-	char	   *rv = pstrdup(PyBytes_AsString(o));
-
+	rv = pstrdup(PyBytes_AsString(o));
 	Py_XDECREF(o);
 	return rv;
 }
