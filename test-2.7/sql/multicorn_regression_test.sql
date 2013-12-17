@@ -87,6 +87,8 @@ ALTER FOREIGN TABLE testmulticorn alter test1 type integer;
 
 select * from testmulticorn limit 1;
 
+select * from testmulticorn where test1 = 0;
+
 ALTER FOREIGN TABLE testmulticorn options (drop test_type);
 
 -- Test operations with bytea

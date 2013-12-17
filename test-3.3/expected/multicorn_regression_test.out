@@ -424,6 +424,14 @@ NOTICE:  ['test1', 'test2']
      0 | 0
 (1 row)
 
+select * from testmulticorn where test1 = 0;
+NOTICE:  [test1 = 0]
+NOTICE:  ['test1', 'test2']
+ test1 | test2 
+-------+-------
+     0 | 0
+(1 row)
+
 ALTER FOREIGN TABLE testmulticorn options (drop test_type);
 -- Test operations with bytea
 ALTER FOREIGN TABLE testmulticorn alter test2 type bytea;
