@@ -9,8 +9,9 @@ setup(
  name='multicorn',
  version='__VERSION__',
  author='Kozea',
+ install_requires=['boto',],
  license='Postgresql',
  package_dir={'': 'python'},
  packages=['multicorn', 'multicorn.fsfdw'],
- ext_modules = [multicorn_utils_module]
+ ext_modules = [multicorn_utils_module],
 )
