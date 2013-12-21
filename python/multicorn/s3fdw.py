@@ -2,7 +2,7 @@
 An Amazon S3 Foreign Data Wrapper
 
 """
-from uuid import uuid1
+from cStringIO import StringIO
 
 from . import ForeignDataWrapper
 from .utils import log_to_postgres
@@ -40,30 +40,25 @@ class S3Fdw(ForeignDataWrapper):
         conn = boto.connect_s3(self.aws_access_key, self.aws_secret_key)
         bucket = conn.get_bucket(self.bucket)
 
+        stream = StringIO()
         key = bucket.get_key(self.filename)
+        key.get_contents_to_file(stream)
+        stream.seek(0)
 
-        # Create a tmp file path
-        id = uuid1()
-        file_path = '/tmp/{0}.csv'.format(id)
-
-        # Write the bucket data to this file path
-        key.get_contents_to_filename(file_path)
-
-        with open(file_path) as stream:
-            reader = csv.reader(stream, delimiter=self.delimiter)
-            count = 0
-            checked = False
-            for line in reader:
-                if count >= self.skip_header:
-                    if not checked:
-                        # On first iteration, check if the lines are of the
-                        # appropriate length
-                        checked = True
-                        if len(line) > len(self.columns):
-                            log_to_postgres("There are more columns than "
-                                            "defined in the table", WARNING)
-                        if len(line) < len(self.columns):
-                            log_to_postgres("There are less columns than "
-                                            "defined in the table", WARNING)
-                    yield line[:len(self.columns)]
-                count += 1
+        reader = csv.reader(stream, delimiter=self.delimiter)
+        count = 0
+        checked = False
+        for line in reader:
+            if count >= self.skip_header:
+                if not checked:
+                    # On first iteration, check if the lines are of the
+                    # appropriate length
+                    checked = True
+                    if len(line) > len(self.columns):
+                        log_to_postgres("There are more columns than "
+                                        "defined in the table", WARNING)
+                    if len(line) < len(self.columns):
+                        log_to_postgres("There are less columns than "
+                                        "defined in the table", WARNING)
+                yield line[:len(self.columns)]
+            count += 1
