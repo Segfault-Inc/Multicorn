@@ -28,8 +28,8 @@ class S3Fdw(ForeignDataWrapper):
         self.filename = fdw_options["filename"]
 
         self.bucket = fdw_options['bucket']
-        self.aws_access_key = fwd_options['aws_access_key']
-        self.aws_secret_key = fwd_options['aws_secret_key']
+        self.aws_access_key = fdw_options['aws_access_key']
+        self.aws_secret_key = fdw_options['aws_secret_key']
 
         self.delimiter = fdw_options.get("delimiter", ",")
         self.quotechar = fdw_options.get("quotechar", '"')
