@@ -39,10 +39,6 @@ PG_FUNCTION_INFO_V1(multicorn_validator);
 void		_PG_init(void);
 void		_PG_fini(void);
 
-/*
- * List of modified relations
- */
-static List *multicorn_modified_relations = NULL;
 
 
 /*
@@ -97,6 +93,11 @@ typedef struct MulticornCallbackData
 {
 	Oid			foreigntableid;
 }	MulticornCallbackData;
+
+/*
+ * List of modified relations
+ */
+static List *multicorn_modified_relations = NULL;
 #endif
 
 /*	Helpers functions */
@@ -109,8 +110,10 @@ void
 _PG_init()
 {
 	Py_Initialize();
+#if PG_VERSION_NUM >= 90300
 	multicorn_modified_relations = NULL;
 	RegisterXactCallback(multicorn_xact_callback, NULL);
+#endif
 }
 
 void
