@@ -119,7 +119,7 @@ _PG_init()
 #if PG_VERSION_NUM >= 90300
 	multicorn_modified_relations = NULL;
 	RegisterXactCallback(multicorn_xact_callback, NULL);
-    RegisterSubXactCallback(multicorn_subxact_callback, NULL);
+	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
 #endif
 	/* Initialize the global oid -> python instances hash */
 	MemSet(&ctl, 0, sizeof(ctl));
