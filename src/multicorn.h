@@ -26,6 +26,7 @@ typedef struct ConversionInfo
 {
 	char	   *attrname;
 	FmgrInfo   *attinfunc;
+	FmgrInfo   *attoutfunc;
 	Oid			atttypoid;
 	Oid			attioparam;
 	int32		atttypmod;

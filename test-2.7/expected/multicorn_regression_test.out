@@ -467,6 +467,19 @@ NOTICE:  ['test1', 'test2']
 -------+-------
 (0 rows)
 
+ALTER FOREIGN TABLE testmulticorn add test3 money;
+SELECT * from testmulticorn where test3 = 12::money;
+NOTICE:  [('option1', 'option1'), ('test_type', 'iter_none'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'bytea'), ('test2', 'bytea'), ('test3', 'money')]
+NOTICE:  [test3 = $12.00]
+NOTICE:  ['test1', 'test2', 'test3']
+ test1 | test2 | test3 
+-------+-------+-------
+(0 rows)
+
+SELECT * from testmulticorn where test1 = '12 €';
+ERROR:  Error in python: UnicodeDecodeError
+DETAIL:  'ascii' codec can't decode byte 0xe2 in position 3: ordinal not in range(128)
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 4 other objects
 DETAIL:  drop cascades to server multicorn_srv

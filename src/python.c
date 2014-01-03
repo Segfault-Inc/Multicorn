@@ -55,6 +55,8 @@ PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumArrayToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
+PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo);
+
 
 void pythonDictToTuple(PyObject *p_value,
 				  TupleTableSlot *slot,
@@ -124,16 +126,21 @@ getPythonEncodingName()
 	return encoding_name;
 }
 
-
 char *
 PyUnicode_AsPgString(PyObject *p_unicode)
 {
-	Py_ssize_t	unicode_size = PyUnicode_GET_SIZE(p_unicode);
+	Py_ssize_t	unicode_size;
 	char	   *message = NULL;
-	PyObject   *pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
-											unicode_size,
-											GetDatabaseEncodingName(), NULL);
+	PyObject   *pTempStr;
 
+	if (p_unicode == NULL)
+	{
+		elog(ERROR, "Received a null pointer in pyunicode_aspgstring");
+	}
+	unicode_size = PyUnicode_GET_SIZE(p_unicode);
+	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
+								unicode_size,
+								GetDatabaseEncodingName(), NULL);
 	errorCheck();
 	message = strdup(PyBytes_AsString(pTempStr));
 	errorCheck();
@@ -740,6 +747,10 @@ qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfos)
 			typeoid = cinfo->atttypoid;
 		}
 		p_value = datumToPython(value, typeoid, cinfo);
+		if (p_value == NULL)
+		{
+			return NULL;
+		}
 	}
 
 	if (typeoid <= 0)
@@ -762,11 +773,16 @@ pythonQual(char *operatorname,
 {
 	PyObject   *qualClass = getClassString("multicorn.Qual"),
 			   *qualInstance,
-			   *operator;
+			   *p_operatorname,
+			   *operator,
+			   *columnName;
 
+	p_operatorname = PyUnicode_Decode(operatorname, strlen(operatorname), getPythonEncodingName(), NULL);
+	errorCheck();
 	if (is_array)
 	{
 		PyObject   *arrayOpType;
+
 
 		if (use_or)
 		{
@@ -776,21 +792,25 @@ pythonQual(char *operatorname,
 		{
 			arrayOpType = Py_False;
 		}
-		operator = Py_BuildValue("(s, O)", operatorname, arrayOpType);
-
+		operator = Py_BuildValue("(O, O)", p_operatorname, arrayOpType);
+		Py_DECREF(p_operatorname);
+		errorCheck();
 	}
 	else
 	{
-
-		operator = PyString_FromString(operatorname);
+		operator = p_operatorname;
 	}
-	qualInstance = PyObject_CallFunction(qualClass, "(s,O,O)",
-										 cinfo->attrname,
+
+	columnName = PyUnicode_Decode(cinfo->attrname, strlen(cinfo->attrname), getPythonEncodingName(), NULL);
+	qualInstance = PyObject_CallFunction(qualClass, "(O,O,O)",
+										 columnName,
 										 operator,
 										 value);
+	errorCheck();
 	Py_DECREF(value);
 	Py_DECREF(operator);
 	Py_DECREF(qualClass);
+	Py_DECREF(columnName);
 	return qualInstance;
 }
 
@@ -1223,6 +1243,19 @@ datumStringToPython(Datum datum, ConversionInfo * cinfo)
 }
 
 PyObject *
+datumUnknownToPython(Datum datum, ConversionInfo * cinfo)
+{
+	char	   *temp;
+	ssize_t		size;
+	PyObject   *result;
+
+	temp = OutputFunctionCall(cinfo->attoutfunc, datum);
+	size = strlen(temp);
+	result = PyUnicode_Decode(temp, size, getPythonEncodingName(), NULL);
+	return result;
+}
+
+PyObject *
 datumNumberToPython(Datum datum, ConversionInfo * cinfo)
 {
 	ssize_t		numvalue = (ssize_t) DatumGetNumeric(datum);
@@ -1359,8 +1392,7 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 				/* Its an array. */
 				return datumArrayToPython(datum, cinfo);
 			}
-			/* Defaults to NULL */
-			return NULL;
+			return datumUnknownToPython(datum, cinfo);
 	}
 }
 

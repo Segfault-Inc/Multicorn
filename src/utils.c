@@ -42,23 +42,25 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	if (!PyArg_ParseTuple(args, "O|i", &p_message, &level))
 	{
+		errorCheck();
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
 	if (PyBytes_Check(p_message))
 	{
-		message = strdup(PyBytes_AsString(p_message));
+		message = PyBytes_AsString(p_message);
 	}
 	else if (PyUnicode_Check(p_message))
 	{
-
-		message = PyUnicode_AsPgString(p_message);
+		message = strdup(PyUnicode_AsPgString(p_message));
 	}
 	else
 	{
+
 		PyObject   *temp = PyObject_Str(p_message);
 
-		message = PyUnicode_AsPgString(temp);
+		errorCheck();
+		message = strdup(PyString_AsString(temp));
 		errorCheck();
 		Py_DECREF(temp);
 	}

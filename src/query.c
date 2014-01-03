@@ -90,11 +90,18 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 	for (i = 0; i < attinmeta->tupdesc->natts; i++)
 	{
 		Form_pg_attribute attr = attinmeta->tupdesc->attrs[i];
+		Oid			outfuncoid;
+		bool		typIsVarlena;
+
+
 
 		if (!attr->attisdropped)
 		{
 			ConversionInfo *cinfo = palloc0(sizeof(ConversionInfo));
 
+			cinfo->attoutfunc = (FmgrInfo *) palloc0(sizeof(FmgrInfo));
+			getTypeOutputInfo(attr->atttypid, &outfuncoid, &typIsVarlena);
+			fmgr_info(outfuncoid, cinfo->attoutfunc);
 			cinfo->atttypoid = attr->atttypid;
 			cinfo->atttypmod = attinmeta->atttypmods[i];
 			cinfo->attioparam = attinmeta->attioparams[i];
