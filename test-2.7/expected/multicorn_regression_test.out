@@ -536,11 +536,11 @@ NOTICE:  ['test1', 'test2']
 
 NOTICE:  PRECOMMIT
 NOTICE:  COMMIT
-
 ALTER FOREIGN TABLE testmulticorn add test3 money;
 SELECT * from testmulticorn where test3 = 12::money;
 NOTICE:  [('option1', 'option1'), ('test_type', 'iter_none'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'bytea'), ('test2', 'bytea'), ('test3', 'money')]
+NOTICE:  BEGIN
 NOTICE:  [test3 = $12.00]
 NOTICE:  ['test1', 'test2', 'test3']
  test1 | test2 | test3 
@@ -549,8 +549,9 @@ NOTICE:  ['test1', 'test2', 'test3']
 
 NOTICE:  PRECOMMIT
 NOTICE:  COMMIT
-
 SELECT * from testmulticorn where test1 = '12 €';
+NOTICE:  BEGIN
+NOTICE:  ROLLBACK
 ERROR:  Error in python: UnicodeDecodeError
 DETAIL:  'ascii' codec can't decode byte 0xe2 in position 3: ordinal not in range(128)
 DROP EXTENSION multicorn cascade;
