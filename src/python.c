@@ -1165,16 +1165,24 @@ pythonSequenceToTuple(PyObject *p_value,
 			continue;
 		}
 		p_object = PySequence_GetItem(p_value, j);
-		resetStringInfo(buffer);
-		values[i] = pyobjectToDatum(p_object, buffer,
-									cinfos[cinfo_idx]);
-		if (buffer->data == NULL)
+		if (p_object != NULL && p_object != Py_None)
 		{
-			nulls[i] = true;
-		}
-		else
-		{
-			nulls[i] = false;
+		   resetStringInfo(buffer);
+		   values[i] = pyobjectToDatum(p_object, buffer,
+									   cinfos[cinfo_idx]);
+		   if (buffer->data == NULL)
+		   {
+			  nulls[i] = true;
+		   }
+		   else
+		   {
+			  nulls[i] = false;
+		   }
+        }
+        else
+        {
+		   values[i] = (Datum) NULL;
+		   nulls[i] = true;
 		}
 		errorCheck();
 		Py_DECREF(p_object);
