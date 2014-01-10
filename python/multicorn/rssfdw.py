@@ -40,10 +40,15 @@ class RssFdw(ForeignDataWrapper):
         """Internal method used for parsing item xml element from the
         columns definition."""
         item = {}
-        for prop in self.columns:
+        for prop, columns in self.columns.items():
             value = xml_elem.xpath(prop, namespaces=namespaces)
             if value:
-                item[prop] = value[0].text
+                # There should be a better way
+                # oid is 1009 ?
+                if columns.type_name.endswith('[]'):
+                    item[prop] = [elem.text for elem in value]
+                else:
+                    item[prop] = value[0].text
         return item
 
     def execute(self, quals, columns):
