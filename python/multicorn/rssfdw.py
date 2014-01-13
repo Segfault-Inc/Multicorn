@@ -9,6 +9,30 @@ except ImportError:
     from urllib import urlopen
 from logging import ERROR
 from multicorn.utils import log_to_postgres
+import json
+
+
+def element_to_dict(element):
+    """
+    This method takes a lxml element and return a json string containing
+    the element attributes and a text key and a child node.
+    >>> test = lambda x: sorted([(k, sorted(v.items())) if isinstance(v, dict) else (k, [sorted(e.items()) for e in v]) if isinstance(v, list) else (k, v) for k, v in element_to_dict(etree.fromstring(x)).items()])
+    >>> test('<t a1="v1"/>')
+    [('attributes', {'a1': 'v1'}), ('children', []), ('tag', 't'), ('text', '')]
+
+    >>> test('<t a1="v1">Txt</t>')
+    [('attributes', {'a1': 'v1'}), ('children', []), ('tag', 't'), ('text', 'Txt')]
+
+    >>> test('<t>Txt<s1 a1="v1">Sub1</s1>Txt2<s2 a2="v2">Sub2</s2>Txt3</t>')
+    [('attributes', {}), ('children', [[('attributes', {'a1': 'v1'}), ('children', []), ('tag', 's1'), ('text', 'Sub1')], [('attributes', {'a2': 'v2'}), ('children', []), ('tag', 's2'), ('text', 'Sub2')]]), ('tag', 't'), ('text', 'Txt')]
+
+"""
+    return {
+        'tag': etree.QName(element.tag).localname,
+        'text': element.text or '',
+        'attributes': dict(element.attrib),
+        'children': [element_to_dict(e) for e in element]
+    }
 
 
 class RssFdw(ForeignDataWrapper):
@@ -40,12 +64,14 @@ class RssFdw(ForeignDataWrapper):
         """Internal method used for parsing item xml element from the
         columns definition."""
         item = {}
-        for prop, columns in self.columns.items():
+        for prop, column in self.columns.items():
             value = xml_elem.xpath(prop, namespaces=namespaces)
             if value:
+                if column.type_name.startswith('json'):
+                    item[prop] = json.dumps([element_to_dict(val) for val in value])
                 # There should be a better way
                 # oid is 1009 ?
-                if columns.type_name.endswith('[]'):
+                elif column.type_name.endswith('[]'):
                     item[prop] = [elem.text for elem in value]
                 else:
                     item[prop] = value[0].text
