@@ -11,7 +11,7 @@ EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/def
 
 all: preflight-check sql/$(EXTENSION)--$(EXTVERSION).sql
 
-# install: python_code
+install: python_code
 
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
