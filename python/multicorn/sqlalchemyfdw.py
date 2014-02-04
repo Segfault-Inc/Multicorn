@@ -48,6 +48,7 @@ class SqlAlchemyFdw(ForeignDataWrapper):
     Accepted options:
 
     db_url      --  the sqlalchemy connection string.
+    schema      --  (optional) schema name to qualify table name with
     tablename   --  the table name in the remote database.
 
     """
@@ -60,8 +61,9 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             log_to_postgres('The tablename parameter is required', ERROR)
         self.engine = create_engine(fdw_options.get('db_url'))
         self.metadata = MetaData()
+        schema = fdw_options['schema'] if 'schema' in fdw_options else None
         tablename = fdw_options['tablename']
-        self.table = Table(tablename, self.metadata,
+        self.table = Table(tablename, self.metadata, schema = schema,
                            *[Column(col.column_name, ischema_names[col.type_name])
                              for col in fdw_columns.values()])
 
