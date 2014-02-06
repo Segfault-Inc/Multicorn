@@ -18,6 +18,7 @@
 #include "bytesobject.h"
 #include "mb/pg_wchar.h"
 #include "access/xact.h"
+#include "utils/lsyscache.h"
 
 
 List	   *getOptions(Oid foreigntableid);
@@ -56,7 +57,7 @@ PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumArrayToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo);
+PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type);
 
 
 void pythonDictToTuple(PyObject *p_value,
@@ -1256,15 +1257,21 @@ datumStringToPython(Datum datum, ConversionInfo * cinfo)
 }
 
 PyObject *
-datumUnknownToPython(Datum datum, ConversionInfo * cinfo)
+datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type)
 {
 	char	   *temp;
 	ssize_t		size;
 	PyObject   *result;
+	Oid			outfuncoid;
+	bool		isvarlena;
+	FmgrInfo   *fmout = palloc0(sizeof(FmgrInfo));
 
-	temp = OutputFunctionCall(cinfo->attoutfunc, datum);
+	getTypeOutputInfo(type, &outfuncoid, &isvarlena);
+	fmgr_info(outfuncoid, fmout);
+	temp = OutputFunctionCall(fmout, datum);
 	size = strlen(temp);
 	result = PyUnicode_Decode(temp, size, getPythonEncodingName(), NULL);
+	pfree(fmout);
 	return result;
 }
 
@@ -1405,7 +1412,7 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 				/* Its an array. */
 				return datumArrayToPython(datum, cinfo);
 			}
-			return datumUnknownToPython(datum, cinfo);
+			return datumUnknownToPython(datum, cinfo, type);
 	}
 }
 
