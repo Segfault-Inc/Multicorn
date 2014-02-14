@@ -61,16 +61,34 @@ How do we do that ?
 
 The fdw described above is pretty simple, implementing it should be easy !
 
+First things first, we have to create a new python module.
+
+This can be achieved with the most simple ``setup.py`` file:
+
+import subprocess
+from setuptools import setup, find_packages, Extension
+
+
+.. code-block:: python
+
+  setup(
+    name='myfdw',
+    version='0.0.1',
+    author='Ronan Dunklau',
+    license='Postgresql',
+    packages=['myfdw']
+  )
+
 But let's see the whole code. To be usable with the above ``CREATE FOREIGN
-TABLE`` statement, this module should be named ``myfdw.py`` AND installed in the
-system-wide python distribution.
+TABLE`` statement, this module should be named ``myfdw``.
+
 
 .. code-block:: python
 
     from multicorn import ForeignDataWrapper
 
     class ConstantForeignDataWrapper(ForeignDataWrapper):
-        
+
         def __init__(self, options, columns):
             super(ConstantForeignDataWrapper, self).__init__(options, columns)
             self.columns = columns
@@ -82,6 +100,17 @@ system-wide python distribution.
                     line[column_name] = '%s %s' % (column_name, index)
                 yield line
 
+You should have the following directory structure:
+
+.. code-block:: bash
+  .
+  |-- myfdw/ 
+  |   `-- __init__.py
+  `-- setup.py
+
+To install it, just run ``python setup.py install``, and the file will be copied
+to your global python installation, which should be the one your PostgreSQL
+instance is using.
 
 And that's it !
 You just created your first foreign data wrapper. But let's look a bit more

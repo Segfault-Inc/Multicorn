@@ -18,9 +18,17 @@ Ok, but why should I care ?
 Installation
 ============
 
+Requirements
+------------
+
+- Postgresql 9.1+
+- Postgresql development packages
+- Python development packages
+- python 2.7 or >= python 3.3 as your default python
+
 If you are using *PostgreSQL 9.1*, you should use the 0.9.1 release.
 
-If you are using *PostgreSQL 9.2*, you should use the 1.0.0 series. (Currently
+If you are using *PostgreSQL 9.2* or superior, you should use the 1.0.0 series. (Currently
 1.0.0beta1).
 
 
@@ -43,6 +51,7 @@ From source::
 
 .. _Foreign Data Wrapper: http://people.planetpostgresql.org/andrew/uploads/fdw2.pdf
 .. _pgxn client: http://pgxnclient.projects.postgresql.org/
+
 
 
 Usage
