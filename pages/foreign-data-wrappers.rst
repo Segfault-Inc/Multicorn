@@ -47,6 +47,13 @@ Required options
 ``tablename`` (string)
   The table name in the remote RDBMS.
 
+Allowed options
+---------------
+
+``primary_key`` (string)
+  Identifies a column which is a primary key in the remote RDBMS.
+  This options is required for INSERT, UPDATE and DELETE operations
+
 When defining the table, the local column names will be used to retrieve the
 remote column data.
 Moreover, the local column types will be used to interpret the results in the
