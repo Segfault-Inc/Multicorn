@@ -42,6 +42,9 @@ DATA = $(wildcard sql/*--*.sql)
 EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
+REGRESS      = virtual_tests
+
+include $(PGXS)
 
 with_python_no_override = no
 
@@ -65,8 +68,8 @@ else
 		override PYTHON = python
 	endif
 
-	PY_VERSION = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
-	PYTHON_CONFIG ?= python${PY_VERSION}-config
+	python_version = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
+	PYTHON_CONFIG ?= python${python_version}-config
 
 	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
 	PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
@@ -77,12 +80,8 @@ else
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
 
-$(info Python version is $(PY_VERSION))
-TESTS        = $(wildcard test-$(PY_VERSION)/sql/*.sql)
-REGRESS      = $(patsubst test-$(PY_VERSION)/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test-$(PY_VERSION) --load-language=plpgsql
+TESTS        = $(wildcard test-$(python_version)/sql/*.sql)
+REGRESS      = $(patsubst test-$(python_version)/sql/%.sql,%,$(TESTS))
+REGRESS_OPTS = --inputdir=test-$(python_version) --load-language=plpgsql
 
-include $(PGXS)
-
-
-
+$(info Python version is $(python_version))
