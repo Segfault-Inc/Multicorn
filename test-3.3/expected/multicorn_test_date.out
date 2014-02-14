@@ -15,11 +15,8 @@ CREATE foreign table testmulticorn (
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('test_type', 'date'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |          test2           
 ------------+--------------------------
  01-01-2011 | Sun Jan 02 14:30:25 2011
@@ -45,11 +42,8 @@ NOTICE:  COMMIT
 (20 rows)
 
 select * from testmulticorn where test1 < '2011-06-01';
-NOTICE:  BEGIN
 NOTICE:  [test1 < 2011-06-01]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |          test2           
 ------------+--------------------------
  01-01-2011 | Sun Jan 02 14:30:25 2011
@@ -65,11 +59,8 @@ NOTICE:  COMMIT
 (10 rows)
 
 select * from testmulticorn where test2 < '2011-06-01 00:00:00';
-NOTICE:  BEGIN
 NOTICE:  [test2 < 2011-06-01 00:00:00]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |          test2           
 ------------+--------------------------
  01-01-2011 | Sun Jan 02 14:30:25 2011

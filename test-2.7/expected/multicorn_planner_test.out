@@ -15,18 +15,12 @@ CREATE foreign table testmulticorn (
 explain select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
                               QUERY PLAN                              
 ----------------------------------------------------------------------
  Foreign Scan on testmulticorn  (cost=10.00..400.00 rows=20 width=20)
 (1 row)
 
 explain select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 = m2.test1;
-NOTICE:  BEGIN
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
                                      QUERY PLAN                                      
 -------------------------------------------------------------------------------------
  Nested Loop  (cost=20.00..806.05 rows=2 width=128)
@@ -37,9 +31,6 @@ NOTICE:  COMMIT
 (5 rows)
 
 explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
-NOTICE:  BEGIN
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
                                      QUERY PLAN                                      
 -------------------------------------------------------------------------------------
  Nested Loop Left Join  (cost=20.00..806.05 rows=20 width=128)
@@ -62,18 +53,12 @@ CREATE foreign table testmulticorn (
 explain select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('test_type', 'planner'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
                                     QUERY PLAN                                    
 ----------------------------------------------------------------------------------
  Foreign Scan on testmulticorn  (cost=10.00..200000000.00 rows=10000000 width=20)
 (1 row)
 
 explain select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 = m2.test1;
-NOTICE:  BEGIN
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
                                         QUERY PLAN                                         
 -------------------------------------------------------------------------------------------
  Nested Loop  (cost=20.00..400100000.00 rows=500000000000 width=128)
@@ -83,9 +68,6 @@ NOTICE:  COMMIT
 (4 rows)
 
 explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
-NOTICE:  BEGIN
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
                                         QUERY PLAN                                         
 -------------------------------------------------------------------------------------------
  Nested Loop Left Join  (cost=20.00..400100000.00 rows=500000000000 width=128)

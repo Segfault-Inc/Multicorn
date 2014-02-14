@@ -14,6 +14,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         super(TestForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns
         self.test_type = options.get('test_type', None)
+        self.tx_hook = options.get('tx_hook', False)
         self._row_id_column = options.get('row_id_column',
                                           list(self.columns.keys())[0])
         log_to_postgres(str(sorted(options.items())))
@@ -115,22 +116,29 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         return self._row_id_column
 
     def begin(self, serializable):
-        log_to_postgres('BEGIN')
+        if self.tx_hook:
+            log_to_postgres('BEGIN')
 
     def sub_begin(self, level):
-        log_to_postgres('SUBBEGIN')
+        if self.tx_hook:
+            log_to_postgres('SUBBEGIN')
 
     def sub_rollback(self, level):
-        log_to_postgres('SUBROLLBACK')
+        if self.tx_hook:
+            log_to_postgres('SUBROLLBACK')
 
     def sub_commit(self, level):
-        log_to_postgres('SUBCOMMIT')
+        if self.tx_hook:
+            log_to_postgres('SUBCOMMIT')
 
     def commit(self):
-        log_to_postgres('COMMIT')
+        if self.tx_hook:
+            log_to_postgres('COMMIT')
 
     def pre_commit(self):
-        log_to_postgres('PRECOMMIT')
+        if self.tx_hook:
+            log_to_postgres('PRECOMMIT')
 
     def rollback(self):
-        log_to_postgres('ROLLBACK')
+        if self.tx_hook:
+            log_to_postgres('ROLLBACK')

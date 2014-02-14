@@ -8,10 +8,11 @@ CREATE foreign table testmulticorn (
     test2 character varying
 ) server multicorn_srv options (
     option1 'option1',
-    test_type 'nowrite'
+    test_type 'nowrite',
+    tx_hook 'true'
 );
 insert into testmulticorn(test1, test2) VALUES ('test', 'test2');
-NOTICE:  [('option1', 'option1'), ('test_type', 'nowrite'), ('usermapping', 'test')]
+NOTICE:  [('option1', 'option1'), ('test_type', 'nowrite'), ('tx_hook', 'true'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 NOTICE:  BEGIN
 NOTICE:  ROLLBACK
@@ -37,10 +38,11 @@ CREATE foreign table testmulticorn_write (
 ) server multicorn_srv options (
     option1 'option1',
     row_id_column 'test1',
-	test_type 'returning'
+	test_type 'returning',
+    tx_hook 'true'
 );
 insert into testmulticorn_write(test1, test2) VALUES ('test', 'test2');
-NOTICE:  [('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
+NOTICE:  [('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('tx_hook', 'true'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 NOTICE:  BEGIN
 NOTICE:  INSERTING: [('test1', 'test'), ('test2', 'test2')]
@@ -125,12 +127,8 @@ CREATE foreign table testmulticorn_write(
 insert into testmulticorn_write(test1, test2) VALUES ('test', 'test2');
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'test2'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  INSERTING: [('test1', 'test'), ('test2', 'test2')]
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 update testmulticorn_write set test1 = 'test' where test1 ilike 'test1 3%';
-NOTICE:  BEGIN
 NOTICE:  [test1 ~~* test1 3%]
 NOTICE:  ['test1', 'test2']
 NOTICE:  UPDATING: test2 1 1 with [('test1', 'test'), ('test2', 'test2 1 1')]
@@ -140,22 +138,14 @@ NOTICE:  UPDATING: test2 1 10 with [('test1', 'test'), ('test2', 'test2 1 10')]
 NOTICE:  UPDATING: test2 1 13 with [('test1', 'test'), ('test2', 'test2 1 13')]
 NOTICE:  UPDATING: test2 1 16 with [('test1', 'test'), ('test2', 'test2 1 16')]
 NOTICE:  UPDATING: test2 1 19 with [('test1', 'test'), ('test2', 'test2 1 19')]
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 delete from testmulticorn_write where test2 = 'test2 2 0';
-NOTICE:  BEGIN
 NOTICE:  [test2 = test2 2 0]
 NOTICE:  ['test2']
 NOTICE:  DELETING: test2 2 0
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 update testmulticorn_write set test2 = 'test' where test2 = 'test2 1 1';
-NOTICE:  BEGIN
 NOTICE:  [test2 = test2 1 1]
 NOTICE:  ['test1', 'test2']
 NOTICE:  UPDATING: test2 1 1 with [('test1', 'test1 3 1'), ('test2', 'test')]
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 DROP foreign table testmulticorn_write;
 -- Now test with other types
 CREATE foreign table testmulticorn_write(
@@ -169,24 +159,15 @@ CREATE foreign table testmulticorn_write(
 insert into testmulticorn_write(test1, test2) VALUES ('2012-01-01', '2012-01-01 00:00:00');
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'test2'), ('test_type', 'date'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
-NOTICE:  BEGIN
 NOTICE:  INSERTING: [('test1', datetime.date(2012, 1, 1)), ('test2', datetime.datetime(2012, 1, 1, 0, 0))]
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 delete from testmulticorn_write where test2 > '2011-12-03';
-NOTICE:  BEGIN
 NOTICE:  [test2 > 2011-12-03 00:00:00]
 NOTICE:  ['test2']
 NOTICE:  DELETING: 2011-12-03 14:30:25
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 update testmulticorn_write set test1 = date_trunc('day', test1) where test2 = '2011-09-03 14:30:25';
-NOTICE:  BEGIN
 NOTICE:  [test2 = 2011-09-03 14:30:25]
 NOTICE:  ['test1', 'test2']
 NOTICE:  UPDATING: 2011-09-03 14:30:25 with [('test1', datetime.date(2011, 9, 2)), ('test2', datetime.datetime(2011, 9, 3, 14, 30, 25))]
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 DROP foreign table testmulticorn_write;
 -- Test with unknown column
 CREATE foreign table testmulticorn_write(
@@ -200,8 +181,6 @@ CREATE foreign table testmulticorn_write(
 delete from testmulticorn_write;
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'teststuff'), ('test_type', 'date'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
-NOTICE:  BEGIN
-NOTICE:  ROLLBACK
 ERROR:  The rowid attribute does not exist
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 4 other objects
