@@ -1,1 +1,0 @@
-../../test-2.7/sql/multicorn_savepoints_test.sql

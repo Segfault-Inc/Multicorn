@@ -85,8 +85,12 @@ endif
 
 
 PYTHON_TEST_VERSION ?= $(python_version)
+SUPPORTS_WRITE=$(shell expr ${MAJORVERSION} \>= 9.3)
 
-TESTS        = $(wildcard test-$(PYTHON_TEST_VERSION)/sql/*.sql)
+TESTS        = $(wildcard test-$(PYTHON_TEST_VERSION)/sql/multicorn*.sql)
+ifeq (${SUPPORTS_WRITE}, 1)
+  TESTS += $(wildcard test-$(PYTHON_TEST_VERSION)/sql/write*.sql)
+endif
 REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
 REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --load-language=plpgsql
 
