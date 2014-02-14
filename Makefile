@@ -85,7 +85,8 @@ endif
 
 
 PYTHON_TEST_VERSION ?= $(python_version)
-SUPPORTS_WRITE=$(shell expr ${MAJORVERSION} \>= 9.3)
+PG_TEST_VERSION ?= $(MAJORVERSION)
+SUPPORTS_WRITE=$(shell expr ${PG_TEST_VERSION} \>= 9.3)
 
 TESTS        = $(wildcard test-$(PYTHON_TEST_VERSION)/sql/multicorn*.sql)
 ifeq (${SUPPORTS_WRITE}, 1)
