@@ -59,6 +59,7 @@ endif
 ifeq ($(with_python_no_override),yes)
 	SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
 	override CPPFLAGS := -I. -I$(srcdir) $(python_includespec) $(CPPFLAGS)
+	override PYTHON = python${python_version}
 else
 	ifdef PYTHON_OVERRIDE
 		override PYTHON = ${PYTHON_OVERRIDE}
