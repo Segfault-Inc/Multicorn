@@ -56,6 +56,7 @@ ifdef PYTHON_OVERRIDE
 	with_python_no_override = no
 endif
 
+
 ifeq ($(with_python_no_override),yes)
 	SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
 	override CPPFLAGS := -I. -I$(srcdir) $(python_includespec) $(CPPFLAGS)
@@ -69,6 +70,7 @@ else
 		override PYTHON = python
 	endif
 
+
 	python_version = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
 	PYTHON_CONFIG ?= python${python_version}-config
 
@@ -81,8 +83,11 @@ else
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
 
-TESTS        = $(wildcard test-$(python_version)/sql/*.sql)
-REGRESS      = $(patsubst test-$(python_version)/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test-$(python_version) --load-language=plpgsql
+
+PYTHON_TEST_VERSION ?= $(python_version)
+
+TESTS        = $(wildcard test-$(PYTHON_TEST_VERSION)/sql/*.sql)
+REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
+REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --load-language=plpgsql
 
 $(info Python version is $(python_version))
