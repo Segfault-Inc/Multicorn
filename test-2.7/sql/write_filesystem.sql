@@ -1,5 +1,4 @@
 -- Setup the test
-CREATE language plpython3u;
 
 CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
@@ -7,6 +6,7 @@ CREATE server multicorn_srv foreign data wrapper multicorn options (
 );
 
 
+CREATE language plpythonu;
 CREATE TABLE temp_dir (dirname varchar);
 
 -- Create a table with the filesystem fdw in a temporary directory,
@@ -41,7 +41,7 @@ CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
             for name, ext in (('square', 'txt'), ('round', 'ini')):
                 with open(os.path.join(dirname, '.'.join([name, ext])), 'a') as fd:
                     fd.write('Im a %s %s %s\n' % (size, color, name))
-$$ language plpython3u;
+$$ language plpythonu;
 
 select create_table();
 
@@ -55,7 +55,7 @@ CREATE OR REPLACE FUNCTION cleanup_dir() RETURNS VOID AS $$
     import shutil
     root_dir = plpy.execute("""SELECT dirname from temp_dir;""")[0]['dirname']
     shutil.rmtree(root_dir)
-$$ language plpython3u;
+$$ language plpythonu;
 
 select cleanup_dir();
 
@@ -63,4 +63,4 @@ DROP FUNCTION cleanup_dir();
 DROP TABLE temp_dir;
 DROP FUNCTION create_table();
 DROP EXTENSION multicorn cascade;
-DROP LANGUAGE plpython3u;
+DROP LANGUAGE plpythonu;
