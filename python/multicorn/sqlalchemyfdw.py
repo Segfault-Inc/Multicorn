@@ -63,9 +63,13 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         self.metadata = MetaData()
         schema = fdw_options['schema'] if 'schema' in fdw_options else None
         tablename = fdw_options['tablename']
-        self.table = Table(tablename, self.metadata, schema = schema,
-                           *[Column(col.column_name, ischema_names[col.type_name])
+        self.table = Table(tablename, self.metadata, schema=schema,
+                           *[Column(col.column_name,
+                                    ischema_names[col.type_name])
                              for col in fdw_columns.values()])
+        self.connection = None
+        self.transaction = None
+        self._row_id_column = fdw_options.get('primary_key', None)
 
     def execute(self, quals, columns):
         """
@@ -89,5 +93,40 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             columns = self.table.c.values()
         statement = statement.with_only_columns(columns)
         log_to_postgres(str(statement), DEBUG)
-        for item in self.engine.execute(statement):
+        for item in self.connection.execute(statement):
             yield dict(item)
+
+    def begin(self, serializable):
+        if self.connection is None:
+            self.connection = self.engine.connect()
+        self.transaction = self.connection.begin()
+
+    def pre_commit(self):
+        if self.transaction is not None:
+            self.transaction.commit()
+
+    def rollback(self):
+        if self.transaction is not None:
+            self.transaction.rollback()
+
+    @property
+    def rowid_column(self):
+        if self._row_id_column is None:
+            log_to_postgres(
+                'You need to declare a primary key option in order '
+                'to use the write features')
+        return self._row_id_column
+
+    def insert(self, values):
+        self.connection.execute(self.table.insert(values=values))
+
+    def update(self, rowid, newvalues):
+        self.connection.execute(
+            self.table.update()
+            .where(self.table.c[self._row_id_column] == rowid)
+            .values(newvalues))
+
+    def delete(self, rowid):
+        self.connection.execute(
+            self.table.delete()
+            .where(self.table.c[self._row_id_column] == rowid))

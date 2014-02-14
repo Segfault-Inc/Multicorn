@@ -69,3 +69,4 @@ select * from testalchemy where id not in (1, 2);
 select count(*) from testalchemy;
 
 DROP EXTENSION multicorn cascade;
+DROP table basetable;
