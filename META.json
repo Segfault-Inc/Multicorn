@@ -35,7 +35,7 @@
         }
     },
 
-    "release_status": "testing",
+    "release_status": "stable",
     "generated_by": "Kozea",
     "meta-spec": {
         "version": "1.0.0",
