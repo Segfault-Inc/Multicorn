@@ -1,0 +1,9 @@
+Multicorn 1.0.0
+---------------
+
+I just uploaded Multicorn 1.0.0 on PGXN.
+This is the first release marked as stable, and not testing.
+
+This release supports PostgreSQL 9.3 as well as the writable API which has sit
+unrealesed on the github master branch for too long !
+
