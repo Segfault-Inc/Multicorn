@@ -99,8 +99,11 @@ UserMapping *
 			multicorn_GetUserMapping(Oid userid, Oid serverid);
 
 
-static void begin_remote_xact(CacheEntry * entry);
 
+
+#if PG_VERSION_NUM >= 90300
+static void begin_remote_xact(CacheEntry * entry);
+#endif
 
 /*
  * Get a (python) encoding name for an attribute.
@@ -657,7 +660,9 @@ getCacheEntry(Oid foreigntableid)
 	/*
 	 * Start a new transaction or subtransaction if needed.
 	 */
+	#if PG_VERSION_NUM >= 90300
 	begin_remote_xact(entry);
+	#endif
 
 	return entry;
 }
@@ -675,6 +680,7 @@ getInstance(Oid foreigntableid)
 }
 
 
+#if PG_VERSION_NUM >= 90300
 static void
 begin_remote_xact(CacheEntry * entry)
 {
@@ -695,6 +701,8 @@ begin_remote_xact(CacheEntry * entry)
 		errorCheck();
 	}
 }
+#endif
+
 
 
 /*

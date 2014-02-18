@@ -67,8 +67,8 @@ class SqlAlchemyFdw(ForeignDataWrapper):
                            *[Column(col.column_name,
                                     ischema_names[col.type_name])
                              for col in fdw_columns.values()])
-        self.connection = None
         self.transaction = None
+        self._connection = None
         self._row_id_column = fdw_options.get('primary_key', None)
 
     def execute(self, quals, columns):
@@ -96,9 +96,13 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         for item in self.connection.execute(statement):
             yield dict(item)
 
+    @property
+    def connection(self):
+        if self._connection is None:
+            self._connection = self.engine.connect()
+        return self._connection
+
     def begin(self, serializable):
-        if self.connection is None:
-            self.connection = self.engine.connect()
         self.transaction = self.connection.begin()
 
     def pre_commit(self):
