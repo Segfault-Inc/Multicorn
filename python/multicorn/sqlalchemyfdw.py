@@ -108,10 +108,18 @@ class SqlAlchemyFdw(ForeignDataWrapper):
     def pre_commit(self):
         if self.transaction is not None:
             self.transaction.commit()
+            self.transaction = None
+
+    def commit(self):
+        # Pre-commit hook does this on 9.3
+        if self.transaction is not None:
+            self.transaction.commit()
+            self.transaction = None
 
     def rollback(self):
         if self.transaction is not None:
             self.transaction.rollback()
+            self.transaction = None
 
     @property
     def rowid_column(self):

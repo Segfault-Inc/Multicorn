@@ -85,21 +85,13 @@ static TupleTableSlot *multicornExecForeignUpdate(EState *estate, ResultRelInfo 
 						   TupleTableSlot *slot, TupleTableSlot *planSlot);
 static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
 
-static void multicorn_xact_callback(XactEvent event, void *arg);
-
 static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 						   SubTransactionId parentSubid, void *arg);
-
-typedef struct MulticornCallbackData
-{
-	Oid			foreigntableid;
-}	MulticornCallbackData;
-
-/*
- * List of modified relations
- */
-static List *multicorn_modified_relations = NULL;
 #endif
+
+static void multicorn_xact_callback(XactEvent event, void *arg);
+
+
 
 /*	Helpers functions */
 void	   *serializePlanState(MulticornPlanState * planstate);
@@ -116,9 +108,8 @@ _PG_init()
 	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
 
 	Py_Initialize();
-#if PG_VERSION_NUM >= 90300
-	multicorn_modified_relations = NULL;
 	RegisterXactCallback(multicorn_xact_callback, NULL);
+#if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
 #endif
 	/* Initialize the global oid -> python instances hash */
@@ -698,45 +689,6 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 }
 
 /*
- * Callback used to propagate pre-commit / commit / rollback.
- */
-static void
-multicorn_xact_callback(XactEvent event, void *arg)
-{
-	PyObject   *instance;
-	HASH_SEQ_STATUS status;
-	CacheEntry *entry;
-
-	hash_seq_init(&status, InstancesHash);
-
-	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
-	{
-		instance = entry->value;
-		if (entry->xact_depth == 0)
-			continue;
-
-		switch (event)
-		{
-			case XACT_EVENT_PRE_COMMIT:
-				PyObject_CallMethod(instance, "pre_commit", "()");
-				break;
-			case XACT_EVENT_COMMIT:
-				PyObject_CallMethod(instance, "commit", "()");
-				entry->xact_depth = 0;
-				break;
-			case XACT_EVENT_ABORT:
-				PyObject_CallMethod(instance, "rollback", "()");
-				entry->xact_depth = 0;
-				break;
-			default:
-				break;
-		}
-		errorCheck();
-	}
-}
-
-
-/*
  * Callback used to propagate a subtransaction end.
  */
 static void
@@ -762,7 +714,6 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 			continue;
 
 		instance = entry->value;
-
 		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
 		{
 			PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
@@ -776,6 +727,47 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 	}
 }
 #endif
+
+/*
+ * Callback used to propagate pre-commit / commit / rollback.
+ */
+static void
+multicorn_xact_callback(XactEvent event, void *arg)
+{
+	PyObject   *instance;
+	HASH_SEQ_STATUS status;
+	CacheEntry *entry;
+
+	hash_seq_init(&status, InstancesHash);
+	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
+	{
+		instance = entry->value;
+		if (entry->xact_depth == 0)
+			continue;
+
+		switch (event)
+		{
+#if PG_VERSION_NUM >= 90300
+			case XACT_EVENT_PRE_COMMIT:
+				PyObject_CallMethod(instance, "pre_commit", "()");
+				break;
+#endif
+			case XACT_EVENT_COMMIT:
+				PyObject_CallMethod(instance, "commit", "()");
+				entry->xact_depth = 0;
+				break;
+			case XACT_EVENT_ABORT:
+				PyObject_CallMethod(instance, "rollback", "()");
+				entry->xact_depth = 0;
+				break;
+			default:
+				break;
+		}
+		errorCheck();
+	}
+}
+
+
 
 
 /*

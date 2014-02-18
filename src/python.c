@@ -101,9 +101,7 @@ UserMapping *
 
 
 
-#if PG_VERSION_NUM >= 90300
 static void begin_remote_xact(CacheEntry * entry);
-#endif
 
 /*
  * Get a (python) encoding name for an attribute.
@@ -629,7 +627,7 @@ getCacheEntry(Oid foreigntableid)
 		getColumnsFromTable(desc, &p_columns, &columns);
 		PyDict_DelItemString(p_options, "wrapper");
 		p_instance = PyObject_CallFunction(p_class, "(O,O)", p_options,
-											 p_columns);
+										   p_columns);
 		/* Cleanup the old context, containing the old columns and options */
 		/* values */
 		if (entry->cacheContext != NULL)
@@ -660,10 +658,7 @@ getCacheEntry(Oid foreigntableid)
 	/*
 	 * Start a new transaction or subtransaction if needed.
 	 */
-	#if PG_VERSION_NUM >= 90300
 	begin_remote_xact(entry);
-	#endif
-
 	return entry;
 }
 
@@ -680,7 +675,6 @@ getInstance(Oid foreigntableid)
 }
 
 
-#if PG_VERSION_NUM >= 90300
 static void
 begin_remote_xact(CacheEntry * entry)
 {
@@ -701,7 +695,6 @@ begin_remote_xact(CacheEntry * entry)
 		errorCheck();
 	}
 }
-#endif
 
 
 
