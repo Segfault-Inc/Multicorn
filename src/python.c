@@ -620,11 +620,12 @@ getCacheEntry(Oid foreigntableid)
 	{
 		PyObject   *p_options = optionsListToPyDict(options),
 				   *p_class = getClass(PyDict_GetItemString(p_options,
-															"wrapper"));
+															"wrapper")),
+				   *p_instance;
 
 		getColumnsFromTable(desc, &p_columns, &columns);
 		PyDict_DelItemString(p_options, "wrapper");
-		entry->value = PyObject_CallFunction(p_class, "(O,O)", p_options,
+		p_instance = PyObject_CallFunction(p_class, "(O,O)", p_options,
 											 p_columns);
 		/* Cleanup the old context, containing the old columns and options */
 		/* values */
@@ -642,6 +643,7 @@ getCacheEntry(Oid foreigntableid)
 		Py_DECREF(p_options);
 		Py_DECREF(p_columns);
 		errorCheck();
+		entry->value = p_instance;
 		MemoryContextSwitchTo(oldContext);
 	}
 	else
