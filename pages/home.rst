@@ -28,19 +28,19 @@ Requirements
 
 If you are using *PostgreSQL 9.1*, you should use the 0.9.1 release.
 
-If you are using *PostgreSQL 9.2* or superior, you should use the 1.0.0 series. (Currently
-1.0.0).
+If you are using *PostgreSQL 9.2* or superior, you should use the 1.0.0  series. (Currently
+1.0.1).
 
 
 With the `pgxn client`_::
 
-   pgxn install multicorn --testing
+   pgxn install multicorn
 
 From pgxn::
 
-   wget http://api.pgxn.org/dist/multicorn/1.0.0-beta1/multicorn-1.0.0-beta1.zip
-   unzip multicorn-1.0.0.zip
-   cd multicorn-1.0.0/
+   wget http://api.pgxn.org/dist/multicorn/1.0.1-beta1/multicorn-1.0.1-beta1.zip
+   unzip multicorn-1.0.1.zip
+   cd multicorn-1.0.1/
    make && sudo make install
 
 From source::
