@@ -103,6 +103,7 @@ TABLE`` statement, this module should be named ``myfdw``.
 You should have the following directory structure:
 
 .. code-block:: bash
+
   .
   |-- myfdw/ 
   |   `-- __init__.py
