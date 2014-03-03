@@ -393,6 +393,7 @@ multicornIterateForeignScan(ForeignScanState *node)
 		return slot;
 	}
 	p_value = PyIter_Next(execstate->p_iterator);
+	errorCheck();
 	/* A none value results in an empty slot. */
 	if (p_value == NULL || p_value == Py_None)
 	{
