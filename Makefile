@@ -78,7 +78,7 @@ else
 	PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
 	PY_CFLAGS = $(shell ${PYTHON_CONFIG} --cflags)
 	PY_LDFLAGS = $(shell ${PYTHON_CONFIG} --ldflags)
-	SHLIB_LINK = $(PY_LIBSPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
+	SHLIB_LINK = $(PY_LIBSPEC) $(PY_LDFLAGS) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
 	override PG_CPPFLAGS  := $(PY_INCLUDESPEC) $(PG_CPPFLAGS)
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
