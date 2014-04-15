@@ -763,7 +763,12 @@ qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfos)
 		{
 			typeoid = cinfo->atttypoid;
 		}
-		p_value = datumToPython(value, typeoid, cinfo);
+		if(qualdef->base.isArray){
+			p_value = datumArrayToPython(value, cinfo);
+		}
+		else{
+			p_value = datumToPython(value, typeoid, cinfo);
+		}
 		if (p_value == NULL)
 		{
 			return NULL;
