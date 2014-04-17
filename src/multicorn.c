@@ -390,6 +390,7 @@ multicornIterateForeignScan(ForeignScanState *node)
 	if (execstate->p_iterator == Py_None)
 	{
 		/* No iterator returned from get_iterator */
+		Py_DECREF(execstate->p_iterator);
 		return slot;
 	}
 	p_value = PyIter_Next(execstate->p_iterator);
@@ -397,10 +398,7 @@ multicornIterateForeignScan(ForeignScanState *node)
 	/* A none value results in an empty slot. */
 	if (p_value == NULL || p_value == Py_None)
 	{
-		if (p_value != NULL)
-		{
-			Py_DECREF(p_value);
-		}
+		Py_XDECREF(p_value);
 		return slot;
 	}
 	slot->tts_values = execstate->values;
@@ -441,10 +439,7 @@ multicornEndForeignScan(ForeignScanState *node)
 	errorCheck();
 	Py_DECREF(result);
 	Py_DECREF(state->fdw_instance);
-	if (state->p_iterator != NULL)
-	{
-		Py_DECREF(state->p_iterator);
-	}
+	Py_XDECREF(state->p_iterator);
 	state->p_iterator = NULL;
 }
 
@@ -590,15 +585,14 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	PyObject   *fdw_instance = modstate->fdw_instance;
 	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
 	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
-
 	errorCheck();
 	if (p_new_value && p_new_value != Py_None)
 	{
 		ExecClearTuple(slot);
 		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
 		ExecStoreVirtualTuple(slot);
-		Py_DECREF(p_new_value);
 	}
+	Py_XDECREF(p_new_value);
 	Py_DECREF(values);
 	errorCheck();
 	return slot;
@@ -627,6 +621,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	errorCheck();
 	if (p_new_value == NULL || p_new_value == Py_None)
 	{
+		Py_XDECREF(p_new_value);
 		p_new_value = tupleTableSlotToPyObject(planSlot, modstate->resultCinfos);
 	}
 	ExecClearTuple(slot);
@@ -666,8 +661,8 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 		ExecClearTuple(slot);
 		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
 		ExecStoreVirtualTuple(slot);
-		Py_DECREF(p_new_value);
 	}
+	Py_XDECREF(p_new_value);
 	Py_DECREF(p_row_id);
 	errorCheck();
 	return slot;

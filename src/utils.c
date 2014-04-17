@@ -104,15 +104,14 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 		}
 		Py_DECREF(args);
 		Py_DECREF(kwargs);
-		Py_INCREF(Py_None);
 		errfinish(0);
 	}
 	else
 	{
 		Py_DECREF(args);
 		Py_DECREF(kwargs);
-		Py_INCREF(Py_None);
 	}
+	Py_INCREF(Py_None);
 	return Py_None;
 }
 

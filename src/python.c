@@ -679,11 +679,13 @@ static void
 begin_remote_xact(CacheEntry * entry)
 {
 	int			curlevel = GetCurrentTransactionNestLevel();
+	PyObject * rv;
 
 	/* Start main transaction if we haven't yet */
 	if (entry->xact_depth <= 0)
 	{
-		PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
+		rv = PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
+		Py_XDECREF(rv);
 		errorCheck();
 		entry->xact_depth = 1;
 	}
@@ -691,7 +693,8 @@ begin_remote_xact(CacheEntry * entry)
 	while (entry->xact_depth < curlevel)
 	{
 		entry->xact_depth++;
-		PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
+		rv = PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
+		Py_XDECREF(rv);
 		errorCheck();
 	}
 }
@@ -1145,10 +1148,7 @@ pythonDictToTuple(PyObject *p_value,
 			values[i] = (Datum) NULL;
 			nulls[i] = true;
 		}
-		if (p_object != NULL)
-		{
-			Py_DECREF(p_object);
-		}
+		Py_XDECREF(p_object);
 	}
 }
 
@@ -1535,6 +1535,7 @@ getRowIdColumn(PyObject *fdw_instance)
 	errorCheck();
 	if (value == Py_None)
 	{
+		Py_DECREF(value);
 		elog(ERROR, "This FDW does not support the writable API");
 	}
 	result = PyString_AsString(value);
