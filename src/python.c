@@ -623,6 +623,7 @@ getCacheEntry(Oid foreigntableid)
 				   *p_class = getClass(PyDict_GetItemString(p_options,
 															"wrapper")),
 				   *p_instance;
+
 		entry->value = NULL;
 		getColumnsFromTable(desc, &p_columns, &columns);
 		PyDict_DelItemString(p_options, "wrapper");
@@ -680,7 +681,7 @@ static void
 begin_remote_xact(CacheEntry * entry)
 {
 	int			curlevel = GetCurrentTransactionNestLevel();
-	PyObject * rv;
+	PyObject   *rv;
 
 	/* Start main transaction if we haven't yet */
 	if (entry->xact_depth <= 0)
@@ -767,10 +768,12 @@ qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfos)
 		{
 			typeoid = cinfo->atttypoid;
 		}
-		if(qualdef->base.isArray){
+		if (qualdef->base.isArray)
+		{
 			p_value = datumArrayToPython(value, cinfo);
 		}
-		else{
+		else
+		{
 			p_value = datumToPython(value, typeoid, cinfo);
 		}
 		if (p_value == NULL)

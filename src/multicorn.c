@@ -219,8 +219,8 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	MulticornPlanState *planstate = palloc0(sizeof(MulticornPlanState));
 	ForeignTable *ftable = GetForeignTable(foreigntableid);
 	ListCell   *lc;
-	bool needWholeRow = false;
-	TupleDesc desc;
+	bool		needWholeRow = false;
+	TupleDesc	desc;
 
 	baserel->fdw_private = planstate;
 	planstate->fdw_instance = getInstance(foreigntableid);
@@ -229,6 +229,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	{
 		Relation	rel = RelationIdGetRelation(ftable->relid);
 		AttInMetadata *attinmeta;
+
 		desc = RelationGetDescr(rel);
 		attinmeta = TupleDescGetAttInMetadata(desc);
 		planstate->numattrs = RelationGetNumberOfAttributes(rel);
@@ -239,24 +240,32 @@ multicornGetForeignRelSize(PlannerInfo *root,
 		needWholeRow = rel->trigdesc && rel->trigdesc->trig_insert_after_row;
 		RelationClose(rel);
 	}
-	if(needWholeRow)
+	if (needWholeRow)
 	{
-		int i;
-		for(i = 0; i < desc->natts; i++){
+		int			i;
+
+		for (i = 0; i < desc->natts; i++)
+		{
 			Form_pg_attribute att = desc->attrs[i];
-			if(!att->attisdropped)
+
+			if (!att->attisdropped)
 			{
 				planstate->target_list = lappend(planstate->target_list, makeString(NameStr(att->attname)));
 			}
 		}
-	} else {
+	}
+	else
+	{
 		/* Pull "var" clauses to build an appropriate target list */
 		foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
 		{
 			Var		   *var = (Var *) lfirst(lc);
 			Value	   *colname;
 
-			/* Store only a Value node containing the string name of the column. */
+			/*
+			 * Store only a Value node containing the string name of the
+			 * column.
+			 */
 			colname = colnameFromVar(var, root, planstate);
 			if (colname != NULL && strVal(colname) != NULL)
 			{
@@ -600,6 +609,7 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	PyObject   *fdw_instance = modstate->fdw_instance;
 	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
 	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
+
 	errorCheck();
 	if (p_new_value && p_new_value != Py_None)
 	{
