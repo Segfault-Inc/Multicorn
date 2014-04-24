@@ -1,3 +1,9 @@
+1.0.3:
+    - Fix bugs with types reflection in sqlalchemyfdw (Thanks to naoshika for
+      reporting it)
+    - Fix bug regarding ARRAY detection
+    - Small cleanups in Py_None reference counting
+    - Better guard against errors during fdw initialization
 1.0.2:
     - Fix bug when an exception occurs during iteration (Thanks to johnmudd for
       reporting it)
