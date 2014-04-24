@@ -219,6 +219,8 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	MulticornPlanState *planstate = palloc0(sizeof(MulticornPlanState));
 	ForeignTable *ftable = GetForeignTable(foreigntableid);
 	ListCell   *lc;
+	bool needWholeRow = false;
+	TupleDesc desc;
 
 	baserel->fdw_private = planstate;
 	planstate->fdw_instance = getInstance(foreigntableid);
@@ -226,27 +228,40 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	/* Initialize the conversion info array */
 	{
 		Relation	rel = RelationIdGetRelation(ftable->relid);
-		AttInMetadata *attinmeta = TupleDescGetAttInMetadata(RelationGetDescr(rel));
-
+		AttInMetadata *attinmeta;
+		desc = RelationGetDescr(rel);
+		attinmeta = TupleDescGetAttInMetadata(desc);
 		planstate->numattrs = RelationGetNumberOfAttributes(rel);
 
 		planstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 									planstate->numattrs);
 		initConversioninfo(planstate->cinfos, attinmeta);
+		needWholeRow = rel->trigdesc && rel->trigdesc->trig_insert_after_row;
 		RelationClose(rel);
 	}
-
-	/* Pull "var" clauses to build an appropriate target list */
-	foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
+	if(needWholeRow)
 	{
-		Var		   *var = (Var *) lfirst(lc);
-		Value	   *colname;
-
-		/* Store only a Value node containing the string name of the column. */
-		colname = colnameFromVar(var, root, planstate);
-		if (colname != NULL && strVal(colname) != NULL)
+		int i;
+		for(i = 0; i < desc->natts; i++){
+			Form_pg_attribute att = desc->attrs[i];
+			if(!att->attisdropped)
+			{
+				planstate->target_list = lappend(planstate->target_list, makeString(NameStr(att->attname)));
+			}
+		}
+	} else {
+		/* Pull "var" clauses to build an appropriate target list */
+		foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
 		{
-			planstate->target_list = lappend(planstate->target_list, colname);
+			Var		   *var = (Var *) lfirst(lc);
+			Value	   *colname;
+
+			/* Store only a Value node containing the string name of the column. */
+			colname = colnameFromVar(var, root, planstate);
+			if (colname != NULL && strVal(colname) != NULL)
+			{
+				planstate->target_list = lappend(planstate->target_list, colname);
+			}
 		}
 	}
 	/* Extract the restrictions from the plan. */
