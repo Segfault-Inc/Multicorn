@@ -14,7 +14,7 @@
         },
         "homepage": "http://multicorn.org",
         "bugtracker": {
-            "web": "http://redmine.kozea.fr/projects/multicorn/issues",
+            "web": "https://github.com/Kozea/Multicorn/issues",
             "mailto": "multicorn@librelist.org"
         }
     },
