@@ -4,8 +4,10 @@ from . import ForeignDataWrapper
 from .utils import log_to_postgres, ERROR, WARNING, DEBUG
 from sqlalchemy import create_engine
 from sqlalchemy.sql import select, operators as sqlops, and_
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.schema import Table, Column, MetaData
-from sqlalchemy.dialects.postgresql.base import ischema_names
+from sqlalchemy.dialects.postgresql.base import ARRAY, ischema_names
+import re
 import operator
 
 
@@ -63,10 +65,12 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         self.metadata = MetaData()
         schema = fdw_options['schema'] if 'schema' in fdw_options else None
         tablename = fdw_options['tablename']
+        sqlacols = []
+        for col in fdw_columns.values():
+            col_type = self._get_column_type(col.type_name)
+            sqlacols.append(Column(col.column_name, col_type))
         self.table = Table(tablename, self.metadata, schema=schema,
-                           *[Column(col.column_name,
-                                    ischema_names[col.type_name])
-                             for col in fdw_columns.values()])
+                           *sqlacols)
         self.transaction = None
         self._connection = None
         self._row_id_column = fdw_options.get('primary_key', None)
@@ -142,3 +146,68 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         self.connection.execute(
             self.table.delete()
             .where(self.table.c[self._row_id_column] == rowid))
+
+    def _get_column_type(self, format_type):
+        """Blatant ripoff from PG_Dialect.get_column_info"""
+        ## strip (*) from character varying(5), timestamp(5)
+        # with time zone, geometry(POLYGON), etc.
+        attype = re.sub(r'\(.*\)', '', format_type)
+
+        # strip '[]' from integer[], etc.
+        attype = re.sub(r'\[\]', '', attype)
+
+        is_array = format_type.endswith('[]')
+        charlen = re.search('\(([\d,]+)\)', format_type)
+        if charlen:
+            charlen = charlen.group(1)
+        args = re.search('\((.*)\)', format_type)
+        if args and args.group(1):
+            args = tuple(re.split('\s*,\s*', args.group(1)))
+        else:
+            args = ()
+        kwargs = {}
+
+        if attype == 'numeric':
+            if charlen:
+                prec, scale = charlen.split(',')
+                args = (int(prec), int(scale))
+            else:
+                args = ()
+        elif attype == 'double precision':
+            args = (53, )
+        elif attype == 'integer':
+            args = ()
+        elif attype in ('timestamp with time zone',
+                        'time with time zone'):
+            kwargs['timezone'] = True
+            if charlen:
+                kwargs['precision'] = int(charlen)
+            args = ()
+        elif attype in ('timestamp without time zone',
+                        'time without time zone', 'time'):
+            kwargs['timezone'] = False
+            if charlen:
+                kwargs['precision'] = int(charlen)
+            args = ()
+        elif attype == 'bit varying':
+            kwargs['varying'] = True
+            if charlen:
+                args = (int(charlen),)
+            else:
+                args = ()
+        elif attype in ('interval', 'interval year to month',
+                        'interval day to second'):
+            if charlen:
+                kwargs['precision'] = int(charlen)
+            args = ()
+        elif charlen:
+            args = (int(charlen),)
+
+        coltype = ischema_names.get(attype, None)
+        if coltype:
+            coltype = coltype(*args, **kwargs)
+            if is_array:
+                coltype = ARRAY(coltype)
+        else:
+            coltype = sqltypes.NULLTYPE
+        return coltype
