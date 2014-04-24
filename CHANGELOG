@@ -1,3 +1,5 @@
+1.0.4:
+    - Add support for upcoming AFTER TRIGGERs on foreign tables.
 1.0.3:
     - Fix bugs with types reflection in sqlalchemyfdw (Thanks to naoshika for
       reporting it)
