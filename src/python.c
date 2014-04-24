@@ -599,7 +599,7 @@ getCacheEntry(Oid foreigntableid)
 		if (!compareOptions(entry->options, options))
 		{
 			/* Options have changed, we must purge the cache. */
-			Py_DECREF(entry->value);
+			Py_XDECREF(entry->value);
 			needInitialization = true;
 		}
 		else
@@ -608,12 +608,12 @@ getCacheEntry(Oid foreigntableid)
 			getColumnsFromTable(desc, &p_columns, &columns);
 			if (!compareColumns(columns, entry->columns))
 			{
-				Py_DECREF(entry->value);
+				Py_XDECREF(entry->value);
 				needInitialization = true;
 			}
 			else
 			{
-				Py_DECREF(p_columns);
+				Py_XDECREF(p_columns);
 			}
 		}
 	}
@@ -623,11 +623,12 @@ getCacheEntry(Oid foreigntableid)
 				   *p_class = getClass(PyDict_GetItemString(p_options,
 															"wrapper")),
 				   *p_instance;
-
+		entry->value = NULL;
 		getColumnsFromTable(desc, &p_columns, &columns);
 		PyDict_DelItemString(p_options, "wrapper");
 		p_instance = PyObject_CallFunction(p_class, "(O,O)", p_options,
 										   p_columns);
+		errorCheck();
 		/* Cleanup the old context, containing the old columns and options */
 		/* values */
 		if (entry->cacheContext != NULL)
