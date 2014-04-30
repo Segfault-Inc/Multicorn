@@ -14,6 +14,7 @@
  */
 #include <Python.h>
 #include "postgres.h"
+#include "multicorn.h"
 
 
 struct module_state
@@ -94,13 +95,11 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 		{
 			hintstr = PyString_AsString(hint);
 			errhint("%s", hintstr);
-			Py_DECREF(hint);
 		}
 		if (detail != NULL && detail != Py_None)
 		{
 			detailstr = PyString_AsString(detail);
 			errdetail("%s", detailstr);
-			Py_DECREF(detail);
 		}
 		Py_DECREF(args);
 		Py_DECREF(kwargs);
