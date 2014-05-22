@@ -4,7 +4,12 @@ from . import ForeignDataWrapper
 from .utils import log_to_postgres, ERROR, WARNING, DEBUG
 from sqlalchemy import create_engine
 from sqlalchemy.sql import select, operators as sqlops, and_
-from sqlalchemy.sql import sqltypes
+# Handle the sqlalchemy 0.8 / 0.9 changes
+try:
+    from sqlalchemy.sql import sqltypes
+except ImportError:
+    from sqlalchem import types as sqltypes
+
 from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.dialects.postgresql.base import ARRAY, ischema_names
 import re
