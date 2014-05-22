@@ -217,16 +217,16 @@ canonicalOpExpr(OpExpr *opExpr, Relids base_relids)
 		l = unnestClause(list_nth(opExpr->args, 0));
 		r = unnestClause(list_nth(opExpr->args, 1));
 		swapOperandsAsNeeded(&l, &r, &operatorid, base_relids);
-	}
-	if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
-		&& ((Var *) l)->varattno >= 1)
-	{
-		result = (OpExpr *) make_opclause(operatorid,
-										  opExpr->opresulttype,
-										  opExpr->opretset,
-										  (Expr *) l, (Expr *) r,
-										  opExpr->opcollid,
-										  opExpr->inputcollid);
+		if (IsA(l, Var) &&bms_is_member(((Var *) l)->varno, base_relids)
+			&& ((Var *) l)->varattno >= 1)
+		{
+			result = (OpExpr *) make_opclause(operatorid,
+											opExpr->opresulttype,
+											opExpr->opretset,
+											(Expr *) l, (Expr *) r,
+											opExpr->opcollid,
+											opExpr->inputcollid);
+		}
 	}
 	return result;
 }
