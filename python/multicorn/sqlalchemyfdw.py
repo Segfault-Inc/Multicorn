@@ -8,7 +8,7 @@ from sqlalchemy.sql import select, operators as sqlops, and_
 try:
     from sqlalchemy.sql import sqltypes
 except ImportError:
-    from sqlalchem import types as sqltypes
+    from sqlalchemy import types as sqltypes
 
 from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.dialects.postgresql.base import ARRAY, ischema_names
