@@ -3,6 +3,7 @@
 from . import ForeignDataWrapper
 from .utils import log_to_postgres, ERROR, WARNING, DEBUG
 from sqlalchemy import create_engine
+from sqlalchemy.engine.url import make_url, URL
 from sqlalchemy.sql import select, operators as sqlops, and_
 # Handle the sqlalchemy 0.8 / 0.9 changes
 try:
@@ -62,12 +63,21 @@ class SqlAlchemyFdw(ForeignDataWrapper):
 
     def __init__(self, fdw_options, fdw_columns):
         super(SqlAlchemyFdw, self).__init__(fdw_options, fdw_columns)
-        if 'db_url' not in fdw_options:
-            log_to_postgres('The db_url parameter is required', ERROR)
         if 'tablename' not in fdw_options:
             log_to_postgres('The tablename parameter is required', ERROR)
-        self.engine = create_engine(fdw_options.get('db_url'))
         self.metadata = MetaData()
+        if fdw_options.get('db_url'):
+            url = make_url(fdw_options.get('db_url'))
+        else:
+            if 'drivername' not in fdw_options:
+                log_to_postgres('Either a db_url, or drivername and other '
+                                'connection infos are needed', ERROR)
+            url = URL(fdw_options['drivername'])
+        for param in ('username', 'password', 'host',
+                      'database', 'port'):
+            if param in fdw_options:
+                setattr(url, param, fdw_options[param])
+        self.engine = create_engine(url)
         schema = fdw_options['schema'] if 'schema' in fdw_options else None
         tablename = fdw_options['tablename']
         sqlacols = []
