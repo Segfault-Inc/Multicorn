@@ -112,7 +112,10 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             columns = self.table.c.values()
         statement = statement.with_only_columns(columns)
         log_to_postgres(str(statement), DEBUG)
-        for item in self.connection.execute(statement):
+        rs = (self.connection
+              .execution_options(stream_results=True)
+              .execute(statement))
+        for item in rs:
             yield dict(item)
 
     @property
