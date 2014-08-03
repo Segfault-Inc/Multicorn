@@ -3,6 +3,7 @@ description: Unified data access library
 license: GPLv3
 public: true
 url: http://www.multicorn.org/
+pystil: https://kozea.pystil.org/pystil.js
 
 menu:
   - Overview:
@@ -16,6 +17,12 @@ menu:
   - Issues:
       link: https://github.com/Kozea/Multicorn/issues
 
+footer:
+  - A Kozea Project:
+      link: http://community.kozea.fr/
+  - Optimized for Standards:
+      link: http://validator.w3.org/check?uri=referer
+
 project (git):
   url: git://github.com/Kozea/Multicorn.git
   path: multicorn
@@ -26,6 +33,7 @@ vcs (git):
 
 code browser (github):
   project name: Kozea/Multicorn
+  ribbon: Fork me on GitHub
 
 bug tracker (github):
   project name: Kozea/Multicorn
