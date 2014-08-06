@@ -55,7 +55,7 @@ PyObject   *datumNumberToPython(Datum node, ConversionInfo * cinfo);
 PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumArrayToPython(Datum datum, ConversionInfo * cinfo);
+PyObject   *datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo);
 PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type);
 
@@ -768,14 +768,7 @@ qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfos)
 		{
 			typeoid = cinfo->atttypoid;
 		}
-		if (qualdef->base.isArray)
-		{
-			p_value = datumArrayToPython(value, cinfo);
-		}
-		else
-		{
-			p_value = datumToPython(value, typeoid, cinfo);
-		}
+		p_value = datumToPython(value, typeoid, cinfo);
 		if (p_value == NULL)
 		{
 			return NULL;
@@ -1347,7 +1340,7 @@ datumIntToPython(Datum datum, ConversionInfo * cinfo)
 }
 
 PyObject *
-datumArrayToPython(Datum datum, ConversionInfo * cinfo)
+datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 {
 	ArrayIterator iterator = array_create_iterator(DatumGetArrayTypeP(datum),
 												   0);
@@ -1364,7 +1357,18 @@ datumArrayToPython(Datum datum, ConversionInfo * cinfo)
 		}
 		else
 		{
-			pyitem = datumToPython(elem, cinfo->atttypoid, cinfo);
+			HeapTuple	tuple;
+			Form_pg_type typeStruct;
+			tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
+			if (!HeapTupleIsValid(tuple))
+			{
+				elog(ERROR, "lookup failed for type %u",
+					 type);
+			}
+			typeStruct = (Form_pg_type) GETSTRUCT(tuple);
+			pyitem = datumToPython(elem, typeStruct->typelem, cinfo);
+			ReleaseSysCache(tuple);
+
 			PyList_Append(result, pyitem);
 			Py_DECREF(pyitem);
 		}
@@ -1422,7 +1426,7 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 			if ((typeStruct->typelem != 0) && (typeStruct->typlen == -1))
 			{
 				/* Its an array. */
-				return datumArrayToPython(datum, cinfo);
+				return datumArrayToPython(datum, type, cinfo);
 			}
 			return datumUnknownToPython(datum, cinfo, type);
 	}

@@ -254,7 +254,6 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
 	{
 		l = unnestClause(list_nth(opExpr->args, 0));
 		r = unnestClause(list_nth(opExpr->args, 1));
-		swapOperandsAsNeeded(&l, &r, &operatorid, base_relids);
 		tp = SearchSysCache1(OPEROID, ObjectIdGetDatum(operatorid));
 		if (!HeapTupleIsValid(tp))
 			elog(ERROR, "cache lookup failed for operator %u", operatorid);
