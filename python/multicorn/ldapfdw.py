@@ -5,7 +5,7 @@ An LDAP foreign data wrapper.
 
 from . import ForeignDataWrapper
 
-import ldap
+import ldap3
 from multicorn.utils import log_to_postgres, ERROR
 from multicorn.compat import unicode_
 
@@ -25,13 +25,13 @@ class LdapFdw(ForeignDataWrapper):
 
     The following options are required:
 
-    uri                -- the ldap URI to connect. (ex: 'ldap://localhost')
+    uri         -- the ldap URI to connect. (ex: 'ldap://localhost')
     address     -- the ldap host to connect. (obsolete)
     path        -- the ldap path (ex: ou=People,dc=example,dc=com)
     objectClass -- the ldap object class (ex: 'inetOrgPerson')
-    scope        -- the ldap scope (one, sub or base)
-    binddn        -- the ldap bind DN (ex: 'cn=Admin,dc=example,dc=com')
-    bindpwd        -- the ldap bind Password
+    scope       -- the ldap scope (one, sub or base)
+    binddn      -- the ldap bind DN (ex: 'cn=Admin,dc=example,dc=com')
+    bindpwd     -- the ldap bind Password
 
     """
 
@@ -41,20 +41,20 @@ class LdapFdw(ForeignDataWrapper):
             self.ldapuri = "ldap://" + fdw_options["address"]
         else:
             self.ldapuri = fdw_options["uri"]
-        self.ldap = ldap.initialize(self.ldapuri)
+        self.ldap = ldap3.Connection(
+            ldap3.Server(self.ldapuri),
+            user=fdw_options.get("binddn", None),
+            password=fdw_options.get("bindpwd", None),
+            client_strategy=ldap3.STRATEGY_SYNC_RESTARTABLE)
         self.path = fdw_options["path"]
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
         self.field_list = fdw_columns
-        self.field_definitions = dict((name.lower(), field)
-                                      for name, field
-                                      in self.field_list.items())
-        self.binddn = fdw_options.get("binddn", None)
-        self.bindpwd = fdw_options.get("bindpwd", None)
-        self.array_columns = [col.column_name for name, col
-                              in self.field_definitions.items()
-                              if col.type_name.endswith('[]')]
-        self.bind()
+        self.field_definitions = dict(
+            (name.lower(), field) for name, field in self.field_list.items())
+        self.array_columns = [
+            col.column_name for name, col in self.field_definitions.items()
+            if col.type_name.endswith('[]')]
 
     def execute(self, quals, columns):
         request = unicode_("(objectClass=%s)") % self.object_class
@@ -69,11 +69,13 @@ class LdapFdw(ForeignDataWrapper):
                        if operator == "~~" else baseval)
                 request = unicode_("(&%s(%s=%s))") % (
                     request, qual.field_name, val)
-        request = request.encode('utf8')
-        for _, item in self.ldap.search_s(self.path, self.scope, request):
+        self.ldap.search(
+            self.path, request, self.scope,
+            attributes=list(self.field_definitions))
+        for entry in self.ldap.response:
             # Case insensitive lookup for the attributes
             litem = dict()
-            for key, value in item.items():
+            for key, value in entry["attributes"].items():
                 if key.lower() in self.field_definitions:
                     pgcolname = self.field_definitions[key.lower()].column_name
                     if pgcolname in self.array_columns:
@@ -83,26 +85,12 @@ class LdapFdw(ForeignDataWrapper):
                     litem[pgcolname] = value
             yield litem
 
-    def bind(self):
-        try:
-            args = {}
-            if self.binddn is not None:
-                args['who'] = self.binddn
-                if self.bindpwd is not None:
-                    args['cred'] = self.bindpwd
-            self.ldap.simple_bind_s(**args)
-
-        except ldap.INVALID_CREDENTIALS as msg:
-            log_to_postgres("LDAP BIND Error: %s" % msg, ERROR)
-        except ldap.UNWILLING_TO_PERFORM as msg:
-            log_to_postgres("LDAP BIND Error: %s" % msg, ERROR)
-
     def parse_scope(self, scope=None):
         if scope in (None, "", "one"):
-            return ldap.SCOPE_ONELEVEL
+            return ldap3.SEARCH_SCOPE_SINGLE_LEVEL
         elif scope == "sub":
-            return ldap.SCOPE_SUBTREE
+            return ldap3.SEARCH_SCOPE_WHOLE_SUBTREE
         elif scope == "base":
-            return ldap.SCOPE_BASE
+            return ldap3.SEARCH_SCOPE_BASE_OBJECT
         else:
             log_to_postgres("Invalid scope specified: %s" % scope, ERROR)
