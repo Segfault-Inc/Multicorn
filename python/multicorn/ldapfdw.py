@@ -64,9 +64,12 @@ class LdapFdw(ForeignDataWrapper):
             else:
                 operator = qual.operator
             if operator in ("=", "~~"):
-                baseval = qual.value.translate(SPECIAL_CHARS)
-                val = (baseval.replace("%", "*")
-                       if operator == "~~" else baseval)
+                if hasattr(qual.value, "translate"):
+                    baseval = qual.value.translate(SPECIAL_CHARS)
+                    val = (baseval.replace("%", "*")
+                           if operator == "~~" else baseval)
+                else:
+                    val = qual.value
                 request = unicode_("(&%s(%s=%s))") % (
                     request, qual.field_name, val)
         self.ldap.search(
