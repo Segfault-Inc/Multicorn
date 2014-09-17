@@ -1,27 +1,34 @@
+srcdir       = .
 MODULE_big   = multicorn
 OBJS         =  src/errors.o src/python.o src/query.o src/multicorn.o
 
 
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 
-DOCS         = $(wildcard doc/*.md)
+DOCS         = $(wildcard $(srcdir)/doc/*.md)
 
 EXTENSION    = multicorn
-EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
+EXTVERSION   = $(shell grep default_version $(srcdir)/$(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
 
 all: preflight-check sql/$(EXTENSION)--$(EXTVERSION).sql
 
+directories.stamp:
+	[ -d sql ] || mkdir sql
+	[ -d src ] || mkdir src
+	touch $@
+
+$(OBJS): directories.stamp
+
 install: python_code 
 
-sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
+sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql directories.stamp
 	cp $< $@
 
 preflight-check:
-	./preflight-check.sh
-
+	$(srcdir)/preflight-check.sh
 
 python_code: setup.py
-	cp ./setup.py ./setup--$(EXTVERSION).py
+	cp $(srcdir)/setup.py ./setup--$(EXTVERSION).py
 	sed -i -e "s/__VERSION__/$(EXTVERSION)-dev/g" ./setup--$(EXTVERSION).py
 	$(PYTHON) ./setup--$(EXTVERSION).py install
 	rm ./setup--$(EXTVERSION).py
@@ -39,7 +46,7 @@ coverage:
 	genhtml --show-details --legend --output-directory=coverage --title=PostgreSQL --num-spaces=4 --prefix=./src/ `find . -name lcov.info -print`
 
 DATA = sql/$(EXTENSION)--$(EXTVERSION).sql
-EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip
+EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip directories.stamp
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 REGRESS      = virtual_tests
