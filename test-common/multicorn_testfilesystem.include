@@ -2,10 +2,10 @@
 SELECT * from testmulticorn ORDER BY filename;
 
 -- Test the cost analysis
-EXPLAIN select color, size from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
-EXPLAIN select color, size from testmulticorn where color = 'blue' and size = 'big';
-EXPLAIN select color, size from testmulticorn where color = 'blue';
-EXPLAIN select color, size, data from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
+EXPLAIN (costs off) select color, size from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
+EXPLAIN (costs off) select color, size from testmulticorn where color = 'blue' and size = 'big';
+EXPLAIN (costs off) select color, size from testmulticorn where color = 'blue';
+EXPLAIN (costs off) select color, size, data from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
 
 -- Test insertion
 

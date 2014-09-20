@@ -69,31 +69,31 @@ SELECT * from testmulticorn ORDER BY filename;
 (8 rows)
 
 -- Test the cost analysis
-EXPLAIN select color, size from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
+EXPLAIN (costs off) select color, size from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
                                                                    QUERY PLAN                                                                    
 -------------------------------------------------------------------------------------------------------------------------------------------------
- Foreign Scan on testmulticorn  (cost=20.00..120.00 rows=1 width=120)
+ Foreign Scan on testmulticorn
    Filter: (((color)::text = 'blue'::text) AND ((size)::text = 'big'::text) AND ((name)::text = 'square'::text) AND ((ext)::text = 'txt'::text))
 (2 rows)
 
-EXPLAIN select color, size from testmulticorn where color = 'blue' and size = 'big';
+EXPLAIN (costs off) select color, size from testmulticorn where color = 'blue' and size = 'big';
                                  QUERY PLAN                                  
 -----------------------------------------------------------------------------
- Foreign Scan on testmulticorn  (cost=20.00..6000.00 rows=100 width=60)
+ Foreign Scan on testmulticorn
    Filter: (((color)::text = 'blue'::text) AND ((size)::text = 'big'::text))
 (2 rows)
 
-EXPLAIN select color, size from testmulticorn where color = 'blue';
-                                 QUERY PLAN                                 
-----------------------------------------------------------------------------
- Foreign Scan on testmulticorn  (cost=20.00..600000.00 rows=10000 width=60)
+EXPLAIN (costs off) select color, size from testmulticorn where color = 'blue';
+                QUERY PLAN                
+------------------------------------------
+ Foreign Scan on testmulticorn
    Filter: ((color)::text = 'blue'::text)
 (2 rows)
 
-EXPLAIN select color, size, data from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
+EXPLAIN (costs off) select color, size, data from testmulticorn where color = 'blue' and size = 'big' and name = 'square' and ext = 'txt';
                                                                    QUERY PLAN                                                                    
 -------------------------------------------------------------------------------------------------------------------------------------------------
- Foreign Scan on testmulticorn  (cost=20.00..1000150.00 rows=1 width=1000150)
+ Foreign Scan on testmulticorn
    Filter: (((color)::text = 'blue'::text) AND ((size)::text = 'big'::text) AND ((name)::text = 'square'::text) AND ((ext)::text = 'txt'::text))
 (2 rows)
 
