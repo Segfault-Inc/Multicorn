@@ -109,7 +109,7 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         if columns:
             columns = [self.table.c[col] for col in columns]
         else:
-            columns = self.table.c.values()
+            columns = self.table.c
         statement = statement.with_only_columns(columns)
         log_to_postgres(str(statement), DEBUG)
         rs = (self.connection
