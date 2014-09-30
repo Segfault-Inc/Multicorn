@@ -104,9 +104,9 @@ NOTICE:  [('option1', 'option1'), ('test_type', 'nested_list'), ('usermapping', 
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying[]')]
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-                           test1                           |                              test2                               
------------------------------------------------------------+------------------------------------------------------------------
- [['test1'], [1, '{some value, \\" 2}'], [0, 'test1,"0"']] | {['test2'],"[2, '{some value, \\\\\" 2}']","[0, 'test2,\"0\"']"}
+                               test1                                |                                    test2                                    
+--------------------------------------------------------------------+-----------------------------------------------------------------------------
+ [['test1', 'test1'], [1, '{some value, \\" 2}'], [0, 'test1,"0"']] | {"['test2', 'test2']","[2, '{some value, \\\\\" 2}']","[0, 'test2,\"0\"']"}
 (1 row)
 
 alter foreign table testmulticorn alter test1 type varchar[];
