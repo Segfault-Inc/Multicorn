@@ -14,11 +14,11 @@ CREATE foreign table testmulticorn (
     option1 'option1'
 );
 
-explain (costs off) select * from testmulticorn;
+explain select * from testmulticorn;
 
-explain (costs off) select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 = m2.test1;
+explain select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 = m2.test1;
 
-explain (costs off) select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
+explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
 
 DROP foreign table testmulticorn;
 
@@ -32,11 +32,11 @@ CREATE foreign table testmulticorn (
     test_type 'planner'
 );
 
-explain (costs off) select * from testmulticorn;
+explain select * from testmulticorn;
 
-explain (costs off) select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 = m2.test1;
+explain select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 = m2.test1;
 
-explain (costs off) select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
+explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
 
 
 DROP EXTENSION multicorn cascade;
