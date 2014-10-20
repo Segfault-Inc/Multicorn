@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from multicorn import ForeignDataWrapper
-from multicorn.compat import unicode_
 from .utils import log_to_postgres, WARNING, ERROR
 from itertools import cycle
 from datetime import datetime
@@ -40,14 +39,16 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                 line = {}
                 for column_name, column in self.columns.items():
                     if self.test_type == 'list':
-                        line[column_name] = [column_name, next(random_thing),
-                                             index, '%s,"%s"' % (column_name, index),
-                                             '{some value, \\" \' 2}']
+                        line[column_name] = [
+                            column_name, next(random_thing),
+                            index, '%s,"%s"' % (column_name, index),
+                            '{some value, \\" \' 2}']
                     elif self.test_type == 'dict':
-                        line[column_name] = {"column_name": column_name,
-                                             "repeater": next(random_thing),
-                                             "index": index,
-                                             "maybe_hstore": "a => b"}
+                        line[column_name] = {
+                            "column_name": column_name,
+                            "repeater": next(random_thing),
+                            "index": index,
+                            "maybe_hstore": "a => b"}
                     elif self.test_type == 'date':
                         line[column_name] = datetime(2011, (index % 12) + 1,
                                                      next(random_thing), 14,
@@ -55,16 +56,18 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                     elif self.test_type == 'int':
                         line[column_name] = index
                     elif self.test_type == 'encoding':
-                        line[column_name] = b'\xc3\xa9\xc3\xa0\xc2\xa4'.decode('utf-8')
+                        line[column_name] = (b'\xc3\xa9\xc3\xa0\xc2\xa4'
+                                             .decode('utf-8'))
                     elif self.test_type == 'nested_list':
-                        line[column_name] = [[column_name, column_name], [next(random_thing), '{some value, \\" 2}'],
-                                             [index, '%s,"%s"' % (column_name, index)]]
+                        line[column_name] = [
+                            [column_name, column_name],
+                            [next(random_thing), '{some value, \\" 2}'],
+                            [index, '%s,"%s"' % (column_name, index)]]
                     else:
                         line[column_name] = '%s %s %s' % (column_name,
                                                           next(random_thing),
                                                           index)
             yield line
-
 
     def execute(self, quals, columns):
         log_to_postgres(str(sorted(quals)))
@@ -75,7 +78,6 @@ class TestForeignDataWrapper(ForeignDataWrapper):
             return [None, None]
         else:
             return self._as_generator(quals, columns)
-
 
     def get_rel_size(self, quals, columns):
         if self.test_type == 'planner':

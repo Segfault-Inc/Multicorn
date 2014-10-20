@@ -222,7 +222,7 @@ class Item(collections.Mapping):
             # Do nothing if we already have a file descriptor
         else:
             if (self._fd is None or
-                    not  (fcntl.fcntl(self._fd, fcntl.F_GETFL) & os.O_RDWR)):
+                    not (fcntl.fcntl(self._fd, fcntl.F_GETFL) & os.O_RDWR)):
                 # Open it with an exclusive lock, sync mode, and fail if the
                 # file already exists.
                 dirname = os.path.dirname(self.full_filename)

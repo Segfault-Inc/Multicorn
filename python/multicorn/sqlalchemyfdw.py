@@ -167,7 +167,7 @@ class SqlAlchemyFdw(ForeignDataWrapper):
 
     def _get_column_type(self, format_type):
         """Blatant ripoff from PG_Dialect.get_column_info"""
-        ## strip (*) from character varying(5), timestamp(5)
+        # strip (*) from character varying(5), timestamp(5)
         # with time zone, geometry(POLYGON), etc.
         attype = re.sub(r'\(.*\)', '', format_type)
 

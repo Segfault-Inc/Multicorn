@@ -11,11 +11,11 @@ except ImportError as e:
 
 
 REPORT_CODES = {
-        DEBUG: 0,
-        INFO: 1,
-        WARNING: 2,
-        ERROR: 3,
-        CRITICAL: 4
+    DEBUG: 0,
+    INFO: 1,
+    WARNING: 2,
+    ERROR: 3,
+    CRITICAL: 4
 }
 
 

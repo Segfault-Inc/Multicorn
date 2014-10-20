@@ -10,4 +10,3 @@ try:
 except NameError:
     # Python3
     basestring_ = str
-
