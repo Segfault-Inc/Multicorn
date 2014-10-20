@@ -149,10 +149,10 @@ init_utils(void)
 #else
 	PyObject   *module = Py_InitModule("multicorn._utils", UtilsMethods);
 #endif
-
+	struct module_state *st;
 	if (module == NULL)
 		INITERROR;
-	struct module_state *st = GETSTATE(module);
+	st = GETSTATE(module);
 
 #if PY_MAJOR_VERSION >= 3
 	return module;
