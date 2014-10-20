@@ -461,7 +461,11 @@ It supports: simple bind, multiple scopes (subtree, base, etc)
 Dependencies
 ------------
 
-You will need the `ldap`_ library.
+If using Multicorn >= 1.1.0, you will need the `ldap3`_ library:
+
+.. _ldap3 http://pythonhosted.org/python3-ldap/
+
+For prior version, you will need the `ldap`_ library:
 
 .. _ldap: http://www.python-ldap.org/
 
