@@ -1,0 +1,112 @@
+SET client_min_messages=NOTICE;
+CREATE EXTENSION multicorn;
+create or replace function create_foreign_server() returns void as $block$
+  DECLARE
+    current_db varchar;
+  BEGIN
+    SELECT into current_db current_database();
+    EXECUTE $$ 
+    CREATE server multicorn_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.sqlalchemyfdw.SqlAlchemyFdw',
+        db_url 'postgresql://$$ || current_user || '@localhost/' || current_db || $$'
+    );
+    $$;
+  END;
+$block$ language plpgsql;
+select create_foreign_server();
+ create_foreign_server 
+-----------------------
+ 
+(1 row)
+
+CREATE SCHEMA local_schema;
+CREATE TABLE local_schema.t1 (
+  c1 int,
+  c2 text,
+  c3 timestamp,
+  c4 numeric
+);
+CREATE TABLE local_schema.t2 (
+  c1 int,
+  c2 text,
+  c3 timestamp,
+  c4 numeric
+);
+CREATE TABLE local_schema.t3 (
+  c1 int,
+  c2 text,
+  c3 timestamp,
+  c4 numeric
+);
+CREATE SCHEMA remote_schema;
+IMPORT FOREIGN SCHEMA local_schema FROM SERVER multicorn_srv INTO remote_schema ;
+\d remote_schema.t1
+                Foreign table "remote_schema.t1"
+ Column |            Type             | Modifiers | FDW Options 
+--------+-----------------------------+-----------+-------------
+ c1     | integer                     |           | 
+ c2     | text                        |           | 
+ c3     | timestamp without time zone |           | 
+ c4     | numeric                     |           | 
+Server: multicorn_srv
+FDW Options: (schema 'local_schema', tablename 't1')
+
+\d remote_schema.t2
+                Foreign table "remote_schema.t2"
+ Column |            Type             | Modifiers | FDW Options 
+--------+-----------------------------+-----------+-------------
+ c1     | integer                     |           | 
+ c2     | text                        |           | 
+ c3     | timestamp without time zone |           | 
+ c4     | numeric                     |           | 
+Server: multicorn_srv
+FDW Options: (schema 'local_schema', tablename 't2')
+
+\d remote_schema.t3
+                Foreign table "remote_schema.t3"
+ Column |            Type             | Modifiers | FDW Options 
+--------+-----------------------------+-----------+-------------
+ c1     | integer                     |           | 
+ c2     | text                        |           | 
+ c3     | timestamp without time zone |           | 
+ c4     | numeric                     |           | 
+Server: multicorn_srv
+FDW Options: (schema 'local_schema', tablename 't3')
+
+SELECT * FROM remote_schema.t1;
+ c1 | c2 | c3 | c4 
+----+----+----+----
+(0 rows)
+
+DROP SCHEMA remote_schema CASCADE;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to foreign table remote_schema.t1
+drop cascades to foreign table remote_schema.t2
+drop cascades to foreign table remote_schema.t3
+CREATE SCHEMA remote_schema;
+IMPORT FOREIGN SCHEMA local_schema LIMIT TO (t1) FROM SERVER multicorn_srv INTO remote_schema ;
+SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.oid WHERE n.nspname = 'remote_schema';
+ relname 
+---------
+ t1
+(1 row)
+
+IMPORT FOREIGN SCHEMA local_schema EXCEPT (t1, t3) FROM SERVER multicorn_srv INTO remote_schema ;
+SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.oid WHERE n.nspname = 'remote_schema';
+ relname 
+---------
+ t1
+ t2
+(2 rows)
+
+DROP EXTENSION multicorn CASCADE;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to foreign table remote_schema.t1
+drop cascades to foreign table remote_schema.t2
+DROP SCHEMA local_schema CASCADE;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to table local_schema.t1
+drop cascades to table local_schema.t2
+drop cascades to table local_schema.t3
+DROP SCHEMA remote_schema CASCADE;

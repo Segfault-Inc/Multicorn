@@ -364,7 +364,8 @@ class ForeignDataWrapper(object):
         pass
 
     @classmethod
-    def import_schema(self, schema, options, restriction_type, restricts):
+    def import_schema(self, schema, srv_options, options, restriction_type,
+                      restricts):
         raise NotImplementedError(
             "This FDW does not support IMPORT FOREIGN SCHEMA")
 
@@ -466,7 +467,7 @@ def quote_option(value):
 def dict_to_optionstring(options):
     return ",\n".join(
         "%s %s" % (key, quote_option(value))
-        for key, value in options.items())
+        for key, value in sorted(options.items()))
 
 
 class ColumnDefinition(object):

@@ -114,7 +114,7 @@ such as pymysql):
 
 """
 
-from . import ForeignDataWrapper
+from . import ForeignDataWrapper, TableDefinition, ColumnDefinition
 from .utils import log_to_postgres, ERROR, WARNING, DEBUG
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import make_url, URL
@@ -126,7 +126,8 @@ except ImportError:
     from sqlalchemy import types as sqltypes
 
 from sqlalchemy.schema import Table, Column, MetaData
-from sqlalchemy.dialects.postgresql.base import ARRAY, ischema_names
+from sqlalchemy.dialects.postgresql.base import (
+    ARRAY, ischema_names, PGDialect)
 import re
 import operator
 
@@ -143,6 +144,22 @@ def compose(*funs):
 
 def not_(function):
     return compose(operator.inv, function)
+
+
+def _parse_url_from_options(fdw_options):
+    if fdw_options.get('db_url'):
+        url = make_url(fdw_options.get('db_url'))
+    else:
+        if 'drivername' not in fdw_options:
+            log_to_postgres('Either a db_url, or drivername and other '
+                            'connection infos are needed', ERROR)
+        url = URL(fdw_options['drivername'])
+    for param in ('username', 'password', 'host',
+                    'database', 'port'):
+        if param in fdw_options:
+            setattr(url, param, fdw_options[param])
+    return url
+
 
 
 OPERATORS = {
@@ -180,17 +197,7 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         if 'tablename' not in fdw_options:
             log_to_postgres('The tablename parameter is required', ERROR)
         self.metadata = MetaData()
-        if fdw_options.get('db_url'):
-            url = make_url(fdw_options.get('db_url'))
-        else:
-            if 'drivername' not in fdw_options:
-                log_to_postgres('Either a db_url, or drivername and other '
-                                'connection infos are needed', ERROR)
-            url = URL(fdw_options['drivername'])
-        for param in ('username', 'password', 'host',
-                      'database', 'port'):
-            if param in fdw_options:
-                setattr(url, param, fdw_options[param])
+        url = _parse_url_from_options(fdw_options)
         self.engine = create_engine(url)
         schema = fdw_options['schema'] if 'schema' in fdw_options else None
         tablename = fdw_options['tablename']
@@ -203,6 +210,8 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         self.transaction = None
         self._connection = None
         self._row_id_column = fdw_options.get('primary_key', None)
+
+
 
     def execute(self, quals, columns):
         """
@@ -343,3 +352,32 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         else:
             coltype = sqltypes.NULLTYPE
         return coltype
+
+    @classmethod
+    def import_schema(self, schema, srv_options, options,
+                      restriction_type, restricts):
+
+        metadata = MetaData()
+        url = _parse_url_from_options(srv_options)
+        engine = create_engine(url)
+        dialect = PGDialect()
+        if restriction_type == 'limit':
+            only = restricts
+        elif restriction_type == 'except':
+            only = lambda t, _: t not in restricts
+        else:
+            only = None
+        metadata.reflect(bind=engine,
+                         schema=schema,
+                         only=only)
+        to_import = []
+        for _, table in sorted(metadata.tables.items()):
+            ftable = TableDefinition(table.name)
+            ftable.options['schema'] = schema
+            ftable.options['tablename'] = table.name
+            for c in table.c:
+                ftable.columns.append(ColumnDefinition(
+                    c.name,
+                    type_name=c.type.compile(dialect)))
+            to_import.append(ftable)
+        return to_import
