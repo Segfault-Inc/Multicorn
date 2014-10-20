@@ -27,10 +27,6 @@ project (git):
   url: git://github.com/Kozea/Multicorn.git
   path: multicorn
 
-vcs (git):
-  url: git://github.com/Kozea/Multicorn.git
-  path: /var/db/git/multicorn.git
-
 code browser (github):
   project name: Kozea/Multicorn
   ribbon: Fork me on GitHub
