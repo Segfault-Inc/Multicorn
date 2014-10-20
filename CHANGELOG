@@ -1,3 +1,13 @@
+1.1.0:
+    - ldap_fdw:
+       - use the ldap3 module for python3 compatibility (Guillaume Ayoub)
+       - allow types other than varchar (Guillaume Ayoub)
+    - sqlalchemy_fdw: explictly pass "stream_results" options
+    - fix some bugs wrt array handling
+    - Build:
+       - add support for VPATH builds (Markus Wanner, Christoph Berg)
+    - rssfdw:
+       - more flexibility for rss feeds
 1.0.4:
     - Add support for upcoming AFTER TRIGGERs on foreign tables.
     - Fix reference counting bug in messages
