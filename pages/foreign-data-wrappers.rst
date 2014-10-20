@@ -463,7 +463,7 @@ Dependencies
 
 If using Multicorn >= 1.1.0, you will need the `ldap3`_ library:
 
-.. _ldap3 http://pythonhosted.org/python3-ldap/
+.. _ldap3: http://pythonhosted.org/python3-ldap/
 
 For prior version, you will need the `ldap`_ library:
 
