@@ -89,9 +89,12 @@ static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySu
 						   SubTransactionId parentSubid, void *arg);
 #endif
 
+#if PG_VERSION_NUM >= 90500
+static List *multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
+							 Oid serverOid);
+#endif
+
 static void multicorn_xact_callback(XactEvent event, void *arg);
-
-
 
 /*	Helpers functions */
 void	   *serializePlanState(MulticornPlanState * planstate);
@@ -158,6 +161,10 @@ multicorn_handler(PG_FUNCTION_ARGS)
 	fdw_routine->ExecForeignDelete = multicornExecForeignDelete;
 	fdw_routine->ExecForeignUpdate = multicornExecForeignUpdate;
 	fdw_routine->EndForeignModify = multicornEndForeignModify;
+#endif
+
+#if PG_VERSION_NUM >= 90500
+	fdw_routine->ImportForeignSchema = multicornImportForeignSchema;
 #endif
 
 	PG_RETURN_POINTER(fdw_routine);
@@ -788,7 +795,105 @@ multicorn_xact_callback(XactEvent event, void *arg)
 	}
 }
 
+#if PG_VERSION_NUM >= 90500
+static List *
+multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
+							 Oid serverOid)
+{
+	List	   *cmds = NULL;
+	List	   *options = NULL;
+	ForeignServer *f_server;
+	char	   *restrict_type = NULL;
+	PyObject   *p_class = NULL;
+	PyObject   *p_tables,
+			   *p_srv_options,
+			   *p_options,
+			   *p_restrict_list,
+			   *p_iter,
+			   *p_item;
+	ListCell   *lc;
 
+	f_server = GetForeignServer(serverOid);
+	foreach(lc, f_server->options)
+	{
+		DefElem    *option = (DefElem *) lfirst(lc);
+
+		if (strcmp(option->defname, "wrapper") == 0)
+		{
+			p_class = getClassString(defGetString(option));
+			errorCheck();
+		}
+		else
+		{
+			options = lappend(options, option);
+		}
+	}
+	if (p_class == NULL)
+	{
+		/*
+		 * This should never happen, since we validate the wrapper parameter
+		 * at
+		 */
+		/* object creation time. */
+		ereport(ERROR, (errmsg("%s", "The wrapper parameter is mandatory, specify a valid class name")));
+	}
+	switch (stmt->list_type)
+	{
+		case FDW_IMPORT_SCHEMA_LIMIT_TO:
+			restrict_type = "limit";
+			break;
+		case FDW_IMPORT_SCHEMA_EXCEPT:
+			restrict_type = "except";
+			break;
+		case FDW_IMPORT_SCHEMA_ALL:
+			break;
+	}
+	p_srv_options = optionsListToPyDict(options);
+	p_options = optionsListToPyDict(stmt->options);
+	p_restrict_list = PyList_New(0);
+	foreach(lc, stmt->table_list)
+	{
+		RangeVar   *rv = (RangeVar *) lfirst(lc);
+		PyObject   *p_tablename = PyUnicode_Decode(
+											rv->relname, strlen(rv->relname),
+												   getPythonEncodingName(),
+												   NULL);
+
+		errorCheck();
+		PyList_Append(p_restrict_list, p_tablename);
+		Py_DECREF(p_tablename);
+	}
+	errorCheck();
+	p_tables = PyObject_CallMethod(p_class, "import_schema", "(s, O, O, s, O)",
+							   stmt->remote_schema, p_srv_options, p_options,
+								   restrict_type, p_restrict_list);
+	errorCheck();
+	Py_DECREF(p_class);
+	Py_DECREF(p_options);
+	Py_DECREF(p_srv_options);
+	Py_DECREF(p_restrict_list);
+	errorCheck();
+	p_iter = PyObject_GetIter(p_tables);
+	while ((p_item = PyIter_Next(p_iter)))
+	{
+		PyObject   *p_string;
+		char	   *value;
+
+		p_string = PyObject_CallMethod(p_item, "to_statement", "(s,s)",
+								   stmt->local_schema, f_server->servername);
+		errorCheck();
+		value = PyString_AsString(p_string);
+		errorCheck();
+		Py_DECREF(p_string);
+		Py_DECREF(p_item);
+		cmds = lappend(cmds, pstrdup(value));
+	}
+	errorCheck();
+	Py_DECREF(p_iter);
+	Py_DECREF(p_tables);
+	return cmds;
+}
+#endif
 
 
 /*

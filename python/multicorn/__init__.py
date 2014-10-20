@@ -363,6 +363,11 @@ class ForeignDataWrapper(object):
         """
         pass
 
+    @classmethod
+    def import_schema(self, schema, options, restriction_type, restricts):
+        raise NotImplementedError(
+            "This FDW does not support IMPORT FOREIGN SCHEMA")
+
 
 class TransactionAwareForeignDataWrapper(ForeignDataWrapper):
 
@@ -450,6 +455,20 @@ def get_class(module_path):
     return getattr(module, wrapper_class)
 
 
+def quote_identifier(value):
+    return '"' + value.replace('"', '""') + '"'
+
+
+def quote_option(value):
+    return "'" + value.replace("'", "''") + "'"
+
+
+def dict_to_optionstring(options):
+    return ",\n".join(
+        "%s %s" % (key, quote_option(value))
+        for key, value in options.items())
+
+
 class ColumnDefinition(object):
     """
     Definition of Foreign Table Column.
@@ -465,9 +484,9 @@ class ColumnDefinition(object):
     """
 
 
-    def __init__(self, column_name, type_oid, typmod, type_name,
-                 base_type_name,
-                 options):
+    def __init__(self, column_name, type_oid=0, typmod=0, type_name="",
+                 base_type_name="",
+                 options=None):
         self.column_name = column_name
         self.type_oid = type_oid
         self.typmod = typmod
@@ -480,3 +499,32 @@ class ColumnDefinition(object):
             self.__class__.__name__, self.column_name,
             self.type_oid, self.type_name,
             " options %s" % self.options if self.options else "")
+
+    def to_statement(self):
+        stmt = "%s %s" % (
+            quote_identifier(self.column_name),
+            self.type_name)
+        if self.options:
+            stmt += " OPTIONS ( %s )" % dict_to_optionstring(self.options)
+        return stmt
+
+
+class TableDefinition(object):
+
+    def __init__(self, table_name, schema=None, columns=None, options=None):
+        self.table_name = table_name
+        self.columns = columns or []
+        self.options = options or {}
+
+    def to_statement(self, schema_name, server_name):
+        parts = []
+        parts.append("CREATE FOREIGN TABLE %s.%s (" %
+                     (quote_identifier(schema_name),
+                      quote_identifier(self.table_name)))
+        parts.append(",\n".join(col.to_statement() for col in self.columns))
+        parts.append(" \n ) SERVER %s " % quote_identifier(server_name))
+        if self.options:
+            parts.append(" OPTIONS (")
+            parts.append(dict_to_optionstring(self.options))
+            parts.append(")")
+        return '\n'.join(parts)

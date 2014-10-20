@@ -1,0 +1,44 @@
+SET client_min_messages=NOTICE;
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE SCHEMA import_dest1;
+IMPORT FOREIGN SCHEMA import_source FROM SERVER multicorn_srv INTO import_dest1;
+NOTICE:  IMPORT import_source FROM srv {} OPTIONS {} RESTRICTION: None []
+SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.oid WHERE n.nspname = 'import_dest1';
+     relname      
+------------------
+ imported_table_1
+ imported_table_2
+ imported_table_3
+(3 rows)
+
+DROP SCHEMA import_dest1 CASCADE;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to foreign table import_dest1.imported_table_1
+drop cascades to foreign table import_dest1.imported_table_2
+drop cascades to foreign table import_dest1.imported_table_3
+CREATE SCHEMA import_dest1;
+IMPORT FOREIGN SCHEMA import_source EXCEPT (imported_table_1, imported_table_3) FROM SERVER multicorn_srv INTO import_dest1;
+NOTICE:  IMPORT import_source FROM srv {} OPTIONS {} RESTRICTION: except [u'imported_table_1', u'imported_table_3']
+SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.oid WHERE n.nspname = 'import_dest1';
+     relname      
+------------------
+ imported_table_2
+(1 row)
+
+IMPORT FOREIGN SCHEMA import_source LIMIT TO (imported_table_1) FROM SERVER multicorn_srv INTO import_dest1;
+NOTICE:  IMPORT import_source FROM srv {} OPTIONS {} RESTRICTION: limit [u'imported_table_1']
+SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.oid WHERE n.nspname = 'import_dest1';
+     relname      
+------------------
+ imported_table_2
+ imported_table_1
+(2 rows)
+
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to foreign table import_dest1.imported_table_2
+drop cascades to foreign table import_dest1.imported_table_1

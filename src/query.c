@@ -221,11 +221,11 @@ canonicalOpExpr(OpExpr *opExpr, Relids base_relids)
 			&& ((Var *) l)->varattno >= 1)
 		{
 			result = (OpExpr *) make_opclause(operatorid,
-											opExpr->opresulttype,
-											opExpr->opretset,
-											(Expr *) l, (Expr *) r,
-											opExpr->opcollid,
-											opExpr->inputcollid);
+											  opExpr->opresulttype,
+											  opExpr->opretset,
+											  (Expr *) l, (Expr *) r,
+											  opExpr->opcollid,
+											  opExpr->inputcollid);
 		}
 	}
 	return result;
