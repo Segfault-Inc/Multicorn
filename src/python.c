@@ -22,7 +22,6 @@
 
 
 List	   *getOptions(Oid foreigntableid);
-PyObject   *optionsListToPyDict(List *options);
 bool		compareOptions(List *options1, List *options2);
 
 void		getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns);
@@ -37,7 +36,6 @@ PyObject *pythonQual(char *operatorname, PyObject *value,
 		   bool use_or,
 		   Oid typeoid);
 
-const char *getPythonEncodingName(void);
 
 
 
@@ -412,6 +410,7 @@ optionsListToPyDict(List *options)
 	}
 	return p_options_dict;
 }
+
 
 bool
 compareOptions(List *options1, List *options2)
@@ -1359,6 +1358,7 @@ datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 		{
 			HeapTuple	tuple;
 			Form_pg_type typeStruct;
+
 			tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
 			if (!HeapTupleIsValid(tuple))
 			{

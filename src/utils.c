@@ -150,6 +150,7 @@ init_utils(void)
 	PyObject   *module = Py_InitModule("multicorn._utils", UtilsMethods);
 #endif
 	struct module_state *st;
+
 	if (module == NULL)
 		INITERROR;
 	st = GETSTATE(module);

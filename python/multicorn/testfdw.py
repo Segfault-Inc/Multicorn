@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from multicorn import ForeignDataWrapper
+from multicorn import ForeignDataWrapper, TableDefinition, ColumnDefinition
+from multicorn.compat import unicode_
 from .utils import log_to_postgres, WARNING, ERROR
 from itertools import cycle
 from datetime import datetime
@@ -144,3 +145,28 @@ class TestForeignDataWrapper(ForeignDataWrapper):
     def rollback(self):
         if self.tx_hook:
             log_to_postgres('ROLLBACK')
+
+    @classmethod
+    def import_schema(self, schema, srv_options, options, restriction_type,
+                      restricts):
+        log_to_postgres("IMPORT %s FROM srv %s OPTIONS %s RESTRICTION: %s %s" %
+                        (schema, srv_options, options, restriction_type,
+                         restricts))
+        tables = set([unicode_("imported_table_1"),
+                      unicode_("imported_table_2"),
+                      unicode_("imported_table_3")])
+        if restriction_type == 'limit':
+            tables = tables.intersection(set(restricts))
+        elif restriction_type == 'except':
+            tables = tables - set(restricts)
+        rv = []
+        for tname in sorted(list(tables)):
+            table = TableDefinition(tname)
+            nb_col = options.get('nb_col', 3)
+            for col in range(nb_col):
+                table.columns.append(
+                    ColumnDefinition("col%s" % col,
+                                     type_name="text",
+                                     options={"option1": "value1"}))
+            rv.append(table)
+        return rv
