@@ -145,6 +145,8 @@ void getRelSize(MulticornPlanState * state,
 List	   *pathKeys(MulticornPlanState * state);
 
 CacheEntry *getCacheEntry(Oid foreigntableid);
+UserMapping *multicorn_GetUserMapping(Oid userid, Oid serverid);
+
 
 /* Hash table mapping oid to fdw instances */
 extern PGDLLIMPORT HTAB *InstancesHash;
