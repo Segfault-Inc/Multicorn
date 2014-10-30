@@ -93,11 +93,6 @@ void appendBinaryStringInfoQuote(StringInfo buffer,
 							Py_ssize_t strlength,
 							bool need_quote);
 
-UserMapping *
-			multicorn_GetUserMapping(Oid userid, Oid serverid);
-
-
-
 
 static void begin_remote_xact(CacheEntry * entry);
 

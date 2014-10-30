@@ -21,6 +21,7 @@
 #include "nodes/makefuncs.h"
 #include "catalog/pg_type.h"
 #include "utils/memutils.h"
+#include "miscadmin.h"
 #include "utils/rel.h"
 #include "parser/parsetree.h"
 
@@ -802,6 +803,7 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 {
 	List	   *cmds = NULL;
 	List	   *options = NULL;
+	UserMapping *mapping;
 	ForeignServer *f_server;
 	char	   *restrict_type = NULL;
 	PyObject   *p_class = NULL;
@@ -828,6 +830,10 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 			options = lappend(options, option);
 		}
 	}
+	mapping = multicorn_GetUserMapping(GetUserId(), serverOid);
+	if (mapping)
+		options = list_concat(options, mapping->options);
+
 	if (p_class == NULL)
 	{
 		/*
