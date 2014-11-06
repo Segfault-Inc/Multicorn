@@ -890,9 +890,9 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 		errorCheck();
 		value = PyString_AsString(p_string);
 		errorCheck();
+		cmds = lappend(cmds, pstrdup(value));
 		Py_DECREF(p_string);
 		Py_DECREF(p_item);
-		cmds = lappend(cmds, pstrdup(value));
 	}
 	errorCheck();
 	Py_DECREF(p_iter);
