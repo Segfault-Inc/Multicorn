@@ -262,6 +262,10 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             ftable.options['schema'] = schema
             ftable.options['tablename'] = table.name
             for c in table.c:
+                # Force collation to None to prevent imcompatibilities
+                setattr(c.type, "collation", None)
+                if c.primary_key:
+                    ftable.options['primary_key'] = c.name
                 ftable.columns.append(ColumnDefinition(
                     c.name,
                     type_name=c.type.compile(dialect)))

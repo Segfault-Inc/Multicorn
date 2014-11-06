@@ -17,7 +17,7 @@ select create_foreign_server();
 
 CREATE SCHEMA local_schema;
 CREATE TABLE local_schema.t1 (
-  c1 int,
+  c1 int primary key,
   c2 text,
   c3 timestamp,
   c4 numeric
@@ -44,6 +44,8 @@ IMPORT FOREIGN SCHEMA local_schema FROM SERVER multicorn_srv INTO remote_schema 
 \d remote_schema.t1
 \d remote_schema.t2
 \d remote_schema.t3
+SELECT * FROM remote_schema.t1;
+INSERT INTO remote_schema.t1 VALUES (1, '2', NULL, NULL);
 SELECT * FROM remote_schema.t1;
 DROP SCHEMA remote_schema CASCADE;
 CREATE SCHEMA remote_schema;
