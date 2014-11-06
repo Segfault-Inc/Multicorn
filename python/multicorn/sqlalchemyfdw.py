@@ -12,8 +12,9 @@ except ImportError:
     from sqlalchemy import types as sqltypes
 
 from sqlalchemy.schema import Table, Column, MetaData
+from sqlalchemy.dialects.oracle import base as oracle_dialect
 from sqlalchemy.dialects.postgresql.base import (
-    ARRAY, ischema_names, PGDialect)
+    ARRAY, ischema_names, PGDialect, NUMERIC)
 import re
 import operator
 
@@ -61,6 +62,10 @@ OPERATORS = {
     '!~~': not_(sqlops.like_op),
     ('=', True): sqlops.in_op,
     ('<>', False): not_(sqlops.in_op)
+}
+
+CONVERSION_MAP = {
+    oracle_dialect.NUMBER: NUMERIC
 }
 
 
@@ -264,6 +269,13 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             for c in table.c:
                 # Force collation to None to prevent imcompatibilities
                 setattr(c.type, "collation", None)
+                # If the type is specialized, call the generic
+                # superclass method
+                if type(c.type) in CONVERSION_MAP:
+                    class_name = CONVERSION_MAP[type(c.type)]
+                    old_args = c.type.__dict__
+                    c.type = class_name()
+                    c.type.__dict__.update(old_args)
                 if c.primary_key:
                     ftable.options['primary_key'] = c.name
                 ftable.columns.append(ColumnDefinition(
