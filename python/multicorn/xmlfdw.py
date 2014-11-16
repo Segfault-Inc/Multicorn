@@ -61,7 +61,7 @@ class XMLFdw(ForeignDataWrapper):
         super(XMLFdw, self).__init__(fdw_options, fdw_columns)
         self.filename = fdw_options['filename']
         self.elem_tag = fdw_options['elem_tag']
-        self.buffer_size = fdw_options.get('buffer_size', 4096)
+        self.buffer_size = int(fdw_options.get('buffer_size', 4096))
         self.columns = fdw_columns
 
     def execute(self, quals, columns):
