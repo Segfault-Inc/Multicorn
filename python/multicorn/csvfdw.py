@@ -30,7 +30,7 @@ class CsvFdw(ForeignDataWrapper):
 
     def execute(self, quals, columns):
         with open(self.filename) as stream:
-            reader = csv.reader(stream, delimiter=self.delimiter)
+            reader = csv.reader(stream, delimiter=self.delimiter, quotechar=self.quotechar)
             count = 0
             checked = False
             for line in reader:
