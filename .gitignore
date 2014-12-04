@@ -9,3 +9,4 @@ sql/multicorn--*.sql
 /dist
 /results
 doc/_build
+doc/dist

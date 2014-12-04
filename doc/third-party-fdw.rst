@@ -7,6 +7,12 @@ third-party modules available on the net:
     * rethinkdb-multicorn-postgresql-fdw
       A FDW for accessing RethinkDB databases
 
+      .. api_compat::
+         :read:
+         :write:
+         :transaction:
+         :import_schema:
+
       repository
           https://github.com/wilsonrmsorg/rethinkdb-multicorn-postgresql-fdw/
 
