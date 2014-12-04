@@ -9,8 +9,7 @@ Welcome to Multicorn's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
-
+  :maxdepth: 2
   introduction.rst
   installation.rst
   getting-started.rst

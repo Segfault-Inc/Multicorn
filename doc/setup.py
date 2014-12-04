@@ -6,5 +6,5 @@ setup(
  version='__VERSION__',
  author='Kozea',
  license='Postgresql',
- requires=['sphinx', 'sphinx-autobuild']
+ requires=['sphinx']
 )
