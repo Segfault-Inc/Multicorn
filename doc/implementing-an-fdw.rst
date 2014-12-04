@@ -1,5 +1,6 @@
-Writing an FDW
-==============
+*************************
+Tutorial : Writing an FDW
+*************************
 
 Multicorn provides a simple interface for writing foreign data wrappers: the
 ``multicorn.ForeignDataWrapper`` interface.

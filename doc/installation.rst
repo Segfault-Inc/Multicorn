@@ -1,8 +1,9 @@
+************
 Installation
-============
+************
 
 Requirements
-------------
+============
 
 - Postgresql 9.1+
 - Postgresql development packages

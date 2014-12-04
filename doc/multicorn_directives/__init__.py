@@ -1,16 +1,9 @@
+# -*- coding: utf-8 -*-
 from docutils.parsers.rst import Directive
 from docutils.parsers.rst import directives
 from docutils.nodes import Element
 from sphinx.builders.html import StandaloneHTMLBuilder
 
-
-
-class_map = {
-    'read': 'glyphicons-book-open',
-    'write': 'glyphicons-edit',
-    'transaction': 'glyphicons-database-plus',
-    'import_schema': 'glyphicons-disk-import'
-}
 
 class api_compat(Element):
 
@@ -19,10 +12,11 @@ class api_compat(Element):
         super(api_compat, self).__init__()
 
 def visit_api_compat_node_html(self, node):
-    self.body.append("<span>Supports: %s" % "".join(
-        ['<span class="%s" title="%s">%s</span>' %
-         (class_map.get(key), key, key)
-         for key in node.api]))
+    self.body.append(u'<span class="api_compatibility">Supports: %s' % "".join(
+        [u'<i class="compat-%s %s" title="%s">%s</i>' %
+         (key, "checked" if val else "unchecked", key,
+          u"✓"  if val else u"✗")
+         for (key, val) in node.api.items()]))
 
 
 def depart_api_compat_node_html(self, node):
@@ -47,10 +41,6 @@ def depart_api_compat_node_latex(self, node):
     pass
 
 
-
-
-
-
 def setup(app):
     app.add_directive('api_compat', APICompatDirective)
     app.add_node(api_compat,
@@ -67,7 +57,7 @@ class APICompatDirective(Directive):
         'read': directives.flag,
         'write': directives.flag,
         'transaction': directives.flag,
-        'import_schema': directives.flag
+#        'import_schema': directives.flag
     }
 
     def run(self):

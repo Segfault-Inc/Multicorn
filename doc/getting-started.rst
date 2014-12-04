@@ -1,5 +1,6 @@
+*****
 Usage
-=====
+*****
 
 The multicorn foreign data wrapper is not different from other foreign data
 wrappers.

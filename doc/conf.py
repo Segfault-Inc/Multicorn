@@ -39,6 +39,8 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.viewcode',
+    'sphinxcontrib.napoleon',
+    'sphinx.ext.autosummary',
     'multicorn_directives'
 ]
 
@@ -56,7 +58,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Multicorn'
-copyright = u'2011-2014, Kozea'
+copyright = u"""2011-2014, Kozea"""
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

@@ -5,7 +5,7 @@
 
 
 Multicorn
-=========
+#########
 
 Multicorn is a PostgreSQL 9.1+ extension meant to make `Foreign Data Wrapper`_
 development easy, by allowing the programmer to use the Python programming
@@ -18,7 +18,7 @@ section.
 Contents:
 
 .. toctree::
-  :maxdepth: 2
+  :maxdepth: 1
 
   installation.rst
   getting-started.rst
@@ -27,9 +27,11 @@ Contents:
   third-party-fdw.rst
   implementing-an-fdw.rst
   contribute.rst
+  api.rst
+
 
 Indices and tables
-==================
+##################
 
 * :ref:`genindex`
 * :ref:`modindex`
