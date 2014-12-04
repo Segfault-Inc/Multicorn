@@ -1,3 +1,7 @@
+******************************
+Included Foreign Data Wrappers
+******************************
+
 Multicorn is bundled with a small set of Foreign Data Wrappers, which you can
 use or customize for your needs.
 
@@ -95,7 +99,7 @@ such as pymysql):
 
 
 CSV Foreign Data Wrapper
-========================
+************************
 
 Class: ``multicorn.csvfdw.CsvFdw``
 
@@ -358,7 +362,7 @@ requesting the payload_column if you don't need it.
 
 
 RSS Foreign Data Wrapper
-========================
+************************
 
 Class: ``multicorn.rssfdw.RssFdw``
 

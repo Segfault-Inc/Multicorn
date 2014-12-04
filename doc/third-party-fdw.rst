@@ -1,5 +1,6 @@
+****************
 Third-Party-FDWs
-================
+****************
 
 In addition to the built-in fdws shipped with Multicorn, there are some
 third-party modules available on the net:
@@ -10,8 +11,6 @@ third-party modules available on the net:
       .. api_compat::
          :read:
          :write:
-         :transaction:
-         :import_schema:
 
       repository
           https://github.com/wilsonrmsorg/rethinkdb-multicorn-postgresql-fdw/

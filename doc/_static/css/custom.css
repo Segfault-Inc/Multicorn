@@ -1,3 +1,42 @@
-body {
-  background-color: red;
+.api_compatibility {
+  line-height: 1.3em;
+}
+
+.api_compatibility > i {
+  margin-left: 1em;
+  text-opacity: 0;
+  width:  40px;
+  height: 32px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  font-size: 2em;
+  text-align: right;
+  background-repeat: no-repeat;
+  background-position: left, center;
+}
+
+.api_compatibility > i.checked {
+  color: green;
+}
+
+.api_compatibility > i.unchecked {
+  color: red;
+}
+
+.compat-read {
+  background-image: url('../img/glyphicons-352-book-open.png');
+}
+
+.compat-write {
+  background-image: url('../img/glyphicons-151-edit.png');
+}
+
+.compat-transaction {
+  background-image: url('../img/glyphicons-142-database-plus.png');
+}
+
+.compat-import_schema {
+  background-image: url('../img/glyphicons-419-disk-import.png');
 }
