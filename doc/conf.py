@@ -44,6 +44,13 @@ extensions = [
     'multicorn_directives'
 ]
 
+
+intersphinx_mapping = {
+    'python': ('http://docs.python.org/', None),
+    'psutil': ('http://pythonhosted.org/psutil', None),
+}
+
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -281,7 +288,6 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
 
 rst_prolog = """
 :mailaddress: multicorn@librelist.com
@@ -295,3 +301,14 @@ rst_epilog = """
 
 
 """
+
+import sys
+from mock import Mock as BaseMock
+
+class Mock(BaseMock):
+    @classmethod
+    def __getattr__(cls, name):
+            return Mock()
+
+MOCK_MODULES = ['ldap3', 'lxml', 'imapclient']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)

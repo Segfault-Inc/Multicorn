@@ -9,10 +9,10 @@ mapped to various columns, as well as the file's content itself.
 
 The options are exactly the same as ``multicorn.fsfdw`` itself.
 
-If a column name is prefixed by ''rest_'', it will not be mapped to
+If a column name is prefixed by ``rest_``, it will not be mapped to
 a part of the pattern but looked up in the metadata from the ReST document.
 """
-
+from multicorn.fsfdw import FilesystemFdw
 
 class ReStructuredTextFdw(FilesystemFdw):
     """A filesystem with reStructuredText metadata foreign data wrapper.
