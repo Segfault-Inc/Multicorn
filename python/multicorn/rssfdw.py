@@ -1,4 +1,83 @@
-"""An RSS foreign data wrapper"""
+"""
+Purpose
+-------
+
+This fdw can be used to access items from an rss feed.
+The column names are mapped to the elements inside an item.
+An rss item has the following strcture:
+
+.. code-block:: xml
+
+    <item>
+      <title>Title</title>
+      <pubDate>2011-01-02</pubDate>
+      <link>http://example.com/test</link>
+      <guid>http://example.com/test</link>
+      <description>Small description</description>
+    </item>
+
+You can access every element by defining a column with the same name. Be
+careful to match the case! Example: pubDate should be quoted like this:
+``pubDate`` to preserve the uppercased ``D``.
+
+
+.. api_compat::
+    :read:
+
+Dependencies
+------------
+
+You will need the `lxml`_ library.
+
+.. _lxml: http://lxml.de/
+
+Required options
+-----------------
+
+``url`` (string)
+  The RSS feed URL.
+
+Usage Example
+-------------
+
+.. _Radicale: http://radicale.org
+
+If you want to parse the `radicale`_ rss feed, you can use the following
+definition:
+
+.. code-block:: sql
+
+    CREATE SERVER rss_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.rssfdw.RssFdw'
+    );
+
+    CREATE FOREIGN TABLE radicalerss (
+        "pubDate" timestamp,
+        description character varying,
+        title character varying,
+        link character varying
+    ) server rss_srv options (
+        url     'http://radicale.org/rss/'
+    );
+
+    select "pubDate", title, link from radicalerss limit 10;
+
+.. code-block:: bash
+
+           pubDate       |              title               |                     link
+    ---------------------+----------------------------------+----------------------------------------------
+     2011-09-27 06:07:42 | Radicale 0.6.2                   | http://radicale.org/news#2011-09-27@06:07:42
+     2011-08-28 13:20:46 | Radicale 0.6.1, Changes, Future  | http://radicale.org/news#2011-08-28@13:20:46
+     2011-08-01 08:54:43 | Radicale 0.6 Released            | http://radicale.org/news#2011-08-01@08:54:43
+     2011-07-02 20:13:29 | Feature Freeze for 0.6           | http://radicale.org/news#2011-07-02@20:13:29
+     2011-05-01 17:24:33 | Ready for WSGI                   | http://radicale.org/news#2011-05-01@17:24:33
+     2011-04-30 10:21:12 | Apple iCal Support               | http://radicale.org/news#2011-04-30@10:21:12
+     2011-04-25 22:10:59 | Two Features and One New Roadmap | http://radicale.org/news#2011-04-25@22:10:59
+     2011-04-10 20:04:33 | New Features                     | http://radicale.org/news#2011-04-10@20:04:33
+     2011-04-02 12:11:37 | Radicale 0.5 Released            | http://radicale.org/news#2011-04-02@12:11:37
+     2011-02-03 23:35:55 | Jabber Room and iPhone Support   | http://radicale.org/news#2011-02-03@23:35:55
+    (10 lignes)
+"""
 
 from . import ForeignDataWrapper
 from datetime import datetime, timedelta

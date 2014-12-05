@@ -1,4 +1,118 @@
-"""A SQLAlchemy foreign data wrapper"""
+"""
+Purpose
+-------
+
+This fdw can be used to access data stored in a remote RDBMS.
+Through the use of sqlalchemy, many different rdbms engines are supported.
+
+.. api_compat::
+    :read:
+    :write:
+    :transaction:
+
+Dependencies
+------------
+
+You will need the `sqlalchemy`_ library, as well as a suitable dbapi driver for
+the remote database.
+
+You can find a list of supported RDBMs, and their associated dbapi drivers and
+connection strings in the `sqlalchemy dialects documentation`_.
+
+.. _sqlalchemy dialects documentation: http://docs.sqlalchemy.org/en/latest/dialects/
+
+.. _sqlalchemy: http://www.sqlalchemy.org/
+
+Connection options
+~~~~~~~~~~~~~~~~~~
+
+Connection options can be passed either with a db-url, or with a combination of
+individual connection parameters.
+If both a ``db_url`` and individual parameters are used, the parameters will override
+the value found in the ``db_url``.
+In both cases, at least the ``drivername`` should be passed, either as the url scheme in
+the ``db_url`` or using the ``drivername`` parameter.
+
+``db_url``
+  An sqlalchemy connection string.
+  Examples:
+
+    - mysql: `mysql://<user>:<password>@<host>/<dbname>`
+    - mssql: `mssql://<user>:<password>@<dsname>`
+
+  See the `sqlalchemy dialects documentation`_. for documentation.
+
+``username``
+  The remote username.
+
+``password``
+  The remote password
+
+``host``
+  The remote host
+
+``database``
+  The remote database
+
+``port``
+  The remote port
+
+
+Other options
+---------------
+
+``tablename`` (required)
+  The table name in the remote RDBMS.
+
+``primary_key``
+  Identifies a column which is a primary key in the remote RDBMS.
+  This options is required for INSERT, UPDATE and DELETE operations
+
+``schema``
+  The schema in which this table resides on the remote side
+
+When defining the table, the local column names will be used to retrieve the
+remote column data.
+Moreover, the local column types will be used to interpret the results in the
+remote table. Sqlalchemy being aware of the differences between database
+implementations, it will convert each value from the remote database to python
+using the converter inferred from the column type, and convert it back to a
+postgresql suitable form.
+
+What does it do to reduce the amount of fetched data ?
+------------------------------------------------------
+
+- `quals` are pushed to the remote database whenever possible. This include
+  simple operators :
+
+    - equality, inequality (=, <>, >, <, <=, >=)
+    - like, ilike and their negations
+    - IN clauses with scalars, = ANY (array)
+    - NOT IN clauses, != ALL (array)
+- the set of needed columns is pushed to the remote_side, and only those columns
+  will be fetched.
+
+Usage example
+-------------
+
+For a connection to a remote mysql database (you'll need a mysql dbapi driver,
+such as pymysql):
+
+.. code-block:: sql
+
+  CREATE SERVER alchemy_srv foreign data wrapper multicorn options (
+      wrapper 'multicorn.sqlalchemyfdw.SqlAlchemyFdw'
+  );
+
+  create foreign table mysql_table (
+    column1 integer,
+    column2 varchar
+  ) server alchemy_srv options (
+    tablename 'table',
+    db_url 'mysql://myuser:mypassword@myhost/mydb'
+  );
+
+"""
 
 from . import ForeignDataWrapper
 from .utils import log_to_postgres, ERROR, WARNING, DEBUG

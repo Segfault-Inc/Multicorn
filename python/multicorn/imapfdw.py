@@ -1,3 +1,72 @@
+"""
+Purpose
+-------
+
+This fdw can be used to access mails from an IMAP mailbox.
+Column names are mapped to IMAP headers, and two special columns may contain the
+mail payload and its flags.
+
+.. api_compat:: :read:
+
+Dependencies
+-------------
+
+imaplib
+
+Options
+--------
+
+``host`` (required)
+  The IMAP host to connect to.
+
+``port`` (required)
+  The IMAP host port to connect to.
+
+``login`` (required)
+  The login to connect with.
+
+``password`` (required)
+  The password to connect with.
+
+
+The login and password options should be set as a user mapping options, so as
+not to be stored in plaintext. See `the create user mapping documentation`_
+
+.. _the create user mapping documentation: http://www.postgresql.org/docs/9.1/static/sql-createusermapping.html
+
+``payload_column``
+  The name of the column which will store the payload.
+
+``flags_column``
+  The name of the column which will store the IMAP flags, as an array of
+  strings.
+
+``ssl``
+  Wether to use ssl or not
+
+``imap_server_charset``
+  The name of the charset used for IMAP search commands. Defaults to UTF8. For
+  the cyrus IMAP server, it should be set to "utf-8".
+
+``internal_date_column``
+  The column to use as the INTERNALDATE imap header.
+
+Server side filtering
+---------------------
+
+The imap fdw tries its best to convert postgresql quals into imap filters.
+
+The following quals are pushed to the server:
+    - equal, not equal, like, not like comparison
+    - = ANY, = NOT ANY
+
+ntThese conditions are matched against the headers, or the body itself.
+
+The imap FDW will fetch only what is needed by the query: you should thus avoid
+requesting the payload_column if you don't need it.
+"""
+
+
 from . import ForeignDataWrapper, ANY, ALL
 from .utils import log_to_postgres, ERROR, WARNING
 
