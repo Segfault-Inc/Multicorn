@@ -11,8 +11,8 @@ Multicorn is a PostgreSQL 9.1+ extension meant to make `Foreign Data Wrapper`_
 development easy, by allowing the programmer to use the Python programming
 language.
 
-If you just wanto use it as soon as possible, jump straight to the installation
-section.
+If you just wanto use it as soon as possible, jump straight to the
+`installation` section.
 
 
 Contents:
@@ -22,12 +22,12 @@ Contents:
 
   installation.rst
   getting-started.rst
-  introduction.rst
   foreign-data-wrappers.rst
-  third-party-fdw.rst
   implementing-an-fdw.rst
-  contribute.rst
   api.rst
+  third-party-fdw.rst
+  internals.rst
+  contribute.rst
 
 
 Indices and tables

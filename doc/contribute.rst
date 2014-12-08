@@ -2,31 +2,24 @@
  Contribute
 ************
 
-Send Us a Mail
-==============
+Send Us an Mail
+===============
 
-Want to write kind words? You can send a mail on .. meta: mailaddress_`our Librelist
-mailing-list` and even take a look at .. meta: mailarchives_`the archives`.
+Want to write kind words? You can send a mail on _`our Librelist
+mailing-list <mailto:multicorn@librelist.com>` and even take a look at .. meta: mailarchives_`the archives`.
 
-
-Chat with Us on IRC
-===================
-
-Want to say something? Join our IRC room: ##kozea on Freenode.
+If you use Multicorn in production, we would love to hear about your use-case !
 
 
 Report Bugs
 ===========
 
-.. meta
-  :mailarchives:
-
-Found a bug? Want a new feature? Report a new issue on the :meta: buglink `Multicorn
-bug-tracker on GitHub`.
+Found a bug? Want a new feature? Report a new issue on the  `Multicorn
+bug-tracker on GitHub <https://github.com/Kozea/Multicorn/issues/>`.
 
 
 Hack
 ====
 
-Interested in hacking? Feel free to clone the .. meta: codelink_`git repository on
-GitHub` if you want to add new features, fix bugs or update documentation.
+Interested in hacking? Feel free to clone the `git repository on
+GitHub <https://github.com/Kozea/Multicorn>` if you want to add new features, fix bugs or update documentation.
