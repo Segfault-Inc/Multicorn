@@ -7,12 +7,12 @@ use or customize for your needs.
 
 
 .. toctree::
-  :maxdepth: 1
+  :maxdepth: 2
 
-  foreign-data-wrappers/sqlalchemyfdw.rst
-  foreign-data-wrappers/fsfdw.rst
-  foreign-data-wrappers/imapfdw.rst
-  foreign-data-wrappers/ldapfdw.rst
-  foreign-data-wrappers/csvfdw.rst
-  foreign-data-wrappers/rssfdw.rst
-  foreign-data-wrappers/processfdw.rst
+  /foreign-data-wrappers/sqlalchemyfdw.rst
+  /foreign-data-wrappers/fsfdw.rst
+  /foreign-data-wrappers/imapfdw.rst
+  /foreign-data-wrappers/ldapfdw.rst
+  /foreign-data-wrappers/csvfdw.rst
+  /foreign-data-wrappers/rssfdw.rst
+  /foreign-data-wrappers/processfdw.rst

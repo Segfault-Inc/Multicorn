@@ -34,11 +34,13 @@ def depart_api_compat_node_text(self, node):
 def visit_api_compat_node_latex(self, node):
     # TODO: make it render in latex
     classes = node.get('classes', [])
-    self.body.append(r'\DUspan{%s}{' % ','.join(classes))
+    self.body.append('\n\\begin{notice}\n')
+    self.body.append("Supported API: %s" % ",".join(node.api))
+
 
 
 def depart_api_compat_node_latex(self, node):
-    pass
+    self.body.append('\\end{notice}\n')
 
 
 def setup(app):
