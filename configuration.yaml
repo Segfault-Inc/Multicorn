@@ -34,9 +34,5 @@ code browser (github):
 bug tracker (github):
   project name: Kozea/Multicorn
 
-continuous integration (jenkins):
-  base url: http://jenkins.kozea.org/
-  project name: Multicorn
-
 mailing list (librelist):
   project name: multicorn
