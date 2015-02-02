@@ -1510,7 +1510,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 		PyObject   *item;
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
-		if (attr->attisdropped)
+		if (attr->attisdropped || cinfos[cinfo_idx] == NULL)
 		{
 			continue;
 		}
