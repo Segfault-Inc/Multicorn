@@ -90,6 +90,9 @@ else
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
 
+ifeq ($(PORTNAME),darwin)
+	override LDFLAGS += -undefined dynamic_lookup
+endif
 
 PYTHON_TEST_VERSION ?= $(python_version)
 PG_TEST_VERSION ?= $(MAJORVERSION)
