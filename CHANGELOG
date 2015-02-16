@@ -1,3 +1,6 @@
+1.1.1:
+    - Fixes to the build system on MacOSX (Ray Ruvinskiy)
+    - Fix bug with dropped attributes during DML operations
 1.1.0:
     - ldap_fdw:
        - use the ldap3 module for python3 compatibility (Guillaume Ayoub)
