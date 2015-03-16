@@ -298,9 +298,9 @@ rst_prolog = """
 
 rst_epilog = """
 .. _Foreign Data Wrapper: http://www.postgresql.org/docs/current/static/ddl-foreign-data.html
-
-
-"""
+.. |multicorn_pgxn_download| replace:: http://api.pgxn.org/dist/multicorn/{release}/multicorn-{release}.zip
+.. |multicorn_release| replace:: {release}
+""".format(release=release)
 
 import sys
 from mock import Mock as BaseMock

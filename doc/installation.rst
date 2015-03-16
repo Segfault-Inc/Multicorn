@@ -23,11 +23,13 @@ With the `pgxn client`_::
 
    pgxn install multicorn
 
-From pgxn::
+From pgxn:
 
-   wget http://api.pgxn.org/dist/multicorn/1.0.1-beta1/multicorn-1.0.1-beta1.zip
-   unzip multicorn-1.0.1.zip
-   cd multicorn-1.0.1/
+.. parsed-literal::
+
+   wget |multicorn_pgxn_download|
+   unzip multicorn-|multicorn_release|
+   cd multicorn-|multicorn_release|
    make && sudo make install
 
 From source::
