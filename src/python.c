@@ -1342,8 +1342,14 @@ datumIntToPython(Datum datum, ConversionInfo * cinfo)
 PyObject *
 datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 {
+#if PG_VERSION_NUM >= 90500
+	ArrayIterator iterator = array_create_iterator(DatumGetArrayTypeP(datum),
+												   0, NULL);
+# else
 	ArrayIterator iterator = array_create_iterator(DatumGetArrayTypeP(datum),
 												   0);
+# endif
+
 	Datum		elem = (Datum) NULL;
 	bool		isnull;
 	PyObject   *result = PyList_New(0),
