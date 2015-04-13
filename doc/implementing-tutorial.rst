@@ -66,11 +66,10 @@ First things first, we have to create a new python module.
 
 This can be achieved with the most simple ``setup.py`` file:
 
-import subprocess
-from setuptools import setup, find_packages, Extension
-
-
 .. code-block:: python
+
+  import subprocess
+  from setuptools import setup, find_packages, Extension
 
   setup(
     name='myfdw',
