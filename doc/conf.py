@@ -310,5 +310,5 @@ class Mock(BaseMock):
     def __getattr__(cls, name):
             return Mock()
 
-MOCK_MODULES = ['ldap3', 'lxml', 'imapclient', 'sqlalchemy']
+MOCK_MODULES = ['ldap3', 'lxml', 'imapclient']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
