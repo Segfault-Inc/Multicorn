@@ -91,4 +91,7 @@ Full API
 .. autoclass:: multicorn.ColumnDefinition
    :members:
 
+.. autoclass:: multicorn.TableDefinition
+   :members:
+
 

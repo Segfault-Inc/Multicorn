@@ -24,7 +24,6 @@ Contents:
   getting-started.rst
   foreign-data-wrappers.rst
   implementing-an-fdw.rst
-  api.rst
   third-party-fdw.rst
   internals.rst
   contribute.rst

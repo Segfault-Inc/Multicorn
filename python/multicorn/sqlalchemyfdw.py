@@ -9,6 +9,8 @@ Through the use of sqlalchemy, many different rdbms engines are supported.
     :read:
     :write:
     :transaction:
+    :import_schema:
+
 
 Dependencies
 ------------
@@ -361,7 +363,9 @@ class SqlAlchemyFdw(ForeignDataWrapper):
     @classmethod
     def import_schema(self, schema, srv_options, options,
                       restriction_type, restricts):
-
+        """
+        Reflects the remote schema.
+        """
         metadata = MetaData()
         url = _parse_url_from_options(srv_options)
         engine = create_engine(url)

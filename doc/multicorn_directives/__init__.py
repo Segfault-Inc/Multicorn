@@ -59,7 +59,7 @@ class APICompatDirective(Directive):
         'read': directives.flag,
         'write': directives.flag,
         'transaction': directives.flag,
-#        'import_schema': directives.flag
+        'import_schema': directives.flag
     }
 
     def run(self):

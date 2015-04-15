@@ -366,6 +366,19 @@ class ForeignDataWrapper(object):
     @classmethod
     def import_schema(self, schema, srv_options, options, restriction_type,
                       restricts):
+        """
+        Hook called on an IMPORT FOREIGN SCHEMA command.
+
+        Args:
+            schema (str): the foreign schema to import
+            srv_options (dict): options defined at the server level
+            options (dict): options defined at the IMPORT FOREIGN SCHEMA
+                statement level
+            restriction_type (str): One of 'limit', 'except' or None
+            restricts (list): a list of tables as passed to the LIMIT TO or EXCEPT clause
+        Returns:
+            list: a list of :class:`multicorn.TableDefinition`
+        """
         raise NotImplementedError(
             "This FDW does not support IMPORT FOREIGN SCHEMA")
 
@@ -511,6 +524,15 @@ class ColumnDefinition(object):
 
 
 class TableDefinition(object):
+    """
+    Definition of a Foreign Table.
+
+    Attributes:
+        table_name (str): the name of the table
+        columns (str): a list of :class:`ColumnDefinition` objects
+        options (dict): a dictionary containing the table-level options.
+    """
+
 
     def __init__(self, table_name, schema=None, columns=None, options=None):
         self.table_name = table_name
@@ -518,6 +540,10 @@ class TableDefinition(object):
         self.options = options or {}
 
     def to_statement(self, schema_name, server_name):
+        """
+        Generates the CREATE FOREIGN TABLE statement associated with this
+        definition.
+        """
         parts = []
         parts.append("CREATE FOREIGN TABLE %s.%s (" %
                      (quote_identifier(schema_name),
