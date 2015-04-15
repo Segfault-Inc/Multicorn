@@ -129,8 +129,8 @@ NOTICE:  ['test1']
      26
 (1 row)
 
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 3 other objects
+NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv
-drop cascades to user mapping for postgres
 drop cascades to foreign table testmulticorn

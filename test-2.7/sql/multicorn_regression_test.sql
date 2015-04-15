@@ -111,4 +111,5 @@ ALTER FOREIGN TABLE testmulticorn add test3 money;
 SELECT * from testmulticorn where test3 = 12::money;
 SELECT * from testmulticorn where test1 = '12 €';
 
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

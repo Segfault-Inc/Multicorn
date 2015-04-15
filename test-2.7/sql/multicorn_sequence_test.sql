@@ -47,5 +47,5 @@ CREATE foreign table testmulticorn2 (
 );
 
 select * from testmulticorn union all select * from testmulticorn2;
-
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

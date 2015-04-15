@@ -139,4 +139,5 @@ DROP foreign table testmulticorn_write;
 ROLLBACK;
 
 -- Clean up
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
