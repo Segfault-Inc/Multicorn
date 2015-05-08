@@ -33,6 +33,14 @@ python_code: setup.py
 	$(PYTHON) ./setup--$(EXTVERSION).py install
 	rm ./setup--$(EXTVERSION).py
 
+rpm: setup.py
+	@echo "About to make RPM"
+	cp $(srcdir)/setup.py ./setup--$(EXTVERSION).py
+	sed -i -e "s/__VERSION__/$(EXTVERSION)-dev/g" ./setup--$(EXTVERSION).py
+	$(PYTHON) ./setup--$(EXTVERSION).py bdist --format=rpm
+	rm ./setup--$(EXTVERSION).py
+
+
 release-zip: all
 	git archive --format zip --prefix=multicorn-$(EXTVERSION)/ --output ./multicorn-$(EXTVERSION).zip HEAD
 	unzip ./multicorn-$(EXTVERSION).zip

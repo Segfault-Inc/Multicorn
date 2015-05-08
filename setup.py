@@ -10,6 +10,7 @@ def get_pg_config(kind, pg_config="pg_config"):
     return r
 
 include_dirs = [get_pg_config(d) for d in ("includedir", "pkgincludedir", "includedir-server")]
+include_dirs.append('src')
 
 multicorn_utils_module = Extension('multicorn._utils',
         include_dirs=include_dirs,
