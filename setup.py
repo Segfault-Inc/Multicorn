@@ -35,22 +35,6 @@ class MulticornBuild(build):
       raise Warning(p[2].readline())
     # After original build
 
-class MulticornInstall(install):
-    def initialize_options(self):
-        install.initialize_options(self)
-        self.build_scripts = None
-
-    def finalize_options(self):
-        install.finalize_options(self)
-        self.set_undefined_options('build', ('build_scripts', 'build_scripts'))
-
-    def run(self):
-        # run original install code
-        install.run(self)
-
-        # install XCSoar executables
-        self.copy_tree(self.build_lib, self.install_lib)
-
 
 
 setup(
@@ -66,6 +50,5 @@ setup(
 	],
   cmdclass={
     'build':MulticornBuild,
-  #  'install':MulticornInstall,
   }
 )
