@@ -1,0 +1,3 @@
+include src/multicorn.h
+include multicorn.control
+include sql/multicorn--1.1.1.sql

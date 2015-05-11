@@ -36,9 +36,10 @@ python_code: setup.py
 rpm: setup.py
 	@echo "About to make RPM"
 	cp $(srcdir)/setup.py ./setup--$(EXTVERSION).py
+	cp $(srcdir)/sql/multicorn.sql ./sql/multicorn--$(EXTVERSION).sql
 	sed -i -e "s/__VERSION__/$(EXTVERSION)-dev/g" ./setup--$(EXTVERSION).py
 	$(PYTHON) ./setup--$(EXTVERSION).py bdist --format=rpm
-	rm ./setup--$(EXTVERSION).py
+	rm ./setup--$(EXTVERSION).py ./sql/multicorn--$(EXTVERSION).sql
 
 
 release-zip: all

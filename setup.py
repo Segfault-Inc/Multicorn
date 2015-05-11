@@ -10,7 +10,6 @@ def get_pg_config(kind, pg_config="pg_config"):
     return r
 
 include_dirs = [get_pg_config(d) for d in ("includedir", "pkgincludedir", "includedir-server")]
-include_dirs.append('src')
 
 multicorn_utils_module = Extension('multicorn._utils',
         include_dirs=include_dirs,
@@ -24,5 +23,6 @@ setup(
  license='Postgresql',
  package_dir={'': 'python'},
  packages=['multicorn', 'multicorn.fsfdw'],
- ext_modules = [multicorn_utils_module]
+ ext_modules = [multicorn_utils_module],
+ data_files=[('/usr/pgsql-9.3/share/extension', ['multicorn.control', 'sql/multicorn--1.1.1.sql'])],
 )
