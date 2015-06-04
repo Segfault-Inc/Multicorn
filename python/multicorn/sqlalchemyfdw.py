@@ -245,6 +245,11 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         rs = (self.connection
               .execution_options(stream_results=True)
               .execute(statement))
+        # Workaround pymssql "trash old results on new query"
+        # behaviour (See issue #100)
+        if self.engine.driver == 'pymssql' and self.transaction is not None:
+            rs = list(rs)
+
         for item in rs:
             yield dict(item)
 
