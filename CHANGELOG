@@ -1,3 +1,7 @@
+1.2.0:
+	- Add support for IMPORT FOREIGN SCHEMA
+    - Fix issue with pymssql behavior (#100, thanks to homelink for reporting
+      it)
 1.1.1:
     - Fixes to the build system on MacOSX (Ray Ruvinskiy)
     - Fix bug with dropped attributes during DML operations
