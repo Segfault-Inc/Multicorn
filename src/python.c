@@ -125,7 +125,7 @@ PyUnicode_AsPgString(PyObject *p_unicode)
 	unicode_size = PyUnicode_GET_SIZE(p_unicode);
 	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
 								unicode_size,
-								GetDatabaseEncodingName(), NULL);
+								getPythonEncodingName(), NULL);
 	errorCheck();
 	message = strdup(PyBytes_AsString(pTempStr));
 	errorCheck();
