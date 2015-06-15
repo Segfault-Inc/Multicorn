@@ -1,3 +1,6 @@
+1.2.1:
+    - fix bug in error reporting code wrt to encodings (thanks to Thomas Vondra
+      and the pgxn-testers infrastructure for uncovering this one)
 1.2.0:
 	- Add support for IMPORT FOREIGN SCHEMA
     - Fix issue with pymssql behavior (#100, thanks to homelink for reporting
