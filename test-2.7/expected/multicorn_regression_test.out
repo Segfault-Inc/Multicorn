@@ -400,19 +400,8 @@ NOTICE:  ['test1', 'test2']
  test1 3 19 | test2 1 19
 (20 rows)
 
-ALTER FOREIGN TABLE testmulticorn options (add test_type 'encoding');
-select * from testmulticorn limit 1;
-NOTICE:  [('option1', 'option1'), ('test_type', 'encoding'), ('usermapping', 'test')]
-NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  []
-NOTICE:  ['test1', 'test2']
- test1 | test2 
--------+-------
- éà¤   | éà¤
-(1 row)
-
 -- Test that zero values are converted to zero and not null
-ALTER FOREIGN TABLE testmulticorn options (set test_type 'int');
+ALTER FOREIGN TABLE testmulticorn options (add test_type 'int');
 ALTER FOREIGN TABLE testmulticorn alter test1 type integer;
 select * from testmulticorn limit 1;
 NOTICE:  [('option1', 'option1'), ('test_type', 'int'), ('usermapping', 'test')]
