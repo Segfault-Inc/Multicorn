@@ -1,3 +1,5 @@
+1.2.2:
+    - Ensure that tests can success on pgxn-testers infrastructure
 1.2.1:
     - fix bug in error reporting code wrt to encodings (thanks to Thomas Vondra
       and the pgxn-testers infrastructure for uncovering this one)
