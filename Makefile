@@ -98,13 +98,35 @@ PYTHON_TEST_VERSION ?= $(python_version)
 PG_TEST_VERSION ?= $(MAJORVERSION)
 SUPPORTS_WRITE=$(shell expr ${PG_TEST_VERSION} \>= 9.3)
 SUPPORTS_IMPORT=$(shell expr ${PG_TEST_VERSION} \>= 9.5)
+UNSUPPORTS_SQLALCHEMY=$(shell python -c "import sqlalchemy;import psycopg2"  1> /dev/null 2>&1; echo $$?)
 
-TESTS        = $(wildcard test-$(PYTHON_TEST_VERSION)/sql/multicorn*.sql)
+TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_column_options_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_error_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_logger_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_planner_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_regression_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_sequence_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_date.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql
+
+ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql
+endif
 ifeq (${SUPPORTS_WRITE}, 1)
-  TESTS += $(wildcard test-$(PYTHON_TEST_VERSION)/sql/write*.sql)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql \
+	test-$(PYTHON_TEST_VERSION)/sql/write_savepoints.sql \
+	test-$(PYTHON_TEST_VERSION)/sql/write_test.sql
+  ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
+	TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_sqlalchemy.sql
+  endif
 endif
 ifeq (${SUPPORTS_IMPORT}, 1)
-  TESTS += $(wildcard test-$(PYTHON_TEST_VERSION)/sql/import*.sql)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_test.sql
+  ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
+	TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_sqlalchemy.sql
+  endif
 endif
 
 REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
