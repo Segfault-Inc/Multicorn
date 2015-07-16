@@ -355,7 +355,11 @@ multicornGetForeignPlan(PlannerInfo *root,
 							scan_clauses,
 							scan_relid,
 							scan_clauses,		/* no expressions to evaluate */
-							serializePlanState(planstate));
+							serializePlanState(planstate)
+#if PG_VERSION_NUM >= 90500
+							, NULL
+#endif
+							);
 }
 
 /*
