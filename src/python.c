@@ -1165,6 +1165,11 @@ pythonSequenceToTuple(PyObject *p_value,
 			continue;
 		}
 		p_object = PySequence_GetItem(p_value, j);
+		if(p_object == NULL || p_object == Py_None){
+			nulls[i] = true;
+			values[i] = NULL;
+			continue;
+		}
 		resetStringInfo(buffer);
 		values[i] = pyobjectToDatum(p_object, buffer,
 									cinfos[cinfo_idx]);
