@@ -1,3 +1,6 @@
+1.2.3:
+    - Fix issue with NULL handling with the sequence protocol
+    - Fix API change in PostgreSQL 9.5
 1.2.2:
     - Ensure that tests can success on pgxn-testers infrastructure
 1.2.1:
