@@ -99,7 +99,7 @@ it like this:
         "flags" character varying[],
         "To" character varying) server multicorn_imap options (
             host 'imap.gmail.com',
-            port '465', 
+            port '993', 
             payload_column 'payload', 
             flags_column 'flags',
             ssl 'True',
