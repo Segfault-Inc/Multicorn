@@ -3,8 +3,9 @@ from setuptools import setup, find_packages, Extension
 
 # hum... borrowed from psycopg2
 def get_pg_config(kind, pg_config="pg_config"):
-    r = subprocess.check_output([pg_config, '--%s' % kind])
-    r = r.strip().decode('utf8')
+    p = subprocess.Popen([pg_config, '--%s' % kind], stdout=subprocess.PIPE)
+    r = p.communicate()
+    r = r[0].strip().decode('utf8')
     if not r:
         raise Warning(p[2].readline())
     return r
