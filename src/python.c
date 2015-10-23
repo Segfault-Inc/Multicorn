@@ -1524,6 +1524,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 		if (isnull)
 		{
 			item = Py_None;
+			Py_INCREF(item);
 		}
 		else
 		{
