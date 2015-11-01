@@ -95,3 +95,12 @@ Database.com FDW
 
 repository
   https://github.com/metadaddy-sfdc/Database.com-FDW-for-PostgreSQL.git
+
+
+pgCassandra FDW
+================
+
+.. api_compat:: :read:
+
+repository
+  https://github.com/wjch-krl/pgCassandra.git
