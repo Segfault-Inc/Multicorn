@@ -36,7 +36,8 @@ PyObject *pythonQual(char *operatorname, PyObject *value,
 		   bool use_or,
 		   Oid typeoid);
 
-
+PyObject  *getSortKey(MulticornDeparsedSortGroup *key);
+MulticornDeparsedSortGroup *getDeparsedSortGroup(PyObject *key);
 
 
 Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
@@ -830,6 +831,53 @@ pythonQual(char *operatorname,
 	return qualInstance;
 }
 
+PyObject  *
+getSortKey(MulticornDeparsedSortGroup *key)
+{
+	PyObject *SortKeyClass = getClassString("multicorn.SortKey"),
+			 *SortKeyInstance,
+			 *p_attname,
+			 *p_reversed,
+			 *p_nulls_first,
+			 *p_collate;
+
+	p_attname = PyUnicode_Decode(key->attname, strlen(key->attname), getPythonEncodingName(), NULL);
+	if (key->reversed)
+		p_reversed = Py_True;
+	else
+		p_reversed = Py_False;
+	if (key->nulls_first)
+		p_nulls_first = Py_True;
+	else
+		p_nulls_first = Py_False;
+	p_collate = PyUnicode_Decode(key->collate, strlen(key->collate), getPythonEncodingName(), NULL);
+	SortKeyInstance = PyObject_CallFunction(SortKeyClass, "(O,i,O,O,O)",
+			p_attname,
+			key->attnum,
+			p_reversed,
+			p_nulls_first,
+			p_collate);
+	errorCheck();
+	Py_DECREF(p_attname);
+	Py_DECREF(p_collate);
+	Py_DECREF(SortKeyClass);
+	return SortKeyInstance;
+}
+
+MulticornDeparsedSortGroup *
+getDeparsedSortGroup(PyObject *sortKey)
+{
+	MulticornDeparsedSortGroup *md = palloc0(sizeof(MulticornDeparsedSortGroup));
+
+	strncpy(md->attname, PyUnicode_AS_DATA(PyObject_GetAttrString(sortKey, "attname")), NAMEDATALEN);
+	md->attnum = (int) PyLong_AsLong(PyObject_GetAttrString(sortKey, "attnum"));
+	md->reversed = PyObject_IsTrue(PyObject_GetAttrString(sortKey, "is_reversed"));
+	md->nulls_first = PyObject_IsTrue(PyObject_GetAttrString(sortKey, "nulls_first"));
+	strncpy(md->collate, PyUnicode_AS_DATA(PyObject_GetAttrString(sortKey, "collate")), NAMEDATALEN);
+
+	return md;
+}
+
 
 /*
  * Execute the query in the python fdw, and returns an iterator.
@@ -840,6 +888,7 @@ execute(ForeignScanState *node)
 	MulticornExecState *state = node->fdw_state;
 	PyObject   *p_targets_set,
 			   *p_quals = PyList_New(0),
+			   *p_pathkeys = PyList_New(0),
 			   *p_iterable;
 	ListCell   *lc;
 
@@ -886,11 +935,30 @@ execute(ForeignScanState *node)
 	}
 	/* Transform every object to a suitable python representation */
 	p_targets_set = valuesToPySet(state->target_list);
-	p_iterable = PyObject_CallMethod(state->fdw_instance,
-									 "execute",
-									 "(O,O)",
-									 p_quals,
-									 p_targets_set);
+
+	foreach(lc, state->pathkeys)
+	{
+		MulticornDeparsedSortGroup *pathkey = (MulticornDeparsedSortGroup *) lfirst(lc);
+		PyObject *python_sortkey = getSortKey(pathkey);
+		PyList_Append(p_pathkeys, python_sortkey);
+		Py_DECREF(python_sortkey);
+	}
+
+	/* don't break olrder extensions which don't handle sort pushdown */
+	if (PyList_Size(p_pathkeys) > 0)
+		p_iterable = PyObject_CallMethod(state->fdw_instance,
+				"execute",
+				"(O,O,O)",
+				p_quals,
+				p_targets_set,
+				p_pathkeys);
+	else
+		p_iterable = PyObject_CallMethod(state->fdw_instance,
+				"execute",
+				"(O,O)",
+				p_quals,
+				p_targets_set);
+
 	errorCheck();
 	if (p_iterable == Py_None)
 	{
@@ -900,8 +968,9 @@ execute(ForeignScanState *node)
 	{
 		state->p_iterator = PyObject_GetIter(p_iterable);
 	}
-	Py_DECREF(p_targets_set);
 	Py_DECREF(p_quals);
+	Py_DECREF(p_targets_set);
+	Py_DECREF(p_pathkeys);
 	Py_DECREF(p_iterable);
 	errorCheck();
 	return state->p_iterator;
@@ -1498,6 +1567,48 @@ pathKeys(MulticornPlanState * state)
 		Py_DECREF(p_item);
 	}
 	Py_DECREF(p_pathkeys);
+	return result;
+}
+
+/*
+ * Call the can_sort method from the python implementation. We provide a deparsed
+ * version of the requested fields to sort with all detail as needed (nulls,
+ * collate...), and convert the result to a list of "tuples" (list) of the form:
+ *
+ * - Bitmapset of attnums
+ *
+ * representing the fields that the foreign data wrapper can be sort as
+ * we requested.
+ */
+List *
+canSort(MulticornPlanState * state, List *deparsed)
+{
+	List	   *result = NULL;
+	ListCell   *lc;
+	Py_ssize_t	i;
+	PyObject   *fdw_instance = state->fdw_instance,
+			   *p_pathkeys = PyList_New(0),
+			   *p_sortable;
+
+	foreach(lc, deparsed)
+	{
+		MulticornDeparsedSortGroup *pathkey = (MulticornDeparsedSortGroup *) lfirst(lc);
+		PyObject *python_sortkey = getSortKey(pathkey);
+		PyList_Append(p_pathkeys, python_sortkey);
+		Py_DECREF(python_sortkey);
+	}
+
+	p_sortable = PyObject_CallMethod(fdw_instance, "can_sort", "(O)", p_pathkeys);
+	errorCheck();
+	for (i = 0; i < PySequence_Length(p_sortable); i++)
+	{
+		PyObject   *p_key = PySequence_GetItem(p_sortable, i);
+		MulticornDeparsedSortGroup *md = getDeparsedSortGroup(p_key);
+		result = lappend(result, md);
+		Py_DECREF(p_key);
+	}
+	Py_DECREF(p_pathkeys);
+	Py_DECREF(p_sortable);
 	return result;
 }
 

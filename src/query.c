@@ -4,9 +4,11 @@
 #include "optimizer/pathnode.h"
 #include "optimizer/subselect.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_database.h"
 #include "catalog/pg_operator.h"
 #include "mb/pg_wchar.h"
 #include "utils/lsyscache.h"
+#include "miscadmin.h"
 #include "parser/parsetree.h"
 
 void extractClauseFromOpExpr(Relids base_relids,
@@ -40,6 +42,8 @@ bool isAttrInRestrictInfo(Index relid, AttrNumber attno,
 
 List *clausesInvolvingAttr(Index relid, AttrNumber attnum,
 					 EquivalenceClass *eq_class);
+
+Expr *multicorn_get_em_expr(EquivalenceClass *ec, RelOptInfo *rel);
 
 /*
  * The list of needed columns (represented by their respective vars)
@@ -519,9 +523,56 @@ clausesInvolvingAttr(Index relid, AttrNumber attnum,
 	return clauses;
 }
 
-void
-findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int startupCost)
+/*
+ * Given a list of MulticornDeparsedSortGroup and a MulticornPlanState,
+ * construct a list of PathKey and MulticornDeparsedSortGroup that belongs to
+ * the FDW and that the FDW say it can enforce.
+ */
+void computeDeparsedSortGroup(List *deparsed, MulticornPlanState *planstate,
+		List **apply_pathkeys,
+		List **deparsed_pathkeys)
 {
+	List		*sortable_fields = NULL;
+	ListCell	*lc, *lc2;
+
+	/* Both lists should be empty */
+	Assert(*apply_pathkeys == NIL);
+	Assert(*deparsed_pathkeys == NIL);
+
+	/* Don't ask FDW if nothing to sort */
+	if (deparsed == NIL)
+		return;
+
+	sortable_fields = canSort(planstate, deparsed);
+
+	/* Don't go further if FDW can't enforce any sort */
+	if (sortable_fields == NIL)
+		return;
+
+	foreach(lc, sortable_fields)
+	{
+		MulticornDeparsedSortGroup *sortable_md = (MulticornDeparsedSortGroup *) lfirst(lc);
+		foreach(lc2, deparsed)
+		{
+			MulticornDeparsedSortGroup *wanted_md = lfirst(lc2);
+
+			if (sortable_md->attnum == wanted_md->attnum)
+			{
+				*apply_pathkeys = lappend(*apply_pathkeys, wanted_md->key);
+				*deparsed_pathkeys = lappend(*deparsed_pathkeys, wanted_md);
+			}
+		}
+	}
+}
+
+
+List *
+findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
+		int startupCost,
+		MulticornPlanState *state,
+		List *apply_pathkeys, List *deparsed_pathkeys)
+{
+	List	   *result = NULL;
 	ListCell   *lc;
 
 	foreach(lc, possiblePaths)
@@ -597,18 +648,195 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int start
 				ppi->ppi_req_outer = req_outer;
 				ppi->ppi_rows = nbrows;
 				ppi->ppi_clauses = list_concat(ppi->ppi_clauses, allclauses);
+				/* Add a simple parameterized path */
 				foreignPath = create_foreignscan_path(
 													  root, baserel,
 													  nbrows,
 													  startupCost,
 													  nbrows * baserel->width,
-													  NIL,
+													  NIL, /* no pathkeys */
 													  NULL,
 													  NULL);
 
 				foreignPath->path.param_info = ppi;
-				add_path(baserel, (Path *) foreignPath);
+				result = lappend(result, foreignPath);
 			}
 		}
 	}
+	return result;
+}
+
+/*
+ * Deparse a list of PathKey and return a list of MulticornDeparsedSortGroup.
+ * This function will return data iif all the PathKey belong to the current
+ * foreign table.
+ */
+List *
+deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
+{
+	List *result = NULL;
+	ListCell   *lc;
+
+	/* return empty list if no pathkeys for the PlannerInfo */
+	if (! root->query_pathkeys)
+		return NIL;
+
+	foreach(lc,root->query_pathkeys)
+	{
+		PathKey *key = (PathKey *) lfirst(lc);
+		MulticornDeparsedSortGroup *md = palloc0(sizeof(MulticornDeparsedSortGroup));
+		EquivalenceClass *ec = key->pk_eclass;
+		Expr *expr;
+		bool found = false;
+
+		if ((expr = multicorn_get_em_expr(ec, rel)))
+		{
+			md->reversed = (key->pk_strategy == BTGreaterStrategyNumber);
+			md->nulls_first = key->pk_nulls_first;
+			md->key = key;
+
+			if (IsA(expr, Var))
+			{
+				Var *var = (Var *) expr;
+				strcpy(md->attname, get_attname(foreigntableid, var->varattno));
+				md->attnum = var->varattno;
+				found = true;
+			}
+			/* ORDER BY clauses having a COLLATE option will be RelabelType */
+			else if (IsA(expr, RelabelType) &&
+					IsA(((RelabelType *) expr)->arg, Var))
+			{
+				Var *var = (Var *)((RelabelType *) expr)->arg;
+				Oid collid = ((RelabelType *) expr)->resultcollid;
+
+				if (collid == DEFAULT_COLLATION_OID)
+				{
+					char	   *datcollate;
+					HeapTuple	tuple;
+
+					tuple = SearchSysCache1(DATABASEOID, MyDatabaseId);
+					if (!HeapTupleIsValid(tuple))
+						ereport(FATAL,
+								(errcode(ERRCODE_UNDEFINED_DATABASE),
+								errmsg("database \"%d\" does not exists",
+									MyDatabaseId)));
+					datcollate = NameStr(((Form_pg_database)
+								GETSTRUCT(tuple))->datcollate);
+
+					strcpy(md->collate, datcollate);
+
+					ReleaseSysCache(tuple);
+				}
+				else
+					strcpy(md->collate, get_collation_name(collid));
+
+				strcpy(md->attname, get_attname(foreigntableid, var->varattno));
+				md->attnum = var->varattno;
+				found = true;
+			}
+		}
+
+		if (found)
+			result = lappend(result, md);
+		else
+		{
+			/* pfree() current entry */
+			pfree(md);
+			/* pfree() all previous entries */
+			while ((lc = list_head(result)) != NULL)
+			{
+				md = (MulticornDeparsedSortGroup *) lfirst(lc);
+				result = list_delete_ptr(result, md);
+				pfree(md);
+			}
+			break;
+		}
+	}
+
+	return result;
+}
+
+Expr *
+multicorn_get_em_expr(EquivalenceClass *ec, RelOptInfo *rel)
+{
+	ListCell   *lc_em;
+
+	foreach(lc_em, ec->ec_members)
+	{
+		EquivalenceMember *em = lfirst(lc_em);
+
+		if (bms_equal(em->em_relids, rel->relids))
+		{
+			/*
+			 * If there is more than one equivalence member whose Vars are
+			 * taken entirely from this relation, we'll be content to choose
+			 * any one of those.
+			 */
+			return em->em_expr;
+		}
+	}
+
+	/* We didn't find any suitable equivalence class expression */
+	return NULL;
+}
+
+List *
+serializeDeparsedSortGroup(List *pathkeys)
+{
+	List *result = NIL;
+	ListCell *lc;
+
+	foreach(lc, pathkeys)
+	{
+		List *item = NIL;
+		MulticornDeparsedSortGroup *key = (MulticornDeparsedSortGroup *)
+			lfirst(lc);
+
+		item = lappend(item, makeString(key->attname));
+		item = lappend(item, makeInteger(key->attnum));
+		item = lappend(item, makeInteger(key->reversed));
+		item = lappend(item, makeInteger(key->nulls_first));
+		item = lappend(item, makeString(key->collate));
+		item = lappend(item, key->key);
+
+		result = lappend(result, item);
+	}
+
+	return result;
+}
+
+List *
+deserializeDeparsedSortGroup(List *items)
+{
+	List *result = NIL;
+	ListCell *k;
+
+	foreach(k, items)
+	{
+		ListCell *lc;
+		MulticornDeparsedSortGroup *key =
+			palloc0(sizeof(MulticornDeparsedSortGroup));
+
+		lc = list_head(lfirst(k));
+		strncpy(key->attname, strVal(lfirst(lc)), NAMEDATALEN);
+
+		lc = lnext(lc);
+		key->attnum = (int) intVal(lfirst(lc));
+
+		lc = lnext(lc);
+		key->reversed = (bool) intVal(lfirst(lc));
+
+		lc = lnext(lc);
+		key->nulls_first = (bool) intVal(lfirst(lc));
+
+		lc = lnext(lc);
+		strncpy(key->collate, strVal(lfirst(lc)), NAMEDATALEN);
+
+		lc = lnext(lc);
+		key->key = (PathKey *) lfirst(lc);
+
+		result = lappend(result, key);
+	}
+
+	return result;
 }

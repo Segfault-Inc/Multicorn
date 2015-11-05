@@ -11,12 +11,18 @@ postgresql (usually, the system wide python installation).
 """
 
 import sys
+from collections import namedtuple
 
 __version__ = '__VERSION__'
 
 ANY = object()
 ALL = object()
 UNBOUND = object()
+
+
+SortKey = namedtuple("SortKey",
+                              ["attname", "attnum", "is_reversed",
+                               "nulls_first", "collate"])
 
 
 class Qual(object):
@@ -152,6 +158,32 @@ class ForeignDataWrapper(object):
         """
         return (100000000, len(columns) * 100)
 
+    def can_sort(self, pathkeys):
+        """
+        Method called from the planner to ask the FDW what are the sorts it can
+        enforced, to avoid PostgreSQL to sort the data after retreiving all the
+        rows. These sorts can come from explicit ORDER BY clauses, but also GROUP
+        BY and DISTINCT clauses.
+
+        The FDW has to inspect every sort, and respond which one are handled.
+        The sorts are cumulatives. For example::
+
+            col1 ASC
+            col2 DESC
+
+        means that the FDW must render the tuples sorted by col1 ascending and
+        col2 descending.
+
+        Args:
+            pathkeys (list): A list of :class:`SortKey`
+                representing all the sorts the query must enforce.
+
+        Return:
+            The list of cumulative SortKey, for which the FDW can
+            enforce the sort.
+        """
+        return []
+
     def get_path_keys(self):
         u"""
         Method called from the planner to add additional Path to the planner.
@@ -209,7 +241,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def execute(self, quals, columns):
+    def execute(self, quals, columns, pathkeys=[]):
         """Execute a query in the foreign data wrapper.
 
         This method is called at the first iteration.
@@ -240,6 +272,8 @@ class ForeignDataWrapper(object):
                 You should return AT LEAST those columns when returning a
                 dict. If returning a sequence, every column from the table
                 should be in the sequence.
+            pathkeys (list): A list of :class:`MulticornDeparsedSortGroup`
+                that the FDW said it can enforce.
 
         Returns:
             An iterable of python objects which can be converted back to PostgreSQL.
@@ -247,6 +281,8 @@ class ForeignDataWrapper(object):
             - sequences containing exactly as much columns as the
             underlying tables
             - dictionaries mapping column names to their values.
+            If the pathkeys wasn't empty, the FDW has to return the data in the
+            expected order.
 
         """
         pass

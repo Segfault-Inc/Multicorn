@@ -109,7 +109,8 @@ TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql 
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_sequence_test.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_date.sql \
   test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
-  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql
 
 ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
   TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql
