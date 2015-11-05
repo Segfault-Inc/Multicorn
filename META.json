@@ -30,7 +30,7 @@
         "runtime": {
             "requires": {
                 "PostgreSQL": "9.2.0",
-                "Python": "2.6.0"
+                "Python": "2.7.0"
             }
         }
     },

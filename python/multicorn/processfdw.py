@@ -92,5 +92,5 @@ class ProcessFdw(ForeignDataWrapper):
 
     def execute(self, quals, columns):
         for process in psutil.process_iter():
-            yield dict([(key, self._convert(key, value))
-                   for key, value in process.as_dict(columns).items()])
+            yield {key: self._convert(key, value)
+                   for key, value in process.as_dict(columns).items()}

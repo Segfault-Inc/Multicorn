@@ -151,9 +151,7 @@ def test_items(tempdir):
     open(os.path.join(text.root_dir, 'lipsum', '4_foo.txt'), 'wb').close()
 
     # Create a file from an Item
-    i1 = text.create(category='lipsum', num='5', name='bar')
-    i1.content = 'BAR'
-    i1.write()
+    text.create(category='lipsum', num='5', name='bar').write('BAR')
 
     item_foo, item_bar, = sorted(text.get_items(),
                                  key=lambda item: item['num'])
@@ -166,19 +164,21 @@ def test_items(tempdir):
     assert item_bar.read() == 'BAR'
 
     content = b'Hello,\xc2\xa0W\xc3\xb6rld!'.decode('utf-8')
-    item_foo.content = content
-    item_foo.write()
-    assert item_foo.read().decode('utf8') == content
-    item_foo.content = content.encode('utf8')
-    item_foo.write()
+    with pytest.raises(UnicodeError):
+        item_foo.write(content)
+    item_foo.write(content.encode('utf8'))
     assert item_foo.read().decode('utf8') == content
     item_foo.remove()
+    with pytest.raises(IOError):
+        item_foo.read()
     with pytest.raises(OSError):
         item_foo.remove()
 
     assert [i.filename for i in text.get_items()] == ['lipsum/5_bar.txt']
     item_bar.remove()
     assert [i.filename for i in text.get_items()] == []
+    # The 'lipsum' directory was also removed
+    assert os.listdir(tempdir) == []
 
 
 @with_tempdir
@@ -188,12 +188,8 @@ def test_get_items(tempdir):
     """
     text = StructuredDirectory(tempdir, '{category}/{num}_{name}.txt')
 
-    i1 = text.create(category='lipsum', num='4', name='foo')
-    i1.content = 'FOO'
-    i1.write()
-    i2 = text.create(category='lipsum', num='5', name='bar')
-    i2.content = 'BAR'
-    i2.write()
+    text.create(category='lipsum', num='4', name='foo').write('FOO')
+    text.create(category='lipsum', num='5', name='bar').write('BAR')
 
     def filenames(**properties):
         return [i.filename for i in text.get_items(**properties)]
@@ -247,8 +243,7 @@ def test_optimizations(tempdir):
         item = Item(text, values)
         assert values['id'] not in contents  # Make sure ids are unique
         content = item.filename.encode('ascii')
-        item.content = content
-        item.write()
+        item.write(content)
         contents[values['id']] = content
 
     def assert_listed(properties, expected_ids, expected_listed):

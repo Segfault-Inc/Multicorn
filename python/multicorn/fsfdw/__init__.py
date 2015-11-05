@@ -276,7 +276,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                                 level=ERROR,
                                 hint="You can also insert an item by providing"
                                 " only the filename and content columns")
-            values = dict([(key, str(value)) for key, value in values.items()])
+            values = {key: str(value) for key, value in values.items()}
             item_from_values = self.structured_directory.create(**values)
         elif item_from_filename is None:
             log_to_postgres("The filename, or all pattern columns are needed.",
@@ -331,9 +331,9 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
             olditem.content = olditem.read()
         new_filename = newvalues.get(self.filename_column, oldfilename)
         filename_changed = new_filename != oldfilename
-        values = dict([(key, (None if value is None else str(value)))
+        values = {key: (None if value is None else str(value))
                   for key, value in newvalues.items()
-                  if key not in (self.filename_column, self.content_column)])
+                  if key not in (self.filename_column, self.content_column)}
         values_changed = dict(olditem) != values
         # Check for null values in the "important" parts
         null_columns = [key for key in self.structured_directory.properties

@@ -22,6 +22,7 @@
 #include "catalog/pg_type.h"
 #include "utils/memutils.h"
 #include "miscadmin.h"
+#include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "parser/parsetree.h"
 
@@ -304,23 +305,56 @@ multicornGetForeignPaths(PlannerInfo *root,
 						 RelOptInfo *baserel,
 						 Oid foreigntableid)
 {
-	Path	   *path;
-	MulticornPlanState *planstate = baserel->fdw_private;
+	ForeignPath			*path;
+	MulticornPlanState	*planstate = baserel->fdw_private;
+
+	/* These lists are used to handle sort pushdown */
+	List				*apply_pathkeys = NULL;
+	List				*deparsed_pathkeys = NULL;
 
 	/* Extract a friendly version of the pathkeys. */
 	List	   *possiblePaths = pathKeys(planstate);
 
-	findPaths(root, baserel, possiblePaths, planstate->startupCost);
-	/* Add a default path */
-	path = (Path *) create_foreignscan_path(root, baserel,
-											baserel->rows,
-											planstate->startupCost,
-											baserel->rows * baserel->width,
-											NIL,		/* no pathkeys */
-											NULL,		/* no outer rel either */
-											(void *) baserel->fdw_private);
+	/* Handle unparameterized sort pushdown */
+	if (root->query_pathkeys)
+	{
+		List		*deparsed = deparse_sortgroup(root, foreigntableid, baserel);
 
-	add_path(baserel, path);
+		if (deparsed)
+		{
+			ForeignPath	   *path;
+
+			/* Update the sort_*_pathkeys lists if needed */
+			computeDeparsedSortGroup(deparsed, planstate, &apply_pathkeys,
+					&deparsed_pathkeys);
+
+			/* add the path with the pathkeys the FDW can handle */
+			path = create_foreignscan_path(root, baserel,
+													baserel->rows,
+													((MulticornPlanState *) baserel->fdw_private)->startupCost,
+													baserel->rows * baserel->width,
+													apply_pathkeys, /* handled pathkeys */
+													NULL,		/* no outer rel */
+													(void *) deparsed_pathkeys);
+
+			add_path(baserel, (Path *) path);
+		}
+	}
+
+	/* Try to find parameterized paths */
+	findPaths(root, baserel, possiblePaths, planstate->startupCost,
+			planstate, apply_pathkeys, deparsed_pathkeys);
+
+	/* Add a simple default path */
+	path = create_foreignscan_path(root, baserel,
+			baserel->rows,
+			planstate->startupCost,
+			baserel->rows * baserel->width,
+			NIL,		/* no pathkeys */
+			NULL,		/* no outer rel either */
+			NULL);
+
+	add_path(baserel, (Path *) path);
 	errorCheck();
 }
 
@@ -351,6 +385,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 								&planstate->qual_list);
 		}
 	}
+	planstate->pathkeys = (List *) best_path->fdw_private;
 	return make_foreignscan(tlist,
 							scan_clauses,
 							scan_relid,
@@ -372,6 +407,41 @@ multicornGetForeignPlan(PlannerInfo *root,
 static void
 multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 {
+	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
+	MulticornExecState *execstate;
+
+	execstate = initializeExecState(fscan->fdw_private);
+	if (execstate->pathkeys != NIL)
+	{
+		StringInfoData deparse;
+		ListCell *lc;
+		int i = 0;
+
+		initStringInfo(&deparse);
+		appendStringInfo(&deparse, "ORDER BY ");
+
+		foreach(lc, execstate->pathkeys)
+		{
+			MulticornDeparsedSortGroup *key = lfirst(lc);
+
+			if (i++ > 0)
+				appendStringInfo(&deparse, ", ");
+
+			appendStringInfo(&deparse,"%s", key->attname);
+
+			if (strlen(key->collate) > 0)
+				appendStringInfo(&deparse, " COLLATE \"%s\"", key->collate);
+
+			if (key->reversed)
+			appendStringInfo(&deparse, " DESC");
+
+			appendStringInfo(&deparse," %s",
+					key->nulls_first ? "NULLS FIRST" : "NULLS LAST");
+		}
+
+		ExplainPropertyText("Sort pushdown",deparse.data,es);
+		pfree(deparse.data);
+	}
 }
 
 /*
@@ -921,6 +991,8 @@ serializePlanState(MulticornPlanState * state)
 	result = lappend(result, makeConst(INT4OID,
 					-1, InvalidOid, -1, state->foreigntableid, false, true));
 	result = lappend(result, state->target_list);
+
+	result = lappend(result, state->pathkeys);
 	return result;
 }
 
@@ -935,10 +1007,24 @@ initializeExecState(void *internalstate)
 	List	   *values = (List *) internalstate;
 	AttrNumber	attnum = ((Const *) linitial(values))->constvalue;
 	Oid			foreigntableid = ((Const *) lsecond(values))->constvalue;
+	List		*pathkeys;
+	ListCell *lc;
 
 	/* Those list must be copied, because their memory context can become */
 	/* invalid during the execution (in particular with the cursor interface) */
 	execstate->target_list = copyObject(lthird(values));
+	pathkeys = lfourth(values);
+	foreach(lc, pathkeys)
+	{
+		MulticornDeparsedSortGroup *key = (MulticornDeparsedSortGroup *) lfirst(lc);
+		MulticornDeparsedSortGroup *new = palloc0(sizeof(MulticornDeparsedSortGroup));
+
+		memcpy(&(new->attname), &(key->attname),
+				sizeof(MulticornDeparsedSortGroup) - sizeof(PathKey));
+		new->key = copyObject(key->key);
+
+		execstate->pathkeys = lappend(execstate->pathkeys, new);
+	}
 	execstate->fdw_instance = getInstance(foreigntableid);
 	execstate->buffer = makeStringInfo();
 	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
