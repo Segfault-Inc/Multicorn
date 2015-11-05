@@ -20,7 +20,7 @@ ALL = object()
 UNBOUND = object()
 
 
-MulticornSortKey = namedtuple("MulticornSortKey",
+SortKey = namedtuple("SortKey",
                               ["attname", "attnum", "is_reversed",
                                "nulls_first", "collate"])
 
@@ -175,11 +175,11 @@ class ForeignDataWrapper(object):
         col2 descending.
 
         Args:
-            pathkeys (list): A list of :class:`MulticornDeparsedSortGroup`
+            pathkeys (list): A list of :class:`SortKey`
                 representing all the sorts the query must enforce.
 
         Return:
-            The list of cumulative MulticornSortKey, for which the FDW can
+            The list of cumulative SortKey, for which the FDW can
             enforce the sort.
         """
         return []

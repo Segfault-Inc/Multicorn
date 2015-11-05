@@ -834,7 +834,7 @@ pythonQual(char *operatorname,
 PyObject  *
 getSortKey(MulticornDeparsedSortGroup *key)
 {
-	PyObject *SortKeyClass = getClassString("multicorn.MulticornSortKey"),
+	PyObject *SortKeyClass = getClassString("multicorn.SortKey"),
 			 *SortKeyInstance,
 			 *p_attname,
 			 *p_reversed,
