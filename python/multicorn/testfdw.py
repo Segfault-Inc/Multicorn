@@ -94,7 +94,13 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                 # duplicates, so we only need to worry about sorting on 1st
                 # asked column
                 k = pathkeys[0];
-                return sorted(self._as_generator(quals, columns), key=itemgetter(k.attname), reverse=k.is_reversed)
+                res = self._as_generator(quals, columns)
+                if (type(res) is dict):
+                    return sorted(res, key=itemgetter(k.attname),
+                                  reverse=k.is_reversed)
+                else:
+                    return sorted(res, key=itemgetter(k.attnum - 1),
+                                  reverse=k.is_reversed)
             return self._as_generator(quals, columns)
 
     def get_rel_size(self, quals, columns):
