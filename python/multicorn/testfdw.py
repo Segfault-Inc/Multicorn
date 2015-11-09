@@ -75,15 +75,9 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         log_to_postgres(str(sorted(quals)))
         log_to_postgres(str(sorted(columns)))
         if (len(pathkeys)) > 0:
-            tmp = "requested sort: "
-            i = 0
+            log_to_postgres("requested sort(s): ")
             for k in pathkeys:
-                if i > 0:
-                    tmp = tmp + ", "
-                tmp = tmp + "attnum %d attname %s collate \"%s\" order %s" % (k.attnum, k.attname, k.collate, "DESC" if k.is_reversed else "ASC")
-                tmp = tmp + " nulls %s" % ("NULLS FIRST" if k.nulls_first else "NULLS LAST")
-                i += 1
-            log_to_postgres(tmp)
+                log_to_postgres(k)
         if self.test_type == 'None':
             return None
         elif self.test_type == 'iter_none':

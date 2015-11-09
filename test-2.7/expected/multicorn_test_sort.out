@@ -25,7 +25,8 @@ NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
 SELECT * FROM testmulticorn ORDER BY test1 DESC;
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  requested sort: attnum 1 attname test1 collate "" order DESC nulls NULLS FIRST
+NOTICE:  requested sort(s): 
+NOTICE:  SortKey(attname=u'test1', attnum=1, is_reversed=True, nulls_first=True, collate=u'')
    test1    |          test2           
 ------------+--------------------------
  12-02-2011 | Sat Dec 03 14:30:25 2011
