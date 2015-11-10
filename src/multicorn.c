@@ -305,8 +305,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 						 RelOptInfo *baserel,
 						 Oid foreigntableid)
 {
-	ForeignPath			*path;
+	List				*pathes; /* List of ForeignPath */
 	MulticornPlanState	*planstate = baserel->fdw_private;
+	ListCell		    *lc;
 
 	/* These lists are used to handle sort pushdown */
 	List				*apply_pathkeys = NULL;
@@ -315,46 +316,54 @@ multicornGetForeignPaths(PlannerInfo *root,
 	/* Extract a friendly version of the pathkeys. */
 	List	   *possiblePaths = pathKeys(planstate);
 
-	/* Handle unparameterized sort pushdown */
+	/* Try to find parameterized paths */
+	pathes = findPaths(root, baserel, possiblePaths, planstate->startupCost,
+			planstate, apply_pathkeys, deparsed_pathkeys);
+
+	/* Add a simple default path */
+	pathes = lappend(pathes, create_foreignscan_path(root, baserel,
+			baserel->rows,
+			planstate->startupCost,
+			baserel->rows * baserel->width,
+			NIL,		/* no pathkeys */
+			NULL,		/* no outer rel either */
+			NULL));
+
+	/* Handle sort pushdown */
 	if (root->query_pathkeys)
 	{
 		List		*deparsed = deparse_sortgroup(root, foreigntableid, baserel);
 
 		if (deparsed)
 		{
-			ForeignPath	   *path;
-
 			/* Update the sort_*_pathkeys lists if needed */
 			computeDeparsedSortGroup(deparsed, planstate, &apply_pathkeys,
 					&deparsed_pathkeys);
-
-			/* add the path with the pathkeys the FDW can handle */
-			path = create_foreignscan_path(root, baserel,
-													baserel->rows,
-													((MulticornPlanState *) baserel->fdw_private)->startupCost,
-													baserel->rows * baserel->width,
-													apply_pathkeys, /* handled pathkeys */
-													NULL,		/* no outer rel */
-													(void *) deparsed_pathkeys);
-
-			add_path(baserel, (Path *) path);
 		}
 	}
 
-	/* Try to find parameterized paths */
-	findPaths(root, baserel, possiblePaths, planstate->startupCost,
-			planstate, apply_pathkeys, deparsed_pathkeys);
+	/* Add each ForeignPath previously found */
+	foreach(lc, pathes)
+	{
+		ForeignPath *path = (ForeignPath *) lfirst(lc);
 
-	/* Add a simple default path */
-	path = create_foreignscan_path(root, baserel,
-			baserel->rows,
-			planstate->startupCost,
-			baserel->rows * baserel->width,
-			NIL,		/* no pathkeys */
-			NULL,		/* no outer rel either */
-			NULL);
+		/* Add the path without modification */
+		add_path(baserel, (Path *) path);
 
-	add_path(baserel, (Path *) path);
+		/* Add the path with sort pusdown if possible */
+		if (apply_pathkeys && deparsed_pathkeys)
+		{
+			ForeignPath *newpath;
+
+			newpath = create_foreignscan_path(root, baserel, path->path.rows,
+					path->path.startup_cost, path->path.total_cost,
+					apply_pathkeys, NULL,
+					(void *) deparsed_pathkeys);
+
+			newpath->path.param_info = path->path.param_info;
+			add_path(baserel, (Path *) newpath);
+		}
+	}
 	errorCheck();
 }
 

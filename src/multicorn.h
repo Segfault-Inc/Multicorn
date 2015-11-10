@@ -181,7 +181,7 @@ void computeDeparsedSortGroup(List *deparsed, MulticornPlanState *planstate,
 		List **apply_pathkeys,
 		List **deparsed_pathkeys);
 
-void	findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
+List	*findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 		int startupCost,
 		MulticornPlanState *state,
 		List *apply_pathkeys, List *deparsed_pathkeys);

@@ -564,12 +564,13 @@ void computeDeparsedSortGroup(List *deparsed, MulticornPlanState *planstate,
 }
 
 
-void
+List *
 findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 		int startupCost,
 		MulticornPlanState *state,
 		List *apply_pathkeys, List *deparsed_pathkeys)
 {
+	List	   *result = NULL;
 	ListCell   *lc;
 
 	foreach(lc, possiblePaths)
@@ -656,30 +657,11 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 													  NULL);
 
 				foreignPath->path.param_info = ppi;
-				add_path(baserel, (Path *) foreignPath);
-
-				/*
-				 * Add parameterized foreign path with sort pushdown if needed
-				 */
-				if (apply_pathkeys != NIL &&
-						deparsed_pathkeys != NIL)
-				{
-					//state->pathkeys = sort_deparsed_pathkeys;
-					foreignPath = create_foreignscan_path(
-							root, baserel,
-							nbrows,
-							startupCost,
-							nbrows * baserel->width,
-							apply_pathkeys, /* handled pathkeys */
-							NULL,
-							(void *) deparsed_pathkeys);
-
-					foreignPath->path.param_info = ppi;
-					add_path(baserel, (Path *) foreignPath);
-				}
+				result = lappend(result, foreignPath);
 			}
 		}
 	}
+	return result;
 }
 
 /*
