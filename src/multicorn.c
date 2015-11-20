@@ -358,6 +358,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 							serializePlanState(planstate)
 #if PG_VERSION_NUM >= 90500
 							, NULL
+							, NULL /* All quals are meant to be rechecked */
 #endif
 							);
 }
