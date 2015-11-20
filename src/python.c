@@ -1167,7 +1167,7 @@ pythonSequenceToTuple(PyObject *p_value,
 		p_object = PySequence_GetItem(p_value, j);
 		if(p_object == NULL || p_object == Py_None){
 			nulls[i] = true;
-			values[i] = NULL;
+			values[i] = 0;
 			continue;
 		}
 		resetStringInfo(buffer);
