@@ -5,9 +5,11 @@
 #include "optimizer/pathnode.h"
 #include "optimizer/subselect.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_database.h"
 #include "catalog/pg_operator.h"
 #include "mb/pg_wchar.h"
 #include "utils/lsyscache.h"
+#include "miscadmin.h"
 #include "parser/parsetree.h"
 
 void extractClauseFromOpExpr(Relids base_relids,
@@ -711,8 +713,28 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 				Var *var = (Var *)((RelabelType *) expr)->arg;
 				Oid collid = ((RelabelType *) expr)->resultcollid;
 
+				if (collid == DEFAULT_COLLATION_OID)
+				{
+					char	   *datcollate;
+					HeapTuple	tuple;
+
+					tuple = SearchSysCache1(DATABASEOID, MyDatabaseId);
+					if (!HeapTupleIsValid(tuple))
+						ereport(FATAL,
+								(errcode(ERRCODE_UNDEFINED_DATABASE),
+								errmsg("database \"%d\" does not exists",
+									MyDatabaseId)));
+					datcollate = NameStr(((Form_pg_database)
+								GETSTRUCT(tuple))->datcollate);
+
+					strcpy(md->collate, datcollate);
+
+					ReleaseSysCache(tuple);
+				}
+				else
+					strcpy(md->collate, get_collation_name(collid));
+
 				strcpy(md->attname, get_attname(foreigntableid, var->varattno));
-				strcpy(md->collate, get_collation_name(collid));
 				md->attnum = var->varattno;
 				found = true;
 			}
