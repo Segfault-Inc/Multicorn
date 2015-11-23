@@ -1,4 +1,3 @@
-#include <unistd.h>
 #include "multicorn.h"
 #include "optimizer/var.h"
 #include "optimizer/clauses.h"
