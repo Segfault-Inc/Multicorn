@@ -667,12 +667,9 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 }
 
 /*
- * Deparse a list of PathKey (which can come from sort_pathkey, group_pathkey or
- * distinct_pathkey of a PlannerInfo), and return a list of
- * MulticornDeparsedSortGroup. This function ignore any field that doesn't
- * belong to the current foreign table. One must provide the pathkeys and the
- * related SortGroupClause to use this function, so 3 more user-friendly
- * functions exists for the usual cases.
+ * Deparse a list of PathKey and return a list of MulticornDeparsedSortGroup.
+ * This function will return data iif all the PathKey belong to the current
+ * foreign table.
  */
 List *
 deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
