@@ -89,11 +89,11 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                 # asked column
                 k = pathkeys[0];
                 res = self._as_generator(quals, columns)
-                if (type(res) is dict):
-                    return sorted(res, key=itemgetter(k.attname),
+                if (self.test_type == 'sequence'):
+                    return sorted(res, key=itemgetter(k.attnum - 1),
                                   reverse=k.is_reversed)
                 else:
-                    return sorted(res, key=itemgetter(k.attnum - 1),
+                    return sorted(res, key=itemgetter(k.attname),
                                   reverse=k.is_reversed)
             return self._as_generator(quals, columns)
 
