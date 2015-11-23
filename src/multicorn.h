@@ -189,6 +189,10 @@ List	*findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 List        *deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel);
 
 PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
+
+List	*serializeDeparsedSortGroup(List *pathkeys);
+List	*deserializeDeparsedSortGroup(List *items);
+
 #endif   /* PG_MULTICORN_H */
 
 char	   *PyUnicode_AsPgString(PyObject *p_unicode);

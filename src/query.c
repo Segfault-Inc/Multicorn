@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "multicorn.h"
 #include "optimizer/var.h"
 #include "optimizer/clauses.h"
@@ -759,4 +760,65 @@ multicorn_get_em_expr(EquivalenceClass *ec, RelOptInfo *rel)
 
 	/* We didn't find any suitable equivalence class expression */
 	return NULL;
+}
+
+List *
+serializeDeparsedSortGroup(List *pathkeys)
+{
+	List *result = NIL;
+	ListCell *lc;
+
+	foreach(lc, pathkeys)
+	{
+		List *item = NIL;
+		MulticornDeparsedSortGroup *key = (MulticornDeparsedSortGroup *)
+			lfirst(lc);
+
+		item = lappend(item, makeString(key->attname));
+		item = lappend(item, makeInteger(key->attnum));
+		item = lappend(item, makeInteger(key->reversed));
+		item = lappend(item, makeInteger(key->nulls_first));
+		item = lappend(item, makeString(key->collate));
+		item = lappend(item, key->key);
+
+		result = lappend(result, item);
+	}
+
+	return result;
+}
+
+List *
+deserializeDeparsedSortGroup(List *items)
+{
+	List *result = NIL;
+	ListCell *k;
+
+	foreach(k, items)
+	{
+		ListCell *lc;
+		MulticornDeparsedSortGroup *key =
+			palloc0(sizeof(MulticornDeparsedSortGroup));
+
+		lc = list_head(lfirst(k));
+		strncpy(key->attname, strVal(lfirst(lc)), NAMEDATALEN);
+
+		lc = lnext(lc);
+		key->attnum = (int) intVal(lfirst(lc));
+
+		lc = lnext(lc);
+		key->reversed = (bool) intVal(lfirst(lc));
+
+		lc = lnext(lc);
+		key->nulls_first = (bool) intVal(lfirst(lc));
+
+		lc = lnext(lc);
+		strncpy(key->collate, strVal(lfirst(lc)), NAMEDATALEN);
+
+		lc = lnext(lc);
+		key->key = (PathKey *) lfirst(lc);
+
+		result = lappend(result, key);
+	}
+
+	return result;
 }

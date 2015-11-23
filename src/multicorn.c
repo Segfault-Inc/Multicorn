@@ -1001,7 +1001,8 @@ serializePlanState(MulticornPlanState * state)
 					-1, InvalidOid, -1, state->foreigntableid, false, true));
 	result = lappend(result, state->target_list);
 
-	result = lappend(result, state->pathkeys);
+	result = lappend(result, serializeDeparsedSortGroup(state->pathkeys));
+
 	return result;
 }
 
@@ -1017,23 +1018,12 @@ initializeExecState(void *internalstate)
 	AttrNumber	attnum = ((Const *) linitial(values))->constvalue;
 	Oid			foreigntableid = ((Const *) lsecond(values))->constvalue;
 	List		*pathkeys;
-	ListCell *lc;
 
 	/* Those list must be copied, because their memory context can become */
 	/* invalid during the execution (in particular with the cursor interface) */
 	execstate->target_list = copyObject(lthird(values));
 	pathkeys = lfourth(values);
-	foreach(lc, pathkeys)
-	{
-		MulticornDeparsedSortGroup *key = (MulticornDeparsedSortGroup *) lfirst(lc);
-		MulticornDeparsedSortGroup *new = palloc0(sizeof(MulticornDeparsedSortGroup));
-
-		memcpy(&(new->attname), &(key->attname),
-				sizeof(MulticornDeparsedSortGroup) - sizeof(PathKey));
-		new->key = copyObject(key->key);
-
-		execstate->pathkeys = lappend(execstate->pathkeys, new);
-	}
+	execstate->pathkeys = deserializeDeparsedSortGroup(pathkeys);
 	execstate->fdw_instance = getInstance(foreigntableid);
 	execstate->buffer = makeStringInfo();
 	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
