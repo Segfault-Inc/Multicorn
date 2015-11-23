@@ -416,41 +416,6 @@ multicornGetForeignPlan(PlannerInfo *root,
 static void
 multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 {
-	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
-	MulticornExecState *execstate;
-
-	execstate = initializeExecState(fscan->fdw_private);
-	if (execstate->pathkeys != NIL)
-	{
-		StringInfoData deparse;
-		ListCell *lc;
-		int i = 0;
-
-		initStringInfo(&deparse);
-		appendStringInfo(&deparse, "ORDER BY ");
-
-		foreach(lc, execstate->pathkeys)
-		{
-			MulticornDeparsedSortGroup *key = lfirst(lc);
-
-			if (i++ > 0)
-				appendStringInfo(&deparse, ", ");
-
-			appendStringInfo(&deparse,"%s", key->attname);
-
-			if (strlen(key->collate) > 0)
-				appendStringInfo(&deparse, " COLLATE \"%s\"", key->collate);
-
-			if (key->reversed)
-			appendStringInfo(&deparse, " DESC");
-
-			appendStringInfo(&deparse," %s",
-					key->nulls_first ? "NULLS FIRST" : "NULLS LAST");
-		}
-
-		ExplainPropertyText("Sort pushdown",deparse.data,es);
-		pfree(deparse.data);
-	}
 }
 
 /*
