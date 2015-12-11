@@ -1,8 +1,10 @@
 """
 Use low-level docutils API to extract metadata from ReStructuredText files.
 """
-
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 from threading import Lock
 from functools import wraps
 from os.path import getmtime
