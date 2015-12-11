@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from setuptools import setup, find_packages, Extension
 
 # hum... borrowed from psycopg2
@@ -16,6 +17,14 @@ multicorn_utils_module = Extension('multicorn._utils',
         include_dirs=include_dirs,
         extra_compile_args = ['-shared'],
         sources=['src/utils.c'])
+
+requires=[]
+
+if sys.version_info[0] == 2:
+    if sys.version.info[1] == 6:
+        requires.append("ordereddict")
+    elif sys.version.info[1] < 6:
+        sys.exit("Sorry, you need at least python 2.6 for Multicorn")
 
 setup(
  name='multicorn',
