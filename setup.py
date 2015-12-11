@@ -21,9 +21,9 @@ multicorn_utils_module = Extension('multicorn._utils',
 requires=[]
 
 if sys.version_info[0] == 2:
-    if sys.version.info[1] == 6:
+    if sys.version_info[1] == 6:
         requires.append("ordereddict")
-    elif sys.version.info[1] < 6:
+    elif sys.version_info[1] < 6:
         sys.exit("Sorry, you need at least python 2.6 for Multicorn")
 
 setup(
