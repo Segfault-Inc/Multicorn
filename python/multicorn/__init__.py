@@ -24,6 +24,24 @@ SortKey = namedtuple("SortKey",
                               ["attname", "attnum", "is_reversed",
                                "nulls_first", "collate"])
 
+"""
+A SortKey describes the sort of one column an SQL query requested.
+
+A query can request the sort of zero, one or multiple columns. Therefore, a list
+of SortKey is provided to the ForeignDataWrapper, containing zero, one or more
+SortKey.
+
+Attributes:
+    attname(str):       The name of the column to sort as defined in the postgresql
+        table.
+    attnum(int):        The position of the column to sort as defined in the
+        postgresql table.
+    is_reversed(bool):  True is the query requested a DESC order.
+    nulls_first(bool):  If True, NULL values must appears at the beginning.
+        Otherwise, they must appear at the end.
+    collate(str):       The collation name to use to sort the data, as appearing
+        in the postgresql cluster.
+"""
 
 class Qual(object):
     """A Qual describes a postgresql qualifier.

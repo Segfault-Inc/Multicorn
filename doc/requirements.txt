@@ -2,3 +2,4 @@ sphinx
 sphinxcontrib-napoleon
 mock
 sqlalchemy
+funcsigs

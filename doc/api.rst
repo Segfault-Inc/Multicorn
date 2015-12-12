@@ -85,6 +85,8 @@ Full API
    :members:
 
 
+.. autoclass:: multicorn.SortKey
+
 .. autoclass:: multicorn.Qual
    :members:
 
