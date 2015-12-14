@@ -56,7 +56,11 @@ static ForeignScan *multicornGetForeignPlan(PlannerInfo *root,
 						Oid foreigntableid,
 						ForeignPath *best_path,
 						List *tlist,
-						List *scan_clauses);
+						List *scan_clauses
+#if PG_VERSION_NUM >= 90600
+						, Plan *outer_plan
+#endif
+		);
 static void multicornExplainForeignScan(ForeignScanState *node,
 							ExplainState *es);
 static void multicornBeginForeignScan(ForeignScanState *node, int eflags);
@@ -326,7 +330,10 @@ multicornGetForeignPaths(PlannerInfo *root,
 			planstate->startupCost,
 			baserel->rows * baserel->width,
 			NIL,		/* no pathkeys */
-			NULL,		/* no outer rel either */
+		    NULL,
+#if PG_VERSION_NUM >= 90600
+			NULL,
+#endif
 			NULL));
 
 	/* Handle sort pushdown */
@@ -358,6 +365,9 @@ multicornGetForeignPaths(PlannerInfo *root,
 			newpath = create_foreignscan_path(root, baserel, path->path.rows,
 					path->path.startup_cost, path->path.total_cost,
 					apply_pathkeys, NULL,
+#if PG_VERSION_NUM >= 90600
+					NULL,
+#endif
 					(void *) deparsed_pathkeys);
 
 			newpath->path.param_info = path->path.param_info;
@@ -377,7 +387,11 @@ multicornGetForeignPlan(PlannerInfo *root,
 						Oid foreigntableid,
 						ForeignPath *best_path,
 						List *tlist,
-						List *scan_clauses)
+						List *scan_clauses
+#if PG_VERSION_NUM >= 90600
+						, Plan *outer_plan
+#endif
+		)
 {
 	Index		scan_relid = baserel->relid;
 	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
@@ -403,6 +417,9 @@ multicornGetForeignPlan(PlannerInfo *root,
 #if PG_VERSION_NUM >= 90500
 							, NULL
 							, NULL /* All quals are meant to be rechecked */
+#endif
+#if PG_VERSION_NUM >= 90600
+							, NULL
 #endif
 							);
 }
