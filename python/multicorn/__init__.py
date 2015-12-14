@@ -296,7 +296,7 @@ class ForeignDataWrapper(object):
                 You should return AT LEAST those columns when returning a
                 dict. If returning a sequence, every column from the table
                 should be in the sequence.
-            pathkeys (list): A list of :class:`MulticornDeparsedSortGroup`
+            pathkeys (list): A list of :class:`SortKey`
                 that the FDW said it can enforce.
 
         Returns:
