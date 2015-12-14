@@ -57,7 +57,7 @@ static ForeignScan *multicornGetForeignPlan(PlannerInfo *root,
 						ForeignPath *best_path,
 						List *tlist,
 						List *scan_clauses
-#if PG_VERSION_NUM >= 90600
+#if PG_VERSION_NUM >= 90500
 						, Plan *outer_plan
 #endif
 		);
@@ -331,7 +331,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 			baserel->rows * baserel->width,
 			NIL,		/* no pathkeys */
 		    NULL,
-#if PG_VERSION_NUM >= 90600
+#if PG_VERSION_NUM >= 90500
 			NULL,
 #endif
 			NULL));
@@ -365,7 +365,7 @@ multicornGetForeignPaths(PlannerInfo *root,
 			newpath = create_foreignscan_path(root, baserel, path->path.rows,
 					path->path.startup_cost, path->path.total_cost,
 					apply_pathkeys, NULL,
-#if PG_VERSION_NUM >= 90600
+#if PG_VERSION_NUM >= 90500
 					NULL,
 #endif
 					(void *) deparsed_pathkeys);
@@ -388,7 +388,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 						ForeignPath *best_path,
 						List *tlist,
 						List *scan_clauses
-#if PG_VERSION_NUM >= 90600
+#if PG_VERSION_NUM >= 90500
 						, Plan *outer_plan
 #endif
 		)
@@ -417,8 +417,6 @@ multicornGetForeignPlan(PlannerInfo *root,
 #if PG_VERSION_NUM >= 90500
 							, NULL
 							, NULL /* All quals are meant to be rechecked */
-#endif
-#if PG_VERSION_NUM >= 90600
 							, NULL
 #endif
 							);
