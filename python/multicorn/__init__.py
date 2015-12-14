@@ -12,6 +12,12 @@ postgresql (usually, the system wide python installation).
 
 import sys
 from collections import namedtuple
+try:
+    from collections import OrderedDict
+except ImportError:
+    import collections
+    from ordereddict import OrderedDict
+    collections.OrderedDict = OrderedDict
 
 __version__ = '__VERSION__'
 
