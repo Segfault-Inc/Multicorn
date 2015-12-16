@@ -841,7 +841,7 @@ getSortKey(MulticornDeparsedSortGroup *key)
 			 *p_nulls_first,
 			 *p_collate;
 
-	p_attname = PyUnicode_Decode(key->attname, strlen(key->attname), getPythonEncodingName(), NULL);
+	p_attname = PyUnicode_Decode(NameStr(*(key->attname)), strlen(NameStr(*(key->attname))), getPythonEncodingName(), NULL);
 	if (key->reversed)
 		p_reversed = Py_True;
 	else
@@ -850,7 +850,12 @@ getSortKey(MulticornDeparsedSortGroup *key)
 		p_nulls_first = Py_True;
 	else
 		p_nulls_first = Py_False;
-	p_collate = PyUnicode_Decode(key->collate, strlen(key->collate), getPythonEncodingName(), NULL);
+	if(key->collate == NULL){
+		p_collate = Py_None;
+		Py_INCREF(p_collate);
+	}
+	else
+		p_collate = PyUnicode_Decode(NameStr(*(key->collate)), strlen(NameStr(*(key->collate))), getPythonEncodingName(), NULL);
 	SortKeyInstance = PyObject_CallFunction(SortKeyClass, "(O,i,O,O,O)",
 			p_attname,
 			key->attnum,
@@ -868,13 +873,25 @@ MulticornDeparsedSortGroup *
 getDeparsedSortGroup(PyObject *sortKey)
 {
 	MulticornDeparsedSortGroup *md = palloc0(sizeof(MulticornDeparsedSortGroup));
-
-	strncpy(md->attname, PyUnicode_AS_DATA(PyObject_GetAttrString(sortKey, "attname")), NAMEDATALEN);
-	md->attnum = (int) PyLong_AsLong(PyObject_GetAttrString(sortKey, "attnum"));
-	md->reversed = PyObject_IsTrue(PyObject_GetAttrString(sortKey, "is_reversed"));
+	PyObject * p_temp;
+	p_temp = PyObject_GetAttrString(sortKey, "attname");
+	md->attname = (Name) strdup(PyUnicode_AS_DATA(p_temp));
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "attnum");
+	md->attnum = (int) PyLong_AsLong(p_temp);
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "is_reversed");
+	md->reversed = PyObject_IsTrue(p_temp);
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "nulls_first");
 	md->nulls_first = PyObject_IsTrue(PyObject_GetAttrString(sortKey, "nulls_first"));
-	strncpy(md->collate, PyUnicode_AS_DATA(PyObject_GetAttrString(sortKey, "collate")), NAMEDATALEN);
-
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "collate");
+	if(p_temp == Py_None)
+		md->collate = 0;
+	else
+		md->collate = (Name) strdup(PyUnicode_AS_DATA(p_temp));
+	Py_DECREF(p_temp);
 	return md;
 }
 

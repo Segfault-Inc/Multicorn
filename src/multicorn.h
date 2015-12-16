@@ -121,11 +121,11 @@ typedef struct MulticornParamQual
 
 typedef struct MulticornDeparsedSortGroup
 {
-	char			attname[NAMEDATALEN];
+	Name 			attname;
 	int				attnum;
 	bool			reversed;
 	bool			nulls_first;
-	char			collate[NAMEDATALEN];
+	Name			collate;
 	PathKey	*key;
 } MulticornDeparsedSortGroup;
 

@@ -701,7 +701,7 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 			if (IsA(expr, Var))
 			{
 				Var *var = (Var *) expr;
-				strcpy(md->attname, get_attname(foreigntableid, var->varattno));
+				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
 				md->attnum = var->varattno;
 				found = true;
 			}
@@ -713,27 +713,10 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 				Oid collid = ((RelabelType *) expr)->resultcollid;
 
 				if (collid == DEFAULT_COLLATION_OID)
-				{
-					char	   *datcollate;
-					HeapTuple	tuple;
-
-					tuple = SearchSysCache1(DATABASEOID, MyDatabaseId);
-					if (!HeapTupleIsValid(tuple))
-						ereport(FATAL,
-								(errcode(ERRCODE_UNDEFINED_DATABASE),
-								errmsg("database \"%d\" does not exists",
-									MyDatabaseId)));
-					datcollate = NameStr(((Form_pg_database)
-								GETSTRUCT(tuple))->datcollate);
-
-					strcpy(md->collate, datcollate);
-
-					ReleaseSysCache(tuple);
-				}
+					md->collate = NULL;
 				else
-					strcpy(md->collate, get_collation_name(collid));
-
-				strcpy(md->attname, get_attname(foreigntableid, var->varattno));
+					md->collate = (Name) strdup(get_collation_name(collid));
+				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
 				md->attnum = var->varattno;
 				found = true;
 			}
@@ -795,11 +778,14 @@ serializeDeparsedSortGroup(List *pathkeys)
 		MulticornDeparsedSortGroup *key = (MulticornDeparsedSortGroup *)
 			lfirst(lc);
 
-		item = lappend(item, makeString(key->attname));
+		item = lappend(item, makeString(NameStr(*(key->attname))));
 		item = lappend(item, makeInteger(key->attnum));
 		item = lappend(item, makeInteger(key->reversed));
 		item = lappend(item, makeInteger(key->nulls_first));
-		item = lappend(item, makeString(key->collate));
+		if(key->collate != NULL)
+			item = lappend(item, makeString(NameStr(*(key->collate))));
+		else
+			item = lappend(item, NULL);
 		item = lappend(item, key->key);
 
 		result = lappend(result, item);
@@ -821,7 +807,7 @@ deserializeDeparsedSortGroup(List *items)
 			palloc0(sizeof(MulticornDeparsedSortGroup));
 
 		lc = list_head(lfirst(k));
-		strncpy(key->attname, strVal(lfirst(lc)), NAMEDATALEN);
+		key->attname = (Name) strdup(strVal(lfirst(lc)));
 
 		lc = lnext(lc);
 		key->attnum = (int) intVal(lfirst(lc));
@@ -833,7 +819,10 @@ deserializeDeparsedSortGroup(List *items)
 		key->nulls_first = (bool) intVal(lfirst(lc));
 
 		lc = lnext(lc);
-		strncpy(key->collate, strVal(lfirst(lc)), NAMEDATALEN);
+		if(lfirst(lc) != NULL)
+			key->collate = (Name) strdup(strVal(lfirst(lc)));
+		else
+			key->collate = NULL;
 
 		lc = lnext(lc);
 		key->key = (PathKey *) lfirst(lc);
