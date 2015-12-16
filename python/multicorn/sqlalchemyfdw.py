@@ -220,10 +220,14 @@ class SqlAlchemyFdw(ForeignDataWrapper):
 
 
 
-    def execute(self, quals, columns):
+    def can_sort(self, sortkeys):
+        return sortkeys
+
+    def execute(self, quals, columns, sortkeys=None):
         """
         The quals are turned into an and'ed where clause.
         """
+        sortkeys = sortkeys or []
         statement = select([self.table])
         clauses = []
         for qual in quals:
@@ -241,6 +245,16 @@ class SqlAlchemyFdw(ForeignDataWrapper):
         else:
             columns = self.table.c
         statement = statement.with_only_columns(columns)
+        orders = []
+        for sortkey in sortkeys:
+            column = self.table.c[sortkey.attname]
+            if sortkey.is_reversed:
+                column = column.desc()
+            if sortkey.nulls_first:
+                column = column.nullsfirst()
+            else:
+                column = column.nullslast()
+            statement = statement.order_by(column)
         log_to_postgres(str(statement), DEBUG)
         rs = (self.connection
               .execution_options(stream_results=True)
