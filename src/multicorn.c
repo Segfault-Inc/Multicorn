@@ -434,7 +434,7 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 			 *p_str;
 	Py_INCREF(p_iterable);
 	while((p_item = PyIter_Next(p_iterable))){
-		p_str = PyObject_Unicode(p_item);
+		p_str = PyObject_Str(p_item);
 		ExplainPropertyText("Multicorn", PyString_AsString(p_str), es);
 		Py_DECREF(p_str);
 	}
