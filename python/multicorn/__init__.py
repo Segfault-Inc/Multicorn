@@ -271,9 +271,9 @@ class ForeignDataWrapper(object):
         The arguments are the same as the :meth:`execute`, with the addition of
         a "verbose" keyword arg for when the EXPLAIN is called with the VERBOSE
         option.
-        """
         Returns:
             An iterable of strings to display in the EXPLAIN output.
+        """
         return []
 
     def execute(self, quals, columns, sortkeys=None):
