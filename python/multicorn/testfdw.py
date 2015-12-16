@@ -71,23 +71,24 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                                                           index)
             yield line
 
-    def execute(self, quals, columns, pathkeys=[]):
+    def execute(self, quals, columns, sortkeys=None):
+        sortkeys = sortkeys or []
         log_to_postgres(str(sorted(quals)))
         log_to_postgres(str(sorted(columns)))
-        if (len(pathkeys)) > 0:
+        if (len(sortkeys)) > 0:
             log_to_postgres("requested sort(s): ")
-            for k in pathkeys:
+            for k in sortkeys:
                 log_to_postgres(k)
         if self.test_type == 'None':
             return None
         elif self.test_type == 'iter_none':
             return [None, None]
         else:
-            if (len(pathkeys) > 0):
+            if (len(sortkeys) > 0):
                 # testfdw don't have tables with more than 2 fields, without
                 # duplicates, so we only need to worry about sorting on 1st
                 # asked column
-                k = pathkeys[0];
+                k = sortkeys[0];
                 res = self._as_generator(quals, columns)
                 if (self.test_type == 'sequence'):
                     return sorted(res, key=itemgetter(k.attnum - 1),
@@ -107,9 +108,9 @@ class TestForeignDataWrapper(ForeignDataWrapper):
             return [(('test1',), 1)]
         return []
 
-    def can_sort(self, pathkeys):
+    def can_sort(self, sortkeys):
         # assume sort pushdown ok for all cols, in any order, any collation
-        return pathkeys
+        return sortkeys
 
     def update(self, rowid, newvalues):
         if self.test_type == 'nowrite':

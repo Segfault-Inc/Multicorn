@@ -182,7 +182,7 @@ class ForeignDataWrapper(object):
         """
         return (100000000, len(columns) * 100)
 
-    def can_sort(self, pathkeys):
+    def can_sort(self, sortkeys):
         """
         Method called from the planner to ask the FDW what are the sorts it can
         enforced, to avoid PostgreSQL to sort the data after retreiving all the
@@ -199,7 +199,7 @@ class ForeignDataWrapper(object):
         col2 descending.
 
         Args:
-            pathkeys (list): A list of :class:`SortKey`
+            sortkeys (list): A list of :class:`SortKey`
                 representing all the sorts the query must enforce.
 
         Return:
@@ -265,7 +265,7 @@ class ForeignDataWrapper(object):
         """
         return []
 
-    def execute(self, quals, columns, pathkeys=[]):
+    def execute(self, quals, columns, sortkeys=None):
         """Execute a query in the foreign data wrapper.
 
         This method is called at the first iteration.
@@ -296,7 +296,7 @@ class ForeignDataWrapper(object):
                 You should return AT LEAST those columns when returning a
                 dict. If returning a sequence, every column from the table
                 should be in the sequence.
-            pathkeys (list): A list of :class:`SortKey`
+            sortkeys (list): A list of :class:`SortKey`
                 that the FDW said it can enforce.
 
         Returns:
@@ -305,7 +305,7 @@ class ForeignDataWrapper(object):
             - sequences containing exactly as much columns as the
             underlying tables
             - dictionaries mapping column names to their values.
-            If the pathkeys wasn't empty, the FDW has to return the data in the
+            If the sortkeys wasn't empty, the FDW has to return the data in the
             expected order.
 
         """
