@@ -223,11 +223,12 @@ class SqlAlchemyFdw(ForeignDataWrapper):
     def can_sort(self, sortkeys):
         return sortkeys
 
-    def execute(self, quals, columns, sortkeys=None):
-        """
-        The quals are turned into an and'ed where clause.
-        """
+    def explain(self, quals, columns, sortkeys=None, verbose=False):
         sortkeys = sortkeys or []
+        statement = self._build_statement(quals, columns, sortkeys)
+        return [str(statement)]
+
+    def _build_statement(self, quals, columns, sortkeys):
         statement = select([self.table])
         clauses = []
         for qual in quals:
@@ -257,6 +258,15 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             else:
                 column = column.nullslast()
             statement = statement.order_by(column)
+        return statement
+
+
+    def execute(self, quals, columns, sortkeys=None):
+        """
+        The quals are turned into an and'ed where clause.
+        """
+        sortkeys = sortkeys or []
+        statement = self._build_statement(quals, columns, sortkeys)
         log_to_postgres(str(statement), DEBUG)
         rs = (self.connection
               .execution_options(stream_results=True)

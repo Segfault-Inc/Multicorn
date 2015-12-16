@@ -1,20 +1,21 @@
 #include "Python.h"
 #include "postgres.h"
-#include "nodes/pg_list.h"
+#include "access/relscan.h"
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
+#include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#include "commands/explain.h"
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
 #include "funcapi.h"
 #include "lib/stringinfo.h"
+#include "nodes/bitmapset.h"
+#include "nodes/makefuncs.h"
+#include "nodes/pg_list.h"
 #include "nodes/relation.h"
 #include "utils/builtins.h"
-#include "catalog/pg_type.h"
 #include "utils/syscache.h"
-#include "access/relscan.h"
-#include "nodes/makefuncs.h"
-#include "nodes/bitmapset.h"
 
 #ifndef PG_MULTICORN_H
 #define PG_MULTICORN_H
@@ -139,7 +140,7 @@ char	  **pyUnicodeToPgString(PyObject *pyobject);
 PyObject   *getInstance(Oid foreigntableid);
 PyObject   *qualToPyObject(Expr *expr, PlannerInfo *root);
 PyObject   *getClassString(const char *className);
-PyObject   *execute(ForeignScanState *state);
+PyObject   *execute(ForeignScanState *state, ExplainState *es);
 void pythonResultToTuple(PyObject *p_value,
 					TupleTableSlot *slot,
 					ConversionInfo ** cinfos,

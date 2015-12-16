@@ -7,7 +7,6 @@
  * author: Kozea
  */
 #include "multicorn.h"
-#include "commands/explain.h"
 #include "optimizer/paths.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
@@ -61,8 +60,7 @@ static ForeignScan *multicornGetForeignPlan(PlannerInfo *root,
 						, Plan *outer_plan
 #endif
 		);
-static void multicornExplainForeignScan(ForeignScanState *node,
-							ExplainState *es);
+static void multicornExplainForeignScan(ForeignScanState *node, ExplainState *es);
 static void multicornBeginForeignScan(ForeignScanState *node, int eflags);
 static TupleTableSlot *multicornIterateForeignScan(ForeignScanState *node);
 static void multicornReScanForeignScan(ForeignScanState *node);
@@ -431,6 +429,17 @@ multicornGetForeignPlan(PlannerInfo *root,
 static void
 multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 {
+	PyObject *p_iterable = execute(node, es),
+			 *p_item,
+			 *p_str;
+	Py_INCREF(p_iterable);
+	while((p_item = PyIter_Next(p_iterable))){
+		p_str = PyObject_Unicode(p_item);
+		ExplainPropertyText("Multicorn", PyString_AsString(p_str), es);
+		Py_DECREF(p_str);
+	}
+	Py_DECREF(p_iterable);
+	errorCheck();
 }
 
 /*
@@ -480,7 +489,7 @@ multicornIterateForeignScan(ForeignScanState *node)
 
 	if (execstate->p_iterator == NULL)
 	{
-		execute(node);
+		execute(node, NULL);
 	}
 	ExecClearTuple(slot);
 	if (execstate->p_iterator == Py_None)

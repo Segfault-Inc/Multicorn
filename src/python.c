@@ -900,13 +900,14 @@ getDeparsedSortGroup(PyObject *sortKey)
  * Execute the query in the python fdw, and returns an iterator.
  */
 PyObject *
-execute(ForeignScanState *node)
+execute(ForeignScanState *node, ExplainState *es)
 {
 	MulticornExecState *state = node->fdw_state;
 	PyObject   *p_targets_set,
 			   *p_quals = PyList_New(0),
 			   *p_pathkeys = PyList_New(0),
-			   *p_iterable;
+			   *p_iterable,
+			   *p_method;
 	ListCell   *lc;
 
 	ExprContext *econtext = node->ss.ps.ps_ExprContext;
@@ -960,25 +961,38 @@ execute(ForeignScanState *node)
 		PyList_Append(p_pathkeys, python_sortkey);
 		Py_DECREF(python_sortkey);
 	}
-
-	/* don't break olrder extensions which don't handle sort pushdown */
-	if (PyList_Size(p_pathkeys) > 0)
-		p_iterable = PyObject_CallMethod(state->fdw_instance,
-				"execute",
-				"(O,O,O)",
-				p_quals,
-				p_targets_set,
-				p_pathkeys);
-	else
-		p_iterable = PyObject_CallMethod(state->fdw_instance,
-				"execute",
-				"(O,O)",
-				p_quals,
-				p_targets_set);
+	{
+		PyObject * args,
+				 * kwargs = PyDict_New();
+		if(PyList_Size(p_pathkeys) > 0){
+			PyDict_SetItemString(kwargs, "sortkeys", p_pathkeys);
+		}
+		if(es != NULL){
+			PyObject * verbose;
+			if(es->verbose){
+				verbose = Py_True;
+			} else {
+				verbose = Py_False;
+			}
+			p_method = PyObject_GetAttrString(state->fdw_instance, "explain");
+			args = PyTuple_Pack(2, p_quals, p_targets_set);
+			PyDict_SetItemString(kwargs, "verbose", verbose);
+			errorCheck();
+		} else {
+			p_method = PyObject_GetAttrString(state->fdw_instance, "execute");
+			errorCheck();
+			args = PyTuple_Pack(2, p_quals, p_targets_set);
+			errorCheck();
+		}
+		p_iterable = PyObject_Call(p_method, args, kwargs);
+		errorCheck();
+		Py_DECREF(p_method);
+		Py_DECREF(args);
+		Py_DECREF(kwargs);
+	}
 
 	errorCheck();
-	if (p_iterable == Py_None)
-	{
+	if (p_iterable == Py_None){
 		state->p_iterator = p_iterable;
 	}
 	else
@@ -1340,7 +1354,7 @@ datumStringToPython(Datum datum, ConversionInfo * cinfo)
 	ssize_t		size;
 	PyObject   *result;
 
-	temp = TextDatumGetCString(datum);
+	temp = datum == 0 ? "?" : TextDatumGetCString(datum);
 	size = strlen(temp);
 	result = PyUnicode_Decode(temp, size, getPythonEncodingName(), NULL);
 	return result;
@@ -1473,7 +1487,7 @@ PyObject *
 datumByteaToPython(Datum datum, ConversionInfo * cinfo)
 {
 	text	   *txt = DatumGetByteaP(datum);
-	char	   *str = VARDATA(txt);
+	char	   *str = txt == NULL ? "?" : VARDATA(txt);
 	size_t		size = VARSIZE(txt) - VARHDRSZ;
 
 #if PY_MAJOR_VERSION >= 3
