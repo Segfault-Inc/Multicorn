@@ -250,6 +250,8 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             column = self.table.c[sortkey.attname]
             if sortkey.is_reversed:
                 column = column.desc()
+            if sortkey.collate:
+                column = column.collate('"%s"' % sortkey.collate)
             if sortkey.nulls_first:
                 column = column.nullsfirst()
             else:
