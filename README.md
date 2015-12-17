@@ -1,3 +1,5 @@
+[![PGXN version](https://badge.fury.io/pg/multicorn.svg)](https://badge.fury.io/pg/multicorn)
+
 Multicorn
 =========
 
