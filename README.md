@@ -1,4 +1,4 @@
-[![PGXN version](https://badge.fury.io/pg/multicorn.svg)](https://badge.fury.io/pg/multicorn)
+[![PGXN version](https://badge.fury.io/pg/multicorn.svg)](https://badge.fury.io/pg/multicorn) [![Build Status](https://jenkins.dalibo.info/buildStatus/public/Multicorn)]()
 
 Multicorn
 =========
