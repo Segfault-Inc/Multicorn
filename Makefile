@@ -42,7 +42,7 @@ release-zip: all
 	rm ./multicorn-$(EXTVERSION) -rf
 
 coverage:
-	lcov -d . -c -o lcov.info
+	lcov -d . -c -o lcov.info --no-external
 	genhtml --show-details --legend --output-directory=coverage --title=PostgreSQL --num-spaces=4 --prefix=./src/ `find . -name lcov.info -print`
 
 DATA = sql/$(EXTENSION)--$(EXTVERSION).sql
