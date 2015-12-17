@@ -43,7 +43,7 @@ release-zip: all
 
 coverage:
 	lcov -d . -c -o lcov.info --no-external
-	genhtml --show-details --legend --output-directory=coverage --title=PostgreSQL --num-spaces=4 --prefix=./src/ `find . -name lcov.info -print`
+	genhtml --show-details --legend --output-directory=coverage --title="Multicorn Code Coverage" --no-branch-coverage --num-spaces=4 --prefix=./src/ `find . -name lcov.info -print`
 
 DATA = sql/$(EXTENSION)--$(EXTVERSION).sql
 EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip directories.stamp
