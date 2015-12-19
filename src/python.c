@@ -1310,7 +1310,7 @@ pythonResultToTuple(PyObject *p_value,
 		else
 		{
 			elog(ERROR, "Cannot transform anything else than mappings and"
-				 "sequences to rows");
+				 " sequences to rows");
 		}
 	}
 }
