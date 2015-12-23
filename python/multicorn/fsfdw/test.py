@@ -13,7 +13,7 @@ import functools
 import tempfile
 import shutil
 from contextlib import contextmanager
-from multicorn.compat import unicode_
+from multicorn.compat import unicode_, bytes_
 import pytest
 
 from .structuredfs import StructuredDirectory, Item
@@ -84,8 +84,6 @@ def test_parser(tempdir):
     bin = make('{category}/{{num}}_{name}.bin')
     assert bin.properties == set(['category', 'name'])
     assert bin._path_parts_properties == (('category',), ('name',))
-    assert [regex.pattern for regex in bin._path_parts_re] \
-        == ['^(?P<category>.*)$', r'^\{num\}\_(?P<name>.*)\.bin$']
 
 
 @with_tempdir
@@ -160,11 +158,11 @@ def test_items(tempdir):
                                  key=lambda item: item['num'])
     assert len(item_foo) == 3
     assert dict(item_foo) == dict(category='lipsum', num='4', name='foo')
-    assert item_foo.read() == ''
+    assert item_foo.read() == bytes_('')
 
     assert len(item_bar) == 3
     assert dict(item_bar) == dict(category='lipsum', num='5', name='bar')
-    assert item_bar.read() == 'BAR'
+    assert item_bar.read() == bytes_('BAR')
 
     content = b'Hello,\xc2\xa0W\xc3\xb6rld!'.decode('utf-8')
     item_foo.content = content
