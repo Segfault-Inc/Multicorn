@@ -21,13 +21,14 @@ from .docutils_meta import mtime_lru_cache, extract_meta
 
 
 def with_tempdir(function):
-    @functools.wraps(function)
     def wrapper():
         directory = tempfile.mkdtemp()
         try:
             return function(directory)
         finally:
             shutil.rmtree(directory)
+    wrapper.__doc__ = function.__doc__
+    wrapper.__name__ = function.__name__
     return wrapper
 
 
