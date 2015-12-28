@@ -1,3 +1,8 @@
+1.3.0:
+    - Add support for SORT pushdown (Thanks to Julien Rouhaud !)
+    - Add support for EXPLAIN
+    - Follow API changes from 9.5 rc1
+    - Improve python 2.6 compatibility
 1.2.4:
     - Restore compatibility with python 2.6 (Thanks to Asya Kamsky !)
     - Follow API change from 9.5 beta2
