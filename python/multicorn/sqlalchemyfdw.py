@@ -94,6 +94,40 @@ What does it do to reduce the amount of fetched data ?
 - the set of needed columns is pushed to the remote_side, and only those columns
   will be fetched.
 
+Sort push-down support
+----------------------
+
+Since the rules about NULL ordering are different for every database vendor, and
+many of them don't support the NULLS FIRST, NULLS LAST clause, this FDW tries
+to not generate any NULLS FIRST / LAST clause if the requested order matches
+what the remote system would do by default.
+
+Additionnaly, if it is found that a query can't be executed while keeping the
+same NULL ordering (because the remote system doesn't support the NULL ordering
+clause), the sort will not be pushed down.
+
+To check the SQL query that will be sent to the remote system, use EXPLAIN:
+
+.. code-block:: sql
+
+    postgres=# explain select * from testalchemy  order by id DESC NULLS FIRST;
+                                                        QUERY PLAN
+    ------------------------------------------------------------------------------------------------------------------
+    Foreign Scan on testalchemy  (cost=20.00..50000000000.00 rows=100000000 width=500)
+    Multicorn: SELECT basetable.atimestamp, basetable.anumeric, basetable.adate, basetable.avarchar, basetable.id
+    FROM basetable ORDER BY basetable.id DESC
+    (3 lignes)
+
+    Temps : 167,856 ms
+    postgres=# explain select * from testalchemy  order by id DESC NULLS LAST;
+                                                        QUERY PLAN
+    ------------------------------------------------------------------------------------------------------------------
+    Foreign Scan on testalchemy  (cost=20.00..50000000000.00 rows=100000000 width=500)
+    Multicorn: SELECT basetable.atimestamp, basetable.anumeric, basetable.adate, basetable.avarchar, basetable.id
+    FROM basetable ORDER BY basetable.id DESC NULLS LAST
+    (3 lignes)
+
+
 Usage example
 -------------
 
@@ -121,6 +155,8 @@ from .utils import log_to_postgres, ERROR, WARNING, DEBUG
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import make_url, URL
 from sqlalchemy.sql import select, operators as sqlops, and_
+from sqlalchemy.sql.expression import nullsfirst, nullslast
+
 # Handle the sqlalchemy 0.8 / 0.9 changes
 try:
     from sqlalchemy.sql import sqltypes
@@ -184,6 +220,14 @@ CONVERSION_MAP = {
     oracle_dialect.NUMBER: NUMERIC
 }
 
+SORT_SUPPORT = {
+    'mssql': {'default': 'lower', 'support': False},
+    'postgresql': {'default': 'higher', 'support': True},
+    'mysql': {'default': 'lower', 'support': False},
+    'oracle': {'default': 'higher', 'support': True},
+    'sqlite': {'default': 'lower', 'support': False}
+}
+
 
 class SqlAlchemyFdw(ForeignDataWrapper):
     """An SqlAlchemy foreign data wrapper.
@@ -220,7 +264,31 @@ class SqlAlchemyFdw(ForeignDataWrapper):
 
 
 
+    def _need_explicit_null_ordering(self, key):
+        support = SORT_SUPPORT[self.engine.dialect.name]
+        default = support['default']
+        no = None
+        if key.is_reversed:
+            no = nullsfirst if default == 'higher' else nullslast
+        else:
+            no = nullslast if default == 'higher' else nullsfirst
+        if key.nulls_first:
+            if no != nullsfirst:
+                return nullsfirst
+            return None
+        else:
+            if no != nullslast:
+                return nullslast
+            return None
+
     def can_sort(self, sortkeys):
+        if SORT_SUPPORT.get(self.engine.dialect.name) is None:
+            # We have no idea about defaults
+            return []
+        can_order_null = SORT_SUPPORT[self.engine.dialect.name]['support']
+        if (any((self._need_explicit_null_ordering(x) is not None
+                 for x in sortkeys)) and not can_order_null):
+            return []
         return sortkeys
 
     def explain(self, quals, columns, sortkeys=None, verbose=False):
@@ -253,10 +321,9 @@ class SqlAlchemyFdw(ForeignDataWrapper):
                 column = column.desc()
             if sortkey.collate:
                 column = column.collate('"%s"' % sortkey.collate)
-            if sortkey.nulls_first:
-                column = column.nullsfirst()
-            else:
-                column = column.nullslast()
+            null_ordering = self._need_explicit_null_ordering(sortkey)
+            if null_ordering:
+                column = null_ordering(column)
             statement = statement.order_by(column)
         return statement
 

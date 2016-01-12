@@ -66,6 +66,18 @@ select * from testalchemy where id in (1,2);
 
 select * from testalchemy where id not in (1, 2);
 
+select * from testalchemy order by avarchar;
+
+select * from testalchemy order by avarchar desc;
+
+select * from testalchemy order by avarchar desc nulls first;
+
+select * from testalchemy order by avarchar desc nulls last;
+
+select * from testalchemy order by avarchar nulls first;
+
+select * from testalchemy order by avarchar nulls last;
+
 select count(*) from testalchemy;
 
 DROP EXTENSION multicorn cascade;

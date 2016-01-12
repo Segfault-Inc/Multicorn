@@ -136,6 +136,60 @@ select * from testalchemy where id not in (1, 2);
   4 | 11-02-1922 | Tue Jan 02 23:12:54 1962 |    -3000 | 
 (2 rows)
 
+select * from testalchemy order by avarchar;
+ id |   adate    |           atimestamp            | anumeric |   avarchar   
+----+------------+---------------------------------+----------+--------------
+  3 | 01-02-1972 | Sun Jan 02 16:12:54 1972        |     4000 | another Test
+  2 | 03-05-1990 | Mon Mar 02 10:40:18.321023 1998 |     12.2 | Another Test
+  1 | 01-01-1980 | Tue Jan 01 11:01:21.132912 1980 |      3.4 | Test
+  4 | 11-02-1922 | Tue Jan 02 23:12:54 1962        |    -3000 | 
+(4 rows)
+
+select * from testalchemy order by avarchar desc;
+ id |   adate    |           atimestamp            | anumeric |   avarchar   
+----+------------+---------------------------------+----------+--------------
+  4 | 11-02-1922 | Tue Jan 02 23:12:54 1962        |    -3000 | 
+  1 | 01-01-1980 | Tue Jan 01 11:01:21.132912 1980 |      3.4 | Test
+  2 | 03-05-1990 | Mon Mar 02 10:40:18.321023 1998 |     12.2 | Another Test
+  3 | 01-02-1972 | Sun Jan 02 16:12:54 1972        |     4000 | another Test
+(4 rows)
+
+select * from testalchemy order by avarchar desc nulls first;
+ id |   adate    |           atimestamp            | anumeric |   avarchar   
+----+------------+---------------------------------+----------+--------------
+  4 | 11-02-1922 | Tue Jan 02 23:12:54 1962        |    -3000 | 
+  1 | 01-01-1980 | Tue Jan 01 11:01:21.132912 1980 |      3.4 | Test
+  2 | 03-05-1990 | Mon Mar 02 10:40:18.321023 1998 |     12.2 | Another Test
+  3 | 01-02-1972 | Sun Jan 02 16:12:54 1972        |     4000 | another Test
+(4 rows)
+
+select * from testalchemy order by avarchar desc nulls last;
+ id |   adate    |           atimestamp            | anumeric |   avarchar   
+----+------------+---------------------------------+----------+--------------
+  1 | 01-01-1980 | Tue Jan 01 11:01:21.132912 1980 |      3.4 | Test
+  2 | 03-05-1990 | Mon Mar 02 10:40:18.321023 1998 |     12.2 | Another Test
+  3 | 01-02-1972 | Sun Jan 02 16:12:54 1972        |     4000 | another Test
+  4 | 11-02-1922 | Tue Jan 02 23:12:54 1962        |    -3000 | 
+(4 rows)
+
+select * from testalchemy order by avarchar nulls first;
+ id |   adate    |           atimestamp            | anumeric |   avarchar   
+----+------------+---------------------------------+----------+--------------
+  4 | 11-02-1922 | Tue Jan 02 23:12:54 1962        |    -3000 | 
+  3 | 01-02-1972 | Sun Jan 02 16:12:54 1972        |     4000 | another Test
+  2 | 03-05-1990 | Mon Mar 02 10:40:18.321023 1998 |     12.2 | Another Test
+  1 | 01-01-1980 | Tue Jan 01 11:01:21.132912 1980 |      3.4 | Test
+(4 rows)
+
+select * from testalchemy order by avarchar nulls last;
+ id |   adate    |           atimestamp            | anumeric |   avarchar   
+----+------------+---------------------------------+----------+--------------
+  3 | 01-02-1972 | Sun Jan 02 16:12:54 1972        |     4000 | another Test
+  2 | 03-05-1990 | Mon Mar 02 10:40:18.321023 1998 |     12.2 | Another Test
+  1 | 01-01-1980 | Tue Jan 01 11:01:21.132912 1980 |      3.4 | Test
+  4 | 11-02-1922 | Tue Jan 02 23:12:54 1962        |    -3000 | 
+(4 rows)
+
 select count(*) from testalchemy;
  count 
 -------
