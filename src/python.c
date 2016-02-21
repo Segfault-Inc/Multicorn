@@ -484,9 +484,9 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 				errorCheck();
 				columnDef = lappend(columnDef, makeString(key));
 				columnDef = lappend(columnDef, makeConst(TYPEOID,
-								   -1, InvalidOid, -1, typOid, false, true));
-				columnDef = lappend(columnDef, makeConst(TYPEOID,
-								   -1, InvalidOid, -1, typmod, false, true));
+								   -1, InvalidOid, 4, ObjectIdGetDatum(typOid), false, true));
+				columnDef = lappend(columnDef, makeConst(INT4OID,
+								   -1, InvalidOid, 4, Int32GetDatum(typmod), false, true));
 				columnDef = lappend(columnDef, options);
 				columns_list = lappend(columns_list, columnDef);
 				PyMapping_SetItemString(columns_dict, key, column);

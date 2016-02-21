@@ -985,9 +985,9 @@ serializePlanState(MulticornPlanState * state)
 	List	   *result = NULL;
 
 	result = lappend(result, makeConst(INT4OID,
-						  -1, InvalidOid, -1, state->numattrs, false, true));
+						  -1, InvalidOid, 4, Int32GetDatum(state->numattrs), false, true));
 	result = lappend(result, makeConst(INT4OID,
-					-1, InvalidOid, -1, state->foreigntableid, false, true));
+					-1, InvalidOid, 4, Int32GetDatum(state->foreigntableid), false, true));
 	result = lappend(result, state->target_list);
 
 	result = lappend(result, serializeDeparsedSortGroup(state->pathkeys));
