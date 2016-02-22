@@ -1590,7 +1590,7 @@ pathKeys(MulticornPlanState * state)
 		}
 		item = lappend(item, attnums);
 		item = lappend(item, makeConst(INT4OID,
-									 -1, InvalidOid, -1, rows, false, true));
+									 -1, InvalidOid, 4, rows, false, true));
 		result = lappend(result, item);
 		Py_DECREF(p_keys);
 		Py_DECREF(p_cost);
