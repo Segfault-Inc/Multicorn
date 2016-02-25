@@ -165,8 +165,9 @@ except ImportError:
 
 from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.dialects.oracle import base as oracle_dialect
+from sqlalchemy.dialects.mssql import base as mssql_dialect
 from sqlalchemy.dialects.postgresql.base import (
-    ARRAY, ischema_names, PGDialect, NUMERIC)
+    ARRAY, ischema_names, PGDialect, NUMERIC, SMALLINT)
 import re
 import operator
 
@@ -217,7 +218,8 @@ OPERATORS = {
 }
 
 CONVERSION_MAP = {
-    oracle_dialect.NUMBER: NUMERIC
+    oracle_dialect.NUMBER: NUMERIC,
+    mssql_dialect.TINYINT: SMALLINT
 }
 
 SORT_SUPPORT = {
