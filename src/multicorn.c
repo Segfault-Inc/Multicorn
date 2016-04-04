@@ -24,6 +24,8 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "parser/parsetree.h"
+#include "dynloader.h"
+#include "executor/spi.h"
 
 
 PG_MODULE_MAGIC;
@@ -112,9 +114,18 @@ void
 _PG_init()
 {
 	HASHCTL		ctl;
-	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
-
+	MemoryContext oldctx;
+#if PY_MAJOR_VERSION >= 3
+	/* Make sure that the python interpreter is initialized by plpy
+	 * and not by Multicorn. */
+	SPI_connect();
+	SPI_execute("SELECT multicorn_check_plpython3u()", false, 0);
+	SPI_finish();
+#endif
+	oldctx =  MemoryContextSwitchTo(CacheMemoryContext);
+	if(!Py_IsInitialized()){
 	Py_Initialize();
+	}
 	RegisterXactCallback(multicorn_xact_callback, NULL);
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
