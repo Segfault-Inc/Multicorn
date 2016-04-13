@@ -18,4 +18,5 @@ ALTER server multicorn_srv options (DROP wrapper);
 
 CREATE server multicorn_empty_srv foreign data wrapper multicorn;
 
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;

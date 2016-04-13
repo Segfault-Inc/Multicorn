@@ -60,6 +60,7 @@ $$ language plpython3u;
 
 select cleanup_dir();
 
+SET client_min_messages=WARNING;
 DROP FUNCTION cleanup_dir();
 DROP TABLE temp_dir;
 DROP FUNCTION create_table();

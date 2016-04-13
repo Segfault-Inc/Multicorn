@@ -88,5 +88,6 @@ CREATE foreign table testmulticorn_write(
 	test_type 'date'
 );
 delete from testmulticorn_write;
+SET client_min_messages=WARNING;
 DROP USER MAPPING for postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

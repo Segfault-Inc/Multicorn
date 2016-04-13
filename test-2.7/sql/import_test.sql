@@ -12,4 +12,6 @@ IMPORT FOREIGN SCHEMA import_source EXCEPT (imported_table_1, imported_table_3) 
 SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.oid WHERE n.nspname = 'import_dest1';
 IMPORT FOREIGN SCHEMA import_source LIMIT TO (imported_table_1) FROM SERVER multicorn_srv INTO import_dest1;
 SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.oid WHERE n.nspname = 'import_dest1';
+
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;

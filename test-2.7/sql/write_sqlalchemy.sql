@@ -71,5 +71,6 @@ DELETE from testalchemy;
 
 SELECT * from basetable;
 
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;
 DROP TABLE basetable;

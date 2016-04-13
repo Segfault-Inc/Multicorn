@@ -196,8 +196,6 @@ select count(*) from testalchemy;
      4
 (1 row)
 
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 2 other objects
-DETAIL:  drop cascades to server multicorn_srv
-drop cascades to foreign table testalchemy
 DROP table basetable;

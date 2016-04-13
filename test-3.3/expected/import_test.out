@@ -37,8 +37,5 @@ SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.o
  imported_table_1
 (2 rows)
 
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 3 other objects
-DETAIL:  drop cascades to server multicorn_srv
-drop cascades to foreign table import_dest1.imported_table_2
-drop cascades to foreign table import_dest1.imported_table_1
