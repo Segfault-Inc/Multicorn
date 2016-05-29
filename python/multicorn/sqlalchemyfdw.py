@@ -164,10 +164,10 @@ except ImportError:
     from sqlalchemy import types as sqltypes
 
 from sqlalchemy.schema import Table, Column, MetaData
-from sqlalchemy.dialects.oracle import base as oracle_dialect
 from sqlalchemy.dialects.mssql import base as mssql_dialect
+from sqlalchemy.dialects.oracle import base as oracle_dialect
 from sqlalchemy.dialects.postgresql.base import (
-    ARRAY, ischema_names, PGDialect, NUMERIC, SMALLINT)
+    ARRAY, ischema_names, PGDialect, NUMERIC, SMALLINT, VARCHAR, TIMESTAMP, BYTEA, BOOLEAN, TEXT)
 import re
 import operator
 
@@ -217,9 +217,30 @@ OPERATORS = {
     ('<>', False): not_(sqlops.in_op)
 }
 
+def basic_converter(new_type):
+    def converter(c):
+        old_args = c.type.__dict__
+        c.type = new_type()
+        c.type.__dict__.update(old_args)
+    return converter
+
+def length_stripper(new_type):
+    first = basic_converter(new_type)
+    def converter(c):
+        first(c)
+        c.type.__dict__['length'] = None
+    return converter
+
 CONVERSION_MAP = {
-    oracle_dialect.NUMBER: NUMERIC,
-    mssql_dialect.TINYINT: SMALLINT
+    oracle_dialect.NUMBER: basic_converter(NUMERIC),
+
+    mssql_dialect.TINYINT: basic_converter(SMALLINT),
+    mssql_dialect.NVARCHAR: basic_converter(VARCHAR),
+    mssql_dialect.DATETIME: basic_converter(TIMESTAMP),
+    mssql_dialect.VARBINARY: basic_converter(BYTEA),
+    mssql_dialect.IMAGE: basic_converter(BYTEA),
+    mssql_dialect.BIT: basic_converter(BOOLEAN),
+    mssql_dialect.TEXT: length_stripper(TEXT)
 }
 
 SORT_SUPPORT = {
@@ -490,10 +511,8 @@ class SqlAlchemyFdw(ForeignDataWrapper):
                 # If the type is specialized, call the generic
                 # superclass method
                 if type(c.type) in CONVERSION_MAP:
-                    class_name = CONVERSION_MAP[type(c.type)]
-                    old_args = c.type.__dict__
-                    c.type = class_name()
-                    c.type.__dict__.update(old_args)
+                    converter = CONVERSION_MAP[type(c.type)]
+                    converter(c)
                 if c.primary_key:
                     ftable.options['primary_key'] = c.name
                 ftable.columns.append(ColumnDefinition(
