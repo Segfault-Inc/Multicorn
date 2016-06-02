@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 PG_CONFIG=$(which pg_config)
 PY_VERSION=$(python --version 2>&1 | awk '{ print substr($2,1,3)}')
