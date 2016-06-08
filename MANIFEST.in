@@ -1,0 +1,7 @@
+include src/multicorn.h
+include multicorn.control
+include sql/multicorn.sql
+include doc/multicorn.md
+include src/*
+include Makefile
+include preflight-check.sh
