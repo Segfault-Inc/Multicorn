@@ -16,19 +16,9 @@
 #include "postgres.h"
 #include "multicorn.h"
 #include "miscadmin.h"
-
-
-struct module_state
-{
-	PyObject   *error;
-};
-
-#if PY_MAJOR_VERSION >= 3
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
+#include "utils.h"
+#include "python.h"
+#include "errors.h"
 
 static PyObject *
 log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -130,43 +120,48 @@ static PyMethodDef UtilsMethods[] = {
 	{NULL, NULL, 0, NULL}
 };
 
+
+
 #if PY_MAJOR_VERSION >= 3
 
 static struct PyModuleDef moduledef = {
-	PyModuleDef_HEAD_INIT,
-	"multicorn._utils",
-	NULL,
-	sizeof(struct module_state),
-	UtilsMethods,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+    PyModuleDef_HEAD_INIT,
+    "multicorn._utils",
+    NULL,
+    sizeof(struct module_state),
+    UtilsMethods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
 };
-
-#define INITERROR return NULL
 
 PyObject *
 PyInit__utils(void)
+{
+    PyObject   *module = PyModule_Create(&moduledef);
+    struct module_state *st;
+
+    if (module == NULL)
+		return NULL;
+
+	st = ((struct module_state*)PyModule_GetState(module))
+
+	return module;
+}
 #else
-#define INITERROR return
+
+// static struct module_state _state;
 
 void
 init_utils(void)
-#endif
 {
-#if PY_MAJOR_VERSION >= 3
-	PyObject   *module = PyModule_Create(&moduledef);
-#else
-	PyObject   *module = Py_InitModule("multicorn._utils", UtilsMethods);
-#endif
-	struct module_state *st;
+    PyObject   *module = Py_InitModule("multicorn._utils", UtilsMethods);
+    // struct module_state *st;
 
-	if (module == NULL)
-		INITERROR;
-	st = GETSTATE(module);
+    if (module == NULL)
+		return;
 
-#if PY_MAJOR_VERSION >= 3
-	return module;
-#endif
+	// st = &_state;
 }
+#endif

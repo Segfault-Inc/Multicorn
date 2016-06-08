@@ -16,6 +16,9 @@
 #include "nodes/relation.h"
 #include "utils/builtins.h"
 #include "utils/syscache.h"
+#include "utils/timestamp.h"
+#include "access/xact.h"
+
 
 #ifndef PG_MULTICORN_H
 #define PG_MULTICORN_H
@@ -130,78 +133,14 @@ typedef struct MulticornDeparsedSortGroup
 	PathKey	*key;
 } MulticornDeparsedSortGroup;
 
-/* errors.c */
-void		errorCheck(void);
+extern HTAB	   *InstancesHash;
 
-/* python.c */
-PyObject   *pgstringToPyUnicode(const char *string);
-char	  **pyUnicodeToPgString(PyObject *pyobject);
+void _PG_init(void);
+void _PG_fini(void);
+Datum multicorn_handler(PG_FUNCTION_ARGS);
+Datum multicorn_validator(PG_FUNCTION_ARGS);
 
-PyObject   *getInstance(Oid foreigntableid);
-PyObject   *qualToPyObject(Expr *expr, PlannerInfo *root);
-PyObject   *getClassString(const char *className);
-PyObject   *execute(ForeignScanState *state, ExplainState *es);
-void pythonResultToTuple(PyObject *p_value,
-					TupleTableSlot *slot,
-					ConversionInfo ** cinfos,
-					StringInfo buffer);
-PyObject   *tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos);
-char	   *getRowIdColumn(PyObject *fdw_instance);
-PyObject   *optionsListToPyDict(List *options);
-const char *getPythonEncodingName(void);
-
-void getRelSize(MulticornPlanState * state,
-		PlannerInfo *root,
-		double *rows,
-		int *width);
-
-List	   *pathKeys(MulticornPlanState * state);
-
-List	   *canSort(MulticornPlanState * state, List *deparsed);
-
-CacheEntry *getCacheEntry(Oid foreigntableid);
-UserMapping *multicorn_GetUserMapping(Oid userid, Oid serverid);
-
-
-/* Hash table mapping oid to fdw instances */
-extern PGDLLIMPORT HTAB *InstancesHash;
-
-
-/* query.c */
-void extractRestrictions(Relids base_relids,
-					Expr *node,
-					List **quals);
-List	   *extractColumns(List *reltargetlist, List *restrictinfolist);
-void initConversioninfo(ConversionInfo ** cinfo,
-		AttInMetadata *attinmeta);
-
-Value *colnameFromVar(Var *var, PlannerInfo *root,
-		MulticornPlanState * state);
-
-void computeDeparsedSortGroup(List *deparsed, MulticornPlanState *planstate,
-		List **apply_pathkeys,
-		List **deparsed_pathkeys);
-
-List	*findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
-		int startupCost,
-		MulticornPlanState *state,
-		List *apply_pathkeys, List *deparsed_pathkeys);
-
-List        *deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel);
-
-PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
-
-List	*serializeDeparsedSortGroup(List *pathkeys);
-List	*deserializeDeparsedSortGroup(List *items);
+void * serializePlanState(MulticornPlanState * state);
+MulticornExecState * initializeExecState(void *internalstate);
 
 #endif   /* PG_MULTICORN_H */
-
-char	   *PyUnicode_AsPgString(PyObject *p_unicode);
-
-#if PY_MAJOR_VERSION >= 3
-PyObject   *PyString_FromString(const char *s);
-PyObject   *PyString_FromStringAndSize(const char *s, Py_ssize_t size);
-char	   *PyString_AsString(PyObject *unicode);
-int			PyString_AsStringAndSize(PyObject *unicode, char **tempbuffer, Py_ssize_t *length);
-
-#endif

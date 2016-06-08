@@ -15,11 +15,7 @@
 #include "multicorn.h"
 #include "bytesobject.h"
 #include "access/xact.h"
-
-void reportException(PyObject *pErrType,
-				PyObject *pErrValue,
-				PyObject *pErrTraceback);
-
+#include "errors.h"
 
 void
 errorCheck()
