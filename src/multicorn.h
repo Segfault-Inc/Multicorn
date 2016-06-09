@@ -91,6 +91,7 @@ typedef struct MulticornModifyState
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
 	ConversionInfo *rowidCinfo;
+    List* update_columns_list;
 }	MulticornModifyState;
 
 

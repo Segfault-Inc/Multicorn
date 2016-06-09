@@ -235,8 +235,10 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	}
 	else
 	{
+        Query* parsetree = root->parse;
 		/* Pull "var" clauses to build an appropriate target list */
-		foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
+        // foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
+        foreach(lc, extractColumns(parsetree->targetList, baserel->baserestrictinfo))
 		{
 			Var		   *var = (Var *) lfirst(lc);
 			Value	   *colname;
@@ -589,7 +591,40 @@ multicornPlanForeignModify(PlannerInfo *root,
 						   Index resultRelation,
 						   int subplan_index)
 {
-	return NULL;
+
+
+    CmdType     operation = plan->operation;
+    RangeTblEntry *rte = planner_rt_fetch(resultRelation, root);
+    List       *update_columns_list = NIL;
+    Relation    rel;
+
+    rel = heap_open(rte->relid, NoLock);
+
+    if (operation == CMD_UPDATE)
+    {
+       ListCell   *lc;
+
+        TupleDesc desc = RelationGetDescr(rel);
+
+        int         col=-1;
+        while ((col = bms_next_member(rte->updatedCols, col)) >= 0)
+        {
+            /* bit numbers are offset by FirstLowInvalidHeapAttributeNumber */
+            AttrNumber  attno = col + FirstLowInvalidHeapAttributeNumber;
+
+            if (attno <= InvalidAttrNumber)     /* shouldn't happen */
+                elog(ERROR, "system-column update is not supported");
+
+            Form_pg_attribute att = desc->attrs[attno-1];
+
+            update_columns_list = lappend(update_columns_list, makeString(NameStr(att->attname)));
+
+        }
+    }
+
+    heap_close(rel, NoLock);
+
+    return list_make1(update_columns_list);
 }
 
 
@@ -643,6 +678,11 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	}
 	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
 	resultRelInfo->ri_FdwState = modstate;
+
+    if (fdw_private) {
+        // deserialise fdw_private and put update list into the mtstate variable
+        modstate->update_columns_list = (List *) list_nth(fdw_private, 0);
+    }
 }
 
 /*
@@ -721,14 +761,15 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	PyObject   *fdw_instance = modstate->fdw_instance,
 			   *p_row_id,
 			   *p_new_value,
-			   *p_value = tupleTableSlotToPyObject(slot, modstate->cinfos);
+			   *p_value = tupleTableSlotToPyObject(slot, modstate->cinfos),
+               *p_update_columns = valuesToPySet(modstate->update_columns_list);
 	bool		is_null;
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
-									  p_value);
+    //Change call to the 4 parameters version of the python call to enable passing of p_update_columns. If that call is not utilised in the wrapper (ie old API) then the old 3 parameter is called dropping p_update_columns ensuring same functionality
+	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O,O)", p_row_id, p_update_columns, p_value);
 	errorCheck();
 	if (p_new_value != NULL && p_new_value != Py_None)
 	{
@@ -737,6 +778,7 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 		ExecStoreVirtualTuple(slot);
 	}
 	Py_XDECREF(p_new_value);
+    Py_DECREF(p_update_columns);
 	Py_DECREF(p_row_id);
 	errorCheck();
 	return slot;
