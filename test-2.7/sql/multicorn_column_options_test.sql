@@ -24,5 +24,5 @@ select * from testmulticorn limit 1;
 ALTER foreign table testmulticorn alter test1 options (add prefix 'test3');
 
 select * from testmulticorn limit 1;
-
+DROP USER MAPPING for postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

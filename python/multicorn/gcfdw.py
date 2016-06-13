@@ -1,8 +1,7 @@
 from multicorn import ForeignDataWrapper
 import gc
 import sys
-import random
-from multicorn.compat import unicode_, basestring_
+from multicorn.compat import unicode_
 
 
 class MyClass(object):
@@ -10,6 +9,7 @@ class MyClass(object):
     def __init__(self, num, rand):
         self.num = num
         self.rand = rand
+
 
 class GCForeignDataWrapper(ForeignDataWrapper):
 
@@ -31,10 +31,11 @@ class GCForeignDataWrapper(ForeignDataWrapper):
                     except (UnicodeEncodeError, UnicodeDecodeError):
                         obj = unicode_("<NA>")
             result.append({'object': obj,
-                   'type': unicode_(tobj),
-                   'id': unicode_(id(obj)),
-                   'refcount': unicode_(sys.getrefcount(obj))})
+                           'type': unicode_(tobj),
+                           'id': unicode_(id(obj)),
+                           'refcount': unicode_(sys.getrefcount(obj))})
         return result
+
 
 class MemStressFDW(ForeignDataWrapper):
 
@@ -48,5 +49,5 @@ class MemStressFDW(ForeignDataWrapper):
         for i in range(self.nb):
             num = i / 100.
             yield {'value': str(MyClass(i, num)),
-                           'i': i,
-                           'num': num}
+                   'i': i,
+                   'num': num}

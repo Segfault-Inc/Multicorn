@@ -8,3 +8,5 @@ sql/multicorn--*.sql
 /build
 /dist
 /results
+doc/_build
+doc/dist

@@ -19,5 +19,5 @@ select * from testmulticorn;
 select * from testmulticorn where test1 < '2011-06-01';
 
 select * from testmulticorn where test2 < '2011-06-01 00:00:00';
-
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

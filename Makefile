@@ -1,27 +1,34 @@
+srcdir       = .
 MODULE_big   = multicorn
 OBJS         =  src/errors.o src/python.o src/query.o src/multicorn.o
 
 
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 
-DOCS         = $(wildcard doc/*.md)
+DOCS         = $(wildcard $(srcdir)/doc/*.md)
 
 EXTENSION    = multicorn
-EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
+EXTVERSION   = $(shell grep default_version $(srcdir)/$(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
 
 all: preflight-check sql/$(EXTENSION)--$(EXTVERSION).sql
 
-install: python_code
+directories.stamp:
+	[ -d sql ] || mkdir sql
+	[ -d src ] || mkdir src
+	touch $@
 
-sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
+$(OBJS): directories.stamp
+
+install: python_code 
+
+sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql directories.stamp
 	cp $< $@
 
 preflight-check:
-	./preflight-check.sh
-
+	$(srcdir)/preflight-check.sh
 
 python_code: setup.py
-	cp ./setup.py ./setup--$(EXTVERSION).py
+	cp $(srcdir)/setup.py ./setup--$(EXTVERSION).py
 	sed -i -e "s/__VERSION__/$(EXTVERSION)-dev/g" ./setup--$(EXTVERSION).py
 	$(PYTHON) ./setup--$(EXTVERSION).py install
 	rm ./setup--$(EXTVERSION).py
@@ -35,13 +42,16 @@ release-zip: all
 	rm ./multicorn-$(EXTVERSION) -rf
 
 coverage:
-	lcov -d . -c -o lcov.info
-	genhtml --show-details --legend --output-directory=coverage --title=PostgreSQL --num-spaces=4 --prefix=./src/ `find . -name lcov.info -print`
+	lcov -d . -c -o lcov.info --no-external
+	genhtml --show-details --legend --output-directory=coverage --title="Multicorn Code Coverage" --no-branch-coverage --num-spaces=4 --prefix=./src/ `find . -name lcov.info -print`
 
-DATA = $(wildcard sql/*--*.sql)
-EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip
+DATA = sql/$(EXTENSION)--$(EXTVERSION).sql
+EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql ./multicorn-$(EXTVERSION).zip directories.stamp
 PG_CONFIG ?= pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
+REGRESS      = virtual_tests
+
+include $(PGXS)
 
 with_python_no_override = no
 
@@ -53,9 +63,11 @@ ifdef PYTHON_OVERRIDE
 	with_python_no_override = no
 endif
 
+
 ifeq ($(with_python_no_override),yes)
 	SHLIB_LINK = $(python_libspec) $(python_additional_libs) $(filter -lintl,$(LIBS))
 	override CPPFLAGS := -I. -I$(srcdir) $(python_includespec) $(CPPFLAGS)
+	override PYTHON = python${python_version}
 else
 	ifdef PYTHON_OVERRIDE
 		override PYTHON = ${PYTHON_OVERRIDE}
@@ -65,24 +77,60 @@ else
 		override PYTHON = python
 	endif
 
-	PY_VERSION = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
-	PYTHON_CONFIG ?= python${PY_VERSION}-config
+
+	python_version = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
+	PYTHON_CONFIG ?= python${python_version}-config
 
 	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
 	PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
 	PY_CFLAGS = $(shell ${PYTHON_CONFIG} --cflags)
 	PY_LDFLAGS = $(shell ${PYTHON_CONFIG} --ldflags)
-	SHLIB_LINK = $(PY_LIBSPEC) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
+	SHLIB_LINK += $(PY_LIBSPEC) $(PY_LDFLAGS) $(PY_ADDITIONAL_LIBS) $(filter -lintl,$(LIBS))
 	override PG_CPPFLAGS  := $(PY_INCLUDESPEC) $(PG_CPPFLAGS)
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
 
-$(info Python version is $(PY_VERSION))
-TESTS        = $(wildcard test-$(PY_VERSION)/sql/*.sql)
-REGRESS      = $(patsubst test-$(PY_VERSION)/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test-$(PY_VERSION) --load-language=plpgsql
+ifeq ($(PORTNAME),darwin)
+	override LDFLAGS += -undefined dynamic_lookup -bundle_loader $(shell $(PG_CONFIG) --bindir)/postgres
+endif
 
-include $(PGXS)
+PYTHON_TEST_VERSION ?= $(python_version)
+PG_TEST_VERSION ?= $(MAJORVERSION)
+SUPPORTS_WRITE=$(shell expr ${PG_TEST_VERSION} \>= 9.3)
+SUPPORTS_IMPORT=$(shell expr ${PG_TEST_VERSION} \>= 9.5)
+UNSUPPORTS_SQLALCHEMY=$(shell python -c "import sqlalchemy;import psycopg2"  1> /dev/null 2>&1; echo $$?)
 
+TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_column_options_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_error_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_logger_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_planner_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_regression_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_sequence_test.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_date.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_dict.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_list.sql \
+  test-$(PYTHON_TEST_VERSION)/sql/multicorn_test_sort.sql
 
+ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/multicorn_alchemy_test.sql
+endif
+ifeq (${SUPPORTS_WRITE}, 1)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_filesystem.sql \
+	test-$(PYTHON_TEST_VERSION)/sql/write_savepoints.sql \
+	test-$(PYTHON_TEST_VERSION)/sql/write_test.sql
+  ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
+	TESTS += test-$(PYTHON_TEST_VERSION)/sql/write_sqlalchemy.sql
+  endif
+endif
+ifeq (${SUPPORTS_IMPORT}, 1)
+  TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_test.sql
+  ifeq (${UNSUPPORTS_SQLALCHEMY}, 0)
+	TESTS += test-$(PYTHON_TEST_VERSION)/sql/import_sqlalchemy.sql
+  endif
+endif
 
+REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
+REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --load-language=plpgsql
+
+$(info Python version is $(python_version))

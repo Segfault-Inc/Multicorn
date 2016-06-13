@@ -9,7 +9,8 @@ CREATE foreign table testmulticorn (
     test2 character varying
 ) server multicorn_srv options (
     option1 'option1',
-    test_type 'nowrite'
+    test_type 'nowrite',
+    tx_hook 'true'
 );
 
 insert into testmulticorn(test1, test2) VALUES ('test', 'test2');
@@ -24,7 +25,8 @@ CREATE foreign table testmulticorn_write (
 ) server multicorn_srv options (
     option1 'option1',
     row_id_column 'test1',
-	test_type 'returning'
+	test_type 'returning',
+    tx_hook 'true'
 );
 
 insert into testmulticorn_write(test1, test2) VALUES ('test', 'test2');
@@ -86,5 +88,5 @@ CREATE foreign table testmulticorn_write(
 	test_type 'date'
 );
 delete from testmulticorn_write;
-
+DROP USER MAPPING for postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

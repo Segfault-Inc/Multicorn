@@ -1,0 +1,57 @@
+SET client_min_messages=NOTICE;
+CREATE EXTENSION multicorn;
+CREATE server multicorn_srv foreign data wrapper multicorn options (
+    wrapper 'multicorn.testfdw.TestForeignDataWrapper'
+);
+CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE foreign table testmulticorn (
+    test1 date,
+    test2 timestamp
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'date'
+);
+-- Test sort pushdown asked
+EXPLAIN SELECT * FROM testmulticorn ORDER BY test1 DESC;
+NOTICE:  [('option1', 'option1'), ('test_type', 'date'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
+                              QUERY PLAN                              
+----------------------------------------------------------------------
+ Foreign Scan on testmulticorn  (cost=10.00..400.00 rows=20 width=20)
+(1 row)
+
+-- Data should be sorted
+SELECT * FROM testmulticorn ORDER BY test1 DESC;
+NOTICE:  []
+NOTICE:  ['test1', 'test2']
+NOTICE:  requested sort(s): 
+NOTICE:  SortKey(attname='test1', attnum=1, is_reversed=True, nulls_first=True, collate=None)
+   test1    |          test2           
+------------+--------------------------
+ 12-02-2011 | Sat Dec 03 14:30:25 2011
+ 11-03-2011 | Tue Nov 01 14:30:25 2011
+ 10-01-2011 | Sun Oct 02 14:30:25 2011
+ 09-02-2011 | Sat Sep 03 14:30:25 2011
+ 08-03-2011 | Mon Aug 01 14:30:25 2011
+ 08-03-2011 | Mon Aug 01 14:30:25 2011
+ 07-01-2011 | Sat Jul 02 14:30:25 2011
+ 07-01-2011 | Sat Jul 02 14:30:25 2011
+ 06-02-2011 | Fri Jun 03 14:30:25 2011
+ 06-02-2011 | Fri Jun 03 14:30:25 2011
+ 05-03-2011 | Sun May 01 14:30:25 2011
+ 05-03-2011 | Sun May 01 14:30:25 2011
+ 04-01-2011 | Sat Apr 02 14:30:25 2011
+ 04-01-2011 | Sat Apr 02 14:30:25 2011
+ 03-02-2011 | Thu Mar 03 14:30:25 2011
+ 03-02-2011 | Thu Mar 03 14:30:25 2011
+ 02-03-2011 | Tue Feb 01 14:30:25 2011
+ 02-03-2011 | Tue Feb 01 14:30:25 2011
+ 01-01-2011 | Sun Jan 02 14:30:25 2011
+ 01-01-2011 | Sun Jan 02 14:30:25 2011
+(20 rows)
+
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to server multicorn_srv
+drop cascades to foreign table testmulticorn

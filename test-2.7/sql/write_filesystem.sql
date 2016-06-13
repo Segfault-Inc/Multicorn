@@ -1,11 +1,12 @@
 -- Setup the test
+
 CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.fsfdw.FilesystemFdw'
 );
 
-CREATE language plpythonu;
 
+CREATE language plpythonu;
 CREATE TABLE temp_dir (dirname varchar);
 
 -- Create a table with the filesystem fdw in a temporary directory,

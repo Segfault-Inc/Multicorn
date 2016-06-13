@@ -1,6 +1,7 @@
 from logging import ERROR, INFO, DEBUG, WARNING, CRITICAL
 try:
     from ._utils import _log_to_postgres
+    from ._utils import check_interrupts
 except ImportError as e:
     from warnings import warn
     warn("Not executed in a postgresql server,"
@@ -11,11 +12,11 @@ except ImportError as e:
 
 
 REPORT_CODES = {
-        DEBUG: 0,
-        INFO: 1,
-        WARNING: 2,
-        ERROR: 3,
-        CRITICAL: 4
+    DEBUG: 0,
+    INFO: 1,
+    WARNING: 2,
+    ERROR: 3,
+    CRITICAL: 4
 }
 
 
@@ -24,3 +25,4 @@ def log_to_postgres(message, level=INFO, hint=None, detail=None):
     if code is None:
         raise KeyError("Not a valid log level")
     _log_to_postgres(message, code, hint=hint, detail=detail)
+

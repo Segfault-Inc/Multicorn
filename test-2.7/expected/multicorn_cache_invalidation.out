@@ -13,11 +13,8 @@ CREATE foreign table testmulticorn (
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying(20)'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |   test2    
 ------------+------------
  test1 1 0  | test2 2 0
@@ -46,11 +43,8 @@ ALTER foreign table testmulticorn drop column test1;
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
 NOTICE:  [('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    
 ------------
  test2 1 0
@@ -79,11 +73,8 @@ ALTER foreign table testmulticorn add column test1 varchar;
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    |   test1    
 ------------+------------
  test2 1 0  | test1 2 0
@@ -112,11 +103,8 @@ ALTER foreign table testmulticorn add column test3 varchar;
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying'), ('test3', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2', 'test3']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    |   test1    |   test3    
 ------------+------------+------------
  test2 1 0  | test1 2 0  | test3 3 0
@@ -145,11 +133,8 @@ ALTER foreign table testmulticorn options (SET option1 'option1_update');
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1_update'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying'), ('test3', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2', 'test3']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    |   test1    |   test3    
 ------------+------------+------------
  test2 1 0  | test1 2 0  | test3 3 0
@@ -178,11 +163,8 @@ ALTER foreign table testmulticorn options (ADD option2 'option2');
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1_update'), ('option2', 'option2'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying'), ('test3', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2', 'test3']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    |   test1    |   test3    
 ------------+------------+------------
  test2 1 0  | test1 2 0  | test3 3 0
@@ -211,11 +193,8 @@ ALTER foreign table testmulticorn options (DROP option2);
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1_update'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying'), ('test3', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2', 'test3']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    |   test1    |   test3    
 ------------+------------+------------
  test2 1 0  | test1 2 0  | test3 3 0
@@ -245,11 +224,8 @@ ALTER foreign table testmulticorn options (ADD test_type 'sequence');
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1_update'), ('test_type', 'sequence'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying'), ('test3', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2', 'test3']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    |   test1    |   test3    
 ------------+------------+------------
  test2 1 0  | test1 2 0  | test3 3 0
@@ -278,11 +254,8 @@ ALTER foreign table testmulticorn drop test3;
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1_update'), ('test_type', 'sequence'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    |   test1    
 ------------+------------
  test2 1 0  | test1 2 0
@@ -311,11 +284,8 @@ ALTER foreign table testmulticorn alter test1 type varchar(30);
 select * from testmulticorn limit 1;
 NOTICE:  [('option1', 'option1_update'), ('test_type', 'sequence'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying(30)'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2   |   test1   
 -----------+-----------
  test2 1 0 | test1 2 0
@@ -325,11 +295,8 @@ ALTER foreign table testmulticorn alter test1 type text;
 select * from testmulticorn limit 1;
 NOTICE:  [('option1', 'option1_update'), ('test_type', 'sequence'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'text'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2   |   test1   
 -----------+-----------
  test2 1 0 | test1 2 0
@@ -337,18 +304,15 @@ NOTICE:  COMMIT
 
 ALTER foreign table testmulticorn rename test1 to testnew;
 select * from testmulticorn limit 1;
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test2', 'testnew']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2   |  testnew  
 -----------+-----------
  test2 1 0 | test1 2 0
 (1 row)
 
-DROP extension multicorn cascade;
-NOTICE:  drop cascades to 3 other objects
+DROP USER MAPPING for postgres SERVER multicorn_srv;
+DROP EXTENSION multicorn cascade;
+NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv
-drop cascades to user mapping for postgres
 drop cascades to foreign table testmulticorn

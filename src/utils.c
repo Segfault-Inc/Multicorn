@@ -14,6 +14,8 @@
  */
 #include <Python.h>
 #include "postgres.h"
+#include "multicorn.h"
+#include "miscadmin.h"
 
 
 struct module_state
@@ -94,30 +96,37 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 		{
 			hintstr = PyString_AsString(hint);
 			errhint("%s", hintstr);
-			Py_DECREF(hint);
 		}
 		if (detail != NULL && detail != Py_None)
 		{
 			detailstr = PyString_AsString(detail);
 			errdetail("%s", detailstr);
-			Py_DECREF(detail);
 		}
 		Py_DECREF(args);
 		Py_DECREF(kwargs);
-		Py_INCREF(Py_None);
 		errfinish(0);
 	}
 	else
 	{
 		Py_DECREF(args);
 		Py_DECREF(kwargs);
-		Py_INCREF(Py_None);
 	}
+	Py_INCREF(Py_None);
 	return Py_None;
 }
 
+static PyObject *
+py_check_interrupts(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+	CHECK_FOR_INTERRUPTS();
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
+
 static PyMethodDef UtilsMethods[] = {
 	{"_log_to_postgres", (PyCFunction) log_to_postgres, METH_VARARGS | METH_KEYWORDS, "Log to postresql client"},
+	{"check_interrupts", (PyCFunction) py_check_interrupts, METH_VARARGS | METH_KEYWORDS, "Gives control back to PostgreSQL"},
 	{NULL, NULL, 0, NULL}
 };
 
@@ -151,10 +160,11 @@ init_utils(void)
 #else
 	PyObject   *module = Py_InitModule("multicorn._utils", UtilsMethods);
 #endif
+	struct module_state *st;
 
 	if (module == NULL)
 		INITERROR;
-	struct module_state *st = GETSTATE(module);
+	st = GETSTATE(module);
 
 #if PY_MAJOR_VERSION >= 3
 	return module;

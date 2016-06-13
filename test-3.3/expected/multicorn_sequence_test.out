@@ -15,11 +15,8 @@ CREATE foreign table testmulticorn (
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('test_type', 'sequence'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |   test2    
 ------------+------------
  test1 1 0  | test2 2 0
@@ -46,11 +43,8 @@ NOTICE:  COMMIT
 
 -- Test quals
 select * from testmulticorn where test1 like '%0';
-NOTICE:  BEGIN
 NOTICE:  [test1 ~~ %0]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |   test2    
 ------------+------------
  test1 1 0  | test2 2 0
@@ -58,11 +52,8 @@ NOTICE:  COMMIT
 (2 rows)
 
 select * from testmulticorn where test1 ilike '%0';
-NOTICE:  BEGIN
 NOTICE:  [test1 ~~* %0]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |   test2    
 ------------+------------
  test1 1 0  | test2 2 0
@@ -71,11 +62,8 @@ NOTICE:  COMMIT
 
 -- Test columns
 select test2 from testmulticorn;
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test2    
 ------------
  test2 2 0
@@ -103,7 +91,6 @@ NOTICE:  COMMIT
 -- Test subquery plan
 select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where substr(t2.test1, 7, 1)::int = substr(t1.test1, 7, 1)::int) as max
 from testmulticorn t1 order by max desc;
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1']
 NOTICE:  []
@@ -146,8 +133,6 @@ NOTICE:  []
 NOTICE:  ['test1']
 NOTICE:  []
 NOTICE:  ['test1']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    | max 
 ------------+-----
  test1 1 12 |   9
@@ -174,7 +159,6 @@ NOTICE:  COMMIT
 
 select test1, (select max(substr(test1, 9, 1))::int as max from testmulticorn t2 where t2.test1 = t1.test1) as max
 from testmulticorn t1 order by max desc;
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1']
 NOTICE:  [test1 = test1 1 0]
@@ -217,8 +201,6 @@ NOTICE:  [test1 = test1 1 18]
 NOTICE:  ['test1']
 NOTICE:  [test1 = test1 3 19]
 NOTICE:  ['test1']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    | max 
 ------------+-----
  test1 1 9  |   9
@@ -244,21 +226,15 @@ NOTICE:  COMMIT
 (20 rows)
 
 select * from testmulticorn where test1 is null;
-NOTICE:  BEGIN
 NOTICE:  [test1 = None]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
  test1 | test2 
 -------+-------
 (0 rows)
 
 select * from testmulticorn where test1 is not null;
-NOTICE:  BEGIN
 NOTICE:  [test1 <> None]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
    test1    |   test2    
 ------------+------------
  test1 1 0  | test2 2 0
@@ -284,21 +260,15 @@ NOTICE:  COMMIT
 (20 rows)
 
 select * from testmulticorn where 'grou' > test1;
-NOTICE:  BEGIN
 NOTICE:  [test1 < grou]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
  test1 | test2 
 -------+-------
 (0 rows)
 
 select * from testmulticorn where test1 < ANY(ARRAY['grou', 'MACHIN']);
-NOTICE:  BEGIN
 NOTICE:  [test1 < ANY(['grou', 'MACHIN'])]
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
  test1 | test2 
 -------+-------
 (0 rows)
@@ -310,18 +280,12 @@ CREATE foreign table testmulticorn2 (
     option1 'option2'
 );
 select * from testmulticorn union all select * from testmulticorn2;
-NOTICE:  BEGIN
 NOTICE:  [('option1', 'option2'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
-NOTICE:  COMMIT
    test1    |   test2    
 ------------+------------
  test1 1 0  | test2 2 0
@@ -366,9 +330,9 @@ NOTICE:  COMMIT
  test1 3 19 | test2 1 19
 (40 rows)
 
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 4 other objects
+NOTICE:  drop cascades to 3 other objects
 DETAIL:  drop cascades to server multicorn_srv
-drop cascades to user mapping for postgres
 drop cascades to foreign table testmulticorn
 drop cascades to foreign table testmulticorn2

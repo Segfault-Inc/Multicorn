@@ -77,12 +77,8 @@ select * from testmulticorn where test1 like length(test2)::varchar;
 \set FETCH_COUNT 1000
 select * from testmulticorn;
 
-ALTER FOREIGN TABLE testmulticorn options (add test_type 'encoding');
-
-select * from testmulticorn limit 1;
-
 -- Test that zero values are converted to zero and not null
-ALTER FOREIGN TABLE testmulticorn options (set test_type 'int');
+ALTER FOREIGN TABLE testmulticorn options (add test_type 'int');
 ALTER FOREIGN TABLE testmulticorn alter test1 type integer;
 
 select * from testmulticorn limit 1;
@@ -111,4 +107,5 @@ ALTER FOREIGN TABLE testmulticorn add test3 money;
 SELECT * from testmulticorn where test3 = 12::money;
 SELECT * from testmulticorn where test1 = '12 €';
 
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

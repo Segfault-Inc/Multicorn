@@ -18,5 +18,5 @@ CREATE foreign table testmulticorn (
 select * from testmulticorn;
 
 select test1 -> 'repeater' as r from testmulticorn order by r;
-
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

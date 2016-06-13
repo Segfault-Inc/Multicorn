@@ -38,5 +38,5 @@ explain select * from testmulticorn m1 inner join testmulticorn m2 on m1.test1 =
 
 explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.test1 = m2.test1;
 
-
+DROP USER MAPPING for postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

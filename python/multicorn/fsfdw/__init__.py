@@ -1,4 +1,103 @@
 """
+Purpose
+-------
+
+This fdw can be used to access data stored in various files, in a filesystem.
+The files are looked up based on a pattern, and parts of the file's path are
+mapped to various columns, as well as the file's content itself.
+
+.. api_compat::
+    :read:
+    :write:
+    :transaction:
+
+Dependencies
+------------
+
+No dependency outside the standard python distribution.
+
+
+Options
+-------
+
+``root_dir`` (required)
+  The base directory from which the pattern is evaluated. The files in this
+  directory should be readable by the PostgreSQL user. Ex: ``/var/www/``.
+
+``pattern`` (required)
+  A pattern defining which files to match, and wich parts of the file path are
+  used as columns. A column name between braces defines a mapping from a path
+  part to a column. Ex: ``{artist}/{album}/{trackno} - {trackname}.ogg``.
+
+``content_column``
+  If set, defines which column will contain the actual file content.
+
+``filename_column``
+  If set, defines which column will contain the full filename.
+
+``file_mode`` (default: 700)
+  The unix permission mask to be used when creating files.
+
+Usage Example
+-------------
+
+Supposing you want to access files in a directory structured like this::
+
+    base_dir/
+        artist1/
+            album1/
+                01 - title1.ogg
+                02 - title2.ogg
+            album2/
+                01 - title1.ogg
+                02 - title2.ogg
+        artist2/
+            album1/
+                01 - title1.ogg
+                02 - title2.ogg
+            album2/
+                01 - title1.ogg
+                02 - title2.ogg
+
+You can access those files using a foreign table like this:
+
+.. code-block:: sql
+
+    CREATE SERVER filesystem_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.fsfdw.FilesystemFdw'
+    );
+
+
+    CREATE FOREIGN TABLE musicfilesystem (
+        artist  character varying,
+        album   character varying,
+        track   integer,
+        title   character varying,
+        content bytea,
+        filename character varying
+    ) server filesystem_srv options(
+        root_dir    'base_dir',
+        pattern     '{artist}/{album}/{track} - {title}.ogg',
+        content_column 'content',
+        filename_column 'filename')
+
+Example:
+
+.. code-block:: sql
+
+    SELECT count(track), artist, album from musicfilesystem group by artist, album;
+
+::
+
+     count | artist  | album
+    -------+---------+--------
+         2 | artist1 | album2
+         2 | artist1 | album1
+         2 | artist2 | album2
+         2 | artist2 | album1
+    (4 lines)
+
+
 A filesystem foreign data wrapper.
 
 This foreign data wrapper is based on StructuredDirectory, see
@@ -16,7 +115,8 @@ import errno
 
 
 class FilesystemFdw(TransactionAwareForeignDataWrapper):
-    """A filesystem foreign data wrapper.
+    """
+    A filesystem foreign data wrapper.
 
     The foreign data wrapper accepts the following options:
 
@@ -36,8 +136,9 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         self.content_column = options.get('content_column', None)
         self.filename_column = options.get('filename_column', None)
         self.file_mode = int(options.get('file_mode', '700'), 8)
-        self.structured_directory = StructuredDirectory(root_dir, pattern,
-                                                        file_mode=self.file_mode)
+        self.structured_directory = StructuredDirectory(
+            root_dir, pattern,
+            file_mode=self.file_mode)
         self.folder_columns = [key[0] for key in
                                self.structured_directory._path_parts_properties
                                if key]
@@ -175,7 +276,7 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                                 level=ERROR,
                                 hint="You can also insert an item by providing"
                                 " only the filename and content columns")
-            values = {key: str(value) for key, value in values.items()}
+            values = dict([(key, str(value)) for key, value in values.items()])
             item_from_values = self.structured_directory.create(**values)
         elif item_from_filename is None:
             log_to_postgres("The filename, or all pattern columns are needed.",
@@ -230,9 +331,9 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
             olditem.content = olditem.read()
         new_filename = newvalues.get(self.filename_column, oldfilename)
         filename_changed = new_filename != oldfilename
-        values = {key: (None if value is None else str(value))
+        values = dict([(key, (None if value is None else str(value)))
                   for key, value in newvalues.items()
-                  if key not in (self.filename_column, self.content_column)}
+                  if key not in (self.filename_column, self.content_column)])
         values_changed = dict(olditem) != values
         # Check for null values in the "important" parts
         null_columns = [key for key in self.structured_directory.properties
@@ -327,35 +428,5 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
     def end_scan(self):
         self.structured_directory.clear_cache(only_shared=True)
 
-
-class ReStructuredTextFdw(FilesystemFdw):
-    """A filesystem with reStructuredText metadata foreign data wrapper.
-
-    The foreign data wrapper accepts the same options as FilesystemFdw.
-    Any column with a name in rest_* is set to the metadata value with the
-    corresponding key. (Eg. rest_title is set to the title of the document.)
-
-    """
-    def __init__(self, options, columns):
-        from multicorn.fsfdw.docutils_meta import mtime_lru_cache, extract_meta
-        # TODO: make max_size configurable?
-        self.extract_meta = mtime_lru_cache(extract_meta, max_size=1000)
-        columns = dict((name, column) for name, column in columns.items()
-                       if not name.startswith('rest_'))
-        super(ReStructuredTextFdw, self).__init__(options, columns)
-
-    def execute(self, quals, columns):
-        items = self.get_items(quals, columns)
-        keys = [(name, name[5:])  # len('rest_') == 5
-                for name in columns if name.startswith('rest_')]
-        if keys:
-            items = self.add_meta(items, keys)
-        return self.items_to_dicts(items, columns)
-
-    def add_meta(self, items, keys):
-        extract_meta = self.extract_meta
-        for item in items:
-            meta = extract_meta(item.full_filename)
-            for column, key in keys:
-                item[column] = meta.get(key)
-            yield item
+# For compatibility
+from multicorn.fsfdw.restfsfdw import ReStructuredTextFdw

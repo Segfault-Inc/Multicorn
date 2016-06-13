@@ -16,11 +16,8 @@ CREATE foreign table testmulticorn (
 select * from testmulticorn;
 NOTICE:  [('option1', 'option1'), ('test_type', 'dict'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'hstore'), ('test2', 'hstore')]
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
                                       test1                                       |                                      test2                                       
 ----------------------------------------------------------------------------------+----------------------------------------------------------------------------------
  "index"=>"0", "repeater"=>"1", "column_name"=>"test1", "maybe_hstore"=>"a => b"  | "index"=>"0", "repeater"=>"2", "column_name"=>"test2", "maybe_hstore"=>"a => b"
@@ -46,11 +43,8 @@ NOTICE:  COMMIT
 (20 rows)
 
 select test1 -> 'repeater' as r from testmulticorn order by r;
-NOTICE:  BEGIN
 NOTICE:  []
 NOTICE:  ['test1']
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
  r 
 ---
  1
@@ -75,8 +69,8 @@ NOTICE:  COMMIT
  3
 (20 rows)
 
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 3 other objects
+NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv
-drop cascades to user mapping for postgres
 drop cascades to foreign table testmulticorn

@@ -13,7 +13,7 @@ import functools
 import tempfile
 import shutil
 from contextlib import contextmanager
-from multicorn.compat import unicode_
+from multicorn.compat import unicode_, bytes_
 import pytest
 
 from .structuredfs import StructuredDirectory, Item
@@ -21,13 +21,14 @@ from .docutils_meta import mtime_lru_cache, extract_meta
 
 
 def with_tempdir(function):
-    @functools.wraps(function)
     def wrapper():
         directory = tempfile.mkdtemp()
         try:
             return function(directory)
         finally:
             shutil.rmtree(directory)
+    wrapper.__doc__ = function.__doc__
+    wrapper.__name__ = function.__name__
     return wrapper
 
 
@@ -83,8 +84,6 @@ def test_parser(tempdir):
     bin = make('{category}/{{num}}_{name}.bin')
     assert bin.properties == set(['category', 'name'])
     assert bin._path_parts_properties == (('category',), ('name',))
-    assert [regex.pattern for regex in bin._path_parts_re] \
-        == ['^(?P<category>.*)$', r'^\{num\}\_(?P<name>.*)\.bin$']
 
 
 @with_tempdir
@@ -151,34 +150,34 @@ def test_items(tempdir):
     open(os.path.join(text.root_dir, 'lipsum', '4_foo.txt'), 'wb').close()
 
     # Create a file from an Item
-    text.create(category='lipsum', num='5', name='bar').write('BAR')
+    i1 = text.create(category='lipsum', num='5', name='bar')
+    i1.content = 'BAR'
+    i1.write()
 
     item_foo, item_bar, = sorted(text.get_items(),
                                  key=lambda item: item['num'])
     assert len(item_foo) == 3
     assert dict(item_foo) == dict(category='lipsum', num='4', name='foo')
-    assert item_foo.read() == ''
+    assert item_foo.read() == bytes_('')
 
     assert len(item_bar) == 3
     assert dict(item_bar) == dict(category='lipsum', num='5', name='bar')
-    assert item_bar.read() == 'BAR'
+    assert item_bar.read() == bytes_('BAR')
 
     content = b'Hello,\xc2\xa0W\xc3\xb6rld!'.decode('utf-8')
-    with pytest.raises(UnicodeError):
-        item_foo.write(content)
-    item_foo.write(content.encode('utf8'))
+    item_foo.content = content
+    item_foo.write()
+    assert item_foo.read().decode('utf8') == content
+    item_foo.content = content.encode('utf8')
+    item_foo.write()
     assert item_foo.read().decode('utf8') == content
     item_foo.remove()
-    with pytest.raises(IOError):
-        item_foo.read()
     with pytest.raises(OSError):
         item_foo.remove()
 
     assert [i.filename for i in text.get_items()] == ['lipsum/5_bar.txt']
     item_bar.remove()
     assert [i.filename for i in text.get_items()] == []
-    # The 'lipsum' directory was also removed
-    assert os.listdir(tempdir) == []
 
 
 @with_tempdir
@@ -188,8 +187,12 @@ def test_get_items(tempdir):
     """
     text = StructuredDirectory(tempdir, '{category}/{num}_{name}.txt')
 
-    text.create(category='lipsum', num='4', name='foo').write('FOO')
-    text.create(category='lipsum', num='5', name='bar').write('BAR')
+    i1 = text.create(category='lipsum', num='4', name='foo')
+    i1.content = 'FOO'
+    i1.write()
+    i2 = text.create(category='lipsum', num='5', name='bar')
+    i2.content = 'BAR'
+    i2.write()
 
     def filenames(**properties):
         return [i.filename for i in text.get_items(**properties)]
@@ -243,7 +246,8 @@ def test_optimizations(tempdir):
         item = Item(text, values)
         assert values['id'] not in contents  # Make sure ids are unique
         content = item.filename.encode('ascii')
-        item.write(content)
+        item.content = content
+        item.write()
         contents[values['id']] = content
 
     def assert_listed(properties, expected_ids, expected_listed):

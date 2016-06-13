@@ -27,7 +27,7 @@ class GitFdw(ForeignDataWrapper):
         def enc(unicode_str):
             """Encode the string in the self given encoding."""
             return unicode_str.encode(self.encoding)
-        for log in  brigit.Git(self.path).pretty_log():
+        for log in brigit.Git(self.path).pretty_log():
             yield {
                 'author_name': enc(log["author"]['name']),
                 'author_email': enc(log["author"]['email']),

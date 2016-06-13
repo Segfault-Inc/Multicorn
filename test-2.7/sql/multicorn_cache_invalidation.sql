@@ -59,5 +59,5 @@ ALTER foreign table testmulticorn rename test1 to testnew;
 
 select * from testmulticorn limit 1;
 
-
-DROP extension multicorn cascade;
+DROP USER MAPPING for postgres SERVER multicorn_srv;
+DROP EXTENSION multicorn cascade;

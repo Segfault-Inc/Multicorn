@@ -1,5 +1,73 @@
 """
-A CSV Foreign Data Wrapper
+Purpose
+-------
+
+This fdw can be used to access data stored in `CSV files`_. Each column defined
+in the table will be mapped, in order, against columns in the CSV file.
+
+.. api_compat:: :read:
+
+.. _CSV files: http://en.wikipedia.org/wiki/Comma-separated_values
+
+Dependencies
+------------
+
+No dependency outside the standard python distribution.
+
+Options
+----------------
+
+``filename`` (required)
+  The full path to the CSV file containing the data. This file must be readable
+  to the postgres user.
+
+``delimiter``
+  The CSV delimiter (defaults to  ``,``).
+
+``quotechar``
+  The CSV quote character (defaults to ``"``).
+
+``skip_header``
+  The number of lines to skip (defaults to ``0``).
+
+Usage example
+-------------
+
+Supposing you want to parse the following CSV file, located in ``/tmp/test.csv``::
+
+    Year,Make,Model,Length
+    1997,Ford,E350,2.34
+    2000,Mercury,Cougar,2.38
+
+You can declare the following table:
+
+.. code-block:: sql
+
+    CREATE SERVER csv_srv foreign data wrapper multicorn options (
+        wrapper 'multicorn.csvfdw.CsvFdw'
+    );
+
+
+    create foreign table csvtest (
+           year numeric,
+           make character varying,
+           model character varying,
+           length numeric
+    ) server csv_srv options (
+           filename '/tmp/test.csv',
+           skip_header '1',
+           delimiter ',');
+
+    select * from csvtest;
+
+.. code-block:: bash
+
+     year |  make   | model  | length
+    ------+---------+--------+--------
+     1997 | Ford    | E350   |   2.34
+     2000 | Mercury | Cougar |   2.38
+    (2 lines)
+
 
 """
 

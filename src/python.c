@@ -18,10 +18,10 @@
 #include "bytesobject.h"
 #include "mb/pg_wchar.h"
 #include "access/xact.h"
+#include "utils/lsyscache.h"
 
 
 List	   *getOptions(Oid foreigntableid);
-PyObject   *optionsListToPyDict(List *options);
 bool		compareOptions(List *options1, List *options2);
 
 void		getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns);
@@ -36,8 +36,8 @@ PyObject *pythonQual(char *operatorname, PyObject *value,
 		   bool use_or,
 		   Oid typeoid);
 
-const char *getPythonEncodingName(void);
-
+PyObject  *getSortKey(MulticornDeparsedSortGroup *key);
+MulticornDeparsedSortGroup *getDeparsedSortGroup(PyObject *key);
 
 
 Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
@@ -54,9 +54,9 @@ PyObject   *datumNumberToPython(Datum node, ConversionInfo * cinfo);
 PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
 PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumArrayToPython(Datum datum, ConversionInfo * cinfo);
+PyObject   *datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo);
 PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo);
+PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type);
 
 
 void pythonDictToTuple(PyObject *p_value,
@@ -94,12 +94,8 @@ void appendBinaryStringInfoQuote(StringInfo buffer,
 							Py_ssize_t strlength,
 							bool need_quote);
 
-UserMapping *
-			multicorn_GetUserMapping(Oid userid, Oid serverid);
-
 
 static void begin_remote_xact(CacheEntry * entry);
-
 
 /*
  * Get a (python) encoding name for an attribute.
@@ -130,7 +126,7 @@ PyUnicode_AsPgString(PyObject *p_unicode)
 	unicode_size = PyUnicode_GET_SIZE(p_unicode);
 	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
 								unicode_size,
-								GetDatabaseEncodingName(), NULL);
+								getPythonEncodingName(), NULL);
 	errorCheck();
 	message = strdup(PyBytes_AsString(pTempStr));
 	errorCheck();
@@ -178,7 +174,6 @@ PyString_AsString(PyObject *unicode)
 {
 	char	   *rv;
 	PyObject   *o = PyUnicode_AsEncodedString(unicode, GetDatabaseEncodingName(), NULL);
-
 	errorCheck();
 	rv = pstrdup(PyBytes_AsString(o));
 	Py_XDECREF(o);
@@ -190,12 +185,14 @@ PyString_AsStringAndSize(PyObject *obj, char **buffer, Py_ssize_t *length)
 {
 	PyObject   *o;
 	int			rv;
+	char *tempbuffer;
 
 	if (PyUnicode_Check(obj))
 	{
 		o = PyUnicode_AsEncodedString(obj, GetDatabaseEncodingName(), NULL);
 		errorCheck();
-		rv = PyBytes_AsStringAndSize(o, buffer, length);
+		rv = PyBytes_AsStringAndSize(o, &tempbuffer, length);
+		*buffer = pstrdup(tempbuffer);
 		Py_XDECREF(o);
 		return rv;
 	}
@@ -411,6 +408,7 @@ optionsListToPyDict(List *options)
 	return p_options_dict;
 }
 
+
 bool
 compareOptions(List *options1, List *options2)
 {
@@ -487,9 +485,9 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 				errorCheck();
 				columnDef = lappend(columnDef, makeString(key));
 				columnDef = lappend(columnDef, makeConst(TYPEOID,
-								   -1, InvalidOid, -1, typOid, false, true));
-				columnDef = lappend(columnDef, makeConst(TYPEOID,
-								   -1, InvalidOid, -1, typmod, false, true));
+								   -1, InvalidOid, 4, ObjectIdGetDatum(typOid), false, true));
+				columnDef = lappend(columnDef, makeConst(INT4OID,
+								   -1, InvalidOid, 4, Int32GetDatum(typmod), false, true));
 				columnDef = lappend(columnDef, options);
 				columns_list = lappend(columns_list, columnDef);
 				PyMapping_SetItemString(columns_dict, key, column);
@@ -597,7 +595,7 @@ getCacheEntry(Oid foreigntableid)
 		if (!compareOptions(entry->options, options))
 		{
 			/* Options have changed, we must purge the cache. */
-			Py_DECREF(entry->value);
+			Py_XDECREF(entry->value);
 			needInitialization = true;
 		}
 		else
@@ -606,12 +604,12 @@ getCacheEntry(Oid foreigntableid)
 			getColumnsFromTable(desc, &p_columns, &columns);
 			if (!compareColumns(columns, entry->columns))
 			{
-				Py_DECREF(entry->value);
+				Py_XDECREF(entry->value);
 				needInitialization = true;
 			}
 			else
 			{
-				Py_DECREF(p_columns);
+				Py_XDECREF(p_columns);
 			}
 		}
 	}
@@ -619,12 +617,15 @@ getCacheEntry(Oid foreigntableid)
 	{
 		PyObject   *p_options = optionsListToPyDict(options),
 				   *p_class = getClass(PyDict_GetItemString(p_options,
-															"wrapper"));
+															"wrapper")),
+				   *p_instance;
 
+		entry->value = NULL;
 		getColumnsFromTable(desc, &p_columns, &columns);
 		PyDict_DelItemString(p_options, "wrapper");
-		entry->value = PyObject_CallFunction(p_class, "(O,O)", p_options,
-											 p_columns);
+		p_instance = PyObject_CallFunction(p_class, "(O,O)", p_options,
+										   p_columns);
+		errorCheck();
 		/* Cleanup the old context, containing the old columns and options */
 		/* values */
 		if (entry->cacheContext != NULL)
@@ -641,6 +642,7 @@ getCacheEntry(Oid foreigntableid)
 		Py_DECREF(p_options);
 		Py_DECREF(p_columns);
 		errorCheck();
+		entry->value = p_instance;
 		MemoryContextSwitchTo(oldContext);
 	}
 	else
@@ -655,7 +657,6 @@ getCacheEntry(Oid foreigntableid)
 	 * Start a new transaction or subtransaction if needed.
 	 */
 	begin_remote_xact(entry);
-
 	return entry;
 }
 
@@ -676,11 +677,13 @@ static void
 begin_remote_xact(CacheEntry * entry)
 {
 	int			curlevel = GetCurrentTransactionNestLevel();
+	PyObject   *rv;
 
 	/* Start main transaction if we haven't yet */
 	if (entry->xact_depth <= 0)
 	{
-		PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
+		rv = PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
+		Py_XDECREF(rv);
 		errorCheck();
 		entry->xact_depth = 1;
 	}
@@ -688,10 +691,12 @@ begin_remote_xact(CacheEntry * entry)
 	while (entry->xact_depth < curlevel)
 	{
 		entry->xact_depth++;
-		PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
+		rv = PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
+		Py_XDECREF(rv);
 		errorCheck();
 	}
 }
+
 
 
 /*
@@ -827,17 +832,83 @@ pythonQual(char *operatorname,
 	return qualInstance;
 }
 
+PyObject  *
+getSortKey(MulticornDeparsedSortGroup *key)
+{
+	PyObject *SortKeyClass = getClassString("multicorn.SortKey"),
+			 *SortKeyInstance,
+			 *p_attname,
+			 *p_reversed,
+			 *p_nulls_first,
+			 *p_collate;
+
+	p_attname = PyUnicode_Decode(NameStr(*(key->attname)), strlen(NameStr(*(key->attname))), getPythonEncodingName(), NULL);
+	if (key->reversed)
+		p_reversed = Py_True;
+	else
+		p_reversed = Py_False;
+	if (key->nulls_first)
+		p_nulls_first = Py_True;
+	else
+		p_nulls_first = Py_False;
+	if(key->collate == NULL){
+		p_collate = Py_None;
+		Py_INCREF(p_collate);
+	}
+	else
+		p_collate = PyUnicode_Decode(NameStr(*(key->collate)), strlen(NameStr(*(key->collate))), getPythonEncodingName(), NULL);
+	SortKeyInstance = PyObject_CallFunction(SortKeyClass, "(O,i,O,O,O)",
+			p_attname,
+			key->attnum,
+			p_reversed,
+			p_nulls_first,
+			p_collate);
+	errorCheck();
+	Py_DECREF(p_attname);
+	Py_DECREF(p_collate);
+	Py_DECREF(SortKeyClass);
+	return SortKeyInstance;
+}
+
+MulticornDeparsedSortGroup *
+getDeparsedSortGroup(PyObject *sortKey)
+{
+	MulticornDeparsedSortGroup *md = palloc0(sizeof(MulticornDeparsedSortGroup));
+	PyObject * p_temp;
+	p_temp = PyObject_GetAttrString(sortKey, "attname");
+	md->attname = (Name) strdup(PyUnicode_AS_DATA(p_temp));
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "attnum");
+	md->attnum = (int) PyLong_AsLong(p_temp);
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "is_reversed");
+	md->reversed = PyObject_IsTrue(p_temp);
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "nulls_first");
+	md->nulls_first = PyObject_IsTrue(PyObject_GetAttrString(sortKey, "nulls_first"));
+	Py_DECREF(p_temp);
+	p_temp = PyObject_GetAttrString(sortKey, "collate");
+	if(p_temp == Py_None)
+		md->collate = 0;
+	else
+		md->collate = (Name) strdup(PyUnicode_AS_DATA(p_temp));
+	Py_DECREF(p_temp);
+	return md;
+}
+
 
 /*
  * Execute the query in the python fdw, and returns an iterator.
  */
 PyObject *
-execute(ForeignScanState *node)
+execute(ForeignScanState *node, ExplainState *es)
 {
 	MulticornExecState *state = node->fdw_state;
 	PyObject   *p_targets_set,
 			   *p_quals = PyList_New(0),
-			   *p_iterable;
+			   *p_pathkeys = PyList_New(0),
+			   *p_iterable,
+			   *p_method;
 	ListCell   *lc;
 
 	ExprContext *econtext = node->ss.ps.ps_ExprContext;
@@ -883,22 +954,55 @@ execute(ForeignScanState *node)
 	}
 	/* Transform every object to a suitable python representation */
 	p_targets_set = valuesToPySet(state->target_list);
-	p_iterable = PyObject_CallMethod(state->fdw_instance,
-									 "execute",
-									 "(O,O)",
-									 p_quals,
-									 p_targets_set);
-	errorCheck();
-	if (p_iterable == Py_None)
+
+	foreach(lc, state->pathkeys)
 	{
+		MulticornDeparsedSortGroup *pathkey = (MulticornDeparsedSortGroup *) lfirst(lc);
+		PyObject *python_sortkey = getSortKey(pathkey);
+		PyList_Append(p_pathkeys, python_sortkey);
+		Py_DECREF(python_sortkey);
+	}
+	{
+		PyObject * args,
+				 * kwargs = PyDict_New();
+		if(PyList_Size(p_pathkeys) > 0){
+			PyDict_SetItemString(kwargs, "sortkeys", p_pathkeys);
+		}
+		if(es != NULL){
+			PyObject * verbose;
+			if(es->verbose){
+				verbose = Py_True;
+			} else {
+				verbose = Py_False;
+			}
+			p_method = PyObject_GetAttrString(state->fdw_instance, "explain");
+			args = PyTuple_Pack(2, p_quals, p_targets_set);
+			PyDict_SetItemString(kwargs, "verbose", verbose);
+			errorCheck();
+		} else {
+			p_method = PyObject_GetAttrString(state->fdw_instance, "execute");
+			errorCheck();
+			args = PyTuple_Pack(2, p_quals, p_targets_set);
+			errorCheck();
+		}
+		p_iterable = PyObject_Call(p_method, args, kwargs);
+		errorCheck();
+		Py_DECREF(p_method);
+		Py_DECREF(args);
+		Py_DECREF(kwargs);
+	}
+
+	errorCheck();
+	if (p_iterable == Py_None){
 		state->p_iterator = p_iterable;
 	}
 	else
 	{
 		state->p_iterator = PyObject_GetIter(p_iterable);
 	}
-	Py_DECREF(p_targets_set);
 	Py_DECREF(p_quals);
+	Py_DECREF(p_targets_set);
+	Py_DECREF(p_pathkeys);
 	Py_DECREF(p_iterable);
 	errorCheck();
 	return state->p_iterator;
@@ -1136,10 +1240,7 @@ pythonDictToTuple(PyObject *p_value,
 			values[i] = (Datum) NULL;
 			nulls[i] = true;
 		}
-		if (p_object != NULL)
-		{
-			Py_DECREF(p_object);
-		}
+		Py_XDECREF(p_object);
 	}
 }
 
@@ -1257,22 +1358,28 @@ datumStringToPython(Datum datum, ConversionInfo * cinfo)
 	ssize_t		size;
 	PyObject   *result;
 
-	temp = TextDatumGetCString(datum);
+	temp = datum == 0 ? "?" : TextDatumGetCString(datum);
 	size = strlen(temp);
 	result = PyUnicode_Decode(temp, size, getPythonEncodingName(), NULL);
 	return result;
 }
 
 PyObject *
-datumUnknownToPython(Datum datum, ConversionInfo * cinfo)
+datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type)
 {
 	char	   *temp;
 	ssize_t		size;
 	PyObject   *result;
+	Oid			outfuncoid;
+	bool		isvarlena;
+	FmgrInfo   *fmout = palloc0(sizeof(FmgrInfo));
 
-	temp = OutputFunctionCall(cinfo->attoutfunc, datum);
+	getTypeOutputInfo(type, &outfuncoid, &isvarlena);
+	fmgr_info(outfuncoid, fmout);
+	temp = OutputFunctionCall(fmout, datum);
 	size = strlen(temp);
 	result = PyUnicode_Decode(temp, size, getPythonEncodingName(), NULL);
+	pfree(fmout);
 	return result;
 }
 
@@ -1336,10 +1443,16 @@ datumIntToPython(Datum datum, ConversionInfo * cinfo)
 }
 
 PyObject *
-datumArrayToPython(Datum datum, ConversionInfo * cinfo)
+datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 {
+#if PG_VERSION_NUM >= 90500
+	ArrayIterator iterator = array_create_iterator(DatumGetArrayTypeP(datum),
+												   0, NULL);
+# else
 	ArrayIterator iterator = array_create_iterator(DatumGetArrayTypeP(datum),
 												   0);
+# endif
+
 	Datum		elem = (Datum) NULL;
 	bool		isnull;
 	PyObject   *result = PyList_New(0),
@@ -1353,7 +1466,19 @@ datumArrayToPython(Datum datum, ConversionInfo * cinfo)
 		}
 		else
 		{
-			pyitem = datumToPython(elem, cinfo->atttypoid, cinfo);
+			HeapTuple	tuple;
+			Form_pg_type typeStruct;
+
+			tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
+			if (!HeapTupleIsValid(tuple))
+			{
+				elog(ERROR, "lookup failed for type %u",
+					 type);
+			}
+			typeStruct = (Form_pg_type) GETSTRUCT(tuple);
+			pyitem = datumToPython(elem, typeStruct->typelem, cinfo);
+			ReleaseSysCache(tuple);
+
 			PyList_Append(result, pyitem);
 			Py_DECREF(pyitem);
 		}
@@ -1366,7 +1491,7 @@ PyObject *
 datumByteaToPython(Datum datum, ConversionInfo * cinfo)
 {
 	text	   *txt = DatumGetByteaP(datum);
-	char	   *str = VARDATA(txt);
+	char	   *str = txt == NULL ? "?" : VARDATA(txt);
 	size_t		size = VARSIZE(txt) - VARHDRSZ;
 
 #if PY_MAJOR_VERSION >= 3
@@ -1411,9 +1536,9 @@ datumToPython(Datum datum, Oid type, ConversionInfo * cinfo)
 			if ((typeStruct->typelem != 0) && (typeStruct->typlen == -1))
 			{
 				/* Its an array. */
-				return datumArrayToPython(datum, cinfo);
+				return datumArrayToPython(datum, type, cinfo);
 			}
-			return datumUnknownToPython(datum, cinfo);
+			return datumUnknownToPython(datum, cinfo, type);
 	}
 }
 
@@ -1469,7 +1594,7 @@ pathKeys(MulticornPlanState * state)
 		}
 		item = lappend(item, attnums);
 		item = lappend(item, makeConst(INT4OID,
-									 -1, InvalidOid, -1, rows, false, true));
+									 -1, InvalidOid, 4, rows, false, true));
 		result = lappend(result, item);
 		Py_DECREF(p_keys);
 		Py_DECREF(p_cost);
@@ -1477,6 +1602,48 @@ pathKeys(MulticornPlanState * state)
 		Py_DECREF(p_item);
 	}
 	Py_DECREF(p_pathkeys);
+	return result;
+}
+
+/*
+ * Call the can_sort method from the python implementation. We provide a deparsed
+ * version of the requested fields to sort with all detail as needed (nulls,
+ * collate...), and convert the result to a list of "tuples" (list) of the form:
+ *
+ * - Bitmapset of attnums
+ *
+ * representing the fields that the foreign data wrapper can be sort as
+ * we requested.
+ */
+List *
+canSort(MulticornPlanState * state, List *deparsed)
+{
+	List	   *result = NULL;
+	ListCell   *lc;
+	Py_ssize_t	i;
+	PyObject   *fdw_instance = state->fdw_instance,
+			   *p_pathkeys = PyList_New(0),
+			   *p_sortable;
+
+	foreach(lc, deparsed)
+	{
+		MulticornDeparsedSortGroup *pathkey = (MulticornDeparsedSortGroup *) lfirst(lc);
+		PyObject *python_sortkey = getSortKey(pathkey);
+		PyList_Append(p_pathkeys, python_sortkey);
+		Py_DECREF(python_sortkey);
+	}
+
+	p_sortable = PyObject_CallMethod(fdw_instance, "can_sort", "(O)", p_pathkeys);
+	errorCheck();
+	for (i = 0; i < PySequence_Length(p_sortable); i++)
+	{
+		PyObject   *p_key = PySequence_GetItem(p_sortable, i);
+		MulticornDeparsedSortGroup *md = getDeparsedSortGroup(p_key);
+		result = lappend(result, md);
+		Py_DECREF(p_key);
+	}
+	Py_DECREF(p_pathkeys);
+	Py_DECREF(p_sortable);
 	return result;
 }
 
@@ -1495,7 +1662,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 		PyObject   *item;
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
-		if (attr->attisdropped)
+		if (attr->attisdropped || cinfos[cinfo_idx] == NULL)
 		{
 			continue;
 		}
@@ -1503,6 +1670,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 		if (isnull)
 		{
 			item = Py_None;
+			Py_INCREF(item);
 		}
 		else
 		{
@@ -1528,6 +1696,7 @@ getRowIdColumn(PyObject *fdw_instance)
 	errorCheck();
 	if (value == Py_None)
 	{
+		Py_DECREF(value);
 		elog(ERROR, "This FDW does not support the writable API");
 	}
 	result = PyString_AsString(value);

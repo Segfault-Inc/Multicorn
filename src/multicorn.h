@@ -1,20 +1,21 @@
 #include "Python.h"
 #include "postgres.h"
-#include "nodes/pg_list.h"
+#include "access/relscan.h"
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
+#include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#include "commands/explain.h"
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
 #include "funcapi.h"
 #include "lib/stringinfo.h"
+#include "nodes/bitmapset.h"
+#include "nodes/makefuncs.h"
+#include "nodes/pg_list.h"
 #include "nodes/relation.h"
 #include "utils/builtins.h"
-#include "catalog/pg_type.h"
 #include "utils/syscache.h"
-#include "access/relscan.h"
-#include "nodes/makefuncs.h"
-#include "nodes/bitmapset.h"
 
 #ifndef PG_MULTICORN_H
 #define PG_MULTICORN_H
@@ -23,14 +24,14 @@
 
 typedef struct CacheEntry
 {
-        Oid                     hashkey;
-        PyObject   *value;
-        List       *options;
-        List       *columns;
-        int        xact_depth;
-        /* Keep the "options" and "columns" in a specific context to avoid leaks. */
-        MemoryContext cacheContext;
-}       CacheEntry;
+	Oid			hashkey;
+	PyObject   *value;
+	List	   *options;
+	List	   *columns;
+	int			xact_depth;
+	/* Keep the "options" and "columns" in a specific context to avoid leaks. */
+	MemoryContext cacheContext;
+}	CacheEntry;
 
 
 typedef struct ConversionInfo
@@ -57,6 +58,7 @@ typedef struct MulticornPlanState
 	List	   *qual_list;
 	int			startupCost;
 	ConversionInfo **cinfos;
+	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
 }	MulticornPlanState;
 
 typedef struct MulticornExecState
@@ -74,6 +76,7 @@ typedef struct MulticornExecState
 	StringInfo	buffer;
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
+	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
 }	MulticornExecState;
 
 typedef struct MulticornModifyState
@@ -102,7 +105,7 @@ typedef struct MulticornConstQual
 {
 	MulticornBaseQual base;
 	Datum		value;
-    bool isnull;
+	bool		isnull;
 }	MulticornConstQual;
 
 typedef struct MulticornVarQual
@@ -117,6 +120,16 @@ typedef struct MulticornParamQual
 	Expr	   *expr;
 }	MulticornParamQual;
 
+typedef struct MulticornDeparsedSortGroup
+{
+	Name 			attname;
+	int				attnum;
+	bool			reversed;
+	bool			nulls_first;
+	Name			collate;
+	PathKey	*key;
+} MulticornDeparsedSortGroup;
+
 /* errors.c */
 void		errorCheck(void);
 
@@ -127,22 +140,28 @@ char	  **pyUnicodeToPgString(PyObject *pyobject);
 PyObject   *getInstance(Oid foreigntableid);
 PyObject   *qualToPyObject(Expr *expr, PlannerInfo *root);
 PyObject   *getClassString(const char *className);
-PyObject   *execute(ForeignScanState *state);
+PyObject   *execute(ForeignScanState *state, ExplainState *es);
 void pythonResultToTuple(PyObject *p_value,
 					TupleTableSlot *slot,
 					ConversionInfo ** cinfos,
 					StringInfo buffer);
 PyObject   *tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos);
 char	   *getRowIdColumn(PyObject *fdw_instance);
+PyObject   *optionsListToPyDict(List *options);
+const char *getPythonEncodingName(void);
 
 void getRelSize(MulticornPlanState * state,
-		   PlannerInfo *root,
-		   double *rows,
-		   int *width);
+		PlannerInfo *root,
+		double *rows,
+		int *width);
 
 List	   *pathKeys(MulticornPlanState * state);
 
-CacheEntry * getCacheEntry(Oid foreigntableid);
+List	   *canSort(MulticornPlanState * state, List *deparsed);
+
+CacheEntry *getCacheEntry(Oid foreigntableid);
+UserMapping *multicorn_GetUserMapping(Oid userid, Oid serverid);
+
 
 /* Hash table mapping oid to fdw instances */
 extern PGDLLIMPORT HTAB *InstancesHash;
@@ -154,14 +173,27 @@ void extractRestrictions(Relids base_relids,
 					List **quals);
 List	   *extractColumns(List *reltargetlist, List *restrictinfolist);
 void initConversioninfo(ConversionInfo ** cinfo,
-				   AttInMetadata *attinmeta);
+		AttInMetadata *attinmeta);
 
 Value *colnameFromVar(Var *var, PlannerInfo *root,
-			   MulticornPlanState * state);
+		MulticornPlanState * state);
 
-void		findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths, int startupCost);
+void computeDeparsedSortGroup(List *deparsed, MulticornPlanState *planstate,
+		List **apply_pathkeys,
+		List **deparsed_pathkeys);
+
+List	*findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
+		int startupCost,
+		MulticornPlanState *state,
+		List *apply_pathkeys, List *deparsed_pathkeys);
+
+List        *deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel);
 
 PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
+
+List	*serializeDeparsedSortGroup(List *pathkeys);
+List	*deserializeDeparsedSortGroup(List *items);
+
 #endif   /* PG_MULTICORN_H */
 
 char	   *PyUnicode_AsPgString(PyObject *p_unicode);

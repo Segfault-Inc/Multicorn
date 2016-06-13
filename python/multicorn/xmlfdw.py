@@ -5,6 +5,7 @@ An XML Foreign Data Wrapper.
 from . import ForeignDataWrapper
 from xml.sax import ContentHandler, make_parser
 
+
 class MulticornXMLHandler(ContentHandler):
 
     def __init__(self, elem_tag, columns):
@@ -45,6 +46,7 @@ class MulticornXMLHandler(ContentHandler):
             self.current_row = {}
         elif name in self.columns:
             self.tag = None
+
 
 class XMLFdw(ForeignDataWrapper):
     """A foreign data wrapper for accessing xml files.

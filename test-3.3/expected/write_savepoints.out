@@ -23,8 +23,7 @@ CREATE foreign table testmulticorn_write (
 insert into testmulticorn_write(test1, test2) VALUES ('0', 'A');
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
-NOTICE:  INSERTING: [('test1', u'0'), ('test2', u'A')]
+NOTICE:  INSERTING: [('test1', '0'), ('test2', 'A')]
 update testmulticorn_write set test2 = 'B' where test1 = '0';
 NOTICE:  [test1 = 0]
 NOTICE:  ['test1']
@@ -36,7 +35,6 @@ NOTICE:  [test1 = 1]
 NOTICE:  ['test1']
 DROP foreign table testmulticorn_write;
 ROLLBACK;
-NOTICE:  ROLLBACK
 -- One savepoint
 BEGIN; 
 CREATE foreign table testmulticorn_write (
@@ -51,9 +49,7 @@ SAVEPOINT A;
 insert into testmulticorn_write(test1, test2) VALUES ('0', 'A');
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
-NOTICE:  SUBBEGIN
-NOTICE:  INSERTING: [('test1', u'0'), ('test2', u'A')]
+NOTICE:  INSERTING: [('test1', '0'), ('test2', 'A')]
 update testmulticorn_write set test2 = 'B' where test1 = '0';
 NOTICE:  [test1 = 0]
 NOTICE:  ['test1']
@@ -64,12 +60,9 @@ delete from testmulticorn_write where test1 = '1';
 NOTICE:  [test1 = 1]
 NOTICE:  ['test1']
 ROLLBACK TO A;
-NOTICE:  SUBROLLBACK
 RELEASE A;
 DROP foreign table testmulticorn_write;
 COMMIT;
-NOTICE:  PRECOMMIT
-NOTICE:  COMMIT
 -- Multiple sequential savepoints
 BEGIN; 
 CREATE foreign table testmulticorn_write (
@@ -84,14 +77,10 @@ SAVEPOINT A;
 insert into testmulticorn_write(test1, test2) VALUES ('0', 'A');
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
-NOTICE:  SUBBEGIN
-NOTICE:  INSERTING: [('test1', u'0'), ('test2', u'A')]
+NOTICE:  INSERTING: [('test1', '0'), ('test2', 'A')]
 select * from testmulticorn LIMIT 1;
 NOTICE:  [('option1', 'option1'), ('test_type', 'nowrite'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
-NOTICE:  SUBBEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
    test1   |   test2   
@@ -100,16 +89,12 @@ NOTICE:  ['test1', 'test2']
 (1 row)
 
 ROLLBACK TO A;
-NOTICE:  SUBROLLBACK
-NOTICE:  SUBROLLBACK
 RELEASE A;
 SAVEPOINT B;
 update testmulticorn_write set test2 = 'B' where test1 = '0';
-NOTICE:  SUBBEGIN
 NOTICE:  [test1 = 0]
 NOTICE:  ['test1']
 RELEASE B;
-NOTICE:  SUBCOMMIT
 update testmulticorn_write set test2 = 'C' where test1 = '1';
 NOTICE:  [test1 = 1]
 NOTICE:  ['test1']
@@ -118,8 +103,6 @@ NOTICE:  [test1 = 1]
 NOTICE:  ['test1']
 DROP foreign table testmulticorn_write;
 ROLLBACK;
-NOTICE:  ROLLBACK
-NOTICE:  ROLLBACK
 -- Multiple nested savepoints
 BEGIN; 
 CREATE foreign table testmulticorn_write (
@@ -134,12 +117,8 @@ SAVEPOINT A;
 insert into testmulticorn_write(test1, test2) VALUES ('0', 'A');
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'test1'), ('test_type', 'returning'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
-NOTICE:  BEGIN
-NOTICE:  SUBBEGIN
-NOTICE:  INSERTING: [('test1', u'0'), ('test2', u'A')]
+NOTICE:  INSERTING: [('test1', '0'), ('test2', 'A')]
 select * from testmulticorn LIMIT 1;
-NOTICE:  BEGIN
-NOTICE:  SUBBEGIN
 NOTICE:  []
 NOTICE:  ['test1', 'test2']
    test1   |   test2   
@@ -149,11 +128,9 @@ NOTICE:  ['test1', 'test2']
 
 SAVEPOINT B;
 update testmulticorn_write set test2 = 'B' where test1 = '0';
-NOTICE:  SUBBEGIN
 NOTICE:  [test1 = 0]
 NOTICE:  ['test1']
 RELEASE B;
-NOTICE:  SUBCOMMIT
 update testmulticorn_write set test2 = 'C' where test1 = '1';
 NOTICE:  [test1 = 1]
 NOTICE:  ['test1']
@@ -161,16 +138,12 @@ delete from testmulticorn_write where test1 = '1';
 NOTICE:  [test1 = 1]
 NOTICE:  ['test1']
 ROLLBACK TO A;
-NOTICE:  SUBROLLBACK
-NOTICE:  SUBROLLBACK
 RELEASE A;
 DROP foreign table testmulticorn_write;
 ROLLBACK;
-NOTICE:  ROLLBACK
-NOTICE:  ROLLBACK
 -- Clean up
+DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 3 other objects
+NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv
-drop cascades to user mapping for postgres
 drop cascades to foreign table testmulticorn

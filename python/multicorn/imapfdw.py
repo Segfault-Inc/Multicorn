@@ -1,3 +1,72 @@
+"""
+Purpose
+-------
+
+This fdw can be used to access mails from an IMAP mailbox.
+Column names are mapped to IMAP headers, and two special columns may contain the
+mail payload and its flags.
+
+.. api_compat:: :read:
+
+Dependencies
+-------------
+
+imaplib
+
+Options
+--------
+
+``host`` (required)
+  The IMAP host to connect to.
+
+``port`` (required)
+  The IMAP host port to connect to.
+
+``login`` (required)
+  The login to connect with.
+
+``password`` (required)
+  The password to connect with.
+
+
+The login and password options should be set as a user mapping options, so as
+not to be stored in plaintext. See `the create user mapping documentation`_
+
+.. _the create user mapping documentation: http://www.postgresql.org/docs/9.1/static/sql-createusermapping.html
+
+``payload_column``
+  The name of the column which will store the payload.
+
+``flags_column``
+  The name of the column which will store the IMAP flags, as an array of
+  strings.
+
+``ssl``
+  Wether to use ssl or not
+
+``imap_server_charset``
+  The name of the charset used for IMAP search commands. Defaults to UTF8. For
+  the cyrus IMAP server, it should be set to "utf-8".
+
+``internal_date_column``
+  The column to use as the INTERNALDATE imap header.
+
+Server side filtering
+---------------------
+
+The imap fdw tries its best to convert postgresql quals into imap filters.
+
+The following quals are pushed to the server:
+    - equal, not equal, like, not like comparison
+    - = ANY, = NOT ANY
+
+ntThese conditions are matched against the headers, or the body itself.
+
+The imap FDW will fetch only what is needed by the query: you should thus avoid
+requesting the payload_column if you don't need it.
+"""
+
+
 from . import ForeignDataWrapper, ANY, ALL
 from .utils import log_to_postgres, ERROR, WARNING
 
@@ -19,11 +88,11 @@ from functools import reduce
 
 
 STANDARD_FLAGS = {
-        'seen': 'Seen',
-        'flagged': 'Flagged',
-        'delete': 'Deleted',
-        'draft': 'Draft',
-        'recent': 'Recent'
+    'seen': 'Seen',
+    'flagged': 'Flagged',
+    'delete': 'Deleted',
+    'draft': 'Draft',
+    'recent': 'Recent'
 }
 
 SEARCH_HEADERS = ['BCC', 'CC', 'FROM', 'TO']
@@ -73,7 +142,7 @@ class ImapFdw(ForeignDataWrapper):
         self.host = options.get('host', None)
         if self.host is None:
             log_to_postgres('You MUST set the imap host',
-            ERROR)
+                            ERROR)
         self.port = options.get('port', None)
         self.ssl = options.get('ssl', False)
         self.login = options.get('login', None)
@@ -87,7 +156,8 @@ class ImapFdw(ForeignDataWrapper):
 
     def get_rel_size(self, quals, columns):
         """Inform the planner that it can be EXTREMELY costly to use the
-        payload column, and that a query on Message-ID will return only one row."""
+        payload column, and that a query on Message-ID will return
+        only one row."""
         width = len(columns) * 100
         nb_rows = 1000000
         if self.payload_column in columns:
@@ -97,7 +167,8 @@ class ImapFdw(ForeignDataWrapper):
             if qual.field_name.lower() == 'in-reply-to' and\
                     qual.operator == '=':
                 nb_rows = 10
-            if qual.field_name.lower() == 'message-id' and qual.operator == '=':
+            if (qual.field_name.lower() == 'message-id' and
+                    qual.operator == '='):
                 nb_rows = 1
                 break
         return (nb_rows, width)
@@ -119,8 +190,8 @@ class ImapFdw(ForeignDataWrapper):
         return self._imap_agent
 
     def get_path_keys(self):
-        """Helps the planner by supplying a list of list of access keys, as well
-        as a row estimate for each one."""
+        """Helps the planner by supplying a list of list of access keys,
+        as well as a row estimate for each one."""
         return [(('Message-ID',), 1), (('From',), 100), (('To',), 100),
                 (('In-Reply-To',), 10)]
 
@@ -153,12 +224,12 @@ class ImapFdw(ForeignDataWrapper):
                 # Contains on flags
                 return ' '.join(['%s%s' % (prefix,
                     (STANDARD_FLAGS.get(atom.lower(), '%s %s'
-                    % ('KEYWORD', atom))))  for atom in value])
+                    % ('KEYWORD', atom)))) for atom in value])
             elif operator == '&&':
                 # Overlaps on flags => Or
                 values = ['(%s%s)' %
                     (prefix, (STANDARD_FLAGS.get(atom.lower(), '%s %s' %
-                    ('KEYWORD', atom))))  for atom in value]
+                    ('KEYWORD', atom)))) for atom in value]
                 return make_or(values)
             else:
                 value = '\\\\%s' % value
@@ -184,17 +255,18 @@ class ImapFdw(ForeignDataWrapper):
             if qual.list_any_or_all == ANY:
                 values = [
                     '(%s)' % self._make_condition(qual.field_name,
-                        qual.operator[0], value)
+                                                  qual.operator[0], value)
                     for value in qual.value]
                 conditions.append(make_or(values))
             elif qual.list_any_or_all == ALL:
                 conditions.extend([
                     self._make_condition(qual.field_name, qual.operator[0],
-                        value)
+                                         value)
                     for value in qual.value])
             else:
                 # its not a list, so everything is fine
-                conditions.append(self._make_condition(qual.field_name,
+                conditions.append(self._make_condition(
+                    qual.field_name,
                     qual.operator, qual.value))
         conditions = [x for x in conditions if x not in (None, '()')]
         return conditions
@@ -211,8 +283,8 @@ class ImapFdw(ForeignDataWrapper):
             elif column == self.internaldate_column:
                 col_to_imap[column] = 'INTERNALDATE'
             else:
-                col_to_imap[column] = 'BODY[HEADER.FIELDS (%s)]' %\
-                        column.upper()
+                col_to_imap[column] = ('BODY[HEADER.FIELDS (%s)]' %
+                                       column.upper())
                 headers.append(column)
         try:
             conditions = self.extract_conditions(quals) or ['ALL']
@@ -237,10 +309,10 @@ class ImapFdw(ForeignDataWrapper):
                             if charset:
                                 try:
                                     item[column] = decoded_header.decode(
-                                            charset)
+                                        charset)
                                 except LookupError:
                                     log_to_postgres('Unknown encoding: %s' %
-                                            charset, WARNING)
+                                                    charset, WARNING)
                             else:
                                 item[column] = decoded_header
                 yield item

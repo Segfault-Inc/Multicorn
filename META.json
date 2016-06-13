@@ -3,7 +3,7 @@
     "abstract": "Multicorn Python bindings for Postgres 9.2+ Foreign Data Wrapper",
     "description": "The Multicorn Foreign Data Wrapper allows you to write foreign data wrappers in python.",
     "version": "__VERSION__",
-    "maintainer": "Kozea",
+    "maintainer": "Ronan Dunklau <ronan@dunklau.fr>",
     "license": {
         "PostgreSQL": "http://www.postgresql.org/about/licence"
     },
@@ -12,9 +12,9 @@
             "url":  "git://github.com/Kozea/multicorn.git",
             "type": "git"
         },
-        "homepage": "http://multicorn.org",
+        "homepage": "http://multicorn.readthedocs.org",
         "bugtracker": {
-            "web": "http://redmine.kozea.fr/projects/multicorn/issues",
+            "web": "https://github.com/Kozea/Multicorn/issues",
             "mailto": "multicorn@librelist.org"
         }
     },
@@ -30,12 +30,12 @@
         "runtime": {
             "requires": {
                 "PostgreSQL": "9.2.0",
-                "Python": "2.7.0"
+                "Python": "2.6.0"
             }
         }
     },
 
-    "release_status": "testing",
+    "release_status": "stable",
     "generated_by": "Kozea",
     "meta-spec": {
         "version": "1.0.0",
