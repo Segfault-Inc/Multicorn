@@ -51,6 +51,8 @@ setup(
     version=default_version,
     author='Kozea',
     license='Postgresql',
+    description='Multicorn Python bindings for Postgres 9.5+ FDW',
+    long_description='Multicorn is a PostgreSQL 9.5+ extension meant to make Foreign Data Wrapper development easy, by allowing the programmer to use the Python programming language.',
     options={'bdist_rpm': {'post_install': 'rpm/post_install.sh',
                            'pre_uninstall': 'rpm/pre_uninstall.sh',
                            'requires': 'postgresql95-server',
