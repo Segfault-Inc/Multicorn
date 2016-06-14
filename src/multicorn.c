@@ -25,84 +25,52 @@
 #include "utils/rel.h"
 #include "parser/parsetree.h"
 
+#include "multicorn.h"
+#include "errors.h"
+#include "query.h"
+#include "python.h"
 
 PG_MODULE_MAGIC;
 
+/* Static FWD definitions
+ */
+static void multicornGetForeignRelSize(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid);
+static void multicornGetForeignPaths(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid);
 
-extern Datum multicorn_handler(PG_FUNCTION_ARGS);
-extern Datum multicorn_validator(PG_FUNCTION_ARGS);
+#if PG_VERSION_NUM >= 90500
+static ForeignScan * multicornGetForeignPlan(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid, ForeignPath *best_path, List *tlist, List *scan_clauses, Plan *outer_plan);
+#else
+static ForeignScan * multicornGetForeignPlan(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid, ForeignPath *best_path, List *tlist, List *scan_clauses);
+#endif
+
+static void multicornExplainForeignScan(ForeignScanState *node, ExplainState *es);
+static void multicornBeginForeignScan(ForeignScanState *node, int eflags);
+static TupleTableSlot * multicornIterateForeignScan(ForeignScanState *node);
+static void multicornReScanForeignScan(ForeignScanState *node);
+static void multicornEndForeignScan(ForeignScanState *node);
+
+#if PG_VERSION_NUM >= 90300
+static void multicornAddForeignUpdateTargets(Query *parsetree, RangeTblEntry *target_rte, Relation target_relation);
+static List * multicornPlanForeignModify(PlannerInfo *root, ModifyTable *plan, Index resultRelation, int subplan_index);
+static void multicornBeginForeignModify(ModifyTableState *mtstate, ResultRelInfo *resultRelInfo, List *fdw_private, int subplan_index, int eflags);
+static TupleTableSlot * multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo, TupleTableSlot *slot, TupleTableSlot *planSlot);
+static TupleTableSlot * multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo, TupleTableSlot *slot, TupleTableSlot *planSlot);
+static TupleTableSlot * multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo, TupleTableSlot *slot, TupleTableSlot *planSlot);
+static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
+static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg);
+#endif
+
+static void multicorn_xact_callback(XactEvent event, void *arg);
+
+#if PG_VERSION_NUM >= 90500
+static List * multicornImportForeignSchema(ImportForeignSchemaStmt * stmt, Oid serverOid);
+#endif
+
 
 
 PG_FUNCTION_INFO_V1(multicorn_handler);
 PG_FUNCTION_INFO_V1(multicorn_validator);
 
-
-void		_PG_init(void);
-void		_PG_fini(void);
-
-/*
- * FDW functions declarations
- */
-
-static void multicornGetForeignRelSize(PlannerInfo *root,
-						   RelOptInfo *baserel,
-						   Oid foreigntableid);
-static void multicornGetForeignPaths(PlannerInfo *root,
-						 RelOptInfo *baserel,
-						 Oid foreigntableid);
-static ForeignScan *multicornGetForeignPlan(PlannerInfo *root,
-						RelOptInfo *baserel,
-						Oid foreigntableid,
-						ForeignPath *best_path,
-						List *tlist,
-						List *scan_clauses
-#if PG_VERSION_NUM >= 90500
-						, Plan *outer_plan
-#endif
-		);
-static void multicornExplainForeignScan(ForeignScanState *node, ExplainState *es);
-static void multicornBeginForeignScan(ForeignScanState *node, int eflags);
-static TupleTableSlot *multicornIterateForeignScan(ForeignScanState *node);
-static void multicornReScanForeignScan(ForeignScanState *node);
-static void multicornEndForeignScan(ForeignScanState *node);
-
-#if PG_VERSION_NUM >= 90300
-static void multicornAddForeignUpdateTargets(Query *parsetree,
-								 RangeTblEntry *target_rte,
-								 Relation target_relation);
-
-static List *multicornPlanForeignModify(PlannerInfo *root,
-						   ModifyTable *plan,
-						   Index resultRelation,
-						   int subplan_index);
-static void multicornBeginForeignModify(ModifyTableState *mtstate,
-							ResultRelInfo *resultRelInfo,
-							List *fdw_private,
-							int subplan_index,
-							int eflags);
-static TupleTableSlot *multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot,
-						   TupleTableSlot *planslot);
-static TupleTableSlot *multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot);
-static TupleTableSlot *multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot);
-static void multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo);
-
-static void multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
-						   SubTransactionId parentSubid, void *arg);
-#endif
-
-#if PG_VERSION_NUM >= 90500
-static List *multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
-							 Oid serverOid);
-#endif
-
-static void multicorn_xact_callback(XactEvent event, void *arg);
-
-/*	Helpers functions */
-void	   *serializePlanState(MulticornPlanState * planstate);
-MulticornExecState *initializeExecState(void *internal_plan_state);
 
 /* Hash table mapping oid to fdw instances */
 HTAB	   *InstancesHash;
@@ -267,8 +235,10 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	}
 	else
 	{
+        Query* parsetree = root->parse;
 		/* Pull "var" clauses to build an appropriate target list */
-		foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
+        // foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
+        foreach(lc, extractColumns(parsetree->targetList, baserel->baserestrictinfo))
 		{
 			Var		   *var = (Var *) lfirst(lc);
 			Value	   *colname;
@@ -621,7 +591,40 @@ multicornPlanForeignModify(PlannerInfo *root,
 						   Index resultRelation,
 						   int subplan_index)
 {
-	return NULL;
+
+
+    CmdType     operation = plan->operation;
+    RangeTblEntry *rte = planner_rt_fetch(resultRelation, root);
+    List       *update_columns_list = NIL;
+    Relation    rel;
+
+    rel = heap_open(rte->relid, NoLock);
+
+    if (operation == CMD_UPDATE)
+    {
+       ListCell   *lc;
+
+        TupleDesc desc = RelationGetDescr(rel);
+
+        int         col=-1;
+        while ((col = bms_next_member(rte->updatedCols, col)) >= 0)
+        {
+            /* bit numbers are offset by FirstLowInvalidHeapAttributeNumber */
+            AttrNumber  attno = col + FirstLowInvalidHeapAttributeNumber;
+
+            if (attno <= InvalidAttrNumber)     /* shouldn't happen */
+                elog(ERROR, "system-column update is not supported");
+
+            Form_pg_attribute att = desc->attrs[attno-1];
+
+            update_columns_list = lappend(update_columns_list, makeString(NameStr(att->attname)));
+
+        }
+    }
+
+    heap_close(rel, NoLock);
+
+    return list_make1(update_columns_list);
 }
 
 
@@ -675,6 +678,11 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	}
 	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
 	resultRelInfo->ri_FdwState = modstate;
+
+    if (fdw_private) {
+        // deserialise fdw_private and put update list into the mtstate variable
+        modstate->update_columns_list = (List *) list_nth(fdw_private, 0);
+    }
 }
 
 /*
@@ -753,14 +761,15 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	PyObject   *fdw_instance = modstate->fdw_instance,
 			   *p_row_id,
 			   *p_new_value,
-			   *p_value = tupleTableSlotToPyObject(slot, modstate->cinfos);
+			   *p_value = tupleTableSlotToPyObject(slot, modstate->cinfos),
+               *p_update_columns = valuesToPySet(modstate->update_columns_list);
 	bool		is_null;
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
-									  p_value);
+    //Change call to the 4 parameters version of the python call to enable passing of p_update_columns. If that call is not utilised in the wrapper (ie old API) then the old 3 parameter is called dropping p_update_columns ensuring same functionality
+	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O,O)", p_row_id, p_update_columns, p_value);
 	errorCheck();
 	if (p_new_value != NULL && p_new_value != Py_None)
 	{
@@ -769,6 +778,7 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 		ExecStoreVirtualTuple(slot);
 	}
 	Py_XDECREF(p_new_value);
+    Py_DECREF(p_update_columns);
 	Py_DECREF(p_row_id);
 	errorCheck();
 	return slot;

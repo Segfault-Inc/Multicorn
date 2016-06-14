@@ -353,7 +353,7 @@ class ForeignDataWrapper(object):
 
     def update(self, oldvalues, newvalues):
         """
-        Update a tuple containing ''oldvalues'' to the ''newvalues''.
+        Update a identified by ''rowid''  to the ''newvalues''.
 
         Args:
             oldvalues (dict): a dictionary mapping from column
@@ -365,6 +365,14 @@ class ForeignDataWrapper(object):
             for information about this return value.
         """
         raise NotImplementedError("This FDW does not support the writable API")
+
+    def update(self, rowid, update_columns, newvalues):
+        """
+        Update only the columns identified in ''update_columns''
+        Identify the row by the rowid parameter.
+        If this object is not overloaded by the derriving class then call the old API (without the update_columns parameter)
+        """
+        return self.update(rowid, newvalues)
 
     def delete(self, oldvalues):
         """
