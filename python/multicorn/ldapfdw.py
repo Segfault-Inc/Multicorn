@@ -34,6 +34,9 @@ The objectClass for which is searched, for example "inetOrgPerson".
 ``scope`` (string)
 The scope: one, sub or base.
 
+``origdn`` (string)
+Whether the originating dn should be returned to the RDBMS: true or false.
+
 Optional options
 ----------------
 
@@ -56,6 +59,7 @@ definition:
     );
 
     CREATE FOREIGN TABLE ldapexample (
+	dn character varying,
       	mail character varying,
 	cn character varying,
 	description character varying
@@ -66,6 +70,7 @@ definition:
 	binddn 'cn=Admin,dc=example,dc=com',
 	bindpwd 'admin',
 	objectClass '*'
+	origdn 'true'
     );
 
     select * from ldapexample;
@@ -110,6 +115,7 @@ class LdapFdw(ForeignDataWrapper):
     scope       -- the ldap scope (one, sub or base)
     binddn      -- the ldap bind DN (ex: 'cn=Admin,dc=example,dc=com')
     bindpwd     -- the ldap bind Password
+    origdn      -- return originating dn to RDBMS
 
     """
 
@@ -124,6 +130,7 @@ class LdapFdw(ForeignDataWrapper):
             user=fdw_options.get("binddn", None),
             password=fdw_options.get("bindpwd", None),
             client_strategy=ldap3.STRATEGY_SYNC_RESTARTABLE)
+        self.origdn = fdw_options["origdn"]
         self.path = fdw_options["path"]
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
@@ -156,6 +163,8 @@ class LdapFdw(ForeignDataWrapper):
         for entry in self.ldap.response:
             # Case insensitive lookup for the attributes
             litem = dict()
+            if self.origdn == 'true':
+                litem["dn"] = entry["dn"]
             for key, value in entry["attributes"].items():
                 if key.lower() in self.field_definitions:
                     pgcolname = self.field_definitions[key.lower()].column_name
