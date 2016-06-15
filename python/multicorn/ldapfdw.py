@@ -34,9 +34,6 @@ The objectClass for which is searched, for example "inetOrgPerson".
 ``scope`` (string)
 The scope: one, sub or base.
 
-``origdn`` (string)
-Whether the originating dn should be returned to the RDBMS: true or false.
-
 Optional options
 ----------------
 
@@ -45,6 +42,10 @@ The binddn for example 'cn=admin,dc=example,dc=com'.
 
 ``bindpwd`` (string)
 The credentials for the binddn.
+
+``origdn`` (string)
+Whether the originating dn should be returned to the RDBMS: true or false.
+(default = false)
 
 Usage Example
 -------------
@@ -130,7 +131,7 @@ class LdapFdw(ForeignDataWrapper):
             user=fdw_options.get("binddn", None),
             password=fdw_options.get("bindpwd", None),
             client_strategy=ldap3.STRATEGY_SYNC_RESTARTABLE)
-        self.origdn = fdw_options["origdn"]
+        self.origdn = fdw_options.get("origdn", None)
         self.path = fdw_options["path"]
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
