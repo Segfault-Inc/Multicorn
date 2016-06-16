@@ -144,6 +144,7 @@ class LdapFdw(ForeignDataWrapper):
 
     def execute(self, quals, columns):
         request = unicode_("(objectClass=%s)") % self.object_class
+        path = self.path
         for qual in quals:
             if isinstance(qual.operator, tuple):
                 operator = qual.operator[0]
@@ -156,10 +157,15 @@ class LdapFdw(ForeignDataWrapper):
                            if operator == "~~" else baseval)
                 else:
                     val = qual.value
-                request = unicode_("(&%s(%s=%s))") % (
-                    request, qual.field_name, val)
+
+                if qual.field_name != "dn":
+                    request = unicode_("(&%s(%s=%s))") % (
+                        request, qual.field_name, val)
+                else:
+                    path = val
+
         self.ldap.search(
-            self.path, request, self.scope,
+            path, request, self.scope,
             attributes=list(self.field_definitions))
         for entry in self.ldap.response:
             # Case insensitive lookup for the attributes
