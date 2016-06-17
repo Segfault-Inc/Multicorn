@@ -43,10 +43,6 @@ The binddn for example 'cn=admin,dc=example,dc=com'.
 ``bindpwd`` (string)
 The credentials for the binddn.
 
-``origdn`` (string)
-Whether the originating dn should be returned to the RDBMS: true or false.
-(default = false)
-
 Usage Example
 -------------
 
@@ -71,7 +67,6 @@ definition:
 	binddn 'cn=Admin,dc=example,dc=com',
 	bindpwd 'admin',
 	objectClass '*'
-	origdn 'true'
     );
 
     select * from ldapexample;
@@ -116,12 +111,12 @@ class LdapFdw(ForeignDataWrapper):
     scope       -- the ldap scope (one, sub or base)
     binddn      -- the ldap bind DN (ex: 'cn=Admin,dc=example,dc=com')
     bindpwd     -- the ldap bind Password
-    origdn      -- return originating dn to RDBMS
 
     """
 
     def __init__(self, fdw_options, fdw_columns):
         super(LdapFdw, self).__init__(fdw_options, fdw_columns)
+        self._row_id_column = "dn"
         if "address" in fdw_options:
             self.ldapuri = "ldap://" + fdw_options["address"]
         else:
@@ -131,7 +126,6 @@ class LdapFdw(ForeignDataWrapper):
             user=fdw_options.get("binddn", None),
             password=fdw_options.get("bindpwd", None),
             client_strategy=ldap3.STRATEGY_SYNC_RESTARTABLE)
-        self.origdn = fdw_options.get("origdn", None)
         self.path = fdw_options["path"]
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
@@ -175,8 +169,7 @@ class LdapFdw(ForeignDataWrapper):
         for entry in self.ldap.response:
             # Case insensitive lookup for the attributes
             litem = dict()
-            if self.origdn == 'true':
-                litem["dn"] = entry["dn"]
+            litem["dn"] = entry["dn"]
             for key, value in entry["attributes"].items():
                 if key.lower() in self.field_definitions:
                     pgcolname = self.field_definitions[key.lower()].column_name
@@ -196,3 +189,34 @@ class LdapFdw(ForeignDataWrapper):
             return ldap3.SEARCH_SCOPE_BASE_OBJECT
         else:
             log_to_postgres("Invalid scope specified: %s" % scope, ERROR)
+
+    @property
+    def rowid_column(self):
+        return self._row_id_column
+
+    def insert(self, values):
+	self.ldap.add(
+            values.pop("dn"), attributes=values)
+	if self.ldap.result["result"]:
+	    log_to_postgres(
+                "The ADD operation failed.\n " + self.ldap.result["message"],
+                ERROR)
+
+    def update(self, dn, newvalues):
+	changes = {}
+        newvalues.pop("dn", None)
+	for k, v in newvalues.iteritems():
+            changes[k] = [(ldap3.MODIFY_REPLACE, v)]
+
+	self.ldap.modify(dn, changes)
+	if self.ldap.result["result"]:
+	    log_to_postgres(
+                "The MODIFY operation failed.\n " + self.ldap.result["message"],
+                ERROR)
+
+    def delete(self, dn):
+	self.ldap.delete(dn)
+	if self.ldap.result["result"]:
+	    log_to_postgres(
+                "The DELETE operation failed.\n " + self.ldap.result["message"],
+                ERROR)
