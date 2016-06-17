@@ -162,7 +162,12 @@ class LdapFdw(ForeignDataWrapper):
                     request = unicode_("(&%s(%s=%s))") % (
                         request, qual.field_name, val)
                 else:
-                    path = val
+                    if path == self.path and val.endswith(self.path):
+                        path = val
+                    else:
+                        log_to_postgres(
+                            "Only one instance of a DN can be used as filter, "
+                            "and it must end with the user defined base path.", ERROR)
 
         self.ldap.search(
             path, request, self.scope,
