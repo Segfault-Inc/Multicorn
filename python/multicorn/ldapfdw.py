@@ -23,7 +23,7 @@ Required options
 ----------------
 
 ``uri`` (string)
-The URI(s) for the server(s), for example "ldap://localhost,ldap://foobar".
+The URI(s) for the server(s), for example "ldap://localhost,ldap://fallback".
 
 ``path``  (string)
 The base in which the search is performed, for example "dc=example,dc=com".
@@ -125,11 +125,16 @@ class LdapFdw(ForeignDataWrapper):
         else:
             for uri in fdw_options["uri"].split(","):
                 self.uris.append(uri)
-        self.connections = [ldap3.Connection(
-            ldap3.Server(uri),
-            user=fdw_options.get("binddn", None),
-            password=fdw_options.get("bindpwd", None),
-            client_strategy=ldap3.STRATEGY_SYNC_RESTARTABLE) for uri in self.uris]
+
+        for uri in self.uris:
+            self.ldap = ldap3.Connection(
+                ldap3.Server(uri),
+                user=fdw_options.get("binddn", None),
+                password=fdw_options.get("bindpwd", None),
+                client_strategy=ldap3.STRATEGY_SYNC_RESTARTABLE)
+            if self.ldap != None:
+                break
+
         self.path = fdw_options["path"]
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
@@ -167,23 +172,22 @@ class LdapFdw(ForeignDataWrapper):
                             "Only one instance of a DN can be used as filter, "
                             "and it must end with the user defined base path.", ERROR)
 
-        for conn in self.connections:
-            conn.search(
-                path, request, self.scope,
-                attributes=list(self.field_definitions))
-            for entry in conn.response:
-                # Case insensitive lookup for the attributes
-                litem = dict()
-                litem["dn"] = entry["dn"]
-                for key, value in entry["attributes"].items():
-                    if key.lower() in self.field_definitions:
-                        pgcolname = self.field_definitions[key.lower()].column_name
-                        if pgcolname in self.array_columns:
-                            value = value
-                        else:
-                            value = value[0]
-                        litem[pgcolname] = value
-                yield litem
+        self.ldap.search(
+            path, request, self.scope,
+            attributes=list(self.field_definitions))
+        for entry in self.ldap.response:
+            # Case insensitive lookup for the attributes
+            litem = dict()
+            litem["dn"] = entry["dn"]
+            for key, value in entry["attributes"].items():
+                if key.lower() in self.field_definitions:
+                    pgcolname = self.field_definitions[key.lower()].column_name
+                    if pgcolname in self.array_columns:
+                        value = value
+                    else:
+                        value = value[0]
+                    litem[pgcolname] = value
+            yield litem
 
     def parse_scope(self, scope=None):
         if scope in (None, "", "one"):
@@ -200,12 +204,11 @@ class LdapFdw(ForeignDataWrapper):
         return self._row_id_column
 
     def insert(self, values):
-        for conn in self.connections:
-            conn.add(values.pop("dn"), attributes=values)
-            if conn.result["result"]:
-                log_to_postgres(
-                    conn.server.host + ": The ADD operation failed.\n " + conn.result["message"],
-                    ERROR)
+        self.ldap.add(values.pop("dn"), attributes=values)
+        if self.ldap.result["result"]:
+            log_to_postgres(
+                self.ldap.server.host + ": The ADD operation failed.\n " + self.ldap.result["message"],
+                ERROR)
 
     def update(self, dn, newvalues):
         changes = {}
@@ -213,17 +216,15 @@ class LdapFdw(ForeignDataWrapper):
         for k, v in newvalues.iteritems():
             changes[k] = [(ldap3.MODIFY_REPLACE, v)]
 
-        for conn in self.connections:
-            conn.modify(dn, changes)
-            if conn.result["result"]:
-                log_to_postgres(
-                    conn.server.host + ": The MODIFY operation failed.\n " + conn.result["message"],
-                    ERROR)
+        self.ldap.modify(dn, changes)
+        if self.ldap.result["result"]:
+            log_to_postgres(
+                self.ldap.server.host + ": The MODIFY operation failed.\n " + self.ldap.result["message"],
+                ERROR)
 
     def delete(self, dn):
-        for conn in self.connections:
-            conn.delete(dn)
-            if conn.result["result"]:
-                log_to_postgres(
-                    conn.server.host + ": The DELETE operation failed.\n " + conn.result["message"],
-                    ERROR)
+        self.ldap.delete(dn)
+        if self.ldap.result["result"]:
+            log_to_postgres(
+                self.ldap.server.host + ": The DELETE operation failed.\n " + self.ldap.result["message"],
+                ERROR)
