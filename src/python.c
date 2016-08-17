@@ -1698,9 +1698,11 @@ getRowIdColumn(PyObject *fdw_instance)
 	char	   *result;
 
 	errorCheck();
-	if (value == Py_None)
+	if (value == Py_None || value == NULL)
 	{
-		Py_DECREF(value);
+	        if (value != NULL) {
+		        Py_DECREF(value);
+		}
 		elog(ERROR, "This FDW does not support the writable API");
 	}
 	result = PyString_AsString(value);
