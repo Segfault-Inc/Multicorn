@@ -23,6 +23,18 @@ void extractClauseFromScalarArrayOpExpr(Relids base_relids,
 								   ScalarArrayOpExpr *node,
 								   List **quals);
 
+void extractClauseFromBooleanTest(Relids base_relids,
+							  BooleanTest *node,
+							  List **quals);
+
+void extractClauseFromBoolExpr(Relids base_relids,
+							   BoolExpr *node,
+							   List **quals);
+
+void extractClauseFromVar(Relids base_relids,
+						  Var *node,
+						  List **quals);
+
 char	   *getOperatorString(Oid opoid);
 
 MulticornBaseQual *makeQual(AttrNumber varattno, char *opname, Expr *value,
@@ -304,6 +316,17 @@ extractRestrictions(Relids base_relids,
 											   (ScalarArrayOpExpr *) node,
 											   quals);
 			break;
+		case T_BooleanTest:
+			extractClauseFromBooleanTest(base_relids,
+										 (BooleanTest *) node, quals);
+			break;
+		case T_BoolExpr:
+			extractClauseFromBoolExpr(base_relids,
+									  (BoolExpr *) node, quals);
+			break;
+		case T_Var:
+			extractClauseFromVar(base_relids, (Var *) node, quals);
+			break;
 		default:
 			{
 				ereport(WARNING,
@@ -412,7 +435,75 @@ extractClauseFromNullTest(Relids base_relids,
 	}
 }
 
+/*
+ *	Convert a "BooleanTest" (IS TRUE, IS FALSE, IS NOT FALSE, IS NOT TRUE,
+ *	IS UNKNOWN or IS NOT UNKNOWN) to a suitable intermediate representation.
+ */
+void
+extractClauseFromBooleanTest(Relids base_relids,
+							 BooleanTest *node,
+							 List **quals)
+{
+	if (IsA(node->arg, Var))
+	{
+		Var		   *var = (Var *) node->arg;
+		char	   *opname = NULL;
 
+		switch (node->booltesttype)
+		{
+			case IS_TRUE:
+			case IS_NOT_FALSE:
+			case IS_NOT_UNKNOWN:
+				opname = "=";
+				break;
+			default:
+				opname = "<>";
+				break;
+		}
+
+		*quals = lappend(*quals,
+						 makeQual(var->varattno, opname,
+								  (Expr *) makeBoolConst(true, false),
+								  false, false));
+	}
+}
+
+/*
+ *	Convert a "BoolExpr" (operator NOT)
+ *	to a suitable intermediate representation.
+ */
+void
+extractClauseFromBoolExpr(Relids base_relids,
+						  BoolExpr *node,
+						  List **quals)
+{
+	if (node->boolop == NOT_EXPR)
+	{
+		Var *var = list_nth(node->args, 0);
+
+		*quals = lappend(*quals,
+						 makeQual(var->varattno, "<>",
+								  (Expr *) makeBoolConst(true, false),
+								  false, false));
+	}
+}
+
+/*
+ *	Convert a "Var" to a suitable intermediate representation.
+ */
+void
+extractClauseFromVar(Relids base_relids,
+					 Var *node,
+					 List **quals)
+{
+	if (node->vartype == BOOLOID)
+	{
+		*quals = lappend(*quals,
+						 makeQual(node->varattno, "=",
+								  (Expr *) makeBoolConst(true, false),
+								  false, false));
+	}
+}
 
 /*
  *	Returns a "Value" node containing the string name of the column from a var.
