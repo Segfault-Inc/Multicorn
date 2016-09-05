@@ -52,7 +52,7 @@ Ex:
 
 
 
-    create foreign table gmail (                                                                 
+    create foreign table gmail (
         "Message-ID" character varying,
         "From" character varying,
         "Subject" character varying,
@@ -60,12 +60,13 @@ Ex:
         "flags" character varying[],
         "To" character varying) server multicorn_imap options (
             host 'imap.gmail.com',
-            port '465', 
-            payload_column 'payload', 
+            port '465',
+            payload_column 'payload',
             flags_column 'flags',
             ssl 'True',
-            login 'mylogin', 
+            login 'mylogin',
             password 'mypassword'
     );
 
-For a documentation on the existing foreign data wrappers, see http://multicorn.org/foreign-data-wrappers/
+For a documentation on the existing foreign data wrappers, see
+http://multicorn.org/foreign-data-wrappers/
