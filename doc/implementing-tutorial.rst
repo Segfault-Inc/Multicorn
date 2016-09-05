@@ -155,7 +155,7 @@ will ignore for now but more on that `later <#optimizations>`_.
 
 This method must return an iterable of the resulting lines.
 Each line can be either a list containing an item by column,
-or a dictonary mappning the column names to their value.
+or a dictionary mapping the column names to their value.
 
 For this example, we chose to build a dictionary.
 Each column contains the concatenation of the column name and
@@ -369,7 +369,7 @@ It accepts three arguments:
                 Think about the consequences when you use it !
 
 ``hint`` (optional)
-    An hint given to the user to resolve the cause of the message (ex:``Try
+    A hint given to the user to resolve the cause of the message (ex:``Try
     adding the missing option in the table creation statement``)
 
 
