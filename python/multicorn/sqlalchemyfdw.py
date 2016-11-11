@@ -165,8 +165,8 @@ except ImportError:
 
 from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.dialects.oracle import base as oracle_dialect
-from sqlalchemy.dialects.postgresql.base import (
-    ARRAY, ischema_names, PGDialect, NUMERIC)
+from sqlalchemy.dialects.postgresql.base import ( ischema_names, PGDialect, NUMERIC)
+from sqlalchemy.dialects.postgresql.array import ARRAY
 import re
 import operator
 
