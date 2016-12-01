@@ -16,7 +16,7 @@
 #include "bytesobject.h"
 #include "access/xact.h"
 
-void reportException(PyObject *pErrType,
+PGDLLEXPORT void reportException(PyObject *pErrType,
 				PyObject *pErrValue,
 				PyObject *pErrTraceback);
 

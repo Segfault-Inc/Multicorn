@@ -37,8 +37,8 @@ PG_FUNCTION_INFO_V1(multicorn_handler);
 PG_FUNCTION_INFO_V1(multicorn_validator);
 
 
-void		_PG_init(void);
-void		_PG_fini(void);
+PGDLLEXPORT void		_PG_init(void);
+PGDLLEXPORT void		_PG_fini(void);
 
 /*
  * FDW functions declarations
@@ -101,11 +101,11 @@ static List *multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 static void multicorn_xact_callback(XactEvent event, void *arg);
 
 /*	Helpers functions */
-void	   *serializePlanState(MulticornPlanState * planstate);
-MulticornExecState *initializeExecState(void *internal_plan_state);
+PGDLLEXPORT void	   *serializePlanState(MulticornPlanState * planstate);
+PGDLLEXPORT MulticornExecState *initializeExecState(void *internal_plan_state);
 
 /* Hash table mapping oid to fdw instances */
-HTAB	   *InstancesHash;
+PGDLLEXPORT HTAB	   *InstancesHash;
 
 
 void

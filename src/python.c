@@ -21,42 +21,41 @@
 #include "utils/lsyscache.h"
 
 
-List	   *getOptions(Oid foreigntableid);
-bool		compareOptions(List *options1, List *options2);
+PGDLLEXPORT List	   *getOptions(Oid foreigntableid);
+PGDLLEXPORT bool		compareOptions(List *options1, List *options2);
 
-void		getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns);
-bool		compareColumns(List *columns1, List *columns2);
+PGDLLEXPORT void		getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns);
+PGDLLEXPORT bool		compareColumns(List *columns1, List *columns2);
 
-PyObject   *getClass(PyObject *className);
-PyObject   *valuesToPySet(List *targetlist);
-PyObject   *qualDefsToPyList(List *quallist, ConversionInfo ** cinfo);
-PyObject *pythonQual(char *operatorname, PyObject *value,
+PGDLLEXPORT PyObject   *getClass(PyObject *className);
+PGDLLEXPORT PyObject   *valuesToPySet(List *targetlist);
+PGDLLEXPORT PyObject   *qualDefsToPyList(List *quallist, ConversionInfo ** cinfo);
+PGDLLEXPORT PyObject *pythonQual(char *operatorname, PyObject *value,
 		   ConversionInfo * cinfo,
 		   bool is_array,
 		   bool use_or,
 		   Oid typeoid);
 
-PyObject  *getSortKey(MulticornDeparsedSortGroup *key);
-MulticornDeparsedSortGroup *getDeparsedSortGroup(PyObject *key);
+PGDLLEXPORT PyObject  *getSortKey(MulticornDeparsedSortGroup *key);
+PGDLLEXPORT MulticornDeparsedSortGroup *getDeparsedSortGroup(PyObject *key);
 
 
-Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
+PGDLLEXPORT Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
 				ConversionInfo * cinfo);
-PyObject   *qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfo);
-PyObject *paramDefToPython(List *paramdef, ConversionInfo ** cinfos,
+PGDLLEXPORT PyObject   *qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfo);
+PGDLLEXPORT PyObject *paramDefToPython(List *paramdef, ConversionInfo ** cinfos,
 				 Oid typeoid,
 				 Datum value);
 
 
-PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
-PyObject   *datumStringToPython(Datum node, ConversionInfo * cinfo);
-PyObject   *datumNumberToPython(Datum node, ConversionInfo * cinfo);
-PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo);
-PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type);
+PGDLLEXPORT PyObject   *datumNumberToPython(Datum node, ConversionInfo * cinfo);
+PGDLLEXPORT PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
+PGDLLEXPORT PyObject   *datumStringToPython(Datum node, ConversionInfo * cinfo);
+PGDLLEXPORT PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
+PGDLLEXPORT PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
+PGDLLEXPORT PyObject   *datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo);
+PGDLLEXPORT PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type);
+PGDLLEXPORT PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
 
 
 void pythonDictToTuple(PyObject *p_value,
