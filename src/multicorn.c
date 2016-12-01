@@ -29,8 +29,8 @@
 PG_MODULE_MAGIC;
 
 
-extern Datum multicorn_handler(PG_FUNCTION_ARGS);
-extern Datum multicorn_validator(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum multicorn_handler(PG_FUNCTION_ARGS);
+extern PGDLLEXPORT Datum multicorn_validator(PG_FUNCTION_ARGS);
 
 
 PG_FUNCTION_INFO_V1(multicorn_handler);
