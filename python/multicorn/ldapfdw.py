@@ -123,7 +123,7 @@ class LdapFdw(ForeignDataWrapper):
             ldap3.Server(self.ldapuri),
             user=fdw_options.get("binddn", None),
             password=fdw_options.get("bindpwd", None),
-            client_strategy=ldap3.STRATEGY_SYNC_RESTARTABLE)
+            client_strategy=ldap3.RESTARTABLE if ldap3.version.__version__ > '2.0.0' else ldap3.STRATEGY_SYNC_RESTARTABLE)
         self.path = fdw_options["path"]
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
@@ -168,10 +168,10 @@ class LdapFdw(ForeignDataWrapper):
 
     def parse_scope(self, scope=None):
         if scope in (None, "", "one"):
-            return ldap3.SEARCH_SCOPE_SINGLE_LEVEL
+            return ldap3.LEVEL if ldap3.version.__version__ > '2.0.0' else ldap3.SEARCH_SCOPE_SINGLE_LEVEL
         elif scope == "sub":
-            return ldap3.SEARCH_SCOPE_WHOLE_SUBTREE
+            return ldap3.SUBTREE if ldap3.version.__version__ > '2.0.0' else ldap3.SEARCH_SCOPE_WHOLE_SUBTREE
         elif scope == "base":
-            return ldap3.SEARCH_SCOPE_BASE_OBJECT
+            return ldap3.BASE if ldap3.version.__version__ > '2.0.0' else ldap3.SEARCH_SCOPE_BASE_OBJECT
         else:
             log_to_postgres("Invalid scope specified: %s" % scope, ERROR)
