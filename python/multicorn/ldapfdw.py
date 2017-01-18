@@ -159,10 +159,13 @@ class LdapFdw(ForeignDataWrapper):
             for key, value in entry["attributes"].items():
                 if key.lower() in self.field_definitions:
                     pgcolname = self.field_definitions[key.lower()].column_name
-                    if pgcolname in self.array_columns:
+                    if ldap3.version.__version__ > '2.0.0':
                         value = value
                     else:
-                        value = value[0]
+                        if pgcolname in self.array_columns:
+                            value = value
+                        else:
+                            value = value[0]
                     litem[pgcolname] = value
             yield litem
 
