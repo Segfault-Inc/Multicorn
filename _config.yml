@@ -1,0 +1,6 @@
+# Site settings
+title: Multicorn
+email: contact@kozea.fr
+description: A Foreign Data Wrapper Library for PostgreSQL
+baseurl: ""
+url: "http://multicorn.org"

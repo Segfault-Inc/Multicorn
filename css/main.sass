@@ -1,0 +1,147 @@
+---
+# Sass for Multicorn
+---
+
+@charset "utf-8"
+@font-face
+  font-family: "arual"
+  src: url(Arual.otf)
+@font-face
+  font-family: "title"
+  src: url(CaviarDreams.ttf)
+@import url(colorful.css)
+
+html
+  background: url(img/background.jpg) repeat top left fixed
+  border-top: 15px solid black
+
+body
+  background: white
+  box-shadow: 0 0 5px #8f8f8f
+  color: #666
+  margin: 0 auto
+  padding: 40px 4% 0 4%
+  max-width: 850px
+
+h1, h2, h3, aside
+  color: #d0272b
+  font-family: "title"
+  font-weight: normal
+
+h1
+  background: url(img/multicorn.jpg) no-repeat
+  padding-left: 25px
+  text-decoration: inherit
+
+  &:after
+    content: url(img/break2.jpg)
+    display: block
+    position: absolute
+
+h2
+  margin-top: 2em
+
+a
+  color: black
+  text-decoration: inherit
+  transition-duration: 0.25s
+  transition-property: color
+
+a:hover, a:focus
+  background: none
+  color: #dd292e
+
+section a:visited
+  color: #901b1e
+
+pre, .contents
+  background: #fafafa
+  border-radius: 1px
+  overflow-x: auto
+  box-shadow: 0 0 5px #8f8f8f
+  padding: 1em
+
+.contents
+  font-size: 0.9em
+  float: right
+  margin: 0 0 1em 2em
+  opacity: 0.9
+
+  .topic-title
+    color: #d0272b
+    font-family: "title"
+    font-size: 1.2em
+    margin: 0.8em
+
+  ul
+    padding: 0.2em 2em
+
+    li a
+      color: #666
+
+      &:hover, &:focus
+        color: #d0272b
+
+nav
+  font-size: 1.3em
+  text-align: center
+  margin: 0 0 2em 0
+
+  &:before
+    color: #d0272b
+    content: '¤Multicorn'
+    font-family: "arual"
+    font-size: 100px
+    font-weight: lighter
+    line-height: 120px
+    margin: 0
+    text-align: center
+    text-transform: uppercase
+
+  ul
+    background: url(img/break.jpg) no-repeat top center
+    border-bottom: 1px solid #dadada
+    padding: 23px 0 0 0
+    text-transform: uppercase
+
+    li
+      display: inline
+
+      a
+        color: #b62226
+        display: inline-block
+        font-family: "title"
+        padding: 0.5em 0.5em 0.25em 0.5em
+
+        &:hover, &:focus
+          background: url(img/square.jpg) no-repeat 50% 0
+          color: black !important
+
+        &:visited
+          color: #b62226
+
+section
+  border-bottom: 1px solid #dadada
+  color: #666
+  font-family: sans-serif
+
+footer
+  background: url(img/horse.jpg) no-repeat 100% 0
+  font-family: sans-serif
+  margin-top: 50px
+  padding: 3px 0 0 0
+  text-align: center
+
+  ul
+    background: url(img/footer.png) no-repeat top center
+    padding: 20px 0
+
+    li
+      display: inline
+
+      a
+        color: #d0272b !important
+        padding: 0 5px
+
+        &:hover
+          color: black !important
