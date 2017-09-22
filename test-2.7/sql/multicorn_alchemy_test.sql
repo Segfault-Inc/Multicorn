@@ -80,5 +80,6 @@ select * from testalchemy order by avarchar nulls last;
 
 select count(*) from testalchemy;
 
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;
 DROP table basetable;

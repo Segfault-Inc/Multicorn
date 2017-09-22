@@ -59,5 +59,6 @@ ALTER foreign table testmulticorn rename test1 to testnew;
 
 select * from testmulticorn limit 1;
 
+SET client_min_messages=WARNING;
 DROP USER MAPPING for postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

@@ -15,4 +15,5 @@ CREATE foreign table testmulticorn (
 -- Test "normal" usage
 select * from testmulticorn;
 
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;

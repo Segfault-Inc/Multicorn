@@ -76,8 +76,6 @@ explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.te
          Filter: ((m1.test1)::text = (test1)::text)
 (4 rows)
 
+SET client_min_messages=WARNING;
 DROP USER MAPPING for postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 2 other objects
-DETAIL:  drop cascades to server multicorn_srv
-drop cascades to foreign table testmulticorn

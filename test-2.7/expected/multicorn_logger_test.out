@@ -16,7 +16,5 @@ NOTICE:  [('option1', 'option1'), ('test_type', 'logger')]
 NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
 WARNING:  An error is about to occur
 ERROR:  An error occured
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 2 other objects
-DETAIL:  drop cascades to server multicorn_srv
-drop cascades to foreign table testmulticorn

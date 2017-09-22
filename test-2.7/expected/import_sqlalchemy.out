@@ -106,14 +106,7 @@ SELECT relname FROM pg_class c INNER JOIN pg_namespace n on c.relnamespace = n.o
  t2
 (2 rows)
 
+SET client_min_messages=WARNING;
 DROP EXTENSION multicorn CASCADE;
-NOTICE:  drop cascades to 3 other objects
-DETAIL:  drop cascades to server multicorn_srv
-drop cascades to foreign table remote_schema.t1
-drop cascades to foreign table remote_schema.t2
 DROP SCHEMA local_schema CASCADE;
-NOTICE:  drop cascades to 3 other objects
-DETAIL:  drop cascades to table local_schema.t1
-drop cascades to table local_schema.t2
-drop cascades to table local_schema.t3
 DROP SCHEMA remote_schema CASCADE;
