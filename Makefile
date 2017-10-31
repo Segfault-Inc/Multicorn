@@ -90,7 +90,7 @@ else
 	override CPPFLAGS := $(PG_CPPFLAGS) $(CPPFLAGS)
 endif
 
-ifeq ($(PORTNAME),darwin)
+ifeq ($(PORTNAME),Darwin)
 	override LDFLAGS += -undefined dynamic_lookup -bundle_loader $(shell $(PG_CONFIG) --bindir)/postgres
 endif
 
