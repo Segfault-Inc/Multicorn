@@ -257,7 +257,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
 
 		for (i = 0; i < desc->natts; i++)
 		{
-			Form_pg_attribute att = desc->attrs[i];
+			Form_pg_attribute att = TupleDescAttr(desc, i);
 
 			if (!att->attisdropped)
 			{
@@ -599,7 +599,7 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 
 	for (i = 0; i < desc->natts; i++)
 	{
-		Form_pg_attribute att = desc->attrs[i];
+		Form_pg_attribute att = TupleDescAttr(desc, i);
 
 		if (!att->attisdropped)
 		{
@@ -681,7 +681,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	}
 	for (i = 0; i < desc->natts; i++)
 	{
-		Form_pg_attribute att = desc->attrs[i];
+		Form_pg_attribute att = TupleDescAttr(desc, i);
 
 		if (!att->attisdropped)
 		{

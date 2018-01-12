@@ -459,7 +459,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 
 		for (i = 0; i < desc->natts; i++)
 		{
-			Form_pg_attribute att = desc->attrs[i];
+			Form_pg_attribute att = TupleDescAttr(desc, i);
 
 			if (!att->attisdropped)
 			{
@@ -564,9 +564,7 @@ getCacheEntry(Oid foreigntableid)
 	 */
 	MemoryContext tempContext = AllocSetContextCreate(CurrentMemoryContext,
 												  "multicorn temporary data",
-													  ALLOCSET_SMALL_MINSIZE,
-													  ALLOCSET_SMALL_INITSIZE,
-													  ALLOCSET_SMALL_MAXSIZE),
+													  ALLOCSET_SMALL_SIZES),
 				oldContext = MemoryContextSwitchTo(tempContext);
 	CacheEntry *entry = NULL;
 	bool		found = false;
@@ -1214,7 +1212,7 @@ pythonDictToTuple(PyObject *p_value,
 	for (i = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		char	   *key;
-		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(slot->tts_tupleDescriptor, i);
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
 		if (cinfos[cinfo_idx] == NULL)
@@ -1263,7 +1261,7 @@ pythonSequenceToTuple(PyObject *p_value,
 	for (i = 0, j = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		PyObject   *p_object;
-		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(slot->tts_tupleDescriptor, i);
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
 		if (cinfos[cinfo_idx] == NULL)
@@ -1658,7 +1656,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 
 	for (i = 0; i < tupdesc->natts; i++)
 	{
-		Form_pg_attribute attr = tupdesc->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
 		bool		isnull;
 		Datum		value;
 		PyObject   *item;
