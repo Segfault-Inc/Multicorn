@@ -64,8 +64,13 @@ extractColumns(List *reltargetlist, List *restrictinfolist)
 		Node	   *node = (Node *) lfirst(lc);
 
 		targetcolumns = pull_var_clause(node,
+#if PG_VERSION_NUM >= 90600
+										PVC_RECURSE_AGGREGATES|
+										PVC_RECURSE_PLACEHOLDERS);
+#else
 										PVC_RECURSE_AGGREGATES,
 										PVC_RECURSE_PLACEHOLDERS);
+#endif
 		columns = list_union(columns, targetcolumns);
 		i++;
 	}
@@ -75,8 +80,13 @@ extractColumns(List *reltargetlist, List *restrictinfolist)
 		RestrictInfo *node = (RestrictInfo *) lfirst(lc);
 
 		targetcolumns = pull_var_clause((Node *) node->clause,
+#if PG_VERSION_NUM >= 90600
+										PVC_RECURSE_AGGREGATES|
+										PVC_RECURSE_PLACEHOLDERS);
+#else
 										PVC_RECURSE_AGGREGATES,
 										PVC_RECURSE_PLACEHOLDERS);
+#endif
 		columns = list_union(columns, targetcolumns);
 	}
 	return columns;
@@ -478,8 +488,13 @@ bool
 isAttrInRestrictInfo(Index relid, AttrNumber attno, RestrictInfo *restrictinfo)
 {
 	List	   *vars = pull_var_clause((Node *) restrictinfo->clause,
-									   PVC_RECURSE_AGGREGATES,
-									   PVC_RECURSE_PLACEHOLDERS);
+#if PG_VERSION_NUM >= 90600
+										PVC_RECURSE_AGGREGATES|
+										PVC_RECURSE_PLACEHOLDERS);
+#else
+										PVC_RECURSE_AGGREGATES,
+										PVC_RECURSE_PLACEHOLDERS);
+#endif
 	ListCell   *lc;
 
 	foreach(lc, vars)
@@ -651,9 +666,16 @@ findPaths(PlannerInfo *root, RelOptInfo *baserel, List *possiblePaths,
 				/* Add a simple parameterized path */
 				foreignPath = create_foreignscan_path(
 													  root, baserel,
+#if PG_VERSION_NUM >= 90600
+												 	  NULL,  /* default pathtarget */
+#endif
 													  nbrows,
 													  startupCost,
+#if PG_VERSION_NUM >= 90600
+													  nbrows * baserel->reltarget->width,
+#else
 													  nbrows * baserel->width,
+#endif
 													  NIL, /* no pathkeys */
 													  NULL,
 #if PG_VERSION_NUM >= 90500

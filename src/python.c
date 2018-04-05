@@ -931,8 +931,13 @@ execute(ForeignScanState *node, ExplainState *es)
 				newqual->base.opname = qual->opname;
 				newqual->base.isArray = qual->isArray;
 				newqual->base.useOr = qual->useOr;
+
+				#if PG_VERSION_NUM >= 100000
+				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull);
+				#else
 				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull, NULL);
-				newqual->base.typeoid = qual->typeoid;
+				#endif
+				newqual->base.typeoid = ((Param*) ((MulticornParamQual *) qual)->expr)->paramtype;
 				newqual->isnull = isNull;
 				break;
 			case T_Const:

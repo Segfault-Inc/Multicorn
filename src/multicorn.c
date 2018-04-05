@@ -268,7 +268,11 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	else
 	{
 		/* Pull "var" clauses to build an appropriate target list */
+#if PG_VERSION_NUM >= 90600
+		foreach(lc, extractColumns(baserel->reltarget->exprs, baserel->baserestrictinfo))
+#else
 		foreach(lc, extractColumns(baserel->reltargetlist, baserel->baserestrictinfo))
+#endif
 		{
 			Var		   *var = (Var *) lfirst(lc);
 			Value	   *colname;
@@ -292,7 +296,11 @@ multicornGetForeignRelSize(PlannerInfo *root,
 
 	}
 	/* Inject the "rows" and "width" attribute into the baserel */
+#if PG_VERSION_NUM >= 90600
+	getRelSize(planstate, root, &baserel->rows, &baserel->reltarget->width);
+#else
 	getRelSize(planstate, root, &baserel->rows, &baserel->width);
+#endif
 }
 
 /*
@@ -324,9 +332,16 @@ multicornGetForeignPaths(PlannerInfo *root,
 
 	/* Add a simple default path */
 	pathes = lappend(pathes, create_foreignscan_path(root, baserel,
+#if PG_VERSION_NUM >= 90600
+												 	  NULL,  /* default pathtarget */
+#endif
 			baserel->rows,
 			planstate->startupCost,
+#if PG_VERSION_NUM >= 90600
+			baserel->rows * baserel->reltarget->width,
+#else
 			baserel->rows * baserel->width,
+#endif
 			NIL,		/* no pathkeys */
 		    NULL,
 #if PG_VERSION_NUM >= 90500
@@ -360,7 +375,11 @@ multicornGetForeignPaths(PlannerInfo *root,
 		{
 			ForeignPath *newpath;
 
-			newpath = create_foreignscan_path(root, baserel, path->path.rows,
+			newpath = create_foreignscan_path(root, baserel,
+#if PG_VERSION_NUM >= 90600
+												 	  NULL,  /* default pathtarget */
+#endif
+					path->path.rows,
 					path->path.startup_cost, path->path.total_cost,
 					apply_pathkeys, NULL,
 #if PG_VERSION_NUM >= 90500
