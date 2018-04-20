@@ -136,9 +136,13 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         self.content_column = options.get('content_column', None)
         self.filename_column = options.get('filename_column', None)
         self.file_mode = int(options.get('file_mode', '700'), 8)
+        escape_pattern = (options.get('escape_pattern', 'TRUE').upper() in
+                          ('TRUE', 'T'))
         self.structured_directory = StructuredDirectory(
-            root_dir, pattern,
-            file_mode=self.file_mode)
+            root_dir,
+            pattern,
+            file_mode=self.file_mode,
+            escape_pattern=escape_pattern)
         self.folder_columns = [key[0] for key in
                                self.structured_directory._path_parts_properties
                                if key]
