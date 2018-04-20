@@ -34,6 +34,12 @@ Options
 ``filename_column``
   If set, defines which column will contain the full filename.
 
+``mtime_column``
+  If set, defines which column will contain the file mtime.
+
+``ctime_column``
+  If set, defines which column will contain the file ctime.
+
 ``file_mode`` (default: 700)
   The unix permission mask to be used when creating files.
 
