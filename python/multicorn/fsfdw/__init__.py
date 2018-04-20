@@ -1,5 +1,4 @@
-"""
-Purpose
+"""Purpose
 -------
 
 This fdw can be used to access data stored in various files, in a filesystem.
@@ -37,6 +36,16 @@ Options
 
 ``file_mode`` (default: 700)
   The unix permission mask to be used when creating files.
+
+``escape_pattern`` (default: TRUE)
+  If TRUE, the pattern used to match files is escaped before it is
+  used for regular expression matching. If FALSE, the pattern used to
+  match files is used as is and it is assumed to be a valid regular
+  expression.
+
+``ignore_case`` (default: FALSE)
+  If FALSE, the pattern used to match files is case sensitive. If
+  TRUE, the pattern used to match files is case insensitive.
 
 Usage Example
 -------------
