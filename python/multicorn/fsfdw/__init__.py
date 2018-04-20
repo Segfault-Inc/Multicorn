@@ -135,6 +135,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
     content_column      --  The column's name which contains the file content.
                             (defaults to None)
     filename_column     --  The column's name wich contains the full filename.
+    mtime_column        --  The column's name wich contains the file mtime.
+    ctime_column        --  The column's name wich contains the file ctime.
 
     """
 
@@ -144,6 +146,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         pattern = options.get('pattern')
         self.content_column = options.get('content_column', None)
         self.filename_column = options.get('filename_column', None)
+        self.mtime_column = options.get('mtime_column', None)
+        self.ctime_column = options.get('ctime_column', None)
         self.file_mode = int(options.get('file_mode', '700'), 8)
         escape_pattern = (options.get('escape_pattern', 'TRUE').upper() in
                           ('TRUE', 'T'))
@@ -185,6 +189,26 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                                 "%s bytea" % self.content_column)
             else:
                 columns.pop(self.content_column)
+        if self.mtime_column:
+            if self.mtime_column not in columns:
+                log_to_postgres("The mtime column (%s) does not exist"
+                                "in the column list" % self.mtime_column,
+                                ERROR,
+                                "You should try to create your table with an "
+                                "additional column: \n"
+                                "%s bytea" % self.mtime_column)
+            else:
+                columns.pop(self.mtime_column)
+        if self.ctime_column:
+            if self.ctime_column not in columns:
+                log_to_postgres("The ctime column (%s) does not exist"
+                                "in the column list" % self.ctime_column,
+                                ERROR,
+                                "You should try to create your table with an "
+                                "additional column: \n"
+                                "%s bytea" % self.ctime_column)
+            else:
+                columns.pop(self.ctime_column)
         if len(self.structured_directory.properties) < len(columns):
             missing_columns = set(columns.keys()).difference(
                 self.structured_directory.properties)
@@ -259,8 +283,12 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
     def items_to_dicts(self, items, columns):
         content_column = self.content_column
         filename_column = self.filename_column
+        mtime_column = self.mtime_column
+        ctime_column = self.ctime_column
         has_content = content_column and content_column in columns
         has_filename = filename_column and filename_column in columns
+        has_mtime = mtime_column and mtime_column in columns
+        has_ctime = ctime_column and ctime_column in columns
         for item in items:
             if item.full_filename in self.invisible_files:
                 continue
@@ -272,11 +300,17 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                 new_item[content_column] = content
             if has_filename:
                 new_item[filename_column] = item.filename
+            if has_mtime:
+                new_item[mtime_column] = item.mtime
+            if has_ctime:
+                new_item[ctime_column] = item.ctime
             yield new_item
 
     def _item_from_dml(self, values):
         content = values.pop(self.content_column, None)
         filename = values.pop(self.filename_column, None)
+        mtime = values.pop(self.mtime_column, None)
+        ctime = values.pop(self.ctime_column, None)
         item_from_filename = None
         item_from_values = None
         if filename:
@@ -307,6 +341,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
                                 " statement, or ensure they match")
         item = item_from_filename or item_from_values
         item.content = content
+        item.mtime = mtime
+        item.ctime = ctime
         return item
 
     def _report_pk_violation(self, item):
@@ -335,6 +371,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         return_value = dict(item)
         return_value[self.filename_column] = item.filename
         return_value[self.content_column] = item.content
+        return_value[self.mtime_column] = item.mtime
+        return_value[self.ctime_column] = item.ctime
         return return_value
 
     def update(self, oldfilename, newvalues):
@@ -390,6 +428,8 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
         return_value = dict(newitem)
         return_value[self.filename_column] = newitem.filename
         return_value[self.content_column] = newitem.content
+        return_value[self.mtime_column] = newitem.mtime
+        return_value[self.ctime_column] = newitem.ctime
         return return_value
 
     def delete(self, rowid):

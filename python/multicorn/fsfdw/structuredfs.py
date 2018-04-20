@@ -3,14 +3,16 @@
 Handle nicely a set of files in a structured directory.
 
 """
-import os
-import sys
-import io
-import re
-import errno
-import string
 import collections
+import datetime
+import errno
 import fcntl
+import io
+import os
+import re
+import stat
+import string
+import sys
 from multicorn.compat import unicode_, basestring_
 
 vformat = string.Formatter().vformat
@@ -171,7 +173,13 @@ class Item(collections.Mapping):
     Note that at a given point in time, the actual file for an Item may or
     may not exist in the filesystem.
     """
-    def __init__(self, directory, properties, content=b'', actual_filename=None):
+    def __init__(self,
+                 directory,
+                 properties,
+                 content=b'',
+                 actual_filename=None,
+                 mtime=None,
+                 ctime=None):
         properties = dict(properties)
         keys = set(properties)
         missing = directory.properties - keys
@@ -184,6 +192,8 @@ class Item(collections.Mapping):
         self._properties = {}
         self.content = content
         self.actual_filename = actual_filename
+        self.mtime = datetime.datetime.fromtimestamp(mtime)
+        self.ctime = datetime.datetime.fromtimestamp(ctime)
         # TODO: check for ambiguities.
         # eg. with pattern = '{a}_{b}', values {'a': '1_2', 'b': '3'} and
         # {'a': '1', 'b': '2_3'} both give the same filename.
@@ -421,7 +431,12 @@ class StructuredDirectory(object):
             filename = self._join(path_parts)
             if is_leaf:
                 if os.path.isfile(filename):
-                    yield Item(self, values, actual_filename=name)
+                    st = os.stat(filename)
+                    yield Item(self,
+                               values,
+                               actual_filename=name,
+                               mtime=st[stat.ST_MTIME],
+                               ctime=st[stat.ST_CTIME])
             # Do not check if filename is a directory or even exists,
             # let listdir() raise later.
             else:
