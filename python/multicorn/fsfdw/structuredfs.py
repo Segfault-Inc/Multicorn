@@ -89,7 +89,7 @@ def _tokenize_pattern(pattern):
     yield 'path separator', '/'
 
 
-def _parse_pattern(pattern, escape_pattern=True):
+def _parse_pattern(pattern, escape_pattern=True, ignore_case=False):
     """
     Parse a string pattern and return (path_parts_re, path_parts_properties)
 
@@ -121,7 +121,9 @@ def _parse_pattern(pattern, escape_pattern=True):
             if not next_re:
                 raise ValueError('A slash-separated part is empty in %r' %
                                  pattern)
-            path_parts_re.append(re.compile('^%s$' % next_re))
+            path_parts_re.append(
+                re.compile('^%s$' % next_re,
+                           re.IGNORECASE if ignore_case else 0))
             next_re = ''
             path_parts_properties.append(tuple(properties))
             properties = []
@@ -310,13 +312,15 @@ class StructuredDirectory(object):
                  root_dir,
                  pattern,
                  file_mode=0o700,
-                 escape_pattern=True):
+                 escape_pattern=True,
+                 ignore_case=False):
         self.root_dir = unicode_(root_dir)
         self.pattern = unicode_(pattern)
         # Cache for file descriptors.
         self.cache = {}
         parts_re, parts_properties = _parse_pattern(self.pattern,
-                                                    escape_pattern)
+                                                    escape_pattern,
+                                                    ignore_case)
         self.file_mode = file_mode
         self._path_parts_re = parts_re
         self._path_parts_properties = parts_properties
