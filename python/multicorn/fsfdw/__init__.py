@@ -120,13 +120,14 @@ https://github.com/Kozea/StructuredFS.
 
 """
 
+import errno
+import os
+import stat
+from logging import ERROR, WARNING
 from multicorn import TransactionAwareForeignDataWrapper
 from multicorn.fsfdw.structuredfs import StructuredDirectory
 from multicorn.utils import log_to_postgres
 from multicorn.compat import unicode_
-from logging import ERROR, WARNING
-import os
-import errno
 
 
 class FilesystemFdw(TransactionAwareForeignDataWrapper):
@@ -277,7 +278,9 @@ class FilesystemFdw(TransactionAwareForeignDataWrapper):
             if qual.field_name == filename_column and qual.operator == '=':
                 item = self.structured_directory.from_filename(
                     unicode_(qual.value))
-                if item is not None and os.path.exists(item.full_filename):
+                if item is not None and os.path.isfile(item.full_filename):
+                    st = os.stat(item.full_filename)
+                    item.set_timestamps(st[stat.ST_MTIME], st[stat.ST_CTIME])
                     return [item]
                 else:
                     return []

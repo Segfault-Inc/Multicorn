@@ -192,8 +192,7 @@ class Item(collections.Mapping):
         self._properties = {}
         self.content = content
         self.actual_filename = actual_filename
-        self.mtime = datetime.datetime.fromtimestamp(mtime) if mtime else None
-        self.ctime = datetime.datetime.fromtimestamp(ctime) if ctime else None
+        self.set_timestamps(mtime, ctime)
         # TODO: check for ambiguities.
         # eg. with pattern = '{a}_{b}', values {'a': '1_2', 'b': '3'} and
         # {'a': '1', 'b': '2_3'} both give the same filename.
@@ -297,6 +296,10 @@ class Item(collections.Mapping):
     def remove(self):
         os.unlink(self.full_filename)
 
+    def set_timestamps(self, mtime, ctime):
+        self.mtime = datetime.datetime.fromtimestamp(mtime) if mtime else None
+        self.ctime = datetime.datetime.fromtimestamp(ctime) if ctime else None
+
     # collections.Mapping interface:
 
     def __len__(self):
@@ -370,7 +373,7 @@ class StructuredDirectory(object):
             if match is None:
                 return None
             values.update(match.groupdict())
-        return Item(self, values)
+        return Item(self, values, actual_filename=filename)
 
     def get_items(self, **fixed_values):
         """
