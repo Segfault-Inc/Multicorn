@@ -92,7 +92,7 @@ def _tokenize_pattern(pattern):
 
 
 def _parse_pattern(pattern, escape_pattern=True, ignore_case=False):
-    """
+    r"""
     Parse a string pattern and return (path_parts_re, path_parts_properties)
 
     >>> _parse_pattern('{category}/{number}_{name}.txt')
