@@ -192,8 +192,8 @@ class Item(collections.Mapping):
         self._properties = {}
         self.content = content
         self.actual_filename = actual_filename
-        self.mtime = datetime.datetime.fromtimestamp(mtime)
-        self.ctime = datetime.datetime.fromtimestamp(ctime)
+        self.mtime = datetime.datetime.fromtimestamp(mtime) if mtime else None
+        self.ctime = datetime.datetime.fromtimestamp(ctime) if ctime else None
         # TODO: check for ambiguities.
         # eg. with pattern = '{a}_{b}', values {'a': '1_2', 'b': '3'} and
         # {'a': '1', 'b': '2_3'} both give the same filename.
