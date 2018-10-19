@@ -431,7 +431,11 @@ Value *
 colnameFromVar(Var *var, PlannerInfo *root, MulticornPlanState * planstate)
 {
 	RangeTblEntry *rte = rte = planner_rt_fetch(var->varno, root);
-	char	   *attname = get_attname(rte->relid, var->varattno);
+	char	   *attname = get_attname(rte->relid, var->varattno
+#if PG_VERSION_NUM >= 110000
+			, false
+#endif
+			);
 
 	if (attname == NULL)
 	{
@@ -723,7 +727,11 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 			if (IsA(expr, Var))
 			{
 				Var *var = (Var *) expr;
-				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
+				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno
+#if PG_VERSION_NUM >= 110000
+							, false
+#endif
+							));
 				md->attnum = var->varattno;
 				found = true;
 			}
@@ -738,7 +746,11 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 					md->collate = NULL;
 				else
 					md->collate = (Name) strdup(get_collation_name(collid));
-				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
+				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno
+#if PG_VERSION_NUM >= 110000
+							, false
+#endif
+							));
 				md->attnum = var->varattno;
 				found = true;
 			}
