@@ -46,9 +46,13 @@ def _tokenize_pattern(pattern):
     >>> list(_tokenize_pattern('{category}/{number}_{name}.txt'))
     [('property', 'category'),
      ('path separator', '/'),
-     ('category', 'number'),
+     ('property', 'number'),
      ('literal', '_'),
-     ('category', 'name'),
+     ('property', 'name'),
+     ('literal', '.'),
+     ('literal', 't'),
+     ('literal', 'x'),
+     ('literal', 't'),
      ('path separator', '/')]
 
     """

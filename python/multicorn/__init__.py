@@ -140,6 +140,10 @@ class Qual(object):
         return hash((self.field_name, self.operator, self.value))
 
 
+
+
+
+
 class ForeignDataWrapper(object):
     """Base class for all foreign data wrapper instances.
 

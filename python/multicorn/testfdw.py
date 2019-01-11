@@ -65,6 +65,8 @@ class TestForeignDataWrapper(ForeignDataWrapper):
                             [column_name, column_name],
                             [next(random_thing), '{some value, \\" 2}'],
                             [index, '%s,"%s"' % (column_name, index)]]
+                    elif self.test_type == 'float':
+                        line[column_name] = 1. / float(next(random_thing))
                     else:
                         line[column_name] = '%s %s %s' % (column_name,
                                                           next(random_thing),
