@@ -103,7 +103,7 @@ initConversioninfo(ConversionInfo ** cinfos, AttInMetadata *attinmeta)
 
 	for (i = 0; i < attinmeta->tupdesc->natts; i++)
 	{
-		Form_pg_attribute attr = attinmeta->tupdesc->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(attinmeta->tupdesc,i);
 		Oid			outfuncoid;
 		bool		typIsVarlena;
 
