@@ -56,16 +56,16 @@ definition:
     );
 
     CREATE FOREIGN TABLE ldapexample (
-      	mail character varying,
-	cn character varying,
-	description character varying
+        mail character varying,
+        cn character varying,
+        description character varying
     ) server ldap_srv options (
-	uri 'ldap://localhost',
-	path 'dc=lab,dc=example,dc=com',
-	scope 'sub',
-	binddn 'cn=Admin,dc=example,dc=com',
-	bindpwd 'admin',
-	objectClass '*'
+        uri 'ldap://localhost',
+        path 'dc=lab,dc=example,dc=com',
+        scope 'sub',
+        binddn 'cn=Admin,dc=example,dc=com',
+        bindpwd 'admin',
+        objectClass '*'
     );
 
     select * from ldapexample;
