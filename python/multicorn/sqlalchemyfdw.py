@@ -476,6 +476,7 @@ class SqlAlchemyFdw(ForeignDataWrapper):
             only = None
         metadata.reflect(bind=engine,
                          schema=schema,
+                         views=True,
                          only=only)
         to_import = []
         for _, table in sorted(metadata.tables.items()):
