@@ -47,5 +47,16 @@ CREATE foreign table testmulticorn2 (
 );
 
 select * from testmulticorn union all select * from testmulticorn2;
+
+CREATE foreign table testmulticorn3 (
+    test1 character varying,
+    test2 character varying
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'sequence',
+    test_subtype '1null'
+);
+select * from testmulticorn3 limit 1;
+
 DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

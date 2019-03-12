@@ -15,6 +15,7 @@ class TestForeignDataWrapper(ForeignDataWrapper):
         super(TestForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns
         self.test_type = options.get('test_type', None)
+        self.test_subtype = options.get('test_subtype', None)
         self.tx_hook = options.get('tx_hook', False)
         self._row_id_column = options.get('row_id_column',
                                           list(self.columns.keys())[0])
@@ -35,8 +36,11 @@ class TestForeignDataWrapper(ForeignDataWrapper):
             if self.test_type == 'sequence':
                 line = []
                 for column_name in self.columns:
-                    line.append('%s %s %s' % (column_name,
-                                              next(random_thing), index))
+                    if self.test_subtype == '1null' and len(line) == 0:
+                        line.append(None)
+                    else:
+                        line.append('%s %s %s' % (column_name,
+                                                  next(random_thing), index))
             else:
                 line = {}
                 for column_name, column in self.columns.items():
