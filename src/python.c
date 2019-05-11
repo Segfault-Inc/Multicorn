@@ -459,7 +459,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 
 		for (i = 0; i < desc->natts; i++)
 		{
-			Form_pg_attribute att = desc->attrs[i];
+			Form_pg_attribute att = TupleDescAttr(desc, i);
 
 			if (!att->attisdropped)
 			{
@@ -1214,7 +1214,7 @@ pythonDictToTuple(PyObject *p_value,
 	for (i = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		char	   *key;
-		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(slot->tts_tupleDescriptor,i);
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
 		if (cinfos[cinfo_idx] == NULL)
@@ -1263,7 +1263,7 @@ pythonSequenceToTuple(PyObject *p_value,
 	for (i = 0, j = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		PyObject   *p_object;
-		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(slot->tts_tupleDescriptor,i);
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
 		if (cinfos[cinfo_idx] == NULL)
@@ -1274,18 +1274,20 @@ pythonSequenceToTuple(PyObject *p_value,
 		if(p_object == NULL || p_object == Py_None){
 			nulls[i] = true;
 			values[i] = 0;
-			continue;
-		}
-		resetStringInfo(buffer);
-		values[i] = pyobjectToDatum(p_object, buffer,
-									cinfos[cinfo_idx]);
-		if (buffer->data == NULL)
-		{
-			nulls[i] = true;
 		}
 		else
 		{
-			nulls[i] = false;
+			resetStringInfo(buffer);
+			values[i] = pyobjectToDatum(p_object, buffer,
+										cinfos[cinfo_idx]);
+			if (buffer->data == NULL)
+			{
+				nulls[i] = true;
+			}
+			else
+			{
+				nulls[i] = false;
+			}
 		}
 		errorCheck();
 		Py_DECREF(p_object);
@@ -1658,7 +1660,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 
 	for (i = 0; i < tupdesc->natts; i++)
 	{
-		Form_pg_attribute attr = tupdesc->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(tupdesc,i);
 		bool		isnull;
 		Datum		value;
 		PyObject   *item;

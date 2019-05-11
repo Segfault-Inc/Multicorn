@@ -330,9 +330,28 @@ NOTICE:  ['test1', 'test2']
  test1 3 19 | test2 1 19
 (40 rows)
 
+CREATE foreign table testmulticorn3 (
+    test1 character varying,
+    test2 character varying
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'sequence',
+    test_subtype '1null'
+);
+select * from testmulticorn3 limit 1;
+NOTICE:  [('option1', 'option1'), ('test_subtype', '1null'), ('test_type', 'sequence'), ('usermapping', 'test')]
+NOTICE:  [('test1', 'character varying'), ('test2', 'character varying')]
+NOTICE:  []
+NOTICE:  ['test1', 'test2']
+ test1 |   test2   
+-------+-----------
+       | test2 1 0
+(1 row)
+
 DROP USER MAPPING FOR postgres SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
-NOTICE:  drop cascades to 3 other objects
+NOTICE:  drop cascades to 4 other objects
 DETAIL:  drop cascades to server multicorn_srv
 drop cascades to foreign table testmulticorn
 drop cascades to foreign table testmulticorn2
+drop cascades to foreign table testmulticorn3
