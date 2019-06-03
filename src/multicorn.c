@@ -23,15 +23,15 @@
 #include "miscadmin.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
+#include "utils/resowner.h"
 #include "parser/parsetree.h"
-
+#include "executor/spi.h"
 
 PG_MODULE_MAGIC;
 
 
 extern Datum multicorn_handler(PG_FUNCTION_ARGS);
 extern Datum multicorn_validator(PG_FUNCTION_ARGS);
-
 
 PG_FUNCTION_INFO_V1(multicorn_handler);
 PG_FUNCTION_INFO_V1(multicorn_validator);
@@ -100,13 +100,17 @@ static List *multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 
 static void multicorn_xact_callback(XactEvent event, void *arg);
 
+static void multicorn_release_callback(ResourceReleasePhase phase,
+				       bool isCommit,
+				       bool isTopLevel,
+				       void *arg);
+
 /*	Helpers functions */
 void	   *serializePlanState(MulticornPlanState * planstate);
 MulticornExecState *initializeExecState(void *internal_plan_state);
 
 /* Hash table mapping oid to fdw instances */
 HTAB	   *InstancesHash;
-
 
 void
 _PG_init()
@@ -119,6 +123,11 @@ _PG_init()
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
 #endif
+	/* RegisterResourceReleaseBallback dates back to 2004 and is in
+	   the 8.0 release.  Not sure if we need a version number 
+	   restriction around it. */
+	RegisterResourceReleaseCallback(multicorn_release_callback, NULL);
+	
 	/* Initialize the global oid -> python instances hash */
 	MemSet(&ctl, 0, sizeof(ctl));
 	ctl.keysize = sizeof(Oid);
@@ -558,7 +567,7 @@ static void
 multicornEndForeignScan(ForeignScanState *node)
 {
 	MulticornExecState *state = node->fdw_state;
-	PyObject   *result = PyObject_CallMethod(state->fdw_instance, "end_scan", "()");
+	PyObject   *result = PYOBJECT_CALLMETHOD(state->fdw_instance, "end_scan", "()");
 
 	errorCheck();
 	Py_DECREF(result);
@@ -708,7 +717,7 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *fdw_instance = modstate->fdw_instance;
 	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
-	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
+	PyObject   *p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "insert", "(O)", values);
 
 	errorCheck();
 	if (p_new_value && p_new_value != Py_None)
@@ -742,7 +751,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
+	p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "delete", "(O)", p_row_id);
 	errorCheck();
 	if (p_new_value == NULL || p_new_value == Py_None)
 	{
@@ -778,7 +787,7 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
+	p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "update", "(O,O)", p_row_id,
 									  p_value);
 	errorCheck();
 	if (p_new_value != NULL && p_new_value != Py_None)
@@ -802,7 +811,7 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
+	PyObject   *result = PYOBJECT_CALLMETHOD(modstate->fdw_instance, "end_modify", "()");
 
 	errorCheck();
 	Py_DECREF(modstate->fdw_instance);
@@ -837,11 +846,11 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 		instance = entry->value;
 		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
 		{
-			PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
+			PYOBJECT_CALLMETHOD(instance, "sub_commit", "(i)", curlevel);
 		}
 		else
 		{
-			PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
+			PYOBJECT_CALLMETHOD(instance, "sub_rollback", "(i)", curlevel);
 		}
 		errorCheck();
 		entry->xact_depth--;
@@ -870,15 +879,15 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		{
 #if PG_VERSION_NUM >= 90300
 			case XACT_EVENT_PRE_COMMIT:
-				PyObject_CallMethod(instance, "pre_commit", "()");
+				PYOBJECT_CALLMETHOD(instance, "pre_commit", "()");
 				break;
 #endif
 			case XACT_EVENT_COMMIT:
-				PyObject_CallMethod(instance, "commit", "()");
+				PYOBJECT_CALLMETHOD(instance, "commit", "()");
 				entry->xact_depth = 0;
 				break;
 			case XACT_EVENT_ABORT:
-				PyObject_CallMethod(instance, "rollback", "()");
+				PYOBJECT_CALLMETHOD(instance, "rollback", "()");
 				entry->xact_depth = 0;
 				break;
 			default:
@@ -887,6 +896,56 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		errorCheck();
 	}
 }
+
+/*
+ * Callback for after commit to relase any locks or other
+ * resources.  Key thing is locks have already been released.
+ * This allows updates/inserts back to postgres without worrying 
+ * about locks.  Can be a big performance win in a few
+ * corner cases.
+ */
+static void
+multicorn_release_callback(ResourceReleasePhase phase, bool isCommit,
+			   bool isTopLevel, void *arg) {
+	PyObject   *instance;
+	HASH_SEQ_STATUS status;
+	CacheEntry *entry;
+
+	if (!isTopLevel) {
+	  return;
+	}
+
+	hash_seq_init(&status, InstancesHash);
+	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
+	{
+		instance = entry->value;
+		if (entry->xact_depth == 0)
+			continue;
+
+		switch (phase)
+		{
+		  /* XXXXX FIXME:
+		   * Do we want to pass isCommit?
+		   */
+		case RESOURCE_RELEASE_BEFORE_LOCKS:
+		  PYOBJECT_CALLMETHOD(instance, "release_before", "()");
+		  break;
+		  
+		case RESOURCE_RELEASE_LOCKS:
+		  PYOBJECT_CALLMETHOD(instance, "release", "()");
+		  break;
+
+		case RESOURCE_RELEASE_AFTER_LOCKS:
+		  PYOBJECT_CALLMETHOD(instance, "release_after", "()");
+		  break;
+		  
+		default:
+		  break;
+		}
+		errorCheck();
+	}
+}
+
 
 #if PG_VERSION_NUM >= 90500
 static List *
@@ -962,7 +1021,7 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 		Py_DECREF(p_tablename);
 	}
 	errorCheck();
-	p_tables = PyObject_CallMethod(p_class, "import_schema", "(s, O, O, s, O)",
+	p_tables = PYOBJECT_CALLMETHOD(p_class, "import_schema", "(s, O, O, s, O)",
 							   stmt->remote_schema, p_srv_options, p_options,
 								   restrict_type, p_restrict_list);
 	errorCheck();
@@ -977,8 +1036,9 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 		PyObject   *p_string;
 		char	   *value;
 
-		p_string = PyObject_CallMethod(p_item, "to_statement", "(s,s)",
-								   stmt->local_schema, f_server->servername);
+		p_string = PYOBJECT_CALLMETHOD(p_item, "to_statement", "(s,s)",
+					       stmt->local_schema,
+					       f_server->servername);
 		errorCheck();
 		value = PyString_AsString(p_string);
 		errorCheck();
@@ -1038,4 +1098,38 @@ initializeExecState(void *internalstate)
 	execstate->values = palloc(attnum * sizeof(Datum));
 	execstate->nulls = palloc(attnum * sizeof(bool));
 	return execstate;
+}
+
+
+static bool multicorn_SPI_connected = false;
+
+void
+multicorn_connect(void) {
+	if (!multicorn_SPI_connected) {
+	  if (SPI_connect() != SPI_OK_CONNECT) {
+	    if (errstart(FATAL, __FILE__, __LINE__,
+			 PG_FUNCNAME_MACRO, TEXTDOMAIN)) {
+	      errmsg("Unable to connect to SPI");
+	      errfinish(0);
+	    }
+	    return;
+	  }
+	  multicorn_SPI_connected = true;
+	}
+}
+
+/*
+ * Pass through the pyobject so we can easily
+ * have a macro call this for every
+ * PyObject_CallMethod and PyObject_CallFunction
+ * call.
+ */
+PyObject *
+multicorn_disconnect(PyObject *po) {
+	if (multicorn_SPI_connected)
+	{
+	  SPI_finish();
+	  multicorn_SPI_connected = false;
+	}
+	return po;
 }
