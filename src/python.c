@@ -209,7 +209,7 @@ PyObject *
 getClass(PyObject *className)
 {
 	PyObject   *p_multicorn = PyImport_ImportModule("multicorn"),
-			   *p_class = PyObject_CallMethod(p_multicorn, "get_class", "(O)",
+			   *p_class = PYOBJECT_CALLMETHOD(p_multicorn, "get_class", "(O)",
 											  className);
 
 	errorCheck();
@@ -455,7 +455,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 				   *p_collections = PyImport_ImportModule("collections"),
 				   *p_dictclass = PyObject_GetAttrString(p_collections, "OrderedDict");
 
-		columns_dict = PyObject_CallFunction(p_dictclass, "()");
+		columns_dict = PYOBJECT_CALLFUNCTION(p_dictclass, "()");
 
 		for (i = 0; i < desc->natts; i++)
 		{
@@ -472,7 +472,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 				List	   *options = GetForeignColumnOptions(att->attrelid,
 															  att->attnum);
 				PyObject   *p_options = optionsListToPyDict(options);
-				PyObject   *column = PyObject_CallFunction(p_columnclass,
+				PyObject   *column = PYOBJECT_CALLFUNCTION(p_columnclass,
 														   "(s,i,i,s,s,O)",
 														   key,
 														   typOid,
@@ -623,7 +623,7 @@ getCacheEntry(Oid foreigntableid)
 		entry->value = NULL;
 		getColumnsFromTable(desc, &p_columns, &columns);
 		PyDict_DelItemString(p_options, "wrapper");
-		p_instance = PyObject_CallFunction(p_class, "(O,O)", p_options,
+		p_instance = PYOBJECT_CALLFUNCTION(p_class, "(O,O)", p_options,
 										   p_columns);
 		errorCheck();
 		/* Cleanup the old context, containing the old columns and options */
@@ -682,7 +682,7 @@ begin_remote_xact(CacheEntry * entry)
 	/* Start main transaction if we haven't yet */
 	if (entry->xact_depth <= 0)
 	{
-		rv = PyObject_CallMethod(entry->value, "begin", "(i)", IsolationIsSerializable());
+		rv = PYOBJECT_CALLMETHOD(entry->value, "begin", "(i)", IsolationIsSerializable());
 		Py_XDECREF(rv);
 		errorCheck();
 		entry->xact_depth = 1;
@@ -691,7 +691,7 @@ begin_remote_xact(CacheEntry * entry)
 	while (entry->xact_depth < curlevel)
 	{
 		entry->xact_depth++;
-		rv = PyObject_CallMethod(entry->value, "sub_begin", "(i)", entry->xact_depth);
+		rv = PYOBJECT_CALLMETHOD(entry->value, "sub_begin", "(i)", entry->xact_depth);
 		Py_XDECREF(rv);
 		errorCheck();
 	}
@@ -719,7 +719,7 @@ getRelSize(MulticornPlanState * state,
 
 	p_targets_set = valuesToPySet(state->target_list);
 	p_quals = qualDefsToPyList(state->qual_list, state->cinfos);
-	p_rows_and_width = PyObject_CallMethod(state->fdw_instance, "get_rel_size",
+	p_rows_and_width = PYOBJECT_CALLMETHOD(state->fdw_instance, "get_rel_size",
 										   "(O,O)", p_quals, p_targets_set);
 	errorCheck();
 	Py_DECREF(p_targets_set);
@@ -820,7 +820,7 @@ pythonQual(char *operatorname,
 	}
 
 	columnName = PyUnicode_Decode(cinfo->attrname, strlen(cinfo->attrname), getPythonEncodingName(), NULL);
-	qualInstance = PyObject_CallFunction(qualClass, "(O,O,O)",
+	qualInstance = PYOBJECT_CALLFUNCTION(qualClass, "(O,O,O)",
 										 columnName,
 										 operator,
 										 value);
@@ -857,7 +857,7 @@ getSortKey(MulticornDeparsedSortGroup *key)
 	}
 	else
 		p_collate = PyUnicode_Decode(NameStr(*(key->collate)), strlen(NameStr(*(key->collate))), getPythonEncodingName(), NULL);
-	SortKeyInstance = PyObject_CallFunction(SortKeyClass, "(O,i,O,O,O)",
+	SortKeyInstance = PYOBJECT_CALLFUNCTION(SortKeyClass, "(O,i,O,O,O)",
 			p_attname,
 			key->attnum,
 			p_reversed,
@@ -1136,7 +1136,7 @@ pydateToCString(PyObject *pyobject, StringInfo buffer,
 	Py_ssize_t	strlength = 0;
 	PyObject   *formatted_date;
 
-	formatted_date = PyObject_CallMethod(pyobject, "isoformat", "()");
+	formatted_date = PYOBJECT_CALLMETHOD(pyobject, "isoformat", "()");
 	PyString_AsStringAndSize(formatted_date, &tempbuffer, &strlength);
 	appendBinaryStringInfo(buffer, tempbuffer, strlength);
 	Py_DECREF(formatted_date);
@@ -1560,7 +1560,7 @@ pathKeys(MulticornPlanState * state)
 	PyObject   *fdw_instance = state->fdw_instance,
 			   *p_pathkeys;
 
-	p_pathkeys = PyObject_CallMethod(fdw_instance, "get_path_keys", "()");
+	p_pathkeys = PYOBJECT_CALLMETHOD(fdw_instance, "get_path_keys", "()");
 	errorCheck();
 	for (i = 0; i < PySequence_Length(p_pathkeys); i++)
 	{
@@ -1637,7 +1637,7 @@ canSort(MulticornPlanState * state, List *deparsed)
 		Py_DECREF(python_sortkey);
 	}
 
-	p_sortable = PyObject_CallMethod(fdw_instance, "can_sort", "(O)", p_pathkeys);
+	p_sortable = PYOBJECT_CALLMETHOD(fdw_instance, "can_sort", "(O)", p_pathkeys);
 	errorCheck();
 	for (i = 0; i < PySequence_Length(p_sortable); i++)
 	{

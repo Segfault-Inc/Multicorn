@@ -15,7 +15,7 @@ include_dirs = [get_pg_config(d) for d in ("includedir", "pkgincludedir", "inclu
 
 multicorn_utils_module = Extension('multicorn._utils',
         include_dirs=include_dirs,
-        extra_compile_args = ['-shared'],
+        extra_compile_args = ['-shared', '-g'],
         sources=['src/utils.c'])
 
 requires=[]
