@@ -269,6 +269,8 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 	char       *nulls = NULL;
 	Datum      *stmt_args = NULL;
 
+	char logbuff[200];
+
 	if (!PyArg_ParseTuple(args, "OO!O!", &stmt_object,
 			      &PyTuple_Type, &sqlargs_obj,
 			      &PyTuple_Type, &converters_obj))
@@ -309,26 +311,24 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	  pobj = PyTuple_GetItem(sqlargs_obj, i);
 
-	  stmt_args[i] = Int64GetDatum(0);
-	    
 	  if (pobj == NULL || pobj == Py_None)
 	  {
+	    VLOG("arg %d is NULL", i);
 	    nulls[i] = 'n';
 	    continue;
 	  }
 
-	  nulls[i] = 'n';
 	  str = PyObject_Str(pobj);
 	  
 	  converter = PyTuple_GetItem(converters_obj, i);
 	  if (converter == NULL || converter == Py_None)
 	  {
+	    VLOG("arg %d is No Converter", i);
 	    goto errout;
 	  }
 
 	  Py_DECREF(str);
 	  
-
 	  /* Don't use the macro here since we
 	     are in the middle of a pg call.
 	  */
@@ -336,17 +336,18 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	  if (islob_obj == NULL)
 	  {
+	    VLOG("arg %d is No islob", i);
 	    goto errout;
 	  }
 	  
 	  islob = PyObject_IsTrue(islob_obj);
 	  Py_DECREF(islob_obj);
-
 	    
 	  pobj = PyObject_CallMethod(converter, "getdatum", "(O)", pobj);
 
 	  if (PyString_Check(pobj))
 	  {
+	    VLOG("arg %d is string islob=%d", i, islob);
 	    if (islob)
 	      {
 		stmt_args[i] = DirectFunctionCall1(textin,
@@ -359,18 +360,19 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 	  }
 	  else if (PyLong_Check(pobj))
 	  {
+	    VLOG("arg %d is long", i);
 	    stmt_args[i] = Int64GetDatum(PyLong_AsLong(pobj));
 	  }
 	  else if (PyInt_Check(pobj))
 	  {
+	    VLOG("arg %d is int", i);
 	    stmt_args[i] = Int32GetDatum(PyInt_AsLong(pobj));
 	  }
 	  else if (PyFloat_Check(pobj))
 	  {
+	    VLOG("arg %d is float", i);
 	    stmt_args[i] = Float8GetDatum(PyFloat_AsDouble(pobj));
 	  }
-
-	  stmt_args[i] = Int64GetDatum(0);
 	  
 	  Py_DECREF(pobj);
 
