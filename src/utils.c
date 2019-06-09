@@ -319,6 +319,12 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 	  }
 
 	  str = PyObject_Str(pobj);
+
+	  if (str == NULL)
+	    {
+	      VLOG("pobj(%p) returns NULL str", pobj);
+	      goto errout;
+	    }
 	  
 	  converter = PyTuple_GetItem(converters_obj, i);
 	  if (converter == NULL || converter == Py_None)
