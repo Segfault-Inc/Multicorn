@@ -31,7 +31,7 @@ SELECT * from constanttable;
 And obtain this as a result:
 ```
   test   |  test2
----------+----------
+---------|----------
  test 0  | test2 0
  test 1  | test2 1
  test 2  | test2 2
@@ -158,37 +158,57 @@ Since PostgreSQL 9.3, foreign data wrappers can implement a write API.
 
 In multicorn, this involves defining which column will be used as a primary key
 (mandatory) and implementing the following methods at your discretion:
+
 ```python
 def insert(self, new_values)
-def update(self, old_values, new_values)
-def delete(self, old_values)
+def update(self, rowid, new_values)
+def delete(self, rowid)
 ```
 
-Each of these arguments will be dictionaries, containing at least the column
-you defined as a primary key, and the values to insert or those which have
-changed (for an update). In addition, other values may be present depending on
-the query involved.
+### Defining the primary key
 
-These methods should return a dictionary containing the new values (after
-insertion or update). This will be used in the case of `RETURNING` clauses of
-the form:
-```sql
-INSERT INTO my_ft VALUES (some_value) RETURNING *;
-```
+Which column is used as primary key is defined by the property `rowid_column`.
+In order to support the write API, you will have to implement this property to
+return a column name, e.g.
 
-You can return new values if the values that were given in sql are not the ones
-that are actually stored (think about default values, triggers…).
-
-The `row_id_column` attribute must be set to the name of a column acting as a
-primary key. For example:
 ```python
-class MyFDW(ForeignDataWrapper):
-
-  def __init__(self, fdw_options, fdw_columns):
-    self.row_id_column = fdw_columns.keys()[0]
+@property
+def rowid_column(self):
+  return 'id'
 ```
+
+Without implementing this property any attempt to use the write API methods will
+raise an exception.
+
+### Inserts
+
+The `insert` method receives the `new_values` argument, which is a dictionary of
+column names to values. This method should returns a dictionary which will be
+used in case the `INSERT` has a `RETURNING` clause, e.g.
+
+```sql
+INSERT INTO my_foreign_table VALUES (some_value) RETURNING *;
+```
+
+In other words: The returned dictionary should be a mapping from column names to
+values.
+
+### Updates
+
+The `update` method behaves like the `insert` method with regards to output.
+However, as input it receives an additional argument: the `rowid`. This is the
+value of the column named primary key by the `rowid_column` property, and thus
+defines which row should be updated.
+
+### Deletes
+
+The `delete` method receives only the `rowid` argument, and should always return
+nothing.
+
+### Transactions
 
 If you want to handle transaction hooks, you can implement the following methods:
+
 ```python
 def commit(self)
 def rollback(self)
