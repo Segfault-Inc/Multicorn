@@ -8,7 +8,7 @@ permalink: /
 
 Multicorn is a PostgreSQL 9.1+ extension meant to
 make
-[Foreign Data Wrapper](http://people.planetpostgresql.org/andrew/uploads/fdw2.pdf) development
+[Foreign Data Wrapper](https://web.archive.org/web/20150220082511/http://people.planetpostgresql.org/andrew/uploads/fdw2.pdf) development
 easy, by allowing the programmer to use the Python programming language.
 
 ### Ok, but why should I care?
