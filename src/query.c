@@ -10,6 +10,12 @@
 #include "utils/lsyscache.h"
 #include "miscadmin.h"
 #include "parser/parsetree.h"
+#include "pg_config.h"
+
+/* Third argument to get_attname was introduced in [8237f27] (release 11) */
+#if PG_VERSION_NUM >= 110000
+#define get_attname(x, y) get_attname(x, y, true)
+#endif
 
 void extractClauseFromOpExpr(Relids base_relids,
 						OpExpr *node,
