@@ -22,6 +22,13 @@
 
 /* Data structures */
 
+#define C_LOG(...) do { \
+	errstart(NOTICE, __FILE__, __LINE__, PG_FUNCNAME_MACRO, TEXTDOMAIN); \
+	errmsg(__VA_ARGS__); \
+	errfinish(0); \
+} while (0)
+
+
 typedef struct CacheEntry
 {
 	Oid			hashkey;
