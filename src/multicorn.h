@@ -69,6 +69,15 @@ typedef struct MulticornPlanState
 	int			startupCost;
 	ConversionInfo **cinfos;
 	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
+
+	/* For some reason, `baserel->reltarget->width` gets changed
+	 * outside of our control somewhere between GetForeignPaths and
+	 * GetForeignPlan, which breaks tests.
+	 *
+	 * XXX: This is very crude hack to transfer width, calculated by
+	 * getRelSize to GetForeignPlan.
+	 */
+	int width;
 }	MulticornPlanState;
 
 typedef struct MulticornExecState
