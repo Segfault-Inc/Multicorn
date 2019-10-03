@@ -1,0 +1,58 @@
+#!/bin/bash
+set -eu
+
+usage() {
+	cat << EOF
+Usage: ./docheck command [args]
+
+Available commands:
+
+ * py2-9.6: build and test extension in container with postgresql-9.6
+ * test-in-docker: used internally by other commands
+EOF
+}
+
+if [[ $# = 0 ]] ; then
+	usage
+	exit 1
+fi
+
+py2_check () {
+	local v=$1
+	docker build -f docker/$v/Dockerfile docker/$v -t pg-test:$v
+	docker run -v "${PWD}:/source:ro" pg-test:$v /source/docheck test-in-docker 2.7
+}
+
+cmd=$1
+shift 1
+case "${cmd}" in
+(py2-9.6) py2_check py2-9.6 ;;
+(py2-10)  py2_check py2-10  ;;
+(py2-11)  py2_check py2-11  ;;
+(py2-12)  py2_check py2-12  ;;
+(test-in-docker)
+	# Actually, we only need only distinguish python-2.7 and python-3.3
+	# tests.
+	PY_VERSION=$1
+	cp -r /source /build
+	cd /build
+	su postgres -c '/usr/lib/postgresql/*/bin/initdb'
+	su postgres -c '/usr/lib/postgresql/*/bin/pg_ctl -D /var/lib/postgresql/data start'
+	make
+	make install
+	make installcheck || /bin/true
+	if test -f regression.out ; then
+		cat regression.out
+		for x in results/*.out ; do
+			base=$(basename "$x")
+			echo ">>> $base"
+			diff -U3 test-${PY_VERSION}/expected/$base $x || /bin/true
+		done
+		exit 2
+	fi
+	;;
+(*)
+	usage
+	exit 1
+	;;
+esac
