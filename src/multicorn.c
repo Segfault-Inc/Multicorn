@@ -12,7 +12,9 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "optimizer/clauses.h"
+#if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
+#endif
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"

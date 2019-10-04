@@ -1,5 +1,9 @@
 #include "multicorn.h"
+#if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
+#else
+#include "optimizer/optimizer.h"
+#endif
 #include "optimizer/clauses.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/subselect.h"
