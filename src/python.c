@@ -483,7 +483,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 				List	   *columnDef = NULL;
 
 				errorCheck();
-				columnDef = lappend(columnDef, makeString(key));
+				columnDef = lappend(columnDef, makeString(pstrdup(key)));
 				columnDef = lappend(columnDef, makeConst(TYPEOID,
 								   -1, InvalidOid, 4, ObjectIdGetDatum(typOid), false, true));
 				columnDef = lappend(columnDef, makeConst(INT4OID,
