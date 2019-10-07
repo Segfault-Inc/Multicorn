@@ -36,7 +36,9 @@ case "${cmd}" in
 (py2-9.6) py2_check py2-9.6 ;;
 (py3-9.6) py3_check py3-9.6 ;;
 (py2-10)  py2_check py2-10  ;;
+(py3-10)  py3_check py3-10  ;;
 (py2-11)  py2_check py2-11  ;;
+(py3-11)  py3_check py3-11  ;;
 (py2-12)  py2_check py2-12  ;;
 (test-in-docker)
 	# Actually, we only need only distinguish python-2.7 and python-3.3
