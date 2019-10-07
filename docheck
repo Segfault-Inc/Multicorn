@@ -47,6 +47,9 @@ case "${cmd}" in
 	cp -r /source /build
 	cd /build
 	su postgres -c '/usr/lib/postgresql/*/bin/initdb'
+	# If jit is enabled, it causes additional output for `explain`
+	# command, resulting in failed tests.
+	sed -i -e '/jit =/cjit = false' /var/lib/postgresql/data/postgresql.conf
 	su postgres -c '/usr/lib/postgresql/*/bin/pg_ctl -D /var/lib/postgresql/data start'
 	make
 	make install
