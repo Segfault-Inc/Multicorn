@@ -23,10 +23,18 @@ py2_check () {
 	docker run -v "${PWD}:/source:ro" pg-test:$v /source/docheck test-in-docker 2.7
 }
 
+py3_check () {
+	local v=$1
+	docker build -f docker/$v/Dockerfile docker/$v -t pg-test:$v
+	docker run -v "${PWD}:/source:ro" pg-test:$v /source/docheck test-in-docker 3.5
+}
+
+
 cmd=$1
 shift 1
 case "${cmd}" in
 (py2-9.6) py2_check py2-9.6 ;;
+(py3-9.6) py3_check py3-9.6 ;;
 (py2-10)  py2_check py2-10  ;;
 (py2-11)  py2_check py2-11  ;;
 (py2-12)  py2_check py2-12  ;;
