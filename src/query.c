@@ -723,7 +723,7 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 			if (IsA(expr, Var))
 			{
 				Var *var = (Var *) expr;
-				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
+				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno, false));
 				md->attnum = var->varattno;
 				found = true;
 			}
@@ -738,7 +738,7 @@ deparse_sortgroup(PlannerInfo *root, Oid foreigntableid, RelOptInfo *rel)
 					md->collate = NULL;
 				else
 					md->collate = (Name) strdup(get_collation_name(collid));
-				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno));
+				md->attname = (Name) strdup(get_attname(foreigntableid, var->varattno,false));
 				md->attnum = var->varattno;
 				found = true;
 			}
