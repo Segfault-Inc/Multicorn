@@ -13,7 +13,7 @@
 #include "nodes/bitmapset.h"
 #include "nodes/makefuncs.h"
 #include "nodes/pg_list.h"
-#include "nodes/relation.h"
+#include "nodes/pathnodes.h"
 #include "utils/builtins.h"
 #include "utils/syscache.h"
 
