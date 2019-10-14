@@ -12,7 +12,7 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "optimizer/clauses.h"
-#include "optimizer/var.h"
+#include "optimizer/optimizer.h"
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
