@@ -431,7 +431,7 @@ Value *
 colnameFromVar(Var *var, PlannerInfo *root, MulticornPlanState * planstate)
 {
 	RangeTblEntry *rte = rte = planner_rt_fetch(var->varno, root);
-	char	   *attname = get_attname(rte->relid, var->varattno);
+	char	   *attname = get_attname(rte->relid, var->varattno, false);
 
 	if (attname == NULL)
 	{
