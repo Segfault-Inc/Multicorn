@@ -1,5 +1,5 @@
 #include "multicorn.h"
-#include "optimizer/var.h"
+#include "optimizer/optimizer.h"
 #include "optimizer/clauses.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/subselect.h"
