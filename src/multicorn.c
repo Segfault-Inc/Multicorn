@@ -12,7 +12,9 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "optimizer/clauses.h"
+#if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
+#endif
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
@@ -298,6 +300,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	/* Inject the "rows" and "width" attribute into the baserel */
 #if PG_VERSION_NUM >= 90600
 	getRelSize(planstate, root, &baserel->rows, &baserel->reltarget->width);
+	planstate->width = baserel->reltarget->width;
 #else
 	getRelSize(planstate, root, &baserel->rows, &baserel->width);
 #endif
@@ -413,6 +416,8 @@ multicornGetForeignPlan(PlannerInfo *root,
 	Index		scan_relid = baserel->relid;
 	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
 	ListCell   *lc;
+
+	best_path->path.pathtarget->width = planstate->width;
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 	/* Extract the quals coming from a parameterized path, if any */
