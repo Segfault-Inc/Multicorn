@@ -1105,16 +1105,19 @@ static bool multicorn_SPI_connected = false;
 
 void
 multicorn_connect(void) {
-	if (!multicorn_SPI_connected) {
-	  if (SPI_connect() != SPI_OK_CONNECT) {
-	    if (errstart(FATAL, __FILE__, __LINE__,
-			 PG_FUNCNAME_MACRO, TEXTDOMAIN)) {
-	      errmsg("Unable to connect to SPI");
-	      errfinish(0);
-	    }
-	    return;
-	  }
-	  multicorn_SPI_connected = true;
+	if (!multicorn_SPI_connected)
+	{
+		if (SPI_connect() != SPI_OK_CONNECT)
+		{
+			if (errstart(FATAL, __FILE__, __LINE__,
+				     PG_FUNCNAME_MACRO, TEXTDOMAIN))
+			{
+				errmsg("Unable to connect to SPI");
+				errfinish(0);
+			}
+			return;
+		}
+		multicorn_SPI_connected = true;
 	}
 }
 
