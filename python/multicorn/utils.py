@@ -56,14 +56,24 @@ REPORT_CODES = {
 class StatementException(Exception):
     pass
 
+def _booleanXForm(bl):
+    if isinstance(bl, basestring):
+        if bl.lower() in ('0', 'false', 'f', ''):
+            return 0
+    if bl:
+        return 1
+
+    return 0
+
 class Statement(object):
     type_map = None
 
     simple_converters = {
-        'int8': { 'func': lambda x: int(x) },
+        'int8': { 'func': lambda x: long(x) },
         'int4': { 'func': lambda x: int(x) },
-        'float8': {'func': lambda x: float(x) },
+        'float8':{ 'func': lambda x: float(x) },
         'text': { 'lob': True },
+        'bool': { 'func': _booleanXForm },
     }
     
     class Converter(object):
@@ -115,8 +125,12 @@ class Statement(object):
         self.stmt = prepare(sql, self.converters)
 
     def execute(self, data):
-        ret = execute_stmt(self.stmt, data, self.converters)
+        if not isinstance(data, tuple):
+            data = tuple(data)
+            
+        ret = execute_stmt(self.stmt, data, tuple(self.converters))
         self.results = fetch()
+        return ret
 
     def getResults(self):
         return self.results

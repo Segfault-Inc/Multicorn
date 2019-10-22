@@ -166,12 +166,14 @@ py_fetch(PyObject *self, PyObject *args)
 	int j = 0;
 	AttInMetadata *attinmeta = NULL;
 	ConversionInfo **cinfos = NULL;
+	char logbuff[200];
 
 	/* We don't want any args, so ignore them. */
 	if (args != NULL)
 	{
 	  Py_DECREF(args);
 	  args = NULL;
+	  VLOG("Arguments passed to py_fetch");
 	}
 	/*
 	  return none if there are no tuples.
@@ -182,23 +184,33 @@ py_fetch(PyObject *self, PyObject *args)
 	
 	if (SPI_tuptable == NULL)
 	{
-	  pret = Py_None;
-	  Py_INCREF(pret);
-	  return pret;
+	  //VLOG("No SPI_tuple");
+	  goto errout;
 	}
 	
 	attinmeta = TupleDescGetAttInMetadata(SPI_tuptable->tupdesc);
+	if (attinmeta == NULL)
+	{
+	  VLOG("TupleDescGetAttInMetadata returned NULL");
+
+	  goto errout;
+	  
+	}
 	
 	cinfos = SPI_palloc(sizeof(ConversionInfo *) * natts);
+	if (cinfos == NULL)
+	{
+	  VLOG("SPI_palloc returned NULL");
+	  goto errout;
+	  
+	}
+	
 	initConversioninfo(cinfos, attinmeta);
 	pret = PyTuple_New(row_count);
   
 	if (pret == NULL)
 	{
-	  errorCheck();
-	  Py_INCREF(Py_None);
-	  pret = Py_None;
-	  return pret;
+	  goto errout;
 	}
 
 	for (i = 0; i < row_count; ++i)
@@ -211,6 +223,8 @@ py_fetch(PyObject *self, PyObject *args)
 	    Datum d = SPI_getbinval(SPI_tuptable->vals[i],
 				    SPI_tuptable->tupdesc,
 				    j+1, &isnull);
+	    errorCheck();
+	    
 	    if (isnull == true)
 	    {
 	      Py_INCREF(Py_None);
@@ -222,17 +236,9 @@ py_fetch(PyObject *self, PyObject *args)
 				   cinfos[attr->attnum - 1]);
 	      if (pobj == NULL)
 		{
-		  errorCheck();
-		  
-		  Py_DECREF(pret);
-		  pret = NULL;
-		  
 		  Py_DECREF(rdict);
 		  rdict = NULL;
-		  
-		  Py_INCREF(Py_None);
-		  pret = Py_None;
-		  return pret;
+		  goto errout;
 		    
 		}
 	    }
@@ -249,7 +255,34 @@ py_fetch(PyObject *self, PyObject *args)
 	  */
 	  rdict = NULL;
 	}
+  out:
+	// Just in case we misse one somewhere.
+	errorCheck();
+	
+	if (attinmeta != NULL)
+	{
+	  SPI_pfree(attinmeta);
+	  attinmeta = NULL;
+	}
+
+	if (cinfos != NULL)
+	{
+	  SPI_pfree(cinfos);
+	  cinfos = NULL;
+	}
+	
 	return pret;
+	
+  errout:
+	if (pret != NULL)
+	{
+	  Py_DECREF(pret);
+	  pret = NULL;
+	}
+	
+	Py_INCREF(Py_None);
+	pret = Py_None;
+	goto out;
 }
 
 static PyObject *
@@ -275,6 +308,7 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 			      &PyTuple_Type, &sqlargs_obj,
 			      &PyTuple_Type, &converters_obj))
 	{
+	  VLOG("execute_stmt: ParseTuple Failed");
 	  goto errout;
 	}
 
@@ -282,6 +316,7 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	if (stmt == NULL)
 	{
+	  VLOG("execute_smt: stmt is NULL");
 	  goto errout;
 	}
 
@@ -293,121 +328,182 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 	    arg_count != SPI_getargcount(stmt))
 	{
 	  /* XXXXX FIXME: throw arg count mismatch exception. */
+	  VLOG("execute_smt: arg_count mismatch");
 	  goto errout;
 	}
 	
+
+	/* The extra 1 is so we can null terminate it and treat it like a cstring. */
 	nulls = (char *)SPI_palloc(sizeof(*nulls)*(arg_count+1));
+	if (nulls == NULL)
+	{
+	  VLOG("Allocating %ld chars for nulls failed.", arg_count+1);
+	  goto errout;
+	}
+	
 	memset (nulls, ' ', (arg_count+1)*sizeof(*nulls));
 	nulls[arg_count] = 0;
 	
 	stmt_args = (Datum *)SPI_palloc(sizeof(*stmt_args)*arg_count);
+	if (stmt_args == NULL)
+	{
+	  VLOG("Unable to allocate memory for stmt_args");
+	  goto errout;
+	}
+	
 	memset (stmt_args, 0, arg_count*sizeof(*stmt_args));
-
+	
 	for (i = 0; i < arg_count; i++)
 	{
-	  PyObject *str=NULL;
 	  PyObject *islob_obj = NULL;
 	  bool islob = false;
 
+	  /* This pobj is borrowed.
+	     No need to decref.
+	  */
 	  pobj = PyTuple_GetItem(sqlargs_obj, i);
-
+	  
 	  if (pobj == NULL || pobj == Py_None)
 	  {
-	    VLOG("arg %d is NULL", i);
+	    //VLOG("arg %d is NULL", i);
 	    nulls[i] = 'n';
 	    continue;
 	  }
 
-	  str = PyObject_Str(pobj);
-
-	  if (str == NULL)
-	    {
-	      VLOG("pobj(%p) returns NULL str", pobj);
-	      goto errout;
-	    }
-	  
 	  converter = PyTuple_GetItem(converters_obj, i);
 	  if (converter == NULL || converter == Py_None)
 	  {
 	    VLOG("arg %d is No Converter", i);
 	    goto errout;
 	  }
-
-	  Py_DECREF(str);
 	  
 	  /* Don't use the macro here since we
 	     are in the middle of a pg call.
+	     islob_obj needs to bre decrefed.
 	  */
 	  islob_obj = PyObject_CallMethod(converter, "isLob", "()");
 
 	  if (islob_obj == NULL)
 	  {
-	    VLOG("arg %d is No islob", i);
+	    VLOG("arg %d No islob", i);
 	    goto errout;
 	  }
 	  
 	  islob = PyObject_IsTrue(islob_obj);
+
 	  Py_DECREF(islob_obj);
-	    
+	  islob_obj = NULL;
+
+	  /* From here on out, pobj needs to be decrefed. */
 	  pobj = PyObject_CallMethod(converter, "getdatum", "(O)", pobj);
 
+	  if (PyUnicode_Check(pobj))
+	  {
+	    PyObject *ptmp = PyUnicode_AsEncodedString(pobj,
+						       getPythonEncodingName(),
+						       NULL);
+	    if (ptmp == NULL) {
+	      VLOG("Unable to convert unicode");
+	      Py_DECREF(pobj);
+	      pobj = NULL;
+	      goto errout;
+	    }
+	    
+	    //VLOG("unicode encoded to %s", PyString_AsString(ptmp));
+	    Py_DECREF(pobj);
+	    pobj = ptmp;
+	  }
+	  
 	  if (PyString_Check(pobj))
 	  {
-	    VLOG("arg %d is string islob=%d", i, islob);
+	    //VLOG("arg %d is a string islob=%d", i, islob);
 	    if (islob)
-	      {
-		stmt_args[i] = DirectFunctionCall1(textin,
-						   CStringGetDatum(pstrdup(PyString_AsString(pobj))));
-	      }
-	      else
-	      {
-		stmt_args[i]=CStringGetDatum(pstrdup(PyString_AsString(pobj)));
-	      }
+	    {
+	      stmt_args[i] = DirectFunctionCall1(textin,
+						 CStringGetDatum(pstrdup(PyString_AsString(pobj))));
+	    }
+	    else
+	    {
+	      stmt_args[i]=CStringGetDatum(pstrdup(PyString_AsString(pobj)));
+	    }
+
+	    if ((unsigned)(stmt_args[i]) ==  0)
+	    {
+	      VLOG("Unable to get string");
+	      Py_DECREF(pobj);
+	      pobj = NULL;
+	      goto errout;
+	    }
+	      
 	  }
 	  else if (PyLong_Check(pobj))
 	  {
-	    VLOG("arg %d is long", i);
+	    //VLOG("arg %d is long", i);
 	    stmt_args[i] = Int64GetDatum(PyLong_AsLong(pobj));
 	  }
 	  else if (PyInt_Check(pobj))
 	  {
-	    VLOG("arg %d is int", i);
+	    //VLOG("arg %d is int", i);
 	    stmt_args[i] = Int32GetDatum(PyInt_AsLong(pobj));
 	  }
 	  else if (PyFloat_Check(pobj))
 	  {
-	    VLOG("arg %d is float", i);
+	    //VLOG("arg %d is float", i);
 	    stmt_args[i] = Float8GetDatum(PyFloat_AsDouble(pobj));
+	  }
+	  else
+	  {
+	    VLOG("Unknown python type in execute");
+	    Py_DECREF(pobj);
+	    pobj = NULL;
+	    goto errout;
 	  }
 	  
 	  Py_DECREF(pobj);
-
+	  pobj = NULL;
 	}
 
 	iret = SPI_execute_plan(stmt, stmt_args, nulls,
 				read_only, 0);
 
+	//VLOG("SPI_execute_plan returned %d", iret);
+
 	pret = PyInt_FromLong(iret);
 	if (pret == NULL)
 	{
+	  VLOG("PyInt_FromLong returned NULL");
 	  goto errout;
 	}
 	
   out:
-	if (args != NULL)
+	if (stmt_args != NULL)
 	{
-	  Py_DECREF(args);
+	  SPI_pfree(stmt_args);
+	  stmt_args = NULL;
 	}
 
-	if (kwargs != NULL)
+	if (nulls != NULL)
+	{
+	  SPI_pfree(nulls);
+	  nulls = NULL;
+	}
+	
+	if (args != NULL && args != Py_None)
+	{
+	  Py_DECREF(args);
+	  args = NULL;
+	}
+
+	if (kwargs != NULL && kwargs != Py_None)
 	{
 	  Py_DECREF(kwargs);
+	  kwargs = NULL;
 	}
 
 	return pret;
 	
   errout:
-	errorCheck();
+	VLOG("execute_stmt errout");
 	Py_INCREF(Py_None);
 	pret = Py_None;
 	goto out;
@@ -426,38 +522,35 @@ py_execute(PyObject *self, PyObject *args, PyObject *kwargs)
 	
 	if (!PyArg_ParseTuple(args, "sOi", &sql, &read_only_object, &count))
 	{
-	  errorCheck();
-	  if (args != NULL) {
-	    Py_DECREF(args);
-	  }
-
-	  if (kwargs != NULL) {
-	    Py_DECREF(kwargs);
-	  }
-
-	  Py_INCREF(Py_None);
-	  return Py_None;
+	  goto errout;
 	}
 
 	read_only = PyObject_IsTrue(read_only_object);
+	errorCheck();
 
 	multicorn_connect();
 	
 	iret = SPI_execute(sql, read_only, count);
 
-	if (args != NULL)
-	{
+	pret = PyInt_FromLong(iret);
+	
+  out:	
+	if (args != NULL) {
 	  Py_DECREF(args);
 	}
 
-	if (kwargs != NULL)
-	{
+	if (kwargs != NULL) {
 	  Py_DECREF(kwargs);
 	}
 
-	pret = PyInt_FromLong(iret);
-	
 	return pret;
+	
+  errout:
+	errorCheck();
+	Py_INCREF(Py_None);
+	pret = Py_None;
+	goto out;
+
 }
 
 static void
@@ -471,6 +564,8 @@ stmt_destructor(PyObject *po)
 	  return;
 	}
 
+	// Make sure this isn't doing a double free
+	// or freeing a bad ptr.
 	SPI_freeplan(stmt);
 }
 
@@ -484,6 +579,7 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 	Py_ssize_t arg_count = 0;
 	Oid 	   *argtypes = NULL;
 	Py_ssize_t i;
+	char       logbuff[200];
 
 	arg_count = PyTuple_Size(args) - 1;
 	pobj = PyTuple_GetItem(args, 0);
@@ -513,8 +609,14 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 	  /* Don't use the macro here since we
 	     are in the middle of a pg call.
 	  */
+
+	  /* This pobj needs to be derefed.  
+	     The others don't since they
+	     are borrowed.
+	  */
 	  pobj = PyObject_CallMethod(pobj, "getOID", "()");
 	  if (pobj == NULL) {
+	    VLOG("getoid call failed");
 	    goto errout;
 	  }
 	  
@@ -523,12 +625,15 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 	    /* XXXXX Fixme:
 	       throw a type error.
 	    */
+	    VLOG("Wrong type returned from getOID");
 	    Py_DECREF(pobj);
+	    pobj = NULL;
 	    goto errout;
 	  }
 	  
 	  argtypes[i] = PyLong_AsLong(pobj);
 	  Py_DECREF(pobj);
+	  pobj = NULL;
 	}
 
 	/* 
@@ -555,6 +660,8 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 	
 	if (pret == NULL)
 	{
+	  SPI_freeplan(stmt);
+	  stmt = NULL;
 	  goto errout;
 	}
 
@@ -562,16 +669,19 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 	if (args != NULL)
 	{
 	  Py_DECREF(args);
+	  args = NULL;
 	}
 	
 	if (kwargs != NULL)
 	{
 	  Py_DECREF(kwargs);
+	  kwargs = NULL;
 	}
 
 	if (argtypes != NULL)
 	{
 	  SPI_pfree(argtypes);
+	  argtypes = NULL;
 	}
 
 	return pret;
@@ -592,7 +702,7 @@ static PyMethodDef UtilsMethods[] = {
 	 METH_VARARGS | METH_KEYWORDS, "Log to postresql client"},
 	{"_execute", (PyCFunction) py_execute, METH_VARARGS | METH_KEYWORDS,
 	 "Execute SQL"},
-	{"_fetch", (PyCFunction) py_fetch, METH_VARARGS,
+	{"_fetch", (PyCFunction) py_fetch, METH_NOARGS,
 	 "Fetch a tuple of results from last execute."},
 	{"_prepare", (PyCFunction) py_prepare,  METH_VARARGS | METH_KEYWORDS,
 	 "Prepare a statement to execute."},
