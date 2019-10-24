@@ -66,7 +66,6 @@ extractColumns(List *reltargetlist, List *restrictinfolist)
 {
 	ListCell   *lc;
 	List	   *columns = NULL;
-	int			i = 0;
 
 	foreach(lc, reltargetlist)
 	{
@@ -82,7 +81,6 @@ extractColumns(List *reltargetlist, List *restrictinfolist)
 										PVC_RECURSE_PLACEHOLDERS);
 #endif
 		columns = list_union(columns, targetcolumns);
-		i++;
 	}
 	foreach(lc, restrictinfolist)
 	{
