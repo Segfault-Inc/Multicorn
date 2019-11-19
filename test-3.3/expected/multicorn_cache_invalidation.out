@@ -304,11 +304,13 @@ NOTICE:  ['test1', 'test2']
 
 ALTER foreign table testmulticorn rename test1 to testnew;
 select * from testmulticorn limit 1;
+NOTICE:  [('option1', 'option1_update'), ('test_type', 'sequence'), ('usermapping', 'test')]
+NOTICE:  [('test2', 'character varying'), ('testnew', 'text')]
 NOTICE:  []
 NOTICE:  ['test2', 'testnew']
-   test2   |  testnew  
------------+-----------
- test2 1 0 | test1 2 0
+   test2   |   testnew   
+-----------+-------------
+ test2 1 0 | testnew 2 0
 (1 row)
 
 DROP USER MAPPING for postgres SERVER multicorn_srv;
