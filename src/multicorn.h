@@ -14,7 +14,7 @@
 #include "nodes/makefuncs.h"
 #include "nodes/pg_list.h"
 
-#if PG_VERSION_NUM != 120000
+#if PG_VERSION_NUM <= 120000
 #include "nodes/relation.h"
 #endif
 #include "utils/builtins.h"
