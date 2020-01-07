@@ -43,6 +43,10 @@ The binddn for example 'cn=admin,dc=example,dc=com'.
 ``bindpwd`` (string)
 The credentials for the binddn.
 
+``pageSize`` (integer)
+Paged mode size (default: 1000)
+
+
 Usage Example
 -------------
 
@@ -79,6 +83,48 @@ definition:
      someuser@example.com  | Some Test User |
     (3 rows)
 
+.. code-block:: bash
+
+    CREATE FOREIGN TABLE ldapgroups (
+        entryDN character varying,
+        cn character varying,
+        ou character varying[],
+        gidnumber integer,
+        memberuid character varying[],
+        objectClass character varying[]
+    ) server ldap_srv options (
+        uri 'ldap://localhost',
+        path 'ou=Groups,dc=example,dc=com',
+        scope 'sub',
+        objectclass '*',
+        pagesize '200'
+    );
+
+    SELECT cn,gidnumber,objectClass FROM ldapgroups WHERE cn = 'Administrators';
+
+.. code-block:: bash
+
+           cn       | gidnumber |          objectclass
+    ----------------+-----------+--------------------------------
+     Administrators |       544 | {posixGroup,sambaGroupMapping}
+    (1 row)
+
+.. code-block:: bash
+
+    SELECT unnest(objectClass) as cls,count(entryDN) as cnt FROM ldapgroups GROUP BY cls;
+
+.. code-block:: bash
+
+             cls         | cnt
+    ---------------------+-----
+     domainRelatedObject |   1
+     organizationalUnit  |   4
+     groupOfUniqueNames  |   1
+     top                 |  10
+     sambaGroupMapping   |  10
+     posixGroup          |  16
+    (6 rows)
+
 """
 
 from . import ForeignDataWrapper
@@ -110,6 +156,7 @@ class LdapFdw(ForeignDataWrapper):
     scope       -- the ldap scope (one, sub or base)
     binddn      -- the ldap bind DN (ex: 'cn=Admin,dc=example,dc=com')
     bindpwd     -- the ldap bind Password
+    pageSize    -- the max entries per page (default: 1000 per Active Directory)
 
     """
 
@@ -123,7 +170,8 @@ class LdapFdw(ForeignDataWrapper):
             ldap3.Server(self.ldapuri),
             user=fdw_options.get("binddn", None),
             password=fdw_options.get("bindpwd", None),
-            client_strategy=ldap3.RESTARTABLE if ldap3.version.__version__ > '2.0.0' else ldap3.STRATEGY_SYNC_RESTARTABLE)
+            client_strategy=ldap3.RESTARTABLE if ldap3.version.__version__ > '2.0.0' else ldap3.STRATEGY_SYNC_RESTARTABLE,
+            return_empty_attributes=False)
         self.path = fdw_options["path"]
         self.scope = self.parse_scope(fdw_options.get("scope", None))
         self.object_class = fdw_options["objectclass"]
@@ -133,6 +181,7 @@ class LdapFdw(ForeignDataWrapper):
         self.array_columns = [
             col.column_name for name, col in self.field_definitions.items()
             if col.type_name.endswith('[]')]
+        self.page_size = int(fdw_options["pagesize"]) if "pagesize" in fdw_options else 1000
 
     def execute(self, quals, columns):
         request = unicode_("(objectClass=%s)") % self.object_class
@@ -150,22 +199,30 @@ class LdapFdw(ForeignDataWrapper):
                     val = qual.value
                 request = unicode_("(&%s(%s=%s))") % (
                     request, qual.field_name, val)
-        self.ldap.search(
+        # Always use paged search mode to read data
+        generator = self.ldap.extend.standard.paged_search(
             self.path, request, self.scope,
-            attributes=list(self.field_definitions))
-        for entry in self.ldap.response:
+            attributes=list(self.field_definitions),
+            paged_size=self.page_size,
+            generator=True)
+        for entry in generator:
             # Case insensitive lookup for the attributes
             litem = dict()
             for key, value in entry["attributes"].items():
                 if key.lower() in self.field_definitions:
                     pgcolname = self.field_definitions[key.lower()].column_name
                     if ldap3.version.__version__ > '2.0.0':
-                        value = value
+                        if pgcolname in self.array_columns:
+                            value = value
+                        else:
+                            value = value[0] if isinstance(value, list) else value
                     else:
                         if pgcolname in self.array_columns:
                             value = value
                         else:
                             value = value[0]
+                    if not value:
+                        value = None
                     litem[pgcolname] = value
             yield litem
 
