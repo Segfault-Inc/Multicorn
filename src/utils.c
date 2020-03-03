@@ -645,6 +645,9 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 	
 	stmt = SPI_prepare(sql, arg_count, argtypes);
 
+	// lets see if not freeing argtypes helps.
+	argtypes = NULL;
+
 	
 	if (stmt == NULL)
 	{
