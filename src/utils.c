@@ -463,8 +463,9 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 	  pobj = NULL;
 	}
 
-	iret = SPI_execute_plan(stmt, stmt_args, nulls,
-				read_only, 0);
+	/*iret = SPI_execute_plan(stmt, stmt_args, nulls,
+	  read_only, 0); */
+	iret = 0
 
 	//VLOG("SPI_execute_plan returned %d", iret);
 
@@ -566,7 +567,7 @@ stmt_destructor(PyObject *po)
 
 	// Make sure this isn't doing a double free
 	// or freeing a bad ptr.
-	//SPI_freeplan(stmt);
+	SPI_freeplan(stmt);
 }
 
 static PyObject *
