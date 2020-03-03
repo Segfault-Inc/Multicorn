@@ -214,12 +214,13 @@ List	*serializeDeparsedSortGroup(List *pathkeys);
 List	*deserializeDeparsedSortGroup(List *items);
 
 /* pass through the PyObject to make the macros easier. */
-extern PyObject *multicorn_disconnect(PyObject *);
+extern PyObject *multicorn_spi_enter(PyObject *);
+extern PyObject *multicorn_spi_leave(PyObject *);
 extern void multicorn_connect(void);
 
-#define PYOBJECT_CALLMETHOD(...)  multicorn_disconnect(PyObject_CallMethod(__VA_ARGS__))
+#define PYOBJECT_CALLMETHOD(po, ...)  multicorn_spi_leave(PyObject_CallMethod(multicorn_spi_enter(po),__VA_ARGS__))
 
-#define PYOBJECT_CALLFUNCTION(...) multicorn_disconnect(PyObject_CallFunction(__VA_ARGS__))
+#define PYOBJECT_CALLFUNCTION(po, ...) multicorn_spi_leave(PyObject_CallFunction(multicorn_spi_enter(po), __VA_ARGS__))
 
 #endif   /* PG_MULTICORN_H */
 

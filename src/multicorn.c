@@ -1172,11 +1172,24 @@ initializeExecState(void *internalstate)
 }
 
 
-static int multicorn_SPI_connected = 0;
+static int multicorn_SPI_depth = 0;
+static bool multicorn_SPI_connected = false;
 
 void
 multicorn_connect(void) {
   	char logbuff[200];
+
+	if (multicorn_SPI_depth == 0)
+	{
+		if (errstart(FATAL, __FILE__, __LINE__,
+			     PG_FUNCNAME_MACRO, TEXTDOMAIN))
+		{
+			errmsg("Attempting to connect to SPI without wrapper");
+			errfinish(0);
+		}
+		return;
+		
+	}
 
 	if (!multicorn_SPI_connected)
 	{
@@ -1190,10 +1203,8 @@ multicorn_connect(void) {
 			}
 			return;
 		}
-	} else {
-		VLOG("Re-entered multicorn_connect");
+		multicorn_SPI_connected = true;
 	}
-	multicorn_SPI_connected++;
 }
 
 /*
@@ -1203,15 +1214,22 @@ multicorn_connect(void) {
  * call.
  */
 PyObject *
-multicorn_disconnect(PyObject *po) {
+multicorn_spi_leave(PyObject *po) {
   	char logbuff[200];
-	if (multicorn_SPI_connected)
+	VLOG("Multicorn SPI Leave");
+	if (--multicorn_SPI_depth == 0 && multicorn_SPI_connected)
 	{
-		if (--multicorn_SPI_connected == 0)
-		{
-			VLOG("Multicorn Disconnect Calling SPI_Finish()");
-			//SPI_finish();
-		}
+		VLOG("Multicorn Disconnect Calling SPI_Finish()");
+		multicorn_SPI_connected = false;
+		SPI_finish();
 	}
+	return po;
+}
+
+PyObject *
+multicorn_spi_enter(PyObject *po) {
+  	char logbuff[200];
+	multicorn_SPI_depth++;
+	VLOG("Multicorn SPI Enter");
 	return po;
 }
