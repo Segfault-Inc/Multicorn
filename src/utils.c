@@ -566,7 +566,7 @@ stmt_destructor(PyObject *po)
 
 	// Make sure this isn't doing a double free
 	// or freeing a bad ptr.
-	SPI_freeplan(stmt);
+	//SPI_freeplan(stmt);
 }
 
 static PyObject *
