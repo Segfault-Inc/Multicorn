@@ -1,5 +1,6 @@
 -- Setup the test
 CREATE language plpython3u;
+\i test-common/disable_jit.include
 
 CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
     import plpy

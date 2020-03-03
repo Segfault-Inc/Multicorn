@@ -1,5 +1,13 @@
 -- Setup the test
 CREATE language plpython3u;
+\i test-common/disable_jit.include
+DO $$
+BEGIN
+  IF current_setting('server_version_num')::bigint >= 110000 THEN
+    SET jit = off;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
     import plpy
     import tempfile

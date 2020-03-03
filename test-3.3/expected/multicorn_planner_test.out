@@ -1,5 +1,5 @@
 SET client_min_messages=NOTICE;
-CREATE EXTENSION multicorn;
+\i test-common/disable_jit.include
 DO $$
 BEGIN
   IF current_setting('server_version_num')::bigint >= 110000 THEN
@@ -7,6 +7,7 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql;
+CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.testfdw.TestForeignDataWrapper'
 );
