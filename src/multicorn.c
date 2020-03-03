@@ -1165,7 +1165,8 @@ static int multicorn_SPI_connected = 0;
 
 void
 multicorn_connect(void) {
-  
+  	char logbuff[200];
+
 	if (!multicorn_SPI_connected)
 	{
 		if (SPI_connect() != SPI_OK_CONNECT)
@@ -1178,6 +1179,8 @@ multicorn_connect(void) {
 			}
 			return;
 		}
+	} else {
+		VLOG("Re-entered multicorn_connect");
 	}
 	multicorn_SPI_connected++;
 }
@@ -1190,10 +1193,12 @@ multicorn_connect(void) {
  */
 PyObject *
 multicorn_disconnect(PyObject *po) {
+  	char logbuff[200];
 	if (multicorn_SPI_connected)
 	{
 		if (--multicorn_SPI_connected == 0)
 		{
+			VLOG("Multicorn Disconnect Calling SPI_Finish()");
 			SPI_finish();
 		}
 	}
