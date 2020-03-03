@@ -715,6 +715,30 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
  *		Execute a foreign insert operation
  *		This is done by calling the python "insert" method.
  */
+
+void mylog(const char *m, const char *h, const char *d,
+		const char *f, int line,
+		const char *fn) {
+
+	FILE *fp = fopen("/tmp/mylog", "a");
+	fprintf(fp, "mylog(%s, %s, %s, %s, %d, %s)\n", m, h, d, f, line, fn);
+	fclose(fp);
+	
+	if (errstart(WARNING, f, line, fn, TEXTDOMAIN))
+	{
+	  errmsg("%s", m);
+	  if (h != NULL)
+	  {
+	    errhint("%s", h);
+	  }
+	  if (d != NULL)
+	  {
+	    errdetail("%s", d);
+	  }
+	  errfinish(0);
+	}
+}
+
 #define MYLOG(m, h, d) mylog(m, h, d, __FILE__, __LINE__, PG_FUNCNAME_MACRO)
 #define VLOG(...) do { snprintf(logbuff, sizeof(logbuff), __VA_ARGS__); MYLOG(logbuff, NULL, NULL); } while (0)
 
