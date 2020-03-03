@@ -31,6 +31,8 @@
 
 PG_MODULE_MAGIC;
 
+#define MYLOG(m, h, d) mylog(m, h, d, __FILE__, __LINE__, PG_FUNCNAME_MACRO)
+#define VLOG(...) do { snprintf(logbuff, sizeof(logbuff), __VA_ARGS__); MYLOG(logbuff, NULL, NULL); } while (0)
 
 extern Datum multicorn_handler(PG_FUNCTION_ARGS);
 extern Datum multicorn_validator(PG_FUNCTION_ARGS);
@@ -564,6 +566,31 @@ multicornReScanForeignScan(ForeignScanState *node)
 	}
 }
 
+
+
+void mylog(const char *m, const char *h, const char *d,
+		const char *f, int line,
+		const char *fn) {
+
+	FILE *fp = fopen("/tmp/mylog", "a");
+	fprintf(fp, "mylog(%s, %s, %s, %s, %d, %s)\n", m, h, d, f, line, fn);
+	fclose(fp);
+	
+	if (errstart(WARNING, f, line, fn, TEXTDOMAIN))
+	{
+	  errmsg("%s", m);
+	  if (h != NULL)
+	  {
+	    errhint("%s", h);
+	  }
+	  if (d != NULL)
+	  {
+	    errdetail("%s", d);
+	  }
+	  errfinish(0);
+	}
+}
+
 /*
  *	multicornEndForeignScan
  *		Finish scanning foreign table and dispose objects used for this scan.
@@ -573,12 +600,15 @@ multicornEndForeignScan(ForeignScanState *node)
 {
 	MulticornExecState *state = node->fdw_state;
 	PyObject   *result = PYOBJECT_CALLMETHOD(state->fdw_instance, "end_scan", "()");
+	char logbuff[200];
+	VLOG("entred multicornEndForeignScan");
 
 	errorCheck();
 	Py_DECREF(result);
 	Py_DECREF(state->fdw_instance);
 	Py_XDECREF(state->p_iterator);
 	state->p_iterator = NULL;
+	VLOG("leaving multicornEndForeignScan");
 }
 
 
@@ -601,6 +631,9 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 	TupleDesc	desc = target_relation->rd_att;
 	int			i;
 	ListCell   *cell;
+	
+	char logbuff[200];
+	VLOG("entred multicornAddForeignUpdateTargets");
 
 	foreach(cell, parsetree->returningList)
 	{
@@ -639,6 +672,7 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 						  true);
 	parsetree->targetList = lappend(parsetree->targetList, tle);
 	Py_DECREF(instance);
+	VLOG("leaving multicornAddForeignUpdateTargets");
 }
 
 
@@ -677,6 +711,9 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	MemoryContext oldcontext;
 	int			i;
 
+	char logbuff[200];
+	VLOG("entred multicornBeginForeignModify");
+	
 	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 							   desc->natts);
 	modstate->buffer = makeStringInfo();
@@ -708,6 +745,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	}
 	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
 	resultRelInfo->ri_FdwState = modstate;
+	VLOG("leaving multicornBeginForeignModify");
 }
 
 /*
@@ -715,33 +753,6 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
  *		Execute a foreign insert operation
  *		This is done by calling the python "insert" method.
  */
-
-void mylog(const char *m, const char *h, const char *d,
-		const char *f, int line,
-		const char *fn) {
-
-	FILE *fp = fopen("/tmp/mylog", "a");
-	fprintf(fp, "mylog(%s, %s, %s, %s, %d, %s)\n", m, h, d, f, line, fn);
-	fclose(fp);
-	
-	if (errstart(WARNING, f, line, fn, TEXTDOMAIN))
-	{
-	  errmsg("%s", m);
-	  if (h != NULL)
-	  {
-	    errhint("%s", h);
-	  }
-	  if (d != NULL)
-	  {
-	    errdetail("%s", d);
-	  }
-	  errfinish(0);
-	}
-}
-
-#define MYLOG(m, h, d) mylog(m, h, d, __FILE__, __LINE__, PG_FUNCNAME_MACRO)
-#define VLOG(...) do { snprintf(logbuff, sizeof(logbuff), __VA_ARGS__); MYLOG(logbuff, NULL, NULL); } while (0)
-
 
 static TupleTableSlot *
 multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
@@ -1199,7 +1210,7 @@ multicorn_disconnect(PyObject *po) {
 		if (--multicorn_SPI_connected == 0)
 		{
 			VLOG("Multicorn Disconnect Calling SPI_Finish()");
-			SPI_finish();
+			//SPI_finish();
 		}
 	}
 	return po;
