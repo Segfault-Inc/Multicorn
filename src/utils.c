@@ -478,13 +478,13 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
   out:
 	if (stmt_args != NULL)
 	{
-	  //SPI_pfree(stmt_args);
+	  SPI_pfree(stmt_args);
 	  stmt_args = NULL;
 	}
 
 	if (nulls != NULL)
 	{
-	  //SPI_pfree(nulls);
+	  SPI_pfree(nulls);
 	  nulls = NULL;
 	}
 	

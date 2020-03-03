@@ -1106,10 +1106,11 @@ initializeExecState(void *internalstate)
 }
 
 
-static bool multicorn_SPI_connected = false;
+static int multicorn_SPI_connected = 0;
 
 void
 multicorn_connect(void) {
+  
 	if (!multicorn_SPI_connected)
 	{
 		if (SPI_connect() != SPI_OK_CONNECT)
@@ -1122,8 +1123,15 @@ multicorn_connect(void) {
 			}
 			return;
 		}
-		multicorn_SPI_connected = true;
+	} else {
+		if (errstart(FATAL, __FILE__, __LINE__,
+			     PG_FUNCNAME_MACRO, TEXTDOMAIN))
+		{
+			errmsg("Already connected to SPI");
+			errfinish(0);
+		}
 	}
+	multicorn_SPI_connected++;
 }
 
 /*
@@ -1136,8 +1144,10 @@ PyObject *
 multicorn_disconnect(PyObject *po) {
 	if (multicorn_SPI_connected)
 	{
-	  SPI_finish();
-	  multicorn_SPI_connected = false;
+		if (--multicorn_SPI_connected == 0)
+		{
+			SPI_finish();
+		}
 	}
 	return po;
 }
