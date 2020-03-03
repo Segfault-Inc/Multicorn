@@ -1123,13 +1123,6 @@ multicorn_connect(void) {
 			}
 			return;
 		}
-	} else {
-		if (errstart(FATAL, __FILE__, __LINE__,
-			     PG_FUNCNAME_MACRO, TEXTDOMAIN))
-		{
-			errmsg("Already connected to SPI");
-			errfinish(0);
-		}
 	}
 	multicorn_SPI_connected++;
 }
