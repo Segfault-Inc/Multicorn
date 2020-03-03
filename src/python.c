@@ -115,7 +115,6 @@ getPythonEncodingName()
 char *
 PyUnicode_AsPgString(PyObject *p_unicode)
 {
-	Py_ssize_t	unicode_size;
 	char	   *message = NULL;
 	PyObject   *pTempStr;
 
@@ -123,10 +122,7 @@ PyUnicode_AsPgString(PyObject *p_unicode)
 	{
 		elog(ERROR, "Received a null pointer in pyunicode_aspgstring");
 	}
-	unicode_size = PyUnicode_GET_SIZE(p_unicode);
-	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
-								unicode_size,
-								getPythonEncodingName(), NULL);
+	pTempStr = PyUnicode_AsEncodedString(p_unicode, getPythonEncodingName(), NULL);
 	errorCheck();
 	message = strdup(PyBytes_AsString(pTempStr));
 	errorCheck();
@@ -1031,15 +1027,10 @@ void
 pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
 				   ConversionInfo * cinfo)
 {
-	Py_ssize_t	unicode_size;
 	char	   *tempbuffer;
 	Py_ssize_t	strlength = 0;
 	PyObject   *pTempStr;
-
-	unicode_size = PyUnicode_GET_SIZE(pyobject);
-	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(pyobject),
-								unicode_size,
-								getPythonEncodingName(), NULL);
+	pTempStr = PyUnicode_AsEncodedString(pyobject, getPythonEncodingName(), NULL);
 	errorCheck();
 	PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
 	appendBinaryStringInfoQuote(buffer, tempbuffer, strlength, cinfo->need_quote);
