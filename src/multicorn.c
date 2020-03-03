@@ -715,6 +715,10 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
  *		Execute a foreign insert operation
  *		This is done by calling the python "insert" method.
  */
+#define MYLOG(m, h, d) mylog(m, h, d, __FILE__, __LINE__, PG_FUNCNAME_MACRO)
+#define VLOG(...) do { snprintf(logbuff, sizeof(logbuff), __VA_ARGS__); MYLOG(logbuff, NULL, NULL); } while (0)
+
+
 static TupleTableSlot *
 multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 						   TupleTableSlot *slot, TupleTableSlot *planSlot)
@@ -723,7 +727,9 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	PyObject   *fdw_instance = modstate->fdw_instance;
 	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
 	PyObject   *p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "insert", "(O)", values);
+	char logbuff[200];
 
+	VLOG("Entereed multicornExecForeignInsert");
 	errorCheck();
 	if (p_new_value && p_new_value != Py_None)
 	{
@@ -734,6 +740,7 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	Py_XDECREF(p_new_value);
 	Py_DECREF(values);
 	errorCheck();
+	VLOG("Leaving multicornExecForeignInsert");
 	return slot;
 }
 
@@ -754,6 +761,9 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	bool		is_null;
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
+	char logbuff[200];
+
+	VLOG("Entereed multicornExecForeignDelete");
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
 	p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "delete", "(O)", p_row_id);
@@ -769,6 +779,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	Py_DECREF(p_new_value);
 	Py_DECREF(p_row_id);
 	errorCheck();
+	VLOG("Leaving multicornExecForeignDelete");
 	return slot;
 }
 
@@ -791,6 +802,8 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	ConversionInfo *cinfo = modstate->rowidCinfo;
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
+	char logbuff[200];
+	VLOG("Entereed multicornExecForeignUpdate");
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
 	p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "update", "(O,O)", p_row_id,
 									  p_value);
@@ -804,6 +817,7 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	Py_XDECREF(p_new_value);
 	Py_DECREF(p_row_id);
 	errorCheck();
+	VLOG("Leaving multicornExecForeignUpdate");
 	return slot;
 }
 
@@ -818,9 +832,12 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *result = PYOBJECT_CALLMETHOD(modstate->fdw_instance, "end_modify", "()");
 
+	char logbuff[200];
+	VLOG("Entered multicornExecForeignModify");
 	errorCheck();
 	Py_DECREF(modstate->fdw_instance);
 	Py_DECREF(result);
+	VLOG("Leaving multicornExecForeignModify");
 }
 
 /*
@@ -834,7 +851,10 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 	int			curlevel;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
+	char logbuff[200];
 
+	VLOG("entered multicorn_subext_callback");
+	
 	/* Nothing to do after commit or subtransaction start. */
 	if (event == SUBXACT_EVENT_COMMIT_SUB || event == SUBXACT_EVENT_START_SUB)
 		return;
@@ -860,6 +880,7 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 		errorCheck();
 		entry->xact_depth--;
 	}
+	VLOG("leaving multicorn_subext_callback");
 }
 #endif
 
@@ -872,7 +893,10 @@ multicorn_xact_callback(XactEvent event, void *arg)
 	PyObject   *instance;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
+	char logbuff[200];
 
+	VLOG("entered multicorn_xact_callback");
+	
 	hash_seq_init(&status, InstancesHash);
 	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
 	{
@@ -900,6 +924,7 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		}
 		errorCheck();
 	}
+	VLOG("leaving multicorn_xact_callback");
 }
 
 /*
@@ -915,8 +940,12 @@ multicorn_release_callback(ResourceReleasePhase phase, bool isCommit,
 	PyObject   *instance;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
+	char logbuff[200];
+	
+	VLOG("entered multicorn_release_callback");
 
 	if (!isTopLevel) {
+	  VLOG("leaving multicorn_release_callback !isTopLevel");
 	  return;
 	}
 
@@ -949,6 +978,8 @@ multicorn_release_callback(ResourceReleasePhase phase, bool isCommit,
 		}
 		errorCheck();
 	}
+	
+	VLOG("leaving multicorn_release_callback");
 }
 
 

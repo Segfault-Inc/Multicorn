@@ -130,7 +130,7 @@ py_check_interrupts(PyObject *self, PyObject *args, PyObject *kwargs)
 	return Py_None;
 }
 
-static void mylog(const char *m, const char *h, const char *d,
+void mylog(const char *m, const char *h, const char *d,
 		const char *f, int line,
 		const char *fn) {
 

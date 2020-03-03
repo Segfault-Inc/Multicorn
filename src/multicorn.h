@@ -225,6 +225,11 @@ extern void multicorn_connect(void);
 
 char	   *PyUnicode_AsPgString(PyObject *p_unicode);
 
+void mylog(const char *m, const char *h, const char *d,
+	   const char *f, int line,
+	   const char *fn);
+
+
 #if PY_MAJOR_VERSION >= 3
 PyObject   *PyString_FromString(const char *s);
 PyObject   *PyString_FromStringAndSize(const char *s, Py_ssize_t size);
