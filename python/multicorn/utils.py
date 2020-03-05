@@ -8,6 +8,7 @@ try:
     from ._utils import _execute_stmt
     from ._utils import _fetch
 except ImportError as e:
+    logging.exception("Importing utils")
     from warnings import warn
     warn("Not executed in a postgresql server,"
          " disabling log_to_postgres", ImportWarning)

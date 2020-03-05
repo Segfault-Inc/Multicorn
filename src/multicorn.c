@@ -564,8 +564,7 @@ multicornReScanForeignScan(ForeignScanState *node)
 }
 
 
-
-void mylog(const char *m, const char *h, const char *d,
+static void mylog(const char *m, const char *h, const char *d,
 		const char *f, int line,
 		const char *fn) {
 

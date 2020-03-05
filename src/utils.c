@@ -36,6 +36,29 @@ struct module_state
 static struct module_state _state;
 #endif
 
+static void mylog(const char *m, const char *h, const char *d,
+		const char *f, int line,
+		const char *fn) {
+
+	FILE *fp = fopen("/tmp/mylog", "a");
+	fprintf(fp, "mylog(%s, %s, %s, %s, %d, %s)\n", m, h, d, f, line, fn);
+	fclose(fp);
+	
+	if (errstart(WARNING, f, line, fn, TEXTDOMAIN))
+	{
+	  errmsg("%s", m);
+	  if (h != NULL)
+	  {
+	    errhint("%s", h);
+	  }
+	  if (d != NULL)
+	  {
+	    errdetail("%s", d);
+	  }
+	  errfinish(0);
+	}
+}
+
 static PyObject *
 log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 {
