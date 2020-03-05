@@ -39,7 +39,7 @@ except ImportError as e:
         pass
 
     def _execute_stmt(stmt, args, converters):
-        pass
+        raise Exception('Not Connected to Postgres')
 
     def _fetch():
         pass
@@ -172,8 +172,6 @@ def execute_stmt(plan, args, converters):
 
     if not isinstance(converters, tuple):
         converters = tuple (c for c in converters );
-    import logging
-    logging.debug("execute_stmt: about to call _execute_stmt")
     return _execute_stmt(plan, args, converters)
 
 def fetch():
