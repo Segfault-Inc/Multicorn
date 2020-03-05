@@ -262,13 +262,13 @@ py_fetch(PyObject *self, PyObject *args)
 	
 	if (attinmeta != NULL)
 	{
-	  //SPI_pfree(attinmeta);
+	  SPI_pfree(attinmeta);
 	  attinmeta = NULL;
 	}
 
 	if (cinfos != NULL)
 	{
-	  //SPI_pfree(cinfos);
+	  SPI_pfree(cinfos);
 	  cinfos = NULL;
 	}
 	
@@ -481,13 +481,13 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
   out:
 	if (stmt_args != NULL)
 	{
-	  //SPI_pfree(stmt_args);
+	  SPI_pfree(stmt_args);
 	  stmt_args = NULL;
 	}
 
 	if (nulls != NULL)
 	{
-	  //SPI_pfree(nulls);
+	  SPI_pfree(nulls);
 	  nulls = NULL;
 	}
 	
@@ -666,7 +666,7 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 	
 	if (pret == NULL)
 	{
-	  //SPI_freeplan(stmt);
+	  SPI_freeplan(stmt);
 	  stmt = NULL;
 	  goto errout;
 	}
@@ -686,7 +686,7 @@ py_prepare(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	if (argtypes != NULL)
 	{
-	  //SPI_pfree(argtypes);
+	  SPI_pfree(argtypes);
 	  argtypes = NULL;
 	}
 
