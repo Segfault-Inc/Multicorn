@@ -444,7 +444,7 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 	iret = SPI_execute_plan(stmt, stmt_args, nulls,
 				read_only, 0);
 	
-	//VLOG("SPI_execute_plan returned %d", iret);
+	VLOG("SPI_execute_plan returned %d", iret);
 
 	pret = PyInt_FromLong(iret);
 	if (pret == NULL)
