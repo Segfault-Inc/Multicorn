@@ -40,9 +40,9 @@ static void mylog(const char *m, const char *h, const char *d,
 		const char *f, int line,
 		const char *fn) {
 
-	FILE *fp = fopen("/tmp/mylog", "a");
-	fprintf(fp, "mylog(%s, %s, %s, %s, %d, %s)\n", m, h, d, f, line, fn);
-	fclose(fp);
+	/* FILE *fp = fopen("/tmp/mylog", "a"); */
+	/* fprintf(fp, "mylog(%s, %s, %s, %s, %d, %s)\n", m, h, d, f, line, fn); */
+	/* fclose(fp); */
 	
 	if (errstart(WARNING, f, line, fn, TEXTDOMAIN))
 	{
