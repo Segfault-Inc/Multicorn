@@ -533,7 +533,7 @@ py_execute(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	multicorn_connect();
 	
-	//iret = SPI_execute(sql, read_only, count);
+	iret = SPI_execute(sql, read_only, count);
 
 	pret = PyInt_FromLong(iret);
 	
