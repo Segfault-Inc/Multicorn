@@ -282,6 +282,8 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 
 	char logbuff[200];
 
+	VLOG("In py_execute_stt");
+
 	if (!PyArg_ParseTuple(args, "OO!O!", &stmt_object,
 			      &PyTuple_Type, &sqlargs_obj,
 			      &PyTuple_Type, &converters_obj))
