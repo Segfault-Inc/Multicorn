@@ -149,9 +149,9 @@ class Statement(object):
             for t in types:
                 Statement.type_map[t['typname']] = t['oid']
 
-        if typename not in Statement.type_map:
-            logging.error('type %s not in type_map' %typename)
-            raise Exception('unknown type(%s) is getoid' %typename)
+        if typname not in Statement.type_map:
+            logging.error('type %s not in type_map' %typname)
+            raise Exception('unknown type(%s) is getoid' %typname)
         return Statement.type_map.get(typname, None)
 
             
