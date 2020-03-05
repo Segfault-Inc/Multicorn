@@ -466,8 +466,8 @@ py_execute_stmt(PyObject *self, PyObject *args, PyObject *kwargs)
 	  pobj = NULL;
 	}
 
-	//iret = SPI_execute_plan(stmt, stmt_args, nulls,
-	//			read_only, 0);
+	iret = SPI_execute_plan(stmt, stmt_args, nulls,
+				read_only, 0);
 	
 	VLOG("SPI_execute_plan returned %d", iret);
 
