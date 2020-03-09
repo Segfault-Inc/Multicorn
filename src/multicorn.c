@@ -434,9 +434,9 @@ multicornGetForeignPlan(PlannerInfo *root,
 	Index		scan_relid = baserel->relid;
 	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
 	ListCell   *lc;
-
+#if PG_VERSION_NUM >= 90600
 	best_path->path.pathtarget->width = planstate->width;
-
+#endif
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 	/* Extract the quals coming from a parameterized path, if any */
 	if (best_path->path.param_info)
