@@ -162,12 +162,19 @@ try:
     from sqlalchemy.sql import sqltypes
 except ImportError:
     from sqlalchemy import types as sqltypes
+# Handle the sqlalchemy ARRAY import change
+try:
+    from sqlalchemy.dialects.postgresql.array import ARRAY
+except ImportError:
+    from sqlalchemy.dialects.postgresql.base import ARRAY
+
 
 from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.dialects.mssql import base as mssql_dialect
 from sqlalchemy.dialects.oracle import base as oracle_dialect
 from sqlalchemy.dialects.postgresql.base import (
-    ARRAY, ischema_names, PGDialect, NUMERIC, SMALLINT, VARCHAR, TIMESTAMP, BYTEA, BOOLEAN, TEXT)
+    ischema_names, PGDialect, NUMERIC, SMALLINT, VARCHAR, TIMESTAMP, BYTEA,
+    BOOLEAN, TEXT)
 import re
 import operator
 
