@@ -1225,15 +1225,14 @@ pythonDictToTuple(PyObject *p_value,
 		p_object = PyMapping_GetItemString(p_value, key);
 		/* attr->attypid 0 seems to flag a junk column 
 		   such as .....pg.droped.xxx.... */
-		if (p_object != NULL && p_object != Py_None &&
-		    attr->atttypid != 0 && attr->attlen > 0 &&
-		    attr->attisdropped == 0
-		    )
+		if (p_object != NULL && p_object != Py_None)
 		{
+			Assert(attr->atttypid != 0 && attr->attlen > 0 &&
+			       attr->attisdropped == 0);
 			resetStringInfo(buffer);
 			values[i] = pyobjectToDatum(p_object,
-										buffer,
-										cinfos[cinfo_idx]);
+						    buffer,
+						    cinfos[cinfo_idx]);
 			if (buffer->data == NULL)
 			{
 				nulls[i] = true;

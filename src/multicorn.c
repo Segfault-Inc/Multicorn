@@ -486,20 +486,19 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 {
 	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
 	MulticornExecState *execstate;
-	TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
 	ListCell   *lc;
 
 	execstate = initializeExecState(fscan->fdw_private);
-	execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
-	execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
 	execstate->qual_list = NULL;
+	execstate->values = NULL;
+	execstate->nulls = NULL;
+	
 	foreach(lc, fscan->fdw_exprs)
 	{
 		extractRestrictions(bms_make_singleton(fscan->scan.scanrelid),
 							((Expr *) lfirst(lc)),
 							&execstate->qual_list);
 	}
-	initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
 	node->fdw_state = execstate;
 }
 
@@ -518,6 +517,20 @@ multicornIterateForeignScan(ForeignScanState *node)
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	MulticornExecState *execstate = node->fdw_state;
 	PyObject   *p_value;
+
+	Assert(slot != NULL);
+	
+	if (execstate->tt_slot != slot) {
+		execstate->tt_slot = slot;
+		initConversioninfo(execstate->cinfos,
+				   TupleDescGetAttInMetadata(slot->tts_tupleDescriptor));
+		execstate->values = repalloc(execstate->values,
+					     sizeof(Datum) *
+					     slot->tts_tupleDescriptor->natts);
+		execstate->nulls = repalloc(execstate->nulls,
+					    sizeof(bool) *
+					    slot->tts_tupleDescriptor->natts);
+	}
 
 	if (execstate->p_iterator == NULL)
 	{
@@ -1127,6 +1140,7 @@ initializeExecState(void *internalstate)
 	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
 	execstate->values = palloc(attnum * sizeof(Datum));
 	execstate->nulls = palloc(attnum * sizeof(bool));
+	execstate->tt_slot = NULL;
 	return execstate;
 }
 

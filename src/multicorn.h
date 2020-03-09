@@ -96,6 +96,7 @@ typedef struct MulticornExecState
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
 	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
+	TupleTableSlot *tt_slot;
 }	MulticornExecState;
 
 typedef struct MulticornModifyState
