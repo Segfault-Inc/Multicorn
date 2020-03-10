@@ -1241,7 +1241,7 @@ pythonDictToTuple(PyObject *p_value,
 					errdetail("attr->atttypid=%d, attr->attlen=%d, attr->attisdropped=%d, attr->attname=%s key=%s",
 						  attr->atttypid, attr->attlen,
 						  attr->attisdropped,
-						  attr->attname, key);
+						  attr->attname.data, key);
 					errfinish(0);
 				}
 				

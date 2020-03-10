@@ -537,20 +537,37 @@ multicornIterateForeignScan(ForeignScanState *node)
 
 		
 		execstate->tt_tupleDescriptor = slot->tts_tupleDescriptor;
-		
-		execstate->cinfos = repalloc(execstate->cinfos,
-					     sizeof(ConversionInfo *) *
-					     slot->tts_tupleDescriptor->natts);
+
+		if (execstate->cinfos  != NULL) {
+			execstate->cinfos = repalloc(execstate->cinfos,
+						     sizeof(ConversionInfo *) *
+						     slot->tts_tupleDescriptor->natts);
+		} else {
+			execstate->cinfos = palloc(sizeof(ConversionInfo *) *
+						   slot->tts_tupleDescriptor->natts);
+		}
 		memset(execstate->cinfos,
 		       0,
 		       sizeof(ConversionInfo *) *
 		       slot->tts_tupleDescriptor->natts);
-		execstate->values = repalloc(execstate->values,
-					     sizeof(Datum) *
-					     slot->tts_tupleDescriptor->natts);
-		execstate->nulls = repalloc(execstate->nulls,
-					    sizeof(bool) *
-					    slot->tts_tupleDescriptor->natts);
+		if (execstate->values != NULL) {
+			execstate->values = repalloc(execstate->values,
+						     sizeof(Datum) *
+						     slot->tts_tupleDescriptor->natts);
+		} else {
+			execstate->values = palloc(sizeof(Datum) *
+						   slot->tts_tupleDescriptor->natts);
+		}
+
+
+		if (execstate->nulls != NULL) {
+			execstate->nulls = repalloc(execstate->nulls,
+						    sizeof(bool) *
+						    slot->tts_tupleDescriptor->natts);
+		} else {
+			execstate->nulls = palloc(sizeof(bool) *
+						  slot->tts_tupleDescriptor->natts);
+		}
 		initConversioninfo(execstate->cinfos,
 				   TupleDescGetAttInMetadata(execstate->tt_tupleDescriptor));
 	}
