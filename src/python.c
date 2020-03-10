@@ -1227,7 +1227,8 @@ pythonDictToTuple(PyObject *p_value,
 		{
 			/* attr->attypid 0 seems to flag a junk column 
 			   such as .....pg.droped.xxx.... */
-			if(attr->atttypid == 0 || attr->attisdropped != 0)
+			if(attr->atttypid == 0 || attr->attisdropped != 0 ||
+			   strcmp(key, attr->attname.data) != 0)
 			{
 				if (errstart(ERROR,
 					     __FILE__,
@@ -1244,6 +1245,17 @@ pythonDictToTuple(PyObject *p_value,
 					errfinish(0);
 				}
 				
+			}
+			if (errstart(INFO,
+				     __FILE__,
+				     __LINE__,
+				     PG_FUNCNAME_MACRO,
+				     TEXTDOMAIN))
+			{
+				errmsg("Multicorn: Found %s in dict.", key);
+				errhint("attr->attname.data=%s",
+				       attr->attname.data);
+				errfinish(0);
 			}
 			resetStringInfo(buffer);
 			values[i] = pyobjectToDatum(p_object,
@@ -1262,6 +1274,17 @@ pythonDictToTuple(PyObject *p_value,
 		{
 			/* "KeyError", doesnt matter. */
 			PyErr_Clear();
+			if (errstart(INFO,
+				     __FILE__,
+				     __LINE__,
+				     PG_FUNCNAME_MACRO,
+				     TEXTDOMAIN))
+			{
+				errmsg("Multicorn: Didn't find %s in dict.", key);
+				errhint("attr->attname.data=%s",
+				       attr->attname.data);
+				errfinish(0);
+			}
 			values[i] = (Datum) NULL;
 			nulls[i] = true;
 		}
