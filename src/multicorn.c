@@ -781,6 +781,9 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	errorCheck();
 	if (p_new_value && p_new_value != Py_None)
 	{
+		// XXXXXX FIXME: If there is no result tuple, this assumes
+		// that the given slot matches the table.
+		// This does not appear to be the case.
 		ExecClearTuple(slot);
 		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
 		ExecStoreVirtualTuple(slot);

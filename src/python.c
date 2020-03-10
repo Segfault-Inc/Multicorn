@@ -1227,9 +1227,15 @@ pythonDictToTuple(PyObject *p_value,
 		{
 			/* attr->attypid 0 seems to flag a junk column 
 			   such as .....pg.droped.xxx.... */
-			if(attr->atttypid == 0 || attr->attisdropped != 0 ||
+			if(key == NULL ||
+			   attr->atttypid == 0 ||
+			   attr->attisdropped != 0 ||
 			   strcmp(key, attr->attname.data) != 0)
 			{
+				if (key == NUL)
+				{
+					key="NULL";
+				}
 				if (errstart(ERROR,
 					     __FILE__,
 					     __LINE__,
