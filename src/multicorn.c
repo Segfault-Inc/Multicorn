@@ -520,16 +520,39 @@ multicornIterateForeignScan(ForeignScanState *node)
 
 	Assert(slot != NULL);
 	
-	if (execstate->tt_slot != slot) {
-		execstate->tt_slot = slot;
-		initConversioninfo(execstate->cinfos,
-				   TupleDescGetAttInMetadata(slot->tts_tupleDescriptor));
+	if (execstate->tt_tupleDescriptor !=
+	    slot->tts_tupleDescriptor)
+	{
+		if (execstate->tt_tupleDescriptor != NULL)
+		{
+			if (errstart(WARNING, __FILE__,
+				     __LINE__, PG_FUNCNAME_MACRO,
+				     TEXTDOMAIN))
+			{
+				errmsg("tupleDescriptor Changed");
+				errdetail("Reallocing and reintializec cinfo struct may be a performance hit.");
+			}
+			errfinish(0);
+		}
+
+		
+		execstate->tt_tupleDescriptor = slot->tts_tupleDescriptor;
+		
+		execstate->cinfos = repalloc(execstate->cinfos,
+					     sizeof(ConversionInfo *) *
+					     slot->tts_tupleDescriptor->natts);
+		memset(execstate->cinfos,
+		       0,
+		       sizeof(ConversionInfo *) *
+		       slot->tts_tupleDescriptor->natts);
 		execstate->values = repalloc(execstate->values,
 					     sizeof(Datum) *
 					     slot->tts_tupleDescriptor->natts);
 		execstate->nulls = repalloc(execstate->nulls,
 					    sizeof(bool) *
 					    slot->tts_tupleDescriptor->natts);
+		initConversioninfo(execstate->cinfos,
+				   TupleDescGetAttInMetadata(execstate->tt_tupleDescriptor));
 	}
 
 	if (execstate->p_iterator == NULL)
@@ -577,28 +600,6 @@ multicornReScanForeignScan(ForeignScanState *node)
 }
 
 
-static void mylog(const char *m, const char *h, const char *d,
-		const char *f, int line,
-		const char *fn) {
-
-	FILE *fp = fopen("/tmp/mylog", "a");
-	fprintf(fp, "mylog(%s, %s, %s, %s, %d, %s)\n", m, h, d, f, line, fn);
-	fclose(fp);
-	
-	if (errstart(WARNING, f, line, fn, TEXTDOMAIN))
-	{
-	  errmsg("%s", m);
-	  if (h != NULL)
-	  {
-	    errhint("%s", h);
-	  }
-	  if (d != NULL)
-	  {
-	    errdetail("%s", d);
-	  }
-	  errfinish(0);
-	}
-}
 
 /*
  *	multicornEndForeignScan
@@ -630,8 +631,7 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 								 Relation target_relation)
 {
 	Var		   *var = NULL;
-	TargetEntry *tle,
-			   *returningTle;
+	TargetEntry *tle, *returningTle;
 	PyObject   *instance = getInstance(target_relation->rd_id);
 	const char *attrname = getRowIdColumn(instance);
 	TupleDesc	desc = target_relation->rd_att;
@@ -700,10 +700,10 @@ multicornPlanForeignModify(PlannerInfo *root,
  */
 static void
 multicornBeginForeignModify(ModifyTableState *mtstate,
-							ResultRelInfo *resultRelInfo,
-							List *fdw_private,
-							int subplan_index,
-							int eflags)
+			    ResultRelInfo *resultRelInfo,
+			    List *fdw_private,
+			    int subplan_index,
+			    int eflags)
 {
 	MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
 	Relation	rel = resultRelInfo->ri_RelationDesc;
@@ -1126,7 +1126,6 @@ initializeExecState(void *internalstate)
 {
 	MulticornExecState *execstate = palloc0(sizeof(MulticornExecState));
 	List	   *values = (List *) internalstate;
-	AttrNumber	attnum = ((Const *) linitial(values))->constvalue;
 	Oid			foreigntableid = ((Const *) lsecond(values))->constvalue;
 	List		*pathkeys;
 
@@ -1137,10 +1136,10 @@ initializeExecState(void *internalstate)
 	execstate->pathkeys = deserializeDeparsedSortGroup(pathkeys);
 	execstate->fdw_instance = getInstance(foreigntableid);
 	execstate->buffer = makeStringInfo();
-	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
-	execstate->values = palloc(attnum * sizeof(Datum));
-	execstate->nulls = palloc(attnum * sizeof(bool));
-	execstate->tt_slot = NULL;
+	execstate->cinfos = NULL;
+	execstate->values = NULL;
+	execstate->nulls = NULL;
+	execstate->tt_tupleDescriptor = NULL;
 	return execstate;
 }
 
