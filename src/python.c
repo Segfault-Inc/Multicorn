@@ -1223,12 +1223,29 @@ pythonDictToTuple(PyObject *p_value,
 		}
 		key = cinfos[cinfo_idx]->attrname;
 		p_object = PyMapping_GetItemString(p_value, key);
-		/* attr->attypid 0 seems to flag a junk column 
-		   such as .....pg.droped.xxx.... */
 		if (p_object != NULL && p_object != Py_None)
 		{
-			Assert(attr->atttypid != 0 && attr->attlen > 0 &&
-			       attr->attisdropped == 0);
+			/* attr->attypid 0 seems to flag a junk column 
+			   such as .....pg.droped.xxx.... */
+			if(attr->atttypid == 0 || attr->attlen <= 0 ||
+			   attr->attisdropped != 0)
+			{
+				if (errstart(ERROR,
+					     __FILE__,
+					     __LINE__,
+					     PG_FUNCNAME_MACRO,
+					     TEXTDOMAIN))
+				{
+					errmsg("Bad Attribute in multicorn");
+					errhint("Multicorn needs to be fixed");
+					errdetail("attr->atttypid=%d, attr->attlen=%d, attr->attisdropped=%d, attr->attname=%s key=%s",
+						  attr->atttypid, attr->attlen,
+						  attr->attisdropped,
+						  attr->attname, key);
+					errfinish(0);
+				}
+				
+			}
 			resetStringInfo(buffer);
 			values[i] = pyobjectToDatum(p_object,
 						    buffer,
