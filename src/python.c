@@ -1232,7 +1232,7 @@ pythonDictToTuple(PyObject *p_value,
 			   attr->attisdropped != 0 ||
 			   strcmp(key, attr->attname.data) != 0)
 			{
-				if (key == NUL)
+				if (key == NULL)
 				{
 					key="NULL";
 				}
