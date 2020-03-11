@@ -520,7 +520,7 @@ multicornIterateForeignScan(ForeignScanState *node)
 
 	Assert(slot != NULL);
 	
-	if (execstate->tt_tupleDescriptor !=
+	if (1 || execstate->tt_tupleDescriptor !=
 	    slot->tts_tupleDescriptor)
 	{
 		if (execstate->tt_tupleDescriptor != NULL)
