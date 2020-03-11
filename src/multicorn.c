@@ -1210,7 +1210,7 @@ multicorn_spi_leave(PyObject *po) {
 	if (--multicorn_SPI_depth == 0 && multicorn_SPI_connected)
 	{
 		multicorn_SPI_connected = false;
-		SPI_finish();
+		//SPI_finish();
 	}
 	return po;
 }
