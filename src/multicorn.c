@@ -556,6 +556,9 @@ multicornIterateForeignScan(ForeignScanState *node)
 		
 		execstate->tt_tupleDescriptor = slot->tts_tupleDescriptor;
 
+		// This is becoming corrupted.  What happens if we realloc it every time?
+		execstate->cinfos = NULL;
+		
 		if (execstate->cinfos  != NULL) {
 			execstate->cinfos = repalloc(execstate->cinfos,
 						     sizeof(ConversionInfo *) *
