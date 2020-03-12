@@ -81,7 +81,8 @@ else
 	python_version = $(shell ${PYTHON} --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
 	PYTHON_CONFIG ?= python${python_version}-config
 
-	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --libs)
+	# --embed required for Py >= 3.8
+	PY_LIBSPEC = $(shell ${PYTHON_CONFIG} --embed >/dev/null && ${PYTHON_CONFIG} --libs --embed || ${PYTHON_CONFIG} --libs)
 	PY_INCLUDESPEC = $(shell ${PYTHON_CONFIG} --includes)
 	PY_CFLAGS = $(shell ${PYTHON_CONFIG} --cflags)
 	PY_LDFLAGS = $(shell ${PYTHON_CONFIG} --ldflags)
@@ -96,8 +97,8 @@ endif
 
 PYTHON_TEST_VERSION ?= $(python_version)
 PG_TEST_VERSION ?= $(MAJORVERSION)
-SUPPORTS_WRITE=$(shell expr ${PG_TEST_VERSION} \>= 9.3)
-SUPPORTS_IMPORT=$(shell expr ${PG_TEST_VERSION} \>= 9.5)
+SUPPORTS_WRITE=$(shell expr ${VERSION_NUM} \>= 90300)
+SUPPORTS_IMPORT=$(shell expr ${VERSION_NUM} \>= 90500)
 UNSUPPORTS_SQLALCHEMY=$(shell python -c "import sqlalchemy;import psycopg2"  1> /dev/null 2>&1; echo $$?)
 
 TESTS        = test-$(PYTHON_TEST_VERSION)/sql/multicorn_cache_invalidation.sql \

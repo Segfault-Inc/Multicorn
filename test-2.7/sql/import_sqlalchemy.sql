@@ -41,9 +41,6 @@ CREATE TABLE local_schema.t3 (
 CREATE SCHEMA remote_schema;
 
 IMPORT FOREIGN SCHEMA local_schema FROM SERVER multicorn_srv INTO remote_schema ;
-\d remote_schema.t1
-\d remote_schema.t2
-\d remote_schema.t3
 SELECT * FROM remote_schema.t1;
 INSERT INTO remote_schema.t1 VALUES (1, '2', NULL, NULL);
 SELECT * FROM remote_schema.t1;

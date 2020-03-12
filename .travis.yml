@@ -1,0 +1,82 @@
+# Shamelessly ripped from plv8 repo
+before_install:
+  - psql --version
+  - python --version
+  - sudo /etc/init.d/postgresql stop
+  - sudo apt-get -y --purge remove postgresql libpq-dev libpq5 postgresql-client-common postgresql-common
+  - sudo rm -rf /var/lib/postgresql
+  - wget --no-check-certificate  --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  - sudo sh -c "echo deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main $PGVERSION >> /etc/apt/sources.list.d/postgresql.list"
+  - sudo apt-get update -qq
+  - sudo apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::="--force-confnew" install postgresql-common
+  - sudo sh -c "echo create_main_cluster = false >> /etc/postgresql-common/createcluster.conf"
+  - sudo apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::="--force-confnew" install postgresql-$PGVERSION postgresql-server-dev-$PGVERSION postgresql-contrib-$PGVERSION
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libc6-dev-i386 libc++-dev python3-dev python-dev postgresql-plpython3-${PGVERSION}
+  - sudo apt-get install postgresql-plpython-${PGVERSION} || true
+  - if [ ${TRAVIS_PYTHON_VERSION} == 2.7 ]; then deactivate; fi;
+  - export PYTHON3_LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/python/${TRAVIS_PYTHON_VERSION}/lib/
+  - export PYTHON2_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+  - export LD_LIBRARY_PATH=$(if [ ${TRAVIS_PYTHON_VERSION} == 2.7 ]; then echo $PYTHON2_LD_LIBRARY_PATH; else echo $PYTHON3_LD_LIBRARY_PATH; fi;)
+  - mkdir /tmp/pgdata
+  - /usr/lib/postgresql/${PGVERSION}/bin/initdb -A trust -D /tmp/pgdata
+  - echo "unix_socket_directories='/tmp/'" >> /tmp/pgdata/postgresql.conf
+  - /usr/lib/postgresql/${PGVERSION}/bin/pg_ctl -D /tmp/pgdata start
+
+install:
+  - SUDO=$(([ $TRAVIS_PYTHON_VERSION == 2.7 ] && echo "sudo") || echo "" )
+  - $SUDO pip install setuptools sqlalchemy psycopg2
+
+before_script:
+  - g++ -v
+  - gcc -v
+
+python:
+  - 2.7
+  - 3.8
+  - 3.7
+  - 3.5
+  - 3.4
+
+env:
+  matrix:
+    - PGVERSION=12
+    - PGVERSION=11
+    - PGVERSION=10
+    - PGVERSION=9.6
+    - PGVERSION=9.5
+    - PGVERSION=9.4
+
+jobs:
+  exclude:
+    - python: 2.7
+      env: PGVERSION=12
+
+language: python
+compiler:
+  - gcc
+
+sudo: required
+dist: xenial
+
+script:
+  - which python
+  - PYTHON3_CONFIG=/opt/python/${TRAVIS_PYTHON_VERSION}/bin/python-config
+  - PYTHON2_CONFIG=python2-config
+  - export PYTHON_CONFIG=$(if [ ${TRAVIS_PYTHON_VERSION} == 2.7 ]; then echo $PYTHON2_CONFIG; else echo $PYTHON3_CONFIG; fi;)
+  - export PYTHON3_OVERRIDE=/opt/python/${TRAVIS_PYTHON_VERSION}/bin/python
+  - export PYTHON2_OVERRIDE=/usr/bin/python2
+  - export PYTHON_OVERRIDE=$(if [ ${TRAVIS_PYTHON_VERSION} == 2.7 ]; then echo $PYTHON2_OVERRIDE; else echo $PYTHON3_OVERRIDE; fi;)
+  - export PYTHON3_LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/python/${TRAVIS_PYTHON_VERSION}/lib/
+  - export PYTHON2_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+  - export LD_LIBRARY_PATH=$(if [ ${TRAVIS_PYTHON_VERSION} == 2.7 ]; then echo $PYTHON2_LD_LIBRARY_PATH; else echo $PYTHON3_LD_LIBRARY_PATH; fi;)
+  - export PG_CONFIG=/usr/lib/postgresql/${PGVERSION}/bin/pg_config
+  - export PGHOST=/tmp/
+  - make && sudo make install
+  - if [ ${TRAVIS_PYTHON_VERSION} != 2.7 ]; then pip install .; fi;
+  - make installcheck
+
+after_script:
+  - cat regression.diffs || true
+  - cat regression.out || true

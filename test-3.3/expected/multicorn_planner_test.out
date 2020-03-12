@@ -1,9 +1,17 @@
 SET client_min_messages=NOTICE;
+\i test-common/disable_jit.include
+DO $$
+BEGIN
+  IF current_setting('server_version_num')::bigint >= 110000 THEN
+    SET jit = off;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
 CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.testfdw.TestForeignDataWrapper'
 );
-CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE user mapping FOR current_user server multicorn_srv options (usermapping 'test');
 -- Test for two thing: first, that when a low total row count, 
 -- a full seq scan is used on a join.
 CREATE foreign table testmulticorn (
@@ -76,7 +84,7 @@ explain select * from testmulticorn m1 left outer join testmulticorn m2 on m1.te
          Filter: ((m1.test1)::text = (test1)::text)
 (4 rows)
 
-DROP USER MAPPING for postgres SERVER multicorn_srv;
+DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv

@@ -1,5 +1,7 @@
 -- Setup the test
+CREATE EXTENSION multicorn;
 CREATE language plpython3u;
+\i test-common/disable_jit.include
 
 CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
     import plpy
@@ -33,7 +35,6 @@ CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
                     fd.write('Im a %s %s %s\n' % (size, color, name))
 $$ language plpython3u;
 
-CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.fsfdw.FilesystemFdw'
 );

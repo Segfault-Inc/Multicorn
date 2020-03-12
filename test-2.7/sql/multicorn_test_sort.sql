@@ -3,7 +3,7 @@ CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.testfdw.TestForeignDataWrapper'
 );
-CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE user mapping FOR current_user server multicorn_srv options (usermapping 'test');
 
 CREATE foreign table testmulticorn (
     test1 date,
@@ -19,5 +19,5 @@ EXPLAIN SELECT * FROM testmulticorn ORDER BY test1 DESC;
 -- Data should be sorted
 SELECT * FROM testmulticorn ORDER BY test1 DESC;
 
-DROP USER MAPPING FOR postgres SERVER multicorn_srv;
+DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
