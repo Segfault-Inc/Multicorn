@@ -269,6 +269,12 @@ multicornGetForeignRelSize(PlannerInfo *root,
 		Relation	rel = RelationIdGetRelation(ftable->relid);
 		AttInMetadata *attinmeta;
 
+		if (rel == NULL)
+		{
+			ereport(ERROR, (errmsg("Can't get relation for relid=%d ftable oid=%d",
+					       ftable->relid, foreigntableid), errhint("%s", "It's buggy")));
+		}
+
 		desc = RelationGetDescr(rel);
 		attinmeta = TupleDescGetAttInMetadata(desc);
 		planstate->numattrs = RelationGetNumberOfAttributes(rel);
