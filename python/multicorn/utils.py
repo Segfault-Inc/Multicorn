@@ -8,6 +8,8 @@ try:
     from ._utils import _execute_stmt
     from ._utils import _fetch
 except ImportError as e:
+    # We really want to know when this happens
+    # for testing purposes, just ignore the output.
     logging.exception("Importing utils")
     from warnings import warn
     warn("Not executed in a postgresql server,"
@@ -17,7 +19,7 @@ except ImportError as e:
         pass
 
     def _execute(sql, readonly, count):
-        pass
+        raise Exception('Not Connected to Postgres')
 
     def _prepare(sql, *argv):
         """
@@ -37,13 +39,13 @@ except ImportError as e:
         have to be passed in as strings and
         the sql would have to convert them.
         """
-        pass
+        raise Exception('Not Connected to Postgres')
 
     def _execute_stmt(stmt, args, converters):
         raise Exception('Not Connected to Postgres')
 
     def _fetch():
-        pass
+        raise Exception('Not Connected to Postgres')
 
 
 REPORT_CODES = {

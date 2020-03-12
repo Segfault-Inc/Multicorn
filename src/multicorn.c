@@ -609,8 +609,8 @@ multicornIterateForeignScan(ForeignScanState *node)
 		Py_XDECREF(p_value);
 		return slot;
 	}
-	slot->tts_values = execstate->values;
-	slot->tts_isnull = execstate->nulls;
+	//slot->tts_values = execstate->values;
+	//slot->tts_isnull = execstate->nulls;
 	pythonResultToTuple(p_value, slot, execstate->cinfos, execstate->buffer);
 	ExecStoreVirtualTuple(slot);
 	Py_DECREF(p_value);
