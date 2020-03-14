@@ -148,16 +148,23 @@ multicorn_init()
 
 
 void
-multicorn_call_plpython(char *python_script)
+multicorn_call_plpython(const char *python_script)
 {
-
+	InlineCodeBlock *codeblock = makeNode(InlineCodeBlock);
 	if (multicorn_plpython_inline_handler == NULL)
 	{
 		ereport(ERROR, (errmsg("%s", "No plpython_inline_handler avaiable"), errhint("%s", "Install plpython")));
 	}
 
+	/* We need a copy of the python script, so it's not
+	 * const. 
+	 */
+	codeblock->source_text = pstrdup(python_script);
+	/* XXXXX FIXME, look this up at init time. */
+	codeblock->langIsTrusted = false;
+	codeblock->langOid = InvalidOid;
 	DirectFunctionCall1(multicorn_plpython_inline_handler,
-			    CStringGetDatum(python_script));
+			    PointerGetDatum(codeblock));
 }
 
 

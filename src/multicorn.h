@@ -213,7 +213,7 @@ PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
 List	*serializeDeparsedSortGroup(List *pathkeys);
 List	*deserializeDeparsedSortGroup(List *items);
 
-void multicorn_call_plpython(char *python_script);
+void multicorn_call_plpython(const char *python_script);
 void multicorn_init(void);
 
 #endif   /* PG_MULTICORN_H */
