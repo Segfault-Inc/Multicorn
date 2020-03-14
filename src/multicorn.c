@@ -110,14 +110,10 @@ MulticornExecState *initializeExecState(void *internal_plan_state);
 /* Hash table mapping oid to fdw instances */
 HTAB	   *InstancesHash;
 
-
-void
-_PG_init()
+static void
+multicorn_init()
 {
-	HASHCTL		ctl;
-	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
 	bool need_import_plpy = false;
-
 #if PY_MAJOR_VERSION >= 3
 	/* Try to load plpython3 with its own module */
 	PG_TRY();
@@ -135,6 +131,17 @@ _PG_init()
 	Py_Initialize();
 	if (need_import_plpy)
 		PyImport_ImportModule("plpy");
+}
+
+
+void
+_PG_init()
+{
+	HASHCTL		ctl;
+	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
+
+	multicorn_init();
+
 	RegisterXactCallback(multicorn_xact_callback, NULL);
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
