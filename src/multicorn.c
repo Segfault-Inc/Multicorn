@@ -110,45 +110,54 @@ MulticornExecState *initializeExecState(void *internal_plan_state);
 /* Hash table mapping oid to fdw instances */
 HTAB	   *InstancesHash;
 
-static void
+PGFunction multicorn_plpython_inline_handler = NULL;
+
+void
 multicorn_init()
 {
-	bool need_import_plpy = false;
+	static bool inited = false;
 #if PY_MAJOR_VERSION >= 3
-	/* Try to load plpython3 with its own module */
+	static char *plpython_module = "plpython3";
+#else
+	static char *plpython_module = "plpython";
+#endif
+	if (inited == true)
+	{
+		return;
+	}
+
+	inited = true;
+
+	/* Try to load plpython and let it do the init. */
 	PG_TRY();
 	{
-	void * PyInit_plpy = load_external_function("plpython3", "PyInit_plpy", true, NULL);
-	PyImport_AppendInittab("plpy", PyInit_plpy);
-	need_import_plpy = true;
+	multicorn_plpython_inline_handler  = load_external_function(plpython_module,
+								   "plpython_inline_handler",
+								   true, NULL);
+	/* Do nothing, but let plpython init everything */
+	multicorn_call_plpython("pass");
 	}
 	PG_CATCH();
 	{
-		need_import_plpy = false;
+		ereport(INFO, (errmsg("%s", "Unable to find plpython."), errhint("Install plpython if you wish to use plpy functions from multicorn")));
+                PG_RE_THROW();
+		Py_Initialize();
 	}
 	PG_END_TRY();
-#endif
-	Py_Initialize();
-#if PY_MAJOR_VERSION < 3
-        /* Try to load plpython2u with its own module */
-        PG_TRY();
-        {
-        void *PyInit_plpy = load_external_function("plpython2",
-                                                   "PLy_init_plpy", true, NULL);
-        need_import_plpy = false;
-        ((void (*)(void) )PyInit_plpy)();
-        }
-        PG_CATCH();
-        {
-                PG_RE_THROW();
-                ereport(NOTICE, (errmsg("%s", "Unable to find plpython2")));
-                need_import_plpy = false;
-        }
-        PG_END_TRY();
-#endif
+}
 
-	if (need_import_plpy)
-		PyImport_ImportModule("plpy");
+
+void
+multicorn_call_plpython(char *python_script)
+{
+
+	if (multicorn_plpython_inline_handler == NULL)
+	{
+		ereport(ERROR, (errmsg("%s", "No plpython_inline_handler avaiable"), errhint("%s", "Install plpython")));
+	}
+
+	DirectFunctionCall1(multicorn_plpython_inline_handler,
+			    CStringGetDatum(python_script));
 }
 
 
@@ -158,8 +167,11 @@ _PG_init()
 	HASHCTL		ctl;
 	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
 
-	multicorn_init();
-
+	/*
+	 * Save multicorn init for later so we can
+	 * just call plpython if it's available.
+	 */
+	
 	RegisterXactCallback(multicorn_xact_callback, NULL);
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
