@@ -140,7 +140,6 @@ multicorn_init()
 	PG_CATCH();
 	{
 		ereport(INFO, (errmsg("%s", "Unable to find plpython."), errhint("Install plpython if you wish to use plpy functions from multicorn")));
-                PG_RE_THROW();
 		Py_Initialize();
 	}
 	PG_END_TRY();
@@ -205,7 +204,7 @@ _PG_fini()
 Datum
 multicorn_handler(PG_FUNCTION_ARGS)
 {
-	FdwRoutine *fdw_routine = makeNode(FdwRoutine);
+	FdwRoutine *fdw_routine = emakeNode(FdwRoutine);
 
 	/* Plan phase */
 	fdw_routine->GetForeignRelSize = multicornGetForeignRelSize;
