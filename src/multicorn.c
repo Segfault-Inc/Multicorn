@@ -119,7 +119,7 @@ multicorn_init()
 #if PY_MAJOR_VERSION >= 3
 	static char *plpython_module = "plpython3";
 #else
-	static char *plpython_module = "plpython";
+	static char *plpython_module = "plpython2";
 #endif
 	if (inited == true)
 	{
