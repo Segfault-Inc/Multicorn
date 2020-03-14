@@ -247,6 +247,8 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	ListCell   *cell;
 	PyObject   *p_class;
 
+	multicorn_init();
+
 	foreach(cell, options_list)
 	{
 		DefElem    *def = (DefElem *) lfirst(cell);
