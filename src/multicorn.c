@@ -204,7 +204,7 @@ _PG_fini()
 Datum
 multicorn_handler(PG_FUNCTION_ARGS)
 {
-	FdwRoutine *fdw_routine = emakeNode(FdwRoutine);
+	FdwRoutine *fdw_routine = makeNode(FdwRoutine);
 
 	/* Plan phase */
 	fdw_routine->GetForeignRelSize = multicornGetForeignRelSize;
