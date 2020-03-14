@@ -129,6 +129,24 @@ multicorn_init()
 	PG_END_TRY();
 #endif
 	Py_Initialize();
+#if PY_MAJOR_VERSION < 3
+        /* Try to load plpython2u with its own module */
+        PG_TRY();
+        {
+        void *PyInit_plpy = load_external_function("plpython2",
+                                                   "PLy_init_plpy", true, NULL);
+        need_import_plpy = false;
+        ((void (*)(void) )PyInit_plpy)();
+        }
+        PG_CATCH();
+        {
+                PG_RE_THROW();
+                ereport(NOTICE, (errmsg("%s", "Unable to find plpython2")));
+                need_import_plpy = false;
+        }
+        PG_END_TRY();
+#endif
+
 	if (need_import_plpy)
 		PyImport_ImportModule("plpy");
 }
