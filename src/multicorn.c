@@ -118,8 +118,10 @@ multicorn_init()
 	static bool inited = false;
 #if PY_MAJOR_VERSION >= 3
 	static char *plpython_module = "plpython3";
+	static char *inline_function_name = "plpython3_inline_handler";
 #else
 	static char *plpython_module = "plpython2";
+	static char *inline_function_name = "plpython_inline_handler";
 #endif
 	if (inited == true)
 	{
@@ -132,7 +134,7 @@ multicorn_init()
 	PG_TRY();
 	{
 	multicorn_plpython_inline_handler  = load_external_function(plpython_module,
-								   "plpython_inline_handler",
+								    inline_function_name,
 								   true, NULL);
 	/* Do nothing, but let plpython init everything */
 	multicorn_call_plpython("pass");
