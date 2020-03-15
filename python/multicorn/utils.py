@@ -38,9 +38,8 @@ def log_to_postgres(message, level=INFO, hint=None, detail=None):
 def trampoline(table_oid):
     _plpy_trampoline(table_oid)
 
-
-def getInstanceByOID(table_oid):
-    instance = _getInstanceByOidtable_oid()
+def getInstanceByOid(table_oid):
+    instance = _getInstanceByOid(table_oid)
     if instance is None:
         raise KeyError(table_oid)
-
+    return instance

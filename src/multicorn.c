@@ -198,10 +198,6 @@ multicornCallTrampoline(Oid ftable_oid)
  */
 static void
 multicornCallInstanceByOID(Oid ftable_oid, char *method, CacheEntry *entry)
-{
-	static const char * const python_template
-   	    = "from multicorn.utils import getInstanceByOid as gio; gio(%uL).%s()";
-	static const size_t python_template_len = sizeof(*python_template);
 	
 	char *buff;
 	size_t buff_len;
@@ -226,11 +222,19 @@ multicornCallInstanceByOID(Oid ftable_oid, char *method, CacheEntry *entry)
 		return;
 	}
 
+
+/* Macros are the easiest way to make this constant and easy to change. */
+#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%uL).%s()"
+#define PYTHON_TEMPLATE_LEN sizeof(PYTHON_TEMPLATE)
+
 	/* +14 allows for the oid and a little bit of extra. */
-	buff_len = strlen(method) + python_template_len + 14;
+	buff_len = strlen(method) + PYTHON_TEMPLATE_LEN + 14;
 	buff = (char *)alloca(buff_len); /* it's on the stack. no need to free.*/
 	
-	snprintf (buff, buff_len, python_template, ftable_oid, method);
+	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, method);
+#undef PYTHON_TEMPLATE
+#undef PYTHON_TEMPLAET_LENGTH
+
 	multicorn_call_plpython(buff);
 
 	return;
@@ -1060,6 +1064,10 @@ multicorn_xact_callback(XactEvent event, void *arg)
 				entry->xact_depth = 0;
 				break;
 			case XACT_EVENT_ABORT:
+				/* XXXXX FIXME: An exception here is really bad.
+				   The process will crash.  However, that may
+				   be the best we can do.
+				*/
 				multicornCallInstanceByOID(entry->hashkey,
 							   "rollback", entry);
 				entry->xact_depth = 0;
