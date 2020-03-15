@@ -157,6 +157,8 @@ multicorn_call_plpython(const char *python_script)
 		ereport(ERROR, (errmsg("%s", "No plpython_inline_handler avaiable"), errhint("%s", "Install plpython")));
 	}
 
+	ereport(NOTICE, (errmsg("Running %s via plpython", python_script)));
+
 	/* We need a copy of the python script, so it's not
 	 * const. 
 	 */
