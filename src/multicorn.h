@@ -32,7 +32,7 @@
 } while (0)
 
 #define MAX_TRAMPOLINE_ARGS 5
-typedef void *(*TrampolineFunc)();
+typedef void *(*TrampolineFunc)(void);
 
 typedef struct TrampolineData
 {

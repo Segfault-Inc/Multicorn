@@ -125,13 +125,12 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 #error MAX_TRAMPOLINE_ARGS must be 5 or the code below must change.
 #endif
 static PyObject *
-_plpy_trampoline(PyObject *self, PyObject *args)
+_getInstanceByOid(PyObject *self, PyObject *args)
 {
 	Oid foreigntableid;
 	CacheEntry *entry = NULL;
 	PyObject   *pobj = PyTuple_GetItem(args, 0);
 	bool		found = false;
-	TrampolineData *td;
 
 	if (pobj == NULL || !PyLong_Check(pobj))
 	{
@@ -144,7 +143,7 @@ _plpy_trampoline(PyObject *self, PyObject *args)
 	entry = hash_search(InstancesHash, &foreigntableid, HASH_FIND,
 			    &found);
 
-	if (!found || entry->value == NLL)
+	if (!found || entry->value == NULL)
 	{
 		Py_INCREF(Py_None);
 		return Py_None;
@@ -154,7 +153,7 @@ _plpy_trampoline(PyObject *self, PyObject *args)
 	
 }
 
-typedef void *(*TramplineFuncInternal)(void *, void *, void *, void *, void *);
+typedef void *(*TrampolineFuncInternal)(void *, void *, void *, void *, void *);
 static PyObject *
 _plpy_trampoline(PyObject *self, PyObject *args)
 {
@@ -183,7 +182,7 @@ _plpy_trampoline(PyObject *self, PyObject *args)
 	entry = hash_search(InstancesHash, &foreigntableid, HASH_FIND,
 			    &found);
 
-	if (!found || entry->trampoline == NLL)
+	if (!found || entry->trampoline == NULL)
 	{
 		Py_INCREF(Py_None);
 		return Py_None;
