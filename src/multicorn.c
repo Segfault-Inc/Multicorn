@@ -171,9 +171,9 @@ multicorn_call_plpython(const char *python_script)
 static void
 multicornCallTrampoline(Oid ftable_oid)
 {
-	char buff[68];
+	char buff[70];
 	snprintf(buff, sizeof(buff),
-		 "from multicorn.utils import trampoline; trampoline(%u)",
+		 "from multicorn.utils import trampoline; trampoline(%uL)",
 		 ftable_oid);
 	multicorn_call_plpython(buff);
 }
@@ -746,8 +746,10 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 							   desc->natts);
 	modstate->buffer = makeStringInfo();
+	modstate->ftable_oid = rel->rd_id;
 	modstate->fdw_instance = getInstance(rel->rd_id);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
+
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
 	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 	MemoryContextSwitchTo(oldcontext);
