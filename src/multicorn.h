@@ -31,11 +31,21 @@
 	errfinish(0); \
 } while (0)
 
+#define MAX_TRAMPOLINE_ARGS 5
+typedef void *(*TrampolineFunc)();
+
+typedef struct TrampolineData
+{
+	TrampolineFunc func;
+	void *return_data;
+	void *args[MAX_TRAMPOLINE_ARGS];
+}	TrampolineData;
 
 typedef struct CacheEntry
 {
 	Oid			hashkey;
 	PyObject   *value;
+	TrampolineData *trampoline;
 	List	   *options;
 	List	   *columns;
 	int			xact_depth;
@@ -107,6 +117,7 @@ typedef struct MulticornModifyState
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
 	ConversionInfo *rowidCinfo;
+	Oid         ftable_oid; /* Used to get trampoline */
 }	MulticornModifyState;
 
 

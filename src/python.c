@@ -586,6 +586,7 @@ getCacheEntry(Oid foreigntableid)
 		entry->columns = NULL;
 		entry->cacheContext = NULL;
 		entry->xact_depth = 0;
+		entry->trampoline = NULL;
 		needInitialization = true;
 	}
 	else

@@ -158,7 +158,7 @@ multicorn_call_plpython(const char *python_script)
 	}
 
 	/* We need a copy of the python script, so it's not
-	 * const. 
+	 * const, and so plpython is free to free it or not. 
 	 */
 	codeblock->source_text = pstrdup(python_script);
 	/* XXXXX FIXME, look this up at init time. */
@@ -166,6 +166,16 @@ multicorn_call_plpython(const char *python_script)
 	codeblock->langOid = InvalidOid;
 	DirectFunctionCall1(multicorn_plpython_inline_handler,
 			    PointerGetDatum(codeblock));
+}
+
+static void
+multicornCallTrampoline(Oid ftable_oid)
+{
+	char buff[68];
+	snprintf(buff, sizeof(buff),
+		 "from multicorn.utils import trampoline; trampoline(%u)",
+		 ftable_oid);
+	multicorn_call_plpython(buff);
 }
 
 
@@ -771,9 +781,11 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
  *		Execute a foreign insert operation
  *		This is done by calling the python "insert" method.
  */
+
+/* The actual function */
 static TupleTableSlot *
-multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+multicornExecForeignInsertReal(EState *estate, ResultRelInfo *resultRelInfo,
+			       TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *fdw_instance = modstate->fdw_instance;
@@ -791,6 +803,46 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	Py_DECREF(values);
 	errorCheck();
 	return slot;
+}
+
+/* The one that considers calling the trampoline */
+/* I beleive we could make a macro to generate this,
+ * but it would be complex.
+ */
+static TupleTableSlot *
+multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
+			   TupleTableSlot *slot, TupleTableSlot *planSlot)
+{
+	if (multicorn_plpython_inline_handler != NULL)
+	{
+		MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
+		bool found = false;
+		CacheEntry *entry = hash_search(InstancesHash,
+						&modstate->ftable_oid,
+						HASH_FIND,
+						&found);
+		/* XXXXX FIXME:  Should we error out if it's not found? */
+		if (found)
+		{
+			TrampolineData td;
+			td.func = (TrampolineFunc)multicornExecForeignInsertReal;
+			td.return_data = NULL;
+			td.args[0] = (void *)estate;
+			td.args[1] = (void *)resultRelInfo;
+			td.args[2] = (void *)slot;
+			td.args[3] = (void *)planSlot;
+			td.args[4] = NULL;
+
+			Assert(entry->trampoline == NULL);
+			entry->trampoline = &td;
+			multicornCallTrampoline(modstate->ftable_oid);
+			return td.return_data;
+		}
+		
+	}
+	return multicornExecForeignInsertReal(estate, resultRelInfo,
+					      slot, planSlot);
+
 }
 
 /*
