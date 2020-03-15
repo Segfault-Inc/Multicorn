@@ -178,6 +178,64 @@ multicornCallTrampoline(Oid ftable_oid)
 	multicorn_call_plpython(buff);
 }
 
+/* Call an instance by oid
+ * without any arguments or
+ * return values.
+ *
+ * Useful to bypass 
+ * the trampoline.
+ * Could use it with arguments
+ * so lon as we can convert them 
+ * back and forth to strings easily.
+ *
+ * entry is used if available
+ * and we are not going through
+ * plpython.  Set it to NULL
+ * if it's not readily
+ * available and we will look
+ * it up.
+ *
+ */
+static void
+multicornCallInstanceByOID(Oid ftable_oid, char *method, CacheEntry *entry)
+{
+	static const char * const python_template
+   	    = "from multicorn.utils import getInstanceByOid as gio; gio(%uL).%s()";
+	static const size_t python_template_len = sizeof(*python_template);
+	
+	char *buff;
+	size_t buff_len;
+	
+	if (multicorn_plpython_inline_handler == NULL)
+	{
+		/* call directly. */
+		if (entry == NULL)
+		{
+			bool found = false;
+			entry = hash_search(InstancesHash,
+					    &ftable_oid,
+					    HASH_FIND,
+					    &found);
+			if (!found || entry == NULL || entry->value == NULL)
+			{
+				ereport(ERROR, (errmsg("%s", "Multicorn Table OID not found")));
+				
+			}
+		}
+		PyObject_CallMethod(entry->value, method, "()");
+		return;
+	}
+
+	/* +14 allows for the oid and a little bit of extra. */
+	buff_len = strlen(method) + python_template_len + 14;
+	buff = (char *)alloca(buff_len); /* it's on the stack. no need to free.*/
+	
+	snprintf (buff, buff_len, python_template, ftable_oid, method);
+	multicorn_call_plpython(buff);
+
+	return;
+}
+
 
 void
 _PG_init()
@@ -979,14 +1037,12 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 static void
 multicorn_xact_callback(XactEvent event, void *arg)
 {
-	PyObject   *instance;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
 
 	hash_seq_init(&status, InstancesHash);
 	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
 	{
-		instance = entry->value;
 		if (entry->xact_depth == 0)
 			continue;
 
@@ -994,15 +1050,18 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		{
 #if PG_VERSION_NUM >= 90300
 			case XACT_EVENT_PRE_COMMIT:
-				PyObject_CallMethod(instance, "pre_commit", "()");
+				multicornCallInstanceByOID(entry->hashkey,
+							   "pre_commit", entry);
 				break;
 #endif
 			case XACT_EVENT_COMMIT:
-				PyObject_CallMethod(instance, "commit", "()");
+				multicornCallInstanceByOID(entry->hashkey,
+							   "commit", entry);
 				entry->xact_depth = 0;
 				break;
 			case XACT_EVENT_ABORT:
-				PyObject_CallMethod(instance, "rollback", "()");
+				multicornCallInstanceByOID(entry->hashkey,
+							   "rollback", entry);
 				entry->xact_depth = 0;
 				break;
 			default:

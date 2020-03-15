@@ -124,10 +124,39 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 #if MAX_TRAMPOLINE_ARGS != 5
 #error MAX_TRAMPOLINE_ARGS must be 5 or the code below must change.
 #endif
+static PyObject *
+_plpy_trampoline(PyObject *self, PyObject *args)
+{
+	Oid foreigntableid;
+	CacheEntry *entry = NULL;
+	PyObject   *pobj = PyTuple_GetItem(args, 0);
+	bool		found = false;
+	TrampolineData *td;
+
+	if (pobj == NULL || !PyLong_Check(pobj))
+	{
+		errorCheck();
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	foreigntableid = (Oid)PyLong_AsLong(pobj);
+	entry = hash_search(InstancesHash, &foreigntableid, HASH_FIND,
+			    &found);
+
+	if (!found || entry->value == NLL)
+	{
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	return entry->value;
+	
+}
 
 typedef void *(*TramplineFuncInternal)(void *, void *, void *, void *, void *);
 static PyObject *
-plpy_trampline(PyObject *self, PyObject *args)
+_plpy_trampoline(PyObject *self, PyObject *args)
 {
 	Oid foreigntableid;
 	CacheEntry *entry = NULL;
@@ -196,8 +225,10 @@ py_check_interrupts(PyObject *self, PyObject *args, PyObject *kwargs)
 static PyMethodDef UtilsMethods[] = {
 	{"_log_to_postgres", (PyCFunction) log_to_postgres, METH_VARARGS | METH_KEYWORDS, "Log to postresql client"},
 	{"check_interrupts", (PyCFunction) py_check_interrupts, METH_VARARGS | METH_KEYWORDS, "Gives control back to PostgreSQL"},
-	{"_plpy_trampoline", (PyCFunction) _plpy_trampline, METH_VARARGS,
+	{"_plpy_trampoline", (PyCFunction) _plpy_trampoline, METH_VARARGS,
 	 "Internal use only, call the trampline function."},
+	{"_getInstanceByOid", (PyCFunction) _getInstanceByOid, METH_VARARGS,
+	 "Get the multicorn FDW instance by the table oid."},
 	{NULL, NULL, 0, NULL}
 };
 
