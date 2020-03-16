@@ -185,6 +185,7 @@ delete from testmulticorn_write;
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'teststuff'), ('test_type', 'date'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
 ERROR:  The rowid attribute does not exist
+CONTEXT:  PL/Python anonymous code block
 DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 3 other objects

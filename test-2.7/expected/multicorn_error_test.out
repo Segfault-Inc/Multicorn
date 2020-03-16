@@ -3,6 +3,7 @@ CREATE EXTENSION multicorn;
 -- Test that the wrapper option is required on the server.
 CREATE server multicorn_srv foreign data wrapper multicorn;
 ERROR:  The wrapper parameter is mandatory, specify a valid class name
+CONTEXT:  PL/Python anonymous code block
 -- Test that the wrapper option cannot be altered on the table
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.testfdw.TestForeignDataWrapper'
@@ -16,9 +17,12 @@ CREATE foreign table testmulticorn (
 );
 ERROR:  Cannot set the wrapper class on the table
 HINT:  Set it on the server
+CONTEXT:  PL/Python anonymous code block
 ALTER server multicorn_srv options (DROP wrapper);
 ERROR:  The wrapper parameter is mandatory, specify a valid class name
+CONTEXT:  PL/Python anonymous code block
 CREATE server multicorn_empty_srv foreign data wrapper multicorn;
 ERROR:  The wrapper parameter is mandatory, specify a valid class name
+CONTEXT:  PL/Python anonymous code block
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to server multicorn_srv
