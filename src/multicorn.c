@@ -28,6 +28,10 @@
 #include "parser/parsetree.h"
 #include "fmgr.h"
 
+#if PG_VERSION_NUM < 100000
+#include "executor/spi.h"
+#endif
+
 
 PG_MODULE_MAGIC;
 
@@ -168,8 +172,22 @@ multicorn_call_plpython(const char *python_script)
 #if PG_VERSION_NUM >= 110000
 	codeblock->atomic = true;
 #endif
-	DirectFunctionCall1(multicorn_plpython_inline_handler,
-			    PointerGetDatum(codeblock));
+
+	/* Version 9.6 and earlier we need to
+	 * do an SPI_push/pop so we can do an
+	 * SPI_connect.
+	 */
+#if PG_VERSION_NUM < 100000
+	{
+		bool spi_pushed = SPI_push_conditional();
+#endif
+
+		DirectFunctionCall1(multicorn_plpython_inline_handler,
+				    PointerGetDatum(codeblock));
+#if PG_VERSION_NUM < 100000
+		SPI_pop_conditional(spi_pushed);
+	}
+#endif
 }
 
 TrampolineData *multicorn_trampoline_data = NULL;

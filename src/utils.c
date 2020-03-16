@@ -183,17 +183,32 @@ _plpy_trampoline(PyObject *self, PyObject *args)
 
 	old_context = MemoryContextSwitchTo(td->target_context);
 
-	/* C Calling convention means we can just shove the
-	 * maximum number of args into the function and it
-	 * will just ignore the ones it doesn't want.
-	 */
-	td->return_data = 
-	  ((TrampolineFuncInternal)td->func)(td->args[0],
-					     td->args[1],
-					     td->args[2],
-					     td->args[3],
-					     td->args[4]);
+#if PG_VERSION_NUM < 100000
+	{
+	  /* Since we may have come through
+	   * plpython to get here, we need to
+	   * do an SPI_push to make sure
+	   * we have a new spi context.
+	   */
+	  bool spi_pushed = SPI_push_conditional();
 
+#endif
+
+	  /* C Calling convention means we can just shove the
+	   * maximum number of args into the function and it
+	   * will just ignore the ones it doesn't want.
+	   */
+	  td->return_data = 
+	    ((TrampolineFuncInternal)td->func)(td->args[0],
+					       td->args[1],
+					       td->args[2],
+					       td->args[3],
+					       td->args[4]);
+
+#if PG_VERSION_NUM < 100000
+	SPI_pop_conditional(spi_pushed);
+	}
+#endif
 	MemoryContextSwitchTo(old_context);
 	Py_INCREF(Py_None);
 	return Py_None;
