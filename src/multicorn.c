@@ -685,7 +685,7 @@ multicornGetForeignPlan(PlannerInfo *root,
  *		as information that was taken into account for the choice of a path.
  */
 static void
-multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
+multicornExplainForeignScanReal(ForeignScanState *node, ExplainState *es)
 {
 	PyObject *p_iterable = execute(node, es),
 			 *p_item,
@@ -698,6 +698,29 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 	}
 	Py_DECREF(p_iterable);
 	errorCheck();
+}
+
+/*
+ * Check if we should use trampoline
+ */
+void
+multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornExplainForeignScanReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)node;
+		td.args[1] = (void *)es;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornExplainForeignScanReal(node, es);
+	return;
 }
 
 /*
@@ -739,7 +762,7 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
  *		method.
  */
 static TupleTableSlot *
-multicornIterateForeignScan(ForeignScanState *node)
+multicornIterateForeignScanReal(ForeignScanState *node)
 {
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	MulticornExecState *execstate = node->fdw_state;
@@ -771,6 +794,28 @@ multicornIterateForeignScan(ForeignScanState *node)
 	Py_DECREF(p_value);
 
 	return slot;
+}
+
+/*
+ * Check if we should use trampoline
+ */
+static TupleTableSlot *
+multicornIterateForeignScan(ForeignScanState *node)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornIterateForeignScanReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)node;
+		td.args[1] = NULL;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return (TupleTableSlot *)td.return_data;
+	}
+	return multicornIterateForeignScanReal(node);
 }
 
 /*
