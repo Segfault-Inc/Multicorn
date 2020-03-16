@@ -1016,6 +1016,7 @@ executeReal(ForeignScanState *node, ExplainState *es)
 PyObject *
 execute(ForeignScanState *node, ExplainState *es)
 {
+	multicorn_init();
 	if (multicorn_plpython_inline_handler != NULL) {
 		TrampolineData td;
 		td.func = (TrampolineFunc)executeReal;

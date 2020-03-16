@@ -38,6 +38,7 @@ extern PGFunction multicorn_plpython_inline_handler;
 typedef struct TrampolineData
 {
 	TrampolineFunc func;
+	MemoryContext target_context;
 	void *return_data;
 	void *args[MAX_TRAMPOLINE_ARGS];
 }	TrampolineData;

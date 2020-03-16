@@ -152,6 +152,7 @@ void
 multicorn_call_plpython(const char *python_script)
 {
 	InlineCodeBlock *codeblock = makeNode(InlineCodeBlock);
+	multicorn_init();
 	if (multicorn_plpython_inline_handler == NULL)
 	{
 		ereport(ERROR, (errmsg("%s", "No plpython_inline_handler avaiable"), errhint("%s", "Install plpython")));
@@ -174,6 +175,11 @@ void
 multicornCallTrampoline(TrampolineData *td)
 {
 	Assert(multicorn_trampoline_data == NULL);
+	/* We could be really carefull with MemoryContexts,
+	 * or we could be lazy and just switch back
+	 * and forth.
+	 */
+	td->target_context = CurrentMemoryContext;
 	multicorn_trampoline_data = td;
 	multicorn_call_plpython("from multicorn.utils import trampoline; trampoline()");
 }
@@ -202,7 +208,8 @@ multicornCallInstanceByOid(Oid ftable_oid, CacheEntry *entry, char *method)
 	char *buff;
 	size_t buff_len;
 	PyObject *result=NULL;
-	
+
+	multicorn_init();
 	if (multicorn_plpython_inline_handler == NULL)
 	{
 		/* call directly. */
@@ -263,6 +270,7 @@ multicornCallInstanceByOidInt(Oid ftable_oid, CacheEntry *entry, char *method,  
 	size_t buff_len;
 	PyObject *result=NULL;
 	
+	multicorn_init();
 	if (multicorn_plpython_inline_handler == NULL)
 	{
 		/* call directly. */
@@ -911,6 +919,7 @@ static TupleTableSlot *							\
 funcname(EState *estate, ResultRelInfo *resultRelInfo,			\
 	 TupleTableSlot *slot, TupleTableSlot *planSlot)		\
 {									\
+	multicorn_init();						\
 	if (multicorn_plpython_inline_handler != NULL)			\
 	{								\
 		TrampolineData td;					\
@@ -1250,6 +1259,7 @@ static List *
 multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 			     Oid serverOid)
 {
+	multicorn_init();
 	if (multicorn_plpython_inline_handler != NULL) {
 		TrampolineData td;
 		td.func = (TrampolineFunc)multicornImportForeignSchemaReal;
@@ -1260,7 +1270,7 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 		td.args[3] = NULL;
 		td.args[4] = NULL;
 		multicornCallTrampoline(&td);
-		return (List *)td.return_data;
+		return (List *)(td.return_data);
 	}
 	return multicornImportForeignSchemaReal(stmt, serverOid);
 }

@@ -469,6 +469,7 @@ NOTICE:  ['test1', 'test2', 'test3']
 SELECT * from testmulticorn where test1 = '12 €';
 ERROR:  Error in python: UnicodeDecodeError
 DETAIL:  'ascii' codec can't decode byte 0xe2 in position 3: ordinal not in range(128)
+CONTEXT:  PL/Python anonymous code block
 DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 3 other objects

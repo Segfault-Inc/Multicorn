@@ -146,6 +146,7 @@ _getInstanceByOid(PyObject *self, PyObject *args)
 		return Py_None;
 	}
 
+	Py_INCREF(entry->value);
 	return entry->value;
 	
 }
@@ -158,6 +159,7 @@ static PyObject *
 _plpy_trampoline(PyObject *self, PyObject *args)
 {
 	TrampolineData *td = multicorn_trampoline_data;
+	MemoryContext *old_context;
 
 	/* We don't want any args, so ignore them. */
 	if (args != NULL)
@@ -167,12 +169,19 @@ _plpy_trampoline(PyObject *self, PyObject *args)
 	}
 	
 	/* If we are re-entered, we may need to use
-	 * another trampoline for this same table.
+	 * another trampoline for this same process.
 	 * So clear this to make sure the error
 	 * check when setting up the trampoline
 	 * doesn't complain.
 	*/
 	multicorn_trampoline_data = NULL;
+
+	/* Make sure we are in the same
+	 * memory context as when trampoline
+	 *  was called.
+	 */
+
+	old_context = MemoryContextSwitchTo(td->target_context);
 
 	/* C Calling convention means we can just shove the
 	 * maximum number of args into the function and it
@@ -184,6 +193,8 @@ _plpy_trampoline(PyObject *self, PyObject *args)
 					     td->args[2],
 					     td->args[3],
 					     td->args[4]);
+
+	MemoryContextSwitchTo(old_context);
 	Py_INCREF(Py_None);
 	return Py_None;
 }

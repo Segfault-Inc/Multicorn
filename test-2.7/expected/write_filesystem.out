@@ -145,19 +145,23 @@ INSERT INTO testmulticorn (color, size, name, ext, data, filename) VALUES ('blue
         'blue/small/triangle.txt');
 psql:test-common/multicorn_testfilesystem.include:28: ERROR:  The columns inferred from the filename do not match the supplied columns.
 HINT:  Remove either the filename column or the properties column from your  statement, or ensure they match
+CONTEXT:  PL/Python anonymous code block
 -- Insertion with missing keys (should fail)
 INSERT INTO testmulticorn (color, size, name) VALUES ('blue', 'small', 'triangle');
 psql:test-common/multicorn_testfilesystem.include:31: ERROR:  The following columns are necessary: set([u'ext'])
 HINT:  You can also insert an item by providing only the filename and content columns
+CONTEXT:  PL/Python anonymous code block
 -- Insertion with missing keys and filename (should fail)
 INSERT INTO testmulticorn (color, size, name, filename) VALUES ('blue', 'small', 'triangle', 'blue/small/triangle.txt');
 psql:test-common/multicorn_testfilesystem.include:34: ERROR:  The following columns are necessary: set([u'ext'])
 HINT:  You can also insert an item by providing only the filename and content columns
+CONTEXT:  PL/Python anonymous code block
 -- Insertion which would overwrite a file.
 -- Normal insertion
 INSERT INTO testmulticorn (color, size, name, ext, data) VALUES ('yellow', 'big', 'square', 'text', 'Im a duplicate big square');
 psql:test-common/multicorn_testfilesystem.include:38: ERROR:  Duplicate key value violates filesystem integrity.
 DETAIL:  Key (color, ext, name, size)=(yellow, text, square, big) already exists
+CONTEXT:  PL/Python anonymous code block
 -- Should still have 11 lines by now.
 SELECT * from testmulticorn ORDER BY filename;
  color  | size  |   name   | ext  |        filename         |           data           
@@ -232,9 +236,11 @@ SELECT count(1) from testmulticorn where name = 'rectangle';
 UPDATE testmulticorn set filename = 'blue/big/triangle.txt' where filename = 'blue/big/rectangle.txt';
 psql:test-common/multicorn_testfilesystem.include:65: ERROR:  Duplicate key value violates filesystem integrity.
 DETAIL:  Key (color, ext, name, size)=(blue, txt, triangle, big) already exists
+CONTEXT:  PL/Python anonymous code block
 -- Update should not work when setting filename column to NULL
 UPDATE testmulticorn set filename = NULL where filename = 'blue/big/rectangle.txt';
 psql:test-common/multicorn_testfilesystem.include:68: ERROR:  The filename, or all pattern columns are needed.
+CONTEXT:  PL/Python anonymous code block
 -- Update should not work when setting a property column to NULL
 WITH t as (
   UPDATE testmulticorn set color = NULL where filename = 'blue/big/rectangle.txt' RETURNING color
@@ -242,6 +248,7 @@ WITH t as (
 SELECT * from t ORDER BY color;
 psql:test-common/multicorn_testfilesystem.include:73: ERROR:  Null value in columns (color) are not allowed
 DETAIL:  Failing row contains (NULL, big, rectangle, txt)
+CONTEXT:  PL/Python anonymous code block
 -- Content column update.
 UPDATE testmulticorn set data = 'Im an updated rectangle' where filename = 'blue/big/rectangle.txt' RETURNING data;
           data           
