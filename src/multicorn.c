@@ -205,6 +205,12 @@ multicornCallTrampoline(TrampolineData *td)
  * it up.
  *
  */
+#if PY_MAJOR_VERSION >= 3 
+#define PY_LONG_CHAR ' '
+#else
+#define PY_LONG_CHAR 'L'
+#endif
+
 static void
 multicornCallInstanceByOid(Oid ftable_oid, CacheEntry *entry, char *method)
 {	
@@ -237,15 +243,15 @@ multicornCallInstanceByOid(Oid ftable_oid, CacheEntry *entry, char *method)
 		return;
 	}
 
-/* Macros are the easiest way to make this constant and easy to change. */
-#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%uL).%s()"
+	/* Macros are the easiest way to make this constant and easy to change. */
+#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%u%c).%s()"
 #define PYTHON_TEMPLATE_LEN sizeof(PYTHON_TEMPLATE)
 
 	/* +14 allows for the oid and a little bit of extra. */
 	buff_len = strlen(method) + PYTHON_TEMPLATE_LEN + 14;
 	buff = (char *)alloca(buff_len); /* it's on the stack. no need to free.*/
 	
-	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, method);
+	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, PY_LONG_CHAR, method);
 #undef PYTHON_TEMPLATE
 #undef PYTHON_TEMPLAET_LENGTH
 
@@ -299,14 +305,14 @@ multicornCallInstanceByOidInt(Oid ftable_oid, CacheEntry *entry, char *method,  
 	}
 
 /* Macros are the easiest way to make this constant and easy to change. */
-#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%uL).%s(%d)"
+#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%u%c).%s(%d)"
 #define PYTHON_TEMPLATE_LEN sizeof(PYTHON_TEMPLATE)
 
 	/* +28 allows for the oid, the integer and a little bit of extra. */
 	buff_len = strlen(method) + PYTHON_TEMPLATE_LEN + 28;
 	buff = (char *)alloca(buff_len); /* it's on the stack. no need to free.*/
 	
-	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, method, arg);
+	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, PY_LONG_CHAR, method, arg);
 #undef PYTHON_TEMPLATE
 #undef PYTHON_TEMPLAET_LENGTH
 
