@@ -39,6 +39,7 @@ insert into testalchemy (id, adate, atimestamp, anumeric, avarchar) values
   (1, '1980-01-01', '1980-01-01  11:01:21.132912', 3.4, 'Test');
 NOTICE:  You need to declare a primary key option in order to use the write features
 ERROR:  This FDW does not support the writable API
+CONTEXT:  PL/Python anonymous code block
 ALTER FOREIGN TABLE testalchemy OPTIONS (ADD primary_key 'id');
 BEGIN;
 insert into testalchemy (id, adate, atimestamp, anumeric, avarchar) values 
