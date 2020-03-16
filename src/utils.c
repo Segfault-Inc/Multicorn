@@ -121,9 +121,6 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
  * context for all of our FDW methods.
  */
 
-#if MAX_TRAMPOLINE_ARGS != 5
-#error MAX_TRAMPOLINE_ARGS must be 5 or the code below must change.
-#endif
 static PyObject *
 _getInstanceByOid(PyObject *self, PyObject *args)
 {
@@ -153,50 +150,29 @@ _getInstanceByOid(PyObject *self, PyObject *args)
 	
 }
 
+#if MAX_TRAMPOLINE_ARGS != 5
+#error MAX_TRAMPOLINE_ARGS must be 5 or the code below must change.
+#endif
 typedef void *(*TrampolineFuncInternal)(void *, void *, void *, void *, void *);
 static PyObject *
 _plpy_trampoline(PyObject *self, PyObject *args)
 {
-	Oid foreigntableid;
-	CacheEntry *entry = NULL;
-	PyObject   *pobj = PyTuple_GetItem(args, 0);
-	bool		found = false;
-	TrampolineData *td;
+	TrampolineData *td = multicorn_trampoline_data;
 
-	if (pobj == NULL || !PyLong_Check(pobj))
+	/* We don't want any args, so ignore them. */
+	if (args != NULL)
 	{
-		/* This is internal use only, so we don't
-		   need to be user friendly and try to
-		   explain what went wrong. */
-		errorCheck();
-		Py_INCREF(Py_None);
-		return Py_None;
+	  Py_DECREF(args);
+	  args = NULL;
 	}
-
-	/* We hid the function and the parameters
-	 * in the hash entry for the foreign table
-	 * So all we have to do is.
-	 * find it and get what we need.
-	 */
-	foreigntableid = (Oid)PyLong_AsLong(pobj);
-	entry = hash_search(InstancesHash, &foreigntableid, HASH_FIND,
-			    &found);
-
-	if (!found || entry->trampoline == NULL)
-	{
-		Py_INCREF(Py_None);
-		return Py_None;
-	}
-
-	td = entry->trampoline;
-
+	
 	/* If we are re-entered, we may need to use
 	 * another trampoline for this same table.
 	 * So clear this to make sure the error
 	 * check when setting up the trampoline
 	 * doesn't complain.
 	*/
-	entry->trampoline = NULL;
+	multicorn_trampoline_data = NULL;
 
 	/* C Calling convention means we can just shove the
 	 * maximum number of args into the function and it
@@ -224,7 +200,7 @@ py_check_interrupts(PyObject *self, PyObject *args, PyObject *kwargs)
 static PyMethodDef UtilsMethods[] = {
 	{"_log_to_postgres", (PyCFunction) log_to_postgres, METH_VARARGS | METH_KEYWORDS, "Log to postresql client"},
 	{"check_interrupts", (PyCFunction) py_check_interrupts, METH_VARARGS | METH_KEYWORDS, "Gives control back to PostgreSQL"},
-	{"_plpy_trampoline", (PyCFunction) _plpy_trampoline, METH_VARARGS,
+	{"_plpy_trampoline", (PyCFunction) _plpy_trampoline, METH_NOARGS,
 	 "Internal use only, call the trampline function."},
 	{"_getInstanceByOid", (PyCFunction) _getInstanceByOid, METH_VARARGS,
 	 "Get the multicorn FDW instance by the table oid."},

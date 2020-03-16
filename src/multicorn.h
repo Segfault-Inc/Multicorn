@@ -33,6 +33,7 @@
 
 #define MAX_TRAMPOLINE_ARGS 5
 typedef void *(*TrampolineFunc)(void);
+extern PGFunction multicorn_plpython_inline_handler;
 
 typedef struct TrampolineData
 {
@@ -41,11 +42,21 @@ typedef struct TrampolineData
 	void *args[MAX_TRAMPOLINE_ARGS];
 }	TrampolineData;
 
+/*
+ * We only need 1 global pointer since
+ * we are single threaded.  We grab
+ * a local copy of the pointer before
+ * we execute the function that
+ * might cause us to re-enter 
+ * and need the trampoline again.
+ */
+extern TrampolineData *multicorn_trampoline_data;
+void multicornCallTrampoline(TrampolineData *td);
+
 typedef struct CacheEntry
 {
 	Oid			hashkey;
 	PyObject   *value;
-	TrampolineData *trampoline;
 	List	   *options;
 	List	   *columns;
 	int			xact_depth;
@@ -106,6 +117,7 @@ typedef struct MulticornExecState
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
 	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
+	Oid        ftable_oid;
 }	MulticornExecState;
 
 typedef struct MulticornModifyState
@@ -117,7 +129,7 @@ typedef struct MulticornModifyState
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
 	ConversionInfo *rowidCinfo;
-	Oid         ftable_oid; /* Used to get trampoline */
+	Oid        ftable_oid;
 }	MulticornModifyState;
 
 

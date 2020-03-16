@@ -168,14 +168,14 @@ multicorn_call_plpython(const char *python_script)
 			    PointerGetDatum(codeblock));
 }
 
-static void
-multicornCallTrampoline(Oid ftable_oid)
+TrampolineData *mulitcorn_trampoline_data = NULL;
+
+void
+multicornCallTrampoline(TrampolineData *td)
 {
-	char buff[70];
-	snprintf(buff, sizeof(buff),
-		 "from multicorn.utils import trampoline; trampoline(%uL)",
-		 ftable_oid);
-	multicorn_call_plpython(buff);
+	Assert(multicorn_trampoline_data == NULL);
+	multicorn_trampoline_data = td;
+	multicorn_call_plpython("from multicorn.utils import trampoline; trampoline()");
 }
 
 /* Call an instance by oid
@@ -197,10 +197,11 @@ multicornCallTrampoline(Oid ftable_oid)
  *
  */
 static void
-multicornCallInstanceByOID(Oid ftable_oid, char *method, CacheEntry *entry)
-	
+multicornCallInstanceByOid(Oid ftable_oid, CacheEntry *entry, char *method)
+{	
 	char *buff;
 	size_t buff_len;
+	PyObject *result=NULL;
 	
 	if (multicorn_plpython_inline_handler == NULL)
 	{
@@ -218,10 +219,13 @@ multicornCallInstanceByOID(Oid ftable_oid, char *method, CacheEntry *entry)
 				
 			}
 		}
-		PyObject_CallMethod(entry->value, method, "()");
+		result = PyObject_CallMethod(entry->value, method, "()");
+		if (result != NULL)
+		{
+			Py_DECREF(result);
+		}
 		return;
 	}
-
 
 /* Macros are the easiest way to make this constant and easy to change. */
 #define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%uL).%s()"
@@ -240,6 +244,65 @@ multicornCallInstanceByOID(Oid ftable_oid, char *method, CacheEntry *entry)
 	return;
 }
 
+/*
+ * Process 1 integer argument
+ * through to a python method.
+ * We could build a generic one,
+ " but we would have to
+ * be able to turn everything
+ * into a string, and the fallback
+ * method would be difficult to code
+ * without abusing the C calling
+ * convention and risking
+ * some portability issues.
+ */
+static void
+multicornCallInstanceByOidInt(Oid ftable_oid, CacheEntry *entry, char *method,  int arg)
+{
+	char *buff;
+	size_t buff_len;
+	PyObject *result=NULL;
+	
+	if (multicorn_plpython_inline_handler == NULL)
+	{
+		/* call directly. */
+		if (entry == NULL)
+		{
+			bool found = false;
+			entry = hash_search(InstancesHash,
+					    &ftable_oid,
+					    HASH_FIND,
+					    &found);
+			if (!found || entry == NULL || entry->value == NULL)
+			{
+				ereport(ERROR, (errmsg("%s", "Multicorn Table OID not found")));
+				
+			}
+		}
+		result = PyObject_CallMethod(entry->value, method, "(i)", arg);
+		if (result != NULL)
+		{
+			Py_DecRef(result);
+		}
+		return;
+	}
+
+/* Macros are the easiest way to make this constant and easy to change. */
+#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%uL).%s(%d)"
+#define PYTHON_TEMPLATE_LEN sizeof(PYTHON_TEMPLATE)
+
+	/* +28 allows for the oid, the integer and a little bit of extra. */
+	buff_len = strlen(method) + PYTHON_TEMPLATE_LEN + 28;
+	buff = (char *)alloca(buff_len); /* it's on the stack. no need to free.*/
+	
+	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, method, arg);
+#undef PYTHON_TEMPLATE
+#undef PYTHON_TEMPLAET_LENGTH
+
+	multicorn_call_plpython(buff);
+
+	return;
+}
 
 void
 _PG_init()
@@ -354,7 +417,6 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_VOID();
 }
-
 
 /*
  * multicornGetForeignRelSize
@@ -700,10 +762,11 @@ static void
 multicornEndForeignScan(ForeignScanState *node)
 {
 	MulticornExecState *state = node->fdw_state;
-	PyObject   *result = PyObject_CallMethod(state->fdw_instance, "end_scan", "()");
+	multicornCallInstanceByOid(state->ftable_oid,
+				   NULL,
+				   "end_modify");
 
 	errorCheck();
-	Py_DECREF(result);
 	Py_DECREF(state->fdw_instance);
 	Py_XDECREF(state->p_iterator);
 	state->p_iterator = NULL;
@@ -811,7 +874,6 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	modstate->ftable_oid = rel->rd_id;
 	modstate->fdw_instance = getInstance(rel->rd_id);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
-
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
 	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 	MemoryContextSwitchTo(oldcontext);
@@ -839,6 +901,33 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
 	resultRelInfo->ri_FdwState = modstate;
 }
+
+/* The 3 mod functions are similiar enough to make a macro for
+ * the trampoline function.
+ */
+
+#define MODTRAMPOLINE(funcname)						\
+static TupleTableSlot *							\
+funcname(EState *estate, ResultRelInfo *resultRelInfo,			\
+	 TupleTableSlot *slot, TupleTableSlot *planSlot)		\
+{									\
+	if (multicorn_plpython_inline_handler != NULL)			\
+	{								\
+		TrampolineData td;					\
+		td.func = (TrampolineFunc)funcname##Real;		\
+		td.return_data = NULL;					\
+		td.args[0] = (void *)estate;				\
+		td.args[1] = (void *)resultRelInfo;			\
+		td.args[2] = (void *)slot;				\
+		td.args[3] = (void *)planSlot;				\
+		td.args[4] = NULL;					\
+		multicornCallTrampoline(&td);				\
+		return (TupleTableSlot *)td.return_data;		\
+	}								\
+	return funcname##Real(estate, resultRelInfo,			\
+			      slot, planSlot);				\
+}
+
 
 /*
  * multicornExecForeignInsert
@@ -869,45 +958,7 @@ multicornExecForeignInsertReal(EState *estate, ResultRelInfo *resultRelInfo,
 	return slot;
 }
 
-/* The one that considers calling the trampoline */
-/* I beleive we could make a macro to generate this,
- * but it would be complex.
- */
-static TupleTableSlot *
-multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
-			   TupleTableSlot *slot, TupleTableSlot *planSlot)
-{
-	if (multicorn_plpython_inline_handler != NULL)
-	{
-		MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-		bool found = false;
-		CacheEntry *entry = hash_search(InstancesHash,
-						&modstate->ftable_oid,
-						HASH_FIND,
-						&found);
-		/* XXXXX FIXME:  Should we error out if it's not found? */
-		if (found)
-		{
-			TrampolineData td;
-			td.func = (TrampolineFunc)multicornExecForeignInsertReal;
-			td.return_data = NULL;
-			td.args[0] = (void *)estate;
-			td.args[1] = (void *)resultRelInfo;
-			td.args[2] = (void *)slot;
-			td.args[3] = (void *)planSlot;
-			td.args[4] = NULL;
-
-			Assert(entry->trampoline == NULL);
-			entry->trampoline = &td;
-			multicornCallTrampoline(modstate->ftable_oid);
-			return td.return_data;
-		}
-		
-	}
-	return multicornExecForeignInsertReal(estate, resultRelInfo,
-					      slot, planSlot);
-
-}
+MODTRAMPOLINE(multicornExecForeignInsert)
 
 /*
  * multicornExecForeignDelete
@@ -916,7 +967,7 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
  *		rowid that was supplied.
  */
 static TupleTableSlot *
-multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
+multicornExecForeignDeleteReal(EState *estate, ResultRelInfo *resultRelInfo,
 						   TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
@@ -943,6 +994,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	errorCheck();
 	return slot;
 }
+MODTRAMPOLINE(multicornExecForeignDelete)
 
 /*
  * multicornExecForeignUpdate
@@ -951,7 +1003,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
  *		rowid that was supplied.
  */
 static TupleTableSlot *
-multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
+multicornExecForeignUpdateReal(EState *estate, ResultRelInfo *resultRelInfo,
 						   TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
@@ -979,6 +1031,9 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	return slot;
 }
 
+MODTRAMPOLINE(multicornExecForeignUpdate)
+
+#undef MODTRAMPOLINE
 /*
  * multicornEndForeignModify
  *		Clean internal state after a modify operation.
@@ -988,11 +1043,11 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
-
+	multicornCallInstanceByOid(modstate->ftable_oid,
+				   NULL,
+				   "end_modify");
 	errorCheck();
 	Py_DECREF(modstate->fdw_instance);
-	Py_DECREF(result);
 }
 
 /*
@@ -1002,7 +1057,6 @@ static void
 multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 						   SubTransactionId parentSubid, void *arg)
 {
-	PyObject   *instance;
 	int			curlevel;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
@@ -1020,14 +1074,20 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 		if (entry->xact_depth < curlevel)
 			continue;
 
-		instance = entry->value;
 		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
 		{
-			PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
+
+			multicornCallInstanceByOidInt(entry->hashkey,
+						      entry,
+						      "sub_commit",
+						      curlevel);
 		}
 		else
 		{
-			PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
+			multicornCallInstanceByOidInt(entry->hashkey,
+						      entry,
+						      "sub_rollback",
+						      curlevel);
 		}
 		errorCheck();
 		entry->xact_depth--;
@@ -1054,13 +1114,15 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		{
 #if PG_VERSION_NUM >= 90300
 			case XACT_EVENT_PRE_COMMIT:
-				multicornCallInstanceByOID(entry->hashkey,
-							   "pre_commit", entry);
+				multicornCallInstanceByOid(entry->hashkey,
+							   entry,
+							   "pre_commit");
 				break;
 #endif
 			case XACT_EVENT_COMMIT:
-				multicornCallInstanceByOID(entry->hashkey,
-							   "commit", entry);
+				multicornCallInstanceByOid(entry->hashkey,
+							   entry,
+							   "commit");
 				entry->xact_depth = 0;
 				break;
 			case XACT_EVENT_ABORT:
@@ -1068,8 +1130,9 @@ multicorn_xact_callback(XactEvent event, void *arg)
 				   The process will crash.  However, that may
 				   be the best we can do.
 				*/
-				multicornCallInstanceByOID(entry->hashkey,
-							   "rollback", entry);
+				multicornCallInstanceByOid(entry->hashkey,
+							   entry,
+							   "rollback");
 				entry->xact_depth = 0;
 				break;
 			default:
@@ -1081,7 +1144,7 @@ multicorn_xact_callback(XactEvent event, void *arg)
 
 #if PG_VERSION_NUM >= 90500
 static List *
-multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
+multicornImportForeignSchemaReal(ImportForeignSchemaStmt * stmt,
 							 Oid serverOid)
 {
 	List	   *cmds = NULL;
@@ -1182,6 +1245,26 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 	Py_DECREF(p_tables);
 	return cmds;
 }
+/* The version that might do the trampoline. */
+static List *
+multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
+			     Oid serverOid)
+{
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornImportForeignSchemaReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)stmt;
+		td.args[1] = (void *)(unsigned long)serverOid;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return (List *)td.return_data;
+	}
+	return multicornImportForeignSchemaReal(stmt, serverOid);
+}
+
 #endif
 
 
@@ -1228,5 +1311,6 @@ initializeExecState(void *internalstate)
 	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
 	execstate->values = palloc(attnum * sizeof(Datum));
 	execstate->nulls = palloc(attnum * sizeof(bool));
+	execstate->ftable_oid = foreigntableid;
 	return execstate;
 }

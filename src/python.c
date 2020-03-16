@@ -586,7 +586,6 @@ getCacheEntry(Oid foreigntableid)
 		entry->columns = NULL;
 		entry->cacheContext = NULL;
 		entry->xact_depth = 0;
-		entry->trampoline = NULL;
 		needInitialization = true;
 	}
 	else
@@ -900,8 +899,8 @@ getDeparsedSortGroup(PyObject *sortKey)
 /*
  * Execute the query in the python fdw, and returns an iterator.
  */
-PyObject *
-execute(ForeignScanState *node, ExplainState *es)
+static PyObject *
+executeReal(ForeignScanState *node, ExplainState *es)
 {
 	MulticornExecState *state = node->fdw_state;
 	PyObject   *p_targets_set,
@@ -1011,6 +1010,25 @@ execute(ForeignScanState *node, ExplainState *es)
 	Py_DECREF(p_iterable);
 	errorCheck();
 	return state->p_iterator;
+}
+
+/* The version that might do the trampoline. */
+PyObject *
+execute(ForeignScanState *node, ExplainState *es)
+{
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)executeReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)node;
+		td.args[1] = (void *)es;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return (PyObject *)td.return_data;
+	}
+	return executeReal(node, es);
 }
 
 void
