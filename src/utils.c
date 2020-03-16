@@ -115,10 +115,14 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 	return Py_None;
 }
 
-/* 
- * Used to call an c-function from plpython
- * so we can get an appropriate execution
- * context for all of our FDW methods.
+/*
+ * Get a fdw instance by oid.
+ * Useful for calling into
+ * the fdw directly from
+ * plpy.  We cannot
+ * call getCacheEntry here,
+ * as we don't know that 
+ * the oid is valid.
  */
 
 static PyObject *
@@ -150,6 +154,12 @@ _getInstanceByOid(PyObject *self, PyObject *args)
 	return entry->value;
 	
 }
+
+/* 
+ * Used to call an c-function from plpython
+ * so we can get an appropriate execution
+ * context for all of our FDW methods.
+ */
 
 #if MAX_TRAMPOLINE_ARGS != 5
 #error MAX_TRAMPOLINE_ARGS must be 5 or the code below must change.
