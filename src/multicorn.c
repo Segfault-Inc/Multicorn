@@ -135,7 +135,7 @@ multicorn_init()
 	{
 	multicorn_plpython_inline_handler  = load_external_function(plpython_module,
 								    inline_function_name,
-								   true, NULL);
+								    true, NULL);
 	/* Do nothing, but let plpython init everything */
 	multicorn_call_plpython("pass");
 	}
@@ -165,6 +165,7 @@ multicorn_call_plpython(const char *python_script)
 	/* XXXXX FIXME, look this up at init time. */
 	codeblock->langIsTrusted = false;
 	codeblock->langOid = InvalidOid;
+	codeblock->atomic = true;
 	DirectFunctionCall1(multicorn_plpython_inline_handler,
 			    PointerGetDatum(codeblock));
 }
