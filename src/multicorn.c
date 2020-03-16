@@ -1015,7 +1015,7 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 	multicorn_init();
 	if (multicorn_plpython_inline_handler != NULL) {
 		TrampolineData td;
-		td.func = (TrampolineFunc)multicornAddForeignUpdateTargets;
+		td.func = (TrampolineFunc)multicornAddForeignUpdateTargetsReal;
 		td.return_data = NULL;
 		td.args[0] = (void *)parsetree;
 		td.args[1] = (void *)target_rte;
