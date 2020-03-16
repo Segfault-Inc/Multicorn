@@ -409,16 +409,14 @@ multicorn_handler(PG_FUNCTION_ARGS)
 	PG_RETURN_POINTER(fdw_routine);
 }
 
-Datum
-multicorn_validator(PG_FUNCTION_ARGS)
+static Datum
+multicorn_validator_real(PG_FUNCTION_ARGS)
 {
 	List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
 	Oid			catalog = PG_GETARG_OID(1);
 	char	   *className = NULL;
 	ListCell   *cell;
 	PyObject   *p_class;
-
-	multicorn_init();
 
 	foreach(cell, options_list)
 	{
@@ -453,13 +451,33 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
+/* A wrapper that might use the trampoline */
+Datum
+multicorn_validator(PG_FUNCTION_ARGS)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicorn_validator_real;
+		td.return_data = NULL;
+		td.args[0] = (void *)fcinfo;
+		td.args[1] = NULL;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return (Datum)td.return_data;
+	}
+	return multicorn_validator_real(fcinfo);
+}
+
 /*
  * multicornGetForeignRelSize
  *		Obtain relation size estimates for a foreign table.
  *		This is done by calling the
  */
 static void
-multicornGetForeignRelSize(PlannerInfo *root,
+multicornGetForeignRelSizeReal(PlannerInfo *root,
 						   RelOptInfo *baserel,
 						   Oid foreigntableid)
 {
@@ -539,6 +557,26 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	getRelSize(planstate, root, &baserel->rows, &baserel->width);
 #endif
 }
+/* Trampoline Version */
+static void
+multicornGetForeignRelSize(PlannerInfo *root, RelOptInfo *baserel,  Oid foreigntableid)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornGetForeignRelSizeReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)root;
+		td.args[1] = (void *)baserel;
+		td.args[2] = (void *)(unsigned long)foreigntableid;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornGetForeignRelSizeReal(root, baserel, foreigntableid);
+	return;
+}
 
 /*
  * multicornGetForeignPaths
@@ -548,7 +586,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
  *		equivalence classes found in the plan.
  */
 static void
-multicornGetForeignPaths(PlannerInfo *root,
+multicornGetForeignPathsReal(PlannerInfo *root,
 						 RelOptInfo *baserel,
 						 Oid foreigntableid)
 {
@@ -630,10 +668,34 @@ multicornGetForeignPaths(PlannerInfo *root,
 	}
 	errorCheck();
 }
+static void
+multicornGetForeignPaths(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornGetForeignPathsReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)root;
+		td.args[1] = (void *)baserel;
+		td.args[2] = (void *)(unsigned long)foreigntableid;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornGetForeignPathsReal(root, baserel, foreigntableid);
+	return;
+  
+}
 
 /*
  * multicornGetForeignPlan
  *		Create a ForeignScan plan node for scanning the foreign table
+ */
+/* XXXXX FIXME: This one would be a pain to wrap
+ * and I don't see an execution path that hits python.
+ * So long as that's the case, no need to wrap it.
  */
 static ForeignScan *
 multicornGetForeignPlan(PlannerInfo *root,
@@ -731,7 +793,7 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
  *			- initializing various buffers
  */
 static void
-multicornBeginForeignScan(ForeignScanState *node, int eflags)
+multicornBeginForeignScanReal(ForeignScanState *node, int eflags)
 {
 	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
 	MulticornExecState *execstate;
@@ -752,6 +814,28 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	node->fdw_state = execstate;
 }
 
+/*
+ * Check if we should use trampoline
+ */
+static void
+multicornBeginForeignScan(ForeignScanState *node, int eflags)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornBeginForeignScanReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)node;
+		td.args[1] = (void *)(unsigned long)eflags;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornBeginForeignScanReal(node, eflags);
+	return;
+}
 
 /*
  * multicornIterateForeignScan
@@ -822,6 +906,12 @@ multicornIterateForeignScan(ForeignScanState *node)
  * multicornReScanForeignScan
  *		Restart the scan
  */
+/*
+ * XXXXX FIXME: Should this be wrapped.
+ * Py_DECREF could theoretically enter
+ * python to execute destructors.
+ * But that seems unlikely.
+ */
 static void
 multicornReScanForeignScan(ForeignScanState *node)
 {
@@ -837,6 +927,10 @@ multicornReScanForeignScan(ForeignScanState *node)
 /*
  *	multicornEndForeignScan
  *		Finish scanning foreign table and dispose objects used for this scan.
+ */
+/* No need to wrap this one.
+ * It's simple enough that we
+ * can just call directly.
  */
 static void
 multicornEndForeignScan(ForeignScanState *node)
@@ -860,7 +954,7 @@ multicornEndForeignScan(ForeignScanState *node)
  *		Add resjunk columns needed for update/delete.
  */
 static void
-multicornAddForeignUpdateTargets(Query *parsetree,
+multicornAddForeignUpdateTargetsReal(Query *parsetree,
 								 RangeTblEntry *target_rte,
 								 Relation target_relation)
 {
@@ -912,6 +1006,28 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 	Py_DECREF(instance);
 }
 
+/* Use the trampoline */
+static void
+multicornAddForeignUpdateTargets(Query *parsetree,
+				 RangeTblEntry *target_rte,
+				 Relation target_relation)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornAddForeignUpdateTargets;
+		td.return_data = NULL;
+		td.args[0] = (void *)parsetree;
+		td.args[1] = (void *)target_rte;
+		td.args[2] = (void *)target_relation;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornAddForeignUpdateTargetsReal(parsetree, target_rte, target_relation);
+	return;
+}
 
 /*
  * multicornPlanForeignModify
@@ -934,7 +1050,7 @@ multicornPlanForeignModify(PlannerInfo *root,
  *		Initialize a foreign write operation.
  */
 static void
-multicornBeginForeignModify(ModifyTableState *mtstate,
+multicornBeginForeignModifyReal(ModifyTableState *mtstate,
 							ResultRelInfo *resultRelInfo,
 							List *fdw_private,
 							int subplan_index,
@@ -980,6 +1096,31 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	}
 	modstate->rowidAttno = ExecFindJunkAttributeInTlist(subplan->targetlist, modstate->rowidAttrName);
 	resultRelInfo->ri_FdwState = modstate;
+}
+
+static void
+multicornBeginForeignModify(ModifyTableState *mtstate,
+			    ResultRelInfo *resultRelInfo,
+			    List *fdw_private,
+			    int subplan_index,
+			    int eflags)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornBeginForeignModifyReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)mtstate;
+		td.args[1] = (void *)resultRelInfo;
+		td.args[2] = (void *)fdw_private;
+		td.args[3] = (void *)(unsigned long)subplan_index;
+		td.args[4] = (void *)(unsigned long)eflags;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornBeginForeignModifyReal(mtstate, resultRelInfo, fdw_private, subplan_index,
+					eflags);
+	return;
 }
 
 /* The 3 mod functions are similiar enough to make a macro for
