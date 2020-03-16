@@ -159,7 +159,7 @@ static PyObject *
 _plpy_trampoline(PyObject *self, PyObject *args)
 {
 	TrampolineData *td = multicorn_trampoline_data;
-	MemoryContext *old_context;
+	MemoryContext old_context;
 
 	/* We don't want any args, so ignore them. */
 	if (args != NULL)
