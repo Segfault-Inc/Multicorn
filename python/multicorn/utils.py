@@ -12,7 +12,7 @@ except ImportError as e:
     def _log_to_postgres(message, level=0, hint=None, detail=None):
         pass
 
-    def _plpy_trampoline(oid):
+    def _plpy_trampoline():
         raise Exception("utils.so not loaded")
 
     def _getInstanceByOid(oid):
@@ -35,8 +35,8 @@ def log_to_postgres(message, level=INFO, hint=None, detail=None):
     _log_to_postgres(message, code, hint=hint, detail=detail)
 
 
-def trampoline(table_oid):
-    _plpy_trampoline(table_oid)
+def trampoline():
+    _plpy_trampoline()
 
 def getInstanceByOid(table_oid):
     instance = _getInstanceByOid(table_oid)
