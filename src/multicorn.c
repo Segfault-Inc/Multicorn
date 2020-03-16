@@ -168,7 +168,7 @@ multicorn_call_plpython(const char *python_script)
 			    PointerGetDatum(codeblock));
 }
 
-TrampolineData *mulitcorn_trampoline_data = NULL;
+TrampolineData *multicorn_trampoline_data = NULL;
 
 void
 multicornCallTrampoline(TrampolineData *td)
