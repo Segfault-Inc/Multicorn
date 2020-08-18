@@ -3,7 +3,7 @@ CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.fsfdw.FilesystemFdw'
 );
-CREATE language plpythonu;
+CREATE EXTENSION plpythonu;
 CREATE TABLE temp_dir (dirname varchar);
 -- Create a table with the filesystem fdw in a temporary directory,
 -- and store the dirname in the temp_dir table.
@@ -598,4 +598,4 @@ DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv
 drop cascades to foreign table testmulticorn
-DROP LANGUAGE plpythonu;
+DROP EXTENSION plpythonu;

@@ -27,6 +27,9 @@
 #include "utils/rel.h"
 #include "parser/parsetree.h"
 #include "fmgr.h"
+#if PG_VERSION_NUM >= 130000
+#include "common/hashfn.h" /* oid_hash */
+#endif
 
 
 PG_MODULE_MAGIC;

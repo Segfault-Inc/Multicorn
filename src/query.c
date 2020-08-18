@@ -837,26 +837,49 @@ deserializeDeparsedSortGroup(List *items)
 		ListCell *lc;
 		MulticornDeparsedSortGroup *key =
 			palloc0(sizeof(MulticornDeparsedSortGroup));
+#if PG_VERSION_NUM >= 130000
+		List *list = lfirst(k);
+#endif
 
 		lc = list_head(lfirst(k));
 		key->attname = (Name) strdup(strVal(lfirst(lc)));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->attnum = (int) intVal(lfirst(lc));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->reversed = (bool) intVal(lfirst(lc));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->nulls_first = (bool) intVal(lfirst(lc));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		if(lfirst(lc) != NULL)
 			key->collate = (Name) strdup(strVal(lfirst(lc)));
 		else
 			key->collate = NULL;
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->key = (PathKey *) lfirst(lc);
 
 		result = lappend(result, key);

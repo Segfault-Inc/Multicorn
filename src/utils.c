@@ -89,7 +89,11 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 	}
 	hint = PyDict_GetItemString(kwargs, "hint");
 	detail = PyDict_GetItemString(kwargs, "detail");
+#if PG_VERSION_NUM >= 130000
+	if (errstart(severity, TEXTDOMAIN))
+#else
 	if (errstart(severity, __FILE__, __LINE__, PG_FUNCNAME_MACRO, TEXTDOMAIN))
+#endif
 	{
 		errmsg("%s", message);
 		if (hint != NULL && hint != Py_None)
@@ -104,7 +108,11 @@ log_to_postgres(PyObject *self, PyObject *args, PyObject *kwargs)
 		}
 		Py_DECREF(args);
 		Py_DECREF(kwargs);
+#if PG_VERSION_NUM >= 130000
+		errfinish(__FILE__, __LINE__, PG_FUNCNAME_MACRO);
+#else
 		errfinish(0);
+#endif
 	}
 	else
 	{

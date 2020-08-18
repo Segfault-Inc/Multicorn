@@ -1,6 +1,6 @@
 -- Setup the test
 CREATE EXTENSION multicorn;
-CREATE language plpython3u;
+CREATE EXTENSION plpython3u;
 \i test-common/disable_jit.include
 DO $$
 BEGIN
@@ -606,4 +606,4 @@ DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to server multicorn_srv
 drop cascades to foreign table testmulticorn
-DROP LANGUAGE plpython3u;
+DROP EXTENSION plpython3u;
