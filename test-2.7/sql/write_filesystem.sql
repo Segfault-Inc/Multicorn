@@ -6,7 +6,7 @@ CREATE server multicorn_srv foreign data wrapper multicorn options (
 );
 
 
-CREATE language plpythonu;
+CREATE EXTENSION plpythonu;
 CREATE TABLE temp_dir (dirname varchar);
 
 -- Create a table with the filesystem fdw in a temporary directory,
@@ -63,4 +63,4 @@ DROP FUNCTION cleanup_dir();
 DROP TABLE temp_dir;
 DROP FUNCTION create_table();
 DROP EXTENSION multicorn cascade;
-DROP LANGUAGE plpythonu;
+DROP EXTENSION plpythonu;

@@ -68,9 +68,17 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
 	{
 		severity = ERROR;
 	}
+#if PG_VERSION_NUM >= 130000
+	if (errstart(severity, TEXTDOMAIN))
+#else
 	if (errstart(severity, __FILE__, __LINE__, PG_FUNCNAME_MACRO, TEXTDOMAIN))
+#endif
 	{
+#if PG_VERSION_NUM >= 130000
+		if (errstart(severity, TEXTDOMAIN))
+#else
 		if (errstart(severity, __FILE__, __LINE__, PG_FUNCNAME_MACRO, TEXTDOMAIN))
+#endif
 			errmsg("Error in python: %s", errName);
 		errdetail("%s", errValue);
 		errdetail_log("%s", errTraceback);
@@ -81,5 +89,9 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
 	Py_DECREF(tracebackModule);
 	Py_DECREF(newline);
 	Py_DECREF(pTemp);
-	errfinish(0);
+#if PG_VERSION_NUM >= 130000
+		errfinish(__FILE__, __LINE__, PG_FUNCNAME_MACRO);
+#else
+		errfinish(0);
+#endif
 }
