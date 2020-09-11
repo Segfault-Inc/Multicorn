@@ -21,39 +21,8 @@
 #define get_attname(x, y) get_attname(x, y, true)
 #endif
 
-void extractClauseFromOpExpr(Relids base_relids,
-						OpExpr *node,
-						List **quals);
-
-void extractClauseFromNullTest(Relids base_relids,
-						  NullTest *node,
-						  List **quals);
-
-void extractClauseFromScalarArrayOpExpr(Relids base_relids,
-								   ScalarArrayOpExpr *node,
-								   List **quals);
-
-char	   *getOperatorString(Oid opoid);
-
-MulticornBaseQual *makeQual(AttrNumber varattno, char *opname, Expr *value,
-		 bool isarray,
-		 bool useOr);
-
-
-Node	   *unnestClause(Node *node);
-void swapOperandsAsNeeded(Node **left, Node **right, Oid *opoid,
-					 Relids base_relids);
-OpExpr	   *canonicalOpExpr(OpExpr *opExpr, Relids base_relids);
-ScalarArrayOpExpr *canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
-						   Relids base_relids);
-
-bool isAttrInRestrictInfo(Index relid, AttrNumber attno,
-					 RestrictInfo *restrictinfo);
-
-List *clausesInvolvingAttr(Index relid, AttrNumber attnum,
-					 EquivalenceClass *eq_class);
-
-Expr *multicorn_get_em_expr(EquivalenceClass *ec, RelOptInfo *rel);
+#include "query.h"
+#include "python.h"
 
 /*
  * The list of needed columns (represented by their respective vars)

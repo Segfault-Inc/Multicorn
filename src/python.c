@@ -20,81 +20,12 @@
 #include "access/xact.h"
 #include "utils/lsyscache.h"
 
+#include "python.h"
+#include "errors.h"
+#include "multicorn.h"
 
-List	   *getOptions(Oid foreigntableid);
-bool		compareOptions(List *options1, List *options2);
-
-void		getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns);
-bool		compareColumns(List *columns1, List *columns2);
-
-PyObject   *getClass(PyObject *className);
-PyObject   *valuesToPySet(List *targetlist);
-PyObject   *qualDefsToPyList(List *quallist, ConversionInfo ** cinfo);
-PyObject *pythonQual(char *operatorname, PyObject *value,
-		   ConversionInfo * cinfo,
-		   bool is_array,
-		   bool use_or,
-		   Oid typeoid);
-
-PyObject  *getSortKey(MulticornDeparsedSortGroup *key);
-MulticornDeparsedSortGroup *getDeparsedSortGroup(PyObject *key);
-
-
-Datum pyobjectToDatum(PyObject *object, StringInfo buffer,
-				ConversionInfo * cinfo);
-PyObject   *qualdefToPython(MulticornConstQual * qualdef, ConversionInfo ** cinfo);
-PyObject *paramDefToPython(List *paramdef, ConversionInfo ** cinfos,
-				 Oid typeoid,
-				 Datum value);
-
-
-PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
-PyObject   *datumStringToPython(Datum node, ConversionInfo * cinfo);
-PyObject   *datumNumberToPython(Datum node, ConversionInfo * cinfo);
-PyObject   *datumDateToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumTimestampToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumIntToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumArrayToPython(Datum datum, Oid type, ConversionInfo * cinfo);
-PyObject   *datumByteaToPython(Datum datum, ConversionInfo * cinfo);
-PyObject   *datumUnknownToPython(Datum datum, ConversionInfo * cinfo, Oid type);
-
-
-void pythonDictToTuple(PyObject *p_value,
-				  TupleTableSlot *slot,
-				  ConversionInfo ** cinfos,
-				  StringInfo buffer);
-
-void pythonSequenceToTuple(PyObject *p_value,
-					  TupleTableSlot *slot,
-					  ConversionInfo ** cinfos,
-					  StringInfo buffer);
-
-/* Python to cstring functions */
-void pyobjectToCString(PyObject *pyobject, StringInfo buffer,
-				  ConversionInfo * cinfo);
-
-void pynumberToCString(PyObject *pyobject, StringInfo buffer,
-				  ConversionInfo * cinfo);
-void pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
-				   ConversionInfo * cinfo);
-void pystringToCString(PyObject *pyobject, StringInfo buffer,
-				  ConversionInfo * cinfo);
-void pysequenceToCString(PyObject *pyobject, StringInfo buffer,
-					ConversionInfo * cinfo);
-void pymappingToCString(PyObject *pyobject, StringInfo buffer,
-				   ConversionInfo * cinfo);
-void pydateToCString(PyObject *pyobject, StringInfo buffer,
-				ConversionInfo * cinfo);
-
-void pyunknownToCstring(PyObject *pyobject, StringInfo buffer,
-				   ConversionInfo * cinfo);
-
-void appendBinaryStringInfoQuote(StringInfo buffer,
-							char *tempbuffer,
-							Py_ssize_t strlength,
-							bool need_quote);
-
-
+/* Static FWD definitions
+ */
 static void begin_remote_xact(CacheEntry * entry);
 
 /*
