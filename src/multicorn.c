@@ -1,6 +1,6 @@
 /*
  * The Multicorn Foreign Data Wrapper allows you to fetch foreign data in
- * Python in your PostgreSQL server
+ * Python in your PostgreSQL servner
  *
  * This software is released under the postgresql licence
  *
@@ -25,16 +25,15 @@
 #include "miscadmin.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
+#include "utils/resowner.h"
 #include "parser/parsetree.h"
+#include "executor/spi.h"
 #include "fmgr.h"
-
 
 PG_MODULE_MAGIC;
 
-
 extern Datum multicorn_handler(PG_FUNCTION_ARGS);
 extern Datum multicorn_validator(PG_FUNCTION_ARGS);
-
 
 PG_FUNCTION_INFO_V1(multicorn_handler);
 PG_FUNCTION_INFO_V1(multicorn_validator);
@@ -103,13 +102,17 @@ static List *multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 
 static void multicorn_xact_callback(XactEvent event, void *arg);
 
+static void multicorn_release_callback(ResourceReleasePhase phase,
+				       bool isCommit,
+				       bool isTopLevel,
+				       void *arg);
+
 /*	Helpers functions */
 void	   *serializePlanState(MulticornPlanState * planstate);
 MulticornExecState *initializeExecState(void *internal_plan_state);
 
 /* Hash table mapping oid to fdw instances */
 HTAB	   *InstancesHash;
-
 
 void
 _PG_init()
@@ -139,6 +142,11 @@ _PG_init()
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
 #endif
+	/* RegisterResourceReleaseBallback dates back to 2004 and is in
+	   the 8.0 release.  Not sure if we need a version number 
+	   restriction around it. */
+	RegisterResourceReleaseCallback(multicorn_release_callback, NULL);
+	
 	/* Initialize the global oid -> python instances hash */
 	MemSet(&ctl, 0, sizeof(ctl));
 	ctl.keysize = sizeof(Oid);
@@ -260,6 +268,12 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	{
 		Relation	rel = RelationIdGetRelation(ftable->relid);
 		AttInMetadata *attinmeta;
+
+		if (rel == NULL)
+		{
+			ereport(ERROR, (errmsg("Can't get relation for relid=%d ftable oid=%d",
+					       ftable->relid, foreigntableid), errhint("%s", "It's buggy")));
+		}
 
 		desc = RelationGetDescr(rel);
 		attinmeta = TupleDescGetAttInMetadata(desc);
@@ -496,20 +510,19 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 {
 	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
 	MulticornExecState *execstate;
-	TupleDesc	tupdesc = RelationGetDescr(node->ss.ss_currentRelation);
 	ListCell   *lc;
 
 	execstate = initializeExecState(fscan->fdw_private);
-	execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
-	execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
 	execstate->qual_list = NULL;
+	execstate->values = NULL;
+	execstate->nulls = NULL;
+	
 	foreach(lc, fscan->fdw_exprs)
 	{
 		extractRestrictions(bms_make_singleton(fscan->scan.scanrelid),
 							((Expr *) lfirst(lc)),
 							&execstate->qual_list);
 	}
-	initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
 	node->fdw_state = execstate;
 }
 
@@ -528,6 +541,63 @@ multicornIterateForeignScan(ForeignScanState *node)
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	MulticornExecState *execstate = node->fdw_state;
 	PyObject   *p_value;
+
+	Assert(slot != NULL);
+	
+	if (1 || execstate->tt_tupleDescriptor !=
+	    slot->tts_tupleDescriptor)
+	{
+		if (execstate->tt_tupleDescriptor != NULL)
+		{
+			if (errstart(WARNING, __FILE__,
+				     __LINE__, PG_FUNCNAME_MACRO,
+				     TEXTDOMAIN))
+			{
+				errmsg("tupleDescriptor Changed");
+				errdetail("Reallocing and reintializec cinfo struct may be a performance hit.");
+			}
+			errfinish(0);
+		}
+
+		
+		execstate->tt_tupleDescriptor = slot->tts_tupleDescriptor;
+
+		// This is becoming corrupted.  What happens if we realloc it every time?
+		execstate->cinfos = NULL;
+		
+		if (execstate->cinfos  != NULL) {
+			execstate->cinfos = repalloc(execstate->cinfos,
+						     sizeof(ConversionInfo *) *
+						     slot->tts_tupleDescriptor->natts);
+		} else {
+			execstate->cinfos = palloc(sizeof(ConversionInfo *) *
+						   slot->tts_tupleDescriptor->natts);
+		}
+		memset(execstate->cinfos,
+		       0,
+		       sizeof(ConversionInfo *) *
+		       slot->tts_tupleDescriptor->natts);
+		if (execstate->values != NULL) {
+			execstate->values = repalloc(execstate->values,
+						     sizeof(Datum) *
+						     slot->tts_tupleDescriptor->natts);
+		} else {
+			execstate->values = palloc(sizeof(Datum) *
+						   slot->tts_tupleDescriptor->natts);
+		}
+
+
+		if (execstate->nulls != NULL) {
+			execstate->nulls = repalloc(execstate->nulls,
+						    sizeof(bool) *
+						    slot->tts_tupleDescriptor->natts);
+		} else {
+			execstate->nulls = palloc(sizeof(bool) *
+						  slot->tts_tupleDescriptor->natts);
+		}
+		initConversioninfo(execstate->cinfos,
+				   TupleDescGetAttInMetadata(execstate->tt_tupleDescriptor));
+	}
 
 	if (execstate->p_iterator == NULL)
 	{
@@ -548,8 +618,8 @@ multicornIterateForeignScan(ForeignScanState *node)
 		Py_XDECREF(p_value);
 		return slot;
 	}
-	slot->tts_values = execstate->values;
-	slot->tts_isnull = execstate->nulls;
+	//slot->tts_values = execstate->values;
+	//slot->tts_isnull = execstate->nulls;
 	pythonResultToTuple(p_value, slot, execstate->cinfos, execstate->buffer);
 	ExecStoreVirtualTuple(slot);
 	Py_DECREF(p_value);
@@ -573,6 +643,8 @@ multicornReScanForeignScan(ForeignScanState *node)
 	}
 }
 
+
+
 /*
  *	multicornEndForeignScan
  *		Finish scanning foreign table and dispose objects used for this scan.
@@ -581,7 +653,7 @@ static void
 multicornEndForeignScan(ForeignScanState *node)
 {
 	MulticornExecState *state = node->fdw_state;
-	PyObject   *result = PyObject_CallMethod(state->fdw_instance, "end_scan", "()");
+	PyObject   *result = PYOBJECT_CALLMETHOD(state->fdw_instance, "end_scan", "()");
 
 	errorCheck();
 	Py_DECREF(result);
@@ -603,14 +675,13 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 								 Relation target_relation)
 {
 	Var		   *var = NULL;
-	TargetEntry *tle,
-			   *returningTle;
+	TargetEntry *tle, *returningTle;
 	PyObject   *instance = getInstance(target_relation->rd_id);
 	const char *attrname = getRowIdColumn(instance);
 	TupleDesc	desc = target_relation->rd_att;
 	int			i;
 	ListCell   *cell;
-
+	
 	foreach(cell, parsetree->returningList)
 	{
 		returningTle = lfirst(cell);
@@ -673,10 +744,10 @@ multicornPlanForeignModify(PlannerInfo *root,
  */
 static void
 multicornBeginForeignModify(ModifyTableState *mtstate,
-							ResultRelInfo *resultRelInfo,
-							List *fdw_private,
-							int subplan_index,
-							int eflags)
+			    ResultRelInfo *resultRelInfo,
+			    List *fdw_private,
+			    int subplan_index,
+			    int eflags)
 {
 	MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
 	Relation	rel = resultRelInfo->ri_RelationDesc;
@@ -724,6 +795,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
  *		Execute a foreign insert operation
  *		This is done by calling the python "insert" method.
  */
+
 static TupleTableSlot *
 multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 						   TupleTableSlot *slot, TupleTableSlot *planSlot)
@@ -731,11 +803,14 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *fdw_instance = modstate->fdw_instance;
 	PyObject   *values = tupleTableSlotToPyObject(slot, modstate->cinfos);
-	PyObject   *p_new_value = PyObject_CallMethod(fdw_instance, "insert", "(O)", values);
+	PyObject   *p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "insert", "(O)", values);
 
 	errorCheck();
 	if (p_new_value && p_new_value != Py_None)
 	{
+		// XXXXXX FIXME: If there is no result tuple, this assumes
+		// that the given slot matches the table.
+		// This does not appear to be the case.
 		ExecClearTuple(slot);
 		pythonResultToTuple(p_new_value, slot, modstate->cinfos, modstate->buffer);
 		ExecStoreVirtualTuple(slot);
@@ -765,7 +840,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "delete", "(O)", p_row_id);
+	p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "delete", "(O)", p_row_id);
 	errorCheck();
 	if (p_new_value == NULL || p_new_value == Py_None)
 	{
@@ -801,7 +876,7 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	Datum		value = ExecGetJunkAttribute(planSlot, modstate->rowidAttno, &is_null);
 
 	p_row_id = datumToPython(value, cinfo->atttypoid, cinfo);
-	p_new_value = PyObject_CallMethod(fdw_instance, "update", "(O,O)", p_row_id,
+	p_new_value = PYOBJECT_CALLMETHOD(fdw_instance, "update", "(O,O)", p_row_id,
 									  p_value);
 	errorCheck();
 	if (p_new_value != NULL && p_new_value != Py_None)
@@ -825,7 +900,7 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
+	PyObject   *result = PYOBJECT_CALLMETHOD(modstate->fdw_instance, "end_modify", "()");
 
 	errorCheck();
 	Py_DECREF(modstate->fdw_instance);
@@ -860,11 +935,11 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 		instance = entry->value;
 		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
 		{
-			PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
+			PYOBJECT_CALLMETHOD(instance, "sub_commit", "(i)", curlevel);
 		}
 		else
 		{
-			PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
+			PYOBJECT_CALLMETHOD(instance, "sub_rollback", "(i)", curlevel);
 		}
 		errorCheck();
 		entry->xact_depth--;
@@ -881,7 +956,7 @@ multicorn_xact_callback(XactEvent event, void *arg)
 	PyObject   *instance;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
-
+	
 	hash_seq_init(&status, InstancesHash);
 	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
 	{
@@ -893,15 +968,15 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		{
 #if PG_VERSION_NUM >= 90300
 			case XACT_EVENT_PRE_COMMIT:
-				PyObject_CallMethod(instance, "pre_commit", "()");
+				PYOBJECT_CALLMETHOD(instance, "pre_commit", "()");
 				break;
 #endif
 			case XACT_EVENT_COMMIT:
-				PyObject_CallMethod(instance, "commit", "()");
+				PYOBJECT_CALLMETHOD(instance, "commit", "()");
 				entry->xact_depth = 0;
 				break;
 			case XACT_EVENT_ABORT:
-				PyObject_CallMethod(instance, "rollback", "()");
+				PYOBJECT_CALLMETHOD(instance, "rollback", "()");
 				entry->xact_depth = 0;
 				break;
 			default:
@@ -910,6 +985,57 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		errorCheck();
 	}
 }
+
+/*
+ * Callback for after commit to relase any locks or other
+ * resources.  Key thing is locks have already been released.
+ * This allows updates/inserts back to postgres without worrying 
+ * about locks.  Can be a big performance win in a few
+ * corner cases.
+ */
+static void
+multicorn_release_callback(ResourceReleasePhase phase, bool isCommit,
+			   bool isTopLevel, void *arg) {
+	PyObject   *instance;
+	HASH_SEQ_STATUS status;
+	CacheEntry *entry;
+
+	if (!isTopLevel) {
+	  return;
+	}
+
+	hash_seq_init(&status, InstancesHash);
+	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
+	{
+		instance = entry->value;
+		if (entry->xact_depth == 0)
+			continue;
+
+		switch (phase)
+		{
+		  /* XXXXX FIXME:
+		   * Do we want to pass isCommit?
+		   */
+		case RESOURCE_RELEASE_BEFORE_LOCKS:
+		  PYOBJECT_CALLMETHOD(instance, "release_before", "()");
+		  break;
+		  
+		case RESOURCE_RELEASE_LOCKS:
+		  PYOBJECT_CALLMETHOD(instance, "release", "()");
+		  break;
+
+		case RESOURCE_RELEASE_AFTER_LOCKS:
+		  PYOBJECT_CALLMETHOD(instance, "release_after", "()");
+		  break;
+		  
+		default:
+		  break;
+		}
+		errorCheck();
+	}
+	
+}
+
 
 #if PG_VERSION_NUM >= 90500
 static List *
@@ -985,7 +1111,7 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 		Py_DECREF(p_tablename);
 	}
 	errorCheck();
-	p_tables = PyObject_CallMethod(p_class, "import_schema", "(s, O, O, s, O)",
+	p_tables = PYOBJECT_CALLMETHOD(p_class, "import_schema", "(s, O, O, s, O)",
 							   stmt->remote_schema, p_srv_options, p_options,
 								   restrict_type, p_restrict_list);
 	errorCheck();
@@ -1000,8 +1126,9 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 		PyObject   *p_string;
 		char	   *value;
 
-		p_string = PyObject_CallMethod(p_item, "to_statement", "(s,s)",
-								   stmt->local_schema, f_server->servername);
+		p_string = PYOBJECT_CALLMETHOD(p_item, "to_statement", "(s,s)",
+					       stmt->local_schema,
+					       f_server->servername);
 		errorCheck();
 		value = PyString_AsString(p_string);
 		errorCheck();
@@ -1046,7 +1173,6 @@ initializeExecState(void *internalstate)
 {
 	MulticornExecState *execstate = palloc0(sizeof(MulticornExecState));
 	List	   *values = (List *) internalstate;
-	AttrNumber	attnum = ((Const *) linitial(values))->constvalue;
 	Oid			foreigntableid = ((Const *) lsecond(values))->constvalue;
 	List		*pathkeys;
 
@@ -1057,8 +1183,67 @@ initializeExecState(void *internalstate)
 	execstate->pathkeys = deserializeDeparsedSortGroup(pathkeys);
 	execstate->fdw_instance = getInstance(foreigntableid);
 	execstate->buffer = makeStringInfo();
-	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
-	execstate->values = palloc(attnum * sizeof(Datum));
-	execstate->nulls = palloc(attnum * sizeof(bool));
+	execstate->cinfos = NULL;
+	execstate->values = NULL;
+	execstate->nulls = NULL;
+	execstate->tt_tupleDescriptor = NULL;
 	return execstate;
+}
+
+
+static int multicorn_SPI_depth = 0;
+static bool multicorn_SPI_connected = false;
+
+void
+multicorn_connect(void) {
+
+	if (multicorn_SPI_depth == 0)
+	{
+		if (errstart(FATAL, __FILE__, __LINE__,
+			     PG_FUNCNAME_MACRO, TEXTDOMAIN))
+		{
+			errmsg("Attempting to connect to SPI without wrapper");
+			errfinish(0);
+		}
+		return;
+		
+	}
+
+	if (!multicorn_SPI_connected)
+	{
+		/* if (SPI_connect() != SPI_OK_CONNECT) */
+		/* { */
+		/* 	if (errstart(FATAL, __FILE__, __LINE__, */
+		/* 		     PG_FUNCNAME_MACRO, TEXTDOMAIN)) */
+		/* 	{ */
+		/* 		errmsg("Unable to connect to SPI"); */
+		/* 		errfinish(0); */
+		/* 	} */
+		/* 	return; */
+		/* } */
+		multicorn_SPI_connected = true;
+	}
+}
+
+/*
+ * Pass through the pyobject so we can easily
+ * have a macro call this for every
+ * PyObject_CallMethod and PyObject_CallFunction
+ * call.
+ */
+PyObject *
+multicorn_spi_leave(PyObject *po) {
+
+	if (--multicorn_SPI_depth == 0 && multicorn_SPI_connected)
+	{
+		multicorn_SPI_connected = false;
+		//SPI_finish();
+	}
+	return po;
+}
+
+PyObject *
+multicorn_spi_enter(PyObject *po) {
+	multicorn_SPI_depth++;
+	return po;
 }

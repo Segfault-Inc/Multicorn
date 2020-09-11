@@ -54,8 +54,8 @@ reportException(PyObject *pErrType, PyObject *pErrValue, PyObject *pErrTraceback
 	errValue = PyString_AsString(PyObject_Str(pErrValue));
 	if (pErrTraceback != NULL)
 	{
-		traceback_list = PyObject_CallFunction(format_exception, "(O,O,O)", pErrType, pErrValue, pErrTraceback);
-		errTraceback = PyString_AsString(PyObject_CallMethod(newline, "join", "(O)", traceback_list));
+		traceback_list = PYOBJECT_CALLFUNCTION(format_exception, "(O,O,O)", pErrType, pErrValue, pErrTraceback);
+		errTraceback = PyString_AsString(PYOBJECT_CALLMETHOD(newline, "join", "(O)", traceback_list));
 		Py_DECREF(pErrTraceback);
 		Py_DECREF(traceback_list);
 	}

@@ -402,6 +402,26 @@ class ForeignDataWrapper(object):
         """
         pass
 
+    def release_before(self):
+        """
+        Hook called just before locks are released after a commit.
+        """
+        pass
+
+    def release(self):
+        """
+        Hook called to release locks after a commit.
+        """
+        pass
+    
+    def release_after(self):
+        """
+        Hook called just after locks are released after a commit.
+        Useful if you need to mess with the database and need to
+        wait for locks to be released.
+        """
+        pass
+    
     def end_scan(self):
         """
         Hook called at the end of a foreign scan.

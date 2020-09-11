@@ -96,6 +96,7 @@ typedef struct MulticornExecState
 	AttrNumber	rowidAttno;
 	char	   *rowidAttrName;
 	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
+	TupleDesc tt_tupleDescriptor;
 }	MulticornExecState;
 
 typedef struct MulticornModifyState
@@ -213,6 +214,15 @@ PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * cinfo);
 List	*serializeDeparsedSortGroup(List *pathkeys);
 List	*deserializeDeparsedSortGroup(List *items);
 
+/* pass through the PyObject to make the macros easier. */
+extern PyObject *multicorn_spi_enter(PyObject *);
+extern PyObject *multicorn_spi_leave(PyObject *);
+extern void multicorn_connect(void);
+
+#define PYOBJECT_CALLMETHOD(po, ...)  multicorn_spi_leave(PyObject_CallMethod(multicorn_spi_enter(po),__VA_ARGS__))
+
+#define PYOBJECT_CALLFUNCTION(po, ...) multicorn_spi_leave(PyObject_CallFunction(multicorn_spi_enter(po), __VA_ARGS__))
+
 #endif   /* PG_MULTICORN_H */
 
 char	   *PyUnicode_AsPgString(PyObject *p_unicode);
@@ -221,6 +231,6 @@ char	   *PyUnicode_AsPgString(PyObject *p_unicode);
 PyObject   *PyString_FromString(const char *s);
 PyObject   *PyString_FromStringAndSize(const char *s, Py_ssize_t size);
 char	   *PyString_AsString(PyObject *unicode);
-int			PyString_AsStringAndSize(PyObject *unicode, char **tempbuffer, Py_ssize_t *length);
+int	   PyString_AsStringAndSize(PyObject *unicode, char **tempbuffer, Py_ssize_t *length);
 
 #endif
