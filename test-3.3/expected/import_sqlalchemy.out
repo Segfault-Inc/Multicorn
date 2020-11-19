@@ -40,39 +40,6 @@ CREATE TABLE local_schema.t3 (
 );
 CREATE SCHEMA remote_schema;
 IMPORT FOREIGN SCHEMA local_schema FROM SERVER multicorn_srv INTO remote_schema ;
-\d remote_schema.t1
-                Foreign table "remote_schema.t1"
- Column |            Type             | Modifiers | FDW Options 
---------+-----------------------------+-----------+-------------
- c1     | integer                     |           | 
- c2     | text                        |           | 
- c3     | timestamp without time zone |           | 
- c4     | numeric                     |           | 
-Server: multicorn_srv
-FDW Options: (primary_key 'c1', schema 'local_schema', tablename 't1')
-
-\d remote_schema.t2
-                Foreign table "remote_schema.t2"
- Column |            Type             | Modifiers | FDW Options 
---------+-----------------------------+-----------+-------------
- c1     | integer                     |           | 
- c2     | text                        |           | 
- c3     | timestamp without time zone |           | 
- c4     | numeric                     |           | 
-Server: multicorn_srv
-FDW Options: (schema 'local_schema', tablename 't2')
-
-\d remote_schema.t3
-                Foreign table "remote_schema.t3"
- Column |            Type             | Modifiers | FDW Options 
---------+-----------------------------+-----------+-------------
- c1     | integer                     |           | 
- c2     | text                        |           | 
- c3     | timestamp without time zone |           | 
- c4     | numeric                     |           | 
-Server: multicorn_srv
-FDW Options: (schema 'local_schema', tablename 't3')
-
 SELECT * FROM remote_schema.t1;
  c1 | c2 | c3 | c4 
 ----+----+----+----

@@ -3,7 +3,7 @@ CREATE EXTENSION multicorn;
 CREATE server multicorn_srv foreign data wrapper multicorn options (
     wrapper 'multicorn.testfdw.TestForeignDataWrapper'
 );
-CREATE user mapping for postgres server multicorn_srv options (usermapping 'test');
+CREATE user mapping FOR current_user server multicorn_srv options (usermapping 'test');
 
 CREATE foreign table testmulticorn (
     test1 character varying,
@@ -47,5 +47,16 @@ CREATE foreign table testmulticorn2 (
 );
 
 select * from testmulticorn union all select * from testmulticorn2;
-DROP USER MAPPING FOR postgres SERVER multicorn_srv;
+
+CREATE foreign table testmulticorn3 (
+    test1 character varying,
+    test2 character varying
+) server multicorn_srv options (
+    option1 'option1',
+    test_type 'sequence',
+    test_subtype '1null'
+);
+select * from testmulticorn3 limit 1;
+
+DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;

@@ -12,7 +12,9 @@
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
 #include "optimizer/clauses.h"
+#if PG_VERSION_NUM < 120000
 #include "optimizer/var.h"
+#endif
 #include "access/reloptions.h"
 #include "access/relscan.h"
 #include "access/sysattr.h"
@@ -24,6 +26,7 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "parser/parsetree.h"
+#include "fmgr.h"
 
 
 PG_MODULE_MAGIC;
@@ -113,8 +116,25 @@ _PG_init()
 {
 	HASHCTL		ctl;
 	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
+	bool need_import_plpy = false;
 
+#if PY_MAJOR_VERSION >= 3
+	/* Try to load plpython3 with its own module */
+	PG_TRY();
+	{
+	void * PyInit_plpy = load_external_function("plpython3", "PyInit_plpy", true, NULL);
+	PyImport_AppendInittab("plpy", PyInit_plpy);
+	need_import_plpy = true;
+	}
+	PG_CATCH();
+	{
+		need_import_plpy = false;
+	}
+	PG_END_TRY();
+#endif
 	Py_Initialize();
+	if (need_import_plpy)
+		PyImport_ImportModule("plpy");
 	RegisterXactCallback(multicorn_xact_callback, NULL);
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
@@ -257,7 +277,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
 
 		for (i = 0; i < desc->natts; i++)
 		{
-			Form_pg_attribute att = desc->attrs[i];
+			Form_pg_attribute att = TupleDescAttr(desc, i);
 
 			if (!att->attisdropped)
 			{
@@ -298,6 +318,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	/* Inject the "rows" and "width" attribute into the baserel */
 #if PG_VERSION_NUM >= 90600
 	getRelSize(planstate, root, &baserel->rows, &baserel->reltarget->width);
+	planstate->width = baserel->reltarget->width;
 #else
 	getRelSize(planstate, root, &baserel->rows, &baserel->width);
 #endif
@@ -413,7 +434,9 @@ multicornGetForeignPlan(PlannerInfo *root,
 	Index		scan_relid = baserel->relid;
 	MulticornPlanState *planstate = (MulticornPlanState *) baserel->fdw_private;
 	ListCell   *lc;
-
+#if PG_VERSION_NUM >= 90600
+	best_path->path.pathtarget->width = planstate->width;
+#endif
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 	/* Extract the quals coming from a parameterized path, if any */
 	if (best_path->path.param_info)
@@ -599,7 +622,7 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 
 	for (i = 0; i < desc->natts; i++)
 	{
-		Form_pg_attribute att = desc->attrs[i];
+		Form_pg_attribute att = TupleDescAttr(desc, i);
 
 		if (!att->attisdropped)
 		{
@@ -681,7 +704,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	}
 	for (i = 0; i < desc->natts; i++)
 	{
-		Form_pg_attribute att = desc->attrs[i];
+		Form_pg_attribute att = TupleDescAttr(desc, i);
 
 		if (!att->attisdropped)
 		{

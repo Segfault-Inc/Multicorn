@@ -13,7 +13,10 @@
 #include "nodes/bitmapset.h"
 #include "nodes/makefuncs.h"
 #include "nodes/pg_list.h"
+
+#if PG_VERSION_NUM < 120000
 #include "nodes/relation.h"
+#endif
 #include "utils/builtins.h"
 #include "utils/syscache.h"
 
@@ -21,6 +24,13 @@
 #define PG_MULTICORN_H
 
 /* Data structures */
+
+#define C_LOG(...) do { \
+	errstart(NOTICE, __FILE__, __LINE__, PG_FUNCNAME_MACRO, TEXTDOMAIN); \
+	errmsg(__VA_ARGS__); \
+	errfinish(0); \
+} while (0)
+
 
 typedef struct CacheEntry
 {
@@ -59,6 +69,15 @@ typedef struct MulticornPlanState
 	int			startupCost;
 	ConversionInfo **cinfos;
 	List	   *pathkeys; /* list of MulticornDeparsedSortGroup) */
+
+	/* For some reason, `baserel->reltarget->width` gets changed
+	 * outside of our control somewhere between GetForeignPaths and
+	 * GetForeignPlan, which breaks tests.
+	 *
+	 * XXX: This is very crude hack to transfer width, calculated by
+	 * getRelSize to GetForeignPlan.
+	 */
+	int width;
 }	MulticornPlanState;
 
 typedef struct MulticornExecState

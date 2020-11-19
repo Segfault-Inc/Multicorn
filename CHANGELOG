@@ -1,3 +1,16 @@
+1.4.0:
+    - Lots of maintenance done by Kamil Gałuszka
+    - Add compatibility with PostgreSQL 11 / 12 (Jeff Janes, Dmitry Bogatov)
+    - Add compatibility with Python 3.8 (Stefano Rivera)
+    - Fix for mishandling of None elements in sequence lines. (Lance Cooper)
+    - Lots of bug fixes (Dmitry Bogatov)
+    - Import views along with tables (Richard Gibson)
+    - Expand the scope and capability of column type conversion (Richard Gibson)
+    - Fix SQLServer TinyInt mapping (Rastko Karadzic)
+    - Fix build on MacOS (Larry Siden)
+    - Add Docker images (Dmitry Bogatov)
+1.3.4:
+    - Add compatibility with PostgreSQL 10
 1.3.3:
     - Add compatibility with PostgreSQL 9.6
     - Fix bug with typecasting of params

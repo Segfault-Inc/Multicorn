@@ -114,7 +114,6 @@ getPythonEncodingName()
 char *
 PyUnicode_AsPgString(PyObject *p_unicode)
 {
-	Py_ssize_t	unicode_size;
 	char	   *message = NULL;
 	PyObject   *pTempStr;
 
@@ -122,10 +121,7 @@ PyUnicode_AsPgString(PyObject *p_unicode)
 	{
 		elog(ERROR, "Received a null pointer in pyunicode_aspgstring");
 	}
-	unicode_size = PyUnicode_GET_SIZE(p_unicode);
-	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(p_unicode),
-								unicode_size,
-								getPythonEncodingName(), NULL);
+	pTempStr = PyUnicode_AsEncodedString(p_unicode, getPythonEncodingName(), NULL);
 	errorCheck();
 	message = strdup(PyBytes_AsString(pTempStr));
 	errorCheck();
@@ -458,7 +454,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 
 		for (i = 0; i < desc->natts; i++)
 		{
-			Form_pg_attribute att = desc->attrs[i];
+			Form_pg_attribute att = TupleDescAttr(desc, i);
 
 			if (!att->attisdropped)
 			{
@@ -482,7 +478,7 @@ getColumnsFromTable(TupleDesc desc, PyObject **p_columns, List **columns)
 				List	   *columnDef = NULL;
 
 				errorCheck();
-				columnDef = lappend(columnDef, makeString(key));
+				columnDef = lappend(columnDef, makeString(pstrdup(key)));
 				columnDef = lappend(columnDef, makeConst(TYPEOID,
 								   -1, InvalidOid, 4, ObjectIdGetDatum(typOid), false, true));
 				columnDef = lappend(columnDef, makeConst(INT4OID,
@@ -930,7 +926,12 @@ execute(ForeignScanState *node, ExplainState *es)
 				newqual->base.opname = qual->opname;
 				newqual->base.isArray = qual->isArray;
 				newqual->base.useOr = qual->useOr;
+
+				#if PG_VERSION_NUM >= 100000
+				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull);
+				#else
 				newqual->value = ExecEvalExpr(expr_state, econtext, &isNull, NULL);
+				#endif
 				newqual->base.typeoid = ((Param*) ((MulticornParamQual *) qual)->expr)->paramtype;
 				newqual->isnull = isNull;
 				break;
@@ -1025,15 +1026,10 @@ void
 pyunicodeToCString(PyObject *pyobject, StringInfo buffer,
 				   ConversionInfo * cinfo)
 {
-	Py_ssize_t	unicode_size;
 	char	   *tempbuffer;
 	Py_ssize_t	strlength = 0;
 	PyObject   *pTempStr;
-
-	unicode_size = PyUnicode_GET_SIZE(pyobject);
-	pTempStr = PyUnicode_Encode(PyUnicode_AsUnicode(pyobject),
-								unicode_size,
-								getPythonEncodingName(), NULL);
+	pTempStr = PyUnicode_AsEncodedString(pyobject, getPythonEncodingName(), NULL);
 	errorCheck();
 	PyBytes_AsStringAndSize(pTempStr, &tempbuffer, &strlength);
 	appendBinaryStringInfoQuote(buffer, tempbuffer, strlength, cinfo->need_quote);
@@ -1208,7 +1204,7 @@ pythonDictToTuple(PyObject *p_value,
 	for (i = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		char	   *key;
-		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(slot->tts_tupleDescriptor,i);
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
 		if (cinfos[cinfo_idx] == NULL)
@@ -1257,7 +1253,7 @@ pythonSequenceToTuple(PyObject *p_value,
 	for (i = 0, j = 0; i < slot->tts_tupleDescriptor->natts; i++)
 	{
 		PyObject   *p_object;
-		Form_pg_attribute attr = slot->tts_tupleDescriptor->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(slot->tts_tupleDescriptor,i);
 		AttrNumber	cinfo_idx = attr->attnum - 1;
 
 		if (cinfos[cinfo_idx] == NULL)
@@ -1268,18 +1264,20 @@ pythonSequenceToTuple(PyObject *p_value,
 		if(p_object == NULL || p_object == Py_None){
 			nulls[i] = true;
 			values[i] = 0;
-			continue;
-		}
-		resetStringInfo(buffer);
-		values[i] = pyobjectToDatum(p_object, buffer,
-									cinfos[cinfo_idx]);
-		if (buffer->data == NULL)
-		{
-			nulls[i] = true;
 		}
 		else
 		{
-			nulls[i] = false;
+			resetStringInfo(buffer);
+			values[i] = pyobjectToDatum(p_object, buffer,
+										cinfos[cinfo_idx]);
+			if (buffer->data == NULL)
+			{
+				nulls[i] = true;
+			}
+			else
+			{
+				nulls[i] = false;
+			}
 		}
 		errorCheck();
 		Py_DECREF(p_object);
@@ -1652,7 +1650,7 @@ tupleTableSlotToPyObject(TupleTableSlot *slot, ConversionInfo ** cinfos)
 
 	for (i = 0; i < tupdesc->natts; i++)
 	{
-		Form_pg_attribute attr = tupdesc->attrs[i];
+		Form_pg_attribute attr = TupleDescAttr(tupdesc,i);
 		bool		isnull;
 		Datum		value;
 		PyObject   *item;

@@ -1,0 +1,7 @@
+DO $$
+BEGIN
+  IF current_setting('server_version_num')::bigint >= 110000 THEN
+    SET jit = off;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;

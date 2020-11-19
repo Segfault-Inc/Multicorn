@@ -18,7 +18,7 @@ To use it, you have to:
 - Create a server.
   In the SQL ``OPTIONS`` clause, you must provide an options named wrapper,
   containing the fully-qualified class name of the concrete python foreign data
-  wrapper you wish to use. want to use:
+  wrapper you want to use:
 
   .. code-block:: sql
 

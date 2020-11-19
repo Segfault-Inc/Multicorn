@@ -203,7 +203,7 @@ form:
 You can return new values if the values that were given in sql are not the ones
 that are actually stored (think about default values, triggers...).
 
-The row_id_column attribute must be set to the name of a column acting as a
+The rowid_column attribute must be set to the name of a column acting as a
 primary key. For example:
 
 .. code-block:: python
@@ -211,7 +211,7 @@ primary key. For example:
   class MyFDW(ForeignDataWrapper):
 
     def __init__(self, fdw_options, fdw_columns):
-      self.row_id_column = fdw_columns.keys()[0]
+      self.rowid_column = fdw_columns.keys()[0]
 
 If you want to handle transaction hooks, you can implement the following
 methods:

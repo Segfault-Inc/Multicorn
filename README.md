@@ -1,4 +1,5 @@
-[![PGXN version](https://badge.fury.io/pg/multicorn.svg)](https://badge.fury.io/pg/multicorn) [![Build Status](https://jenkins.dalibo.info/buildStatus/public/Multicorn)]()
+[![PGXN version](https://badge.fury.io/pg/multicorn.svg)](https://badge.fury.io/pg/multicorn)
+[![Build Status](https://travis-ci.org/Segfault-Inc/Multicorn.svg?branch=master)](https://travis-ci.org/Segfault-Inc/Multicorn)
 
 Multicorn
 =========
