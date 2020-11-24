@@ -146,6 +146,7 @@ static struct PyModuleDef moduledef = {
 
 #define INITERROR return NULL
 
+__declspec(dllexport)
 PyObject *
 PyInit__utils(void)
 #else
