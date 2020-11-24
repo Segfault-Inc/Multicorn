@@ -1,0 +1,182 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ windows-2019 ]
+        platform: [ x64, x86 ]
+        postgres-major-version: [ 11, 9.6 ]
+        include:
+          - postgres-major-version: 11
+            windows-platform-toolset: v142
+            python-version: 3.7
+            cmake-version: 3.18.x
+            configuration: Release
+
+          - postgres-major-version: 9.6
+            windows-platform-toolset: v142
+            python-version: 3.7
+            cmake-version: 3.18.x
+            configuration: Release
+
+        exclude:
+          - postgres-major-version: 11
+            platform: x86
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get Multicorn Version
+        id: get-multicorn-version
+        run: |
+          $match = Select-String -Path multicorn.control -Pattern "default_version\s*=\s*'([^']+)'"
+          $version = $match.Matches[0].Groups[1].Value
+          Write-Output "::set-output name=multicorn-version::${version}"
+
+      - name: Get temporary directory
+        id: get-temp-dir
+        run: Write-Output "TEMP=${Env:TEMP}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Get Postgres version
+        id: get-postgres-version
+        run: |
+          $id = 'postgresql_${{ matrix.postgres-major-version }}'.Replace('.', '')
+          $platform = if ('${{ matrix.platform }}' -eq 'x64') { 'windows-x64' } else { 'windows' }
+          $version = Invoke-WebRequest -URI https://www.postgresql.org/applications-v2.xml |
+            Select-Object -ExpandProperty Content |
+            Select-Xml -XPath "/applications/application[id='${id}' and platform='${platform}']/version/text()" |
+            Select-Object -First 1 -ExpandProperty Node |
+            Select-Object -ExpandProperty Value
+
+          Write-Output "::set-output name=postgres-version::${version}"
+
+      - name: Cache Postgres download
+        id: cache-postgres
+        uses: actions/cache@v2
+        with:
+          path: postgresql.exe
+          key: postgres-${{ steps.get-postgres-version.outputs.postgres-version }}-${{ matrix.platform }}
+
+      - name: Download Postgres
+        if: steps.cache-postgres.outputs.cache-hit != 'true'
+        run: |
+          $version = '${{ steps.get-postgres-version.outputs.postgres-version }}'
+          $platform = if ('${{ matrix.platform }}' -eq 'x64') { 'windows-x64' } else { 'windows' }
+          $url = "https://get.enterprisedb.com/postgresql/postgresql-${version}-${platform}.exe"
+          Invoke-WebRequest -Uri $url -OutFile postgresql.exe
+
+      - name: Install Visual Studio 2013 build tools (platform toolset v120)
+        if: matrix.windows-platform-toolset == 'v120'
+        run: choco install microsoft-build-tools --yes --no-progress --version=12.0.21005.1
+
+      - name: Install Postgres
+        id: install-postgres
+        run: |
+          Start-Process -Wait -FilePath postgresql.exe -ArgumentList '--mode unattended --unattendedmodeui none --superpassword postgres --install_runtimes no'
+          $program_files = if ('${{ matrix.platform }}' -eq 'x64') {
+            $Env:ProgramFiles
+          } else {
+            ${Env:ProgramFiles(x86)}
+          }
+          $PGROOT = Join-Path $program_files 'PostgreSQL\${{ matrix.postgres-major-version }}'
+          if (-not (Test-Path $PGROOT)) {
+            Write-Error 'Postgres was not installed'
+            exit 1
+          }
+          Write-Output "PGROOT=${PGROOT}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "${PGROOT}\bin" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
+          
+      - name: Upload Postgres install logs on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: Postgres install logs pg${{ matrix.postgres-major-version }}-${{ matrix.platform }}
+          path: ${{ env.TEMP }}/*.log
+
+      # - name: Cache Postgres language pack download
+      #   id: cache-languagepack
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: languagepack.exe
+      #     key: languagepack-${{ matrix.postgres-languagepack-version }}-${{ steps.get-edb-platform.outputs.value }}
+
+      # - name: Download Postgres language pack
+      #   if: steps.cache-languagepack.outputs.cache-hit != 'true'
+      #   shell: powershell
+      #   run: |
+      #     $url = "https://get.enterprisedb.com/languagepacks/edb-languagepack-${{ matrix.postgres-languagepack-version }}-${{ matrix.postgres-arch }}.exe"
+      #     Invoke-WebRequest -Uri $url -OutFile languagepack.exe
+
+      # - name: Install Postgres language pack
+      #   shell: powershell
+      #   run: |
+      #     Start-Process -Wait -FilePath languagepack.exe -ArgumentList '--mode unattended --unattendedmodeui none'
+      #     $PYTHONHOME = Join-Path $Env:HOMEDRIVE "edb\languagepack\v1\Python-3.7"
+      #     if (-not (Test-Path $PYTHONHOME)) {
+      #       Write-Output "Python was not installed"
+      #       exit 1
+      #     }
+      #     Write-Output "PYTHONHOME=${PYTHONHOME}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+      #     Write-Output "${PYTHONHOME};${PYTHONHOME}\Scripts" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.platform }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip3 install --upgrade pip
+          pip3 install setuptools wheel twine
+
+      - name: Set up cmake
+        uses: jwlawson/actions-setup-cmake@v1.4
+        with:
+          cmake-version: ${{ matrix.cmake-version }}
+
+      - name: Build cmake
+        run: |
+          $platform = if ('${{ matrix.platform }}' -eq 'x64') { 'x64' } else { 'Win32' }
+          cmake . -A $platform -T ${{ matrix.windows-platform-toolset }}
+          cmake --build . --config ${{ matrix.configuration }}
+
+      - name: Build Python module
+        run: python setup.py bdist_wheel
+
+      - name: Build Postgres extension
+        run: |
+          $tmp = New-Item -Path "build\tmp" -ItemType Directory -Force
+
+          $lib = New-Item -Path (Join-Path $tmp "lib") -ItemType Directory -Force
+          Copy-Item -Path (Join-Path -Path "${{ matrix.configuration }}" -ChildPath "*.dll") -Destination $lib
+
+          $ext = New-Item -Path (Join-Path $tmp "share\extension") -ItemType Directory -Force
+          Copy-Item -Path "multicorn.control" -Destination $ext
+          Copy-Item -Path "sql\multicorn.sql" -Destination (Join-Path $ext "multicorn--${{ steps.get-multicorn-version.outputs.multicorn-version }}.sql")
+
+          if ("${{ matrix.configuration }}" -eq "Debug") {
+            $debug = New-Item -Path (Join-Path $tmp "debug_symbols") -ItemType Directory -Force
+            Copy-Item -Path (Join-Path -Path "${{ matrix.configuration }}" -ChildPath "*.pdb") -Destination $debug
+          }
+
+          $dist = New-Item -Path "dist" -ItemType Directory -Force
+          $out = Join-Path $dist "multicorn-v${{ steps.get-multicorn-version.outputs.multicorn-version }}-pg${{ matrix.postgres-major-version }}-windows-${{ matrix.platform }}.zip"
+          Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath $out
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Build artifacts pg${{ matrix.postgres-major-version }}-${{ matrix.platform }}
+          path: dist

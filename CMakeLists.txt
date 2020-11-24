@@ -9,10 +9,13 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
 
 add_library(multicorn SHARED src/errors.c src/python.c src/query.c src/multicorn.c src/utils.c)
 
+set(Python_FIND_REGISTRY LAST)
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 target_link_libraries(multicorn ${Python_LIBRARIES})
 target_link_directories(multicorn PUBLIC ${Python_LIBRARY_DIRS})
 target_include_directories(multicorn PUBLIC ${Python_INCLUDE_DIRS})
+
+message("python libs = ${Python_LIBRARIES}")
 
 find_package(PostgreSQL REQUIRED)
 target_link_libraries(multicorn ${PostgreSQL_LIBRARIES})
