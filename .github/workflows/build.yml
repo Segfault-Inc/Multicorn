@@ -8,9 +8,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  create_release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.draft_release.outputs.id }}
+      html_url: ${{ steps.draft_release.outputs.html_url }}
+      upload_url: ${{ steps.draft_release.outputs.upload_url }}
+    steps:
+      - name: Draft release
+        id: draft_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+
   build:
     runs-on: ${{ matrix.os }}
-
+    needs: create_release
     strategy:
       matrix:
         os: [ windows-2019 ]
@@ -104,32 +123,6 @@ jobs:
           name: Postgres install logs pg${{ matrix.postgres-major-version }}-${{ matrix.platform }}
           path: ${{ env.TEMP }}/*.log
 
-      # - name: Cache Postgres language pack download
-      #   id: cache-languagepack
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: languagepack.exe
-      #     key: languagepack-${{ matrix.postgres-languagepack-version }}-${{ steps.get-edb-platform.outputs.value }}
-
-      # - name: Download Postgres language pack
-      #   if: steps.cache-languagepack.outputs.cache-hit != 'true'
-      #   shell: powershell
-      #   run: |
-      #     $url = "https://get.enterprisedb.com/languagepacks/edb-languagepack-${{ matrix.postgres-languagepack-version }}-${{ matrix.postgres-arch }}.exe"
-      #     Invoke-WebRequest -Uri $url -OutFile languagepack.exe
-
-      # - name: Install Postgres language pack
-      #   shell: powershell
-      #   run: |
-      #     Start-Process -Wait -FilePath languagepack.exe -ArgumentList '--mode unattended --unattendedmodeui none'
-      #     $PYTHONHOME = Join-Path $Env:HOMEDRIVE "edb\languagepack\v1\Python-3.7"
-      #     if (-not (Test-Path $PYTHONHOME)) {
-      #       Write-Output "Python was not installed"
-      #       exit 1
-      #     }
-      #     Write-Output "PYTHONHOME=${PYTHONHOME}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-      #     Write-Output "${PYTHONHOME};${PYTHONHOME}\Scripts" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
-
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -153,9 +146,14 @@ jobs:
           cmake --build . --config ${{ matrix.configuration }}
 
       - name: Build Python module
-        run: python setup.py bdist_wheel
+        id: build-python
+        run: |
+          python setup.py bdist_wheel
+          $filename = (Get-ChildItem -Path dist -Filter *.whl).Name
+          Write-Output "::set-output name=artifact-name::${filename}"
 
       - name: Build Postgres extension
+        id: build-postgres-extension
         run: |
           $tmp = New-Item -Path "build\tmp" -ItemType Directory -Force
 
@@ -172,11 +170,32 @@ jobs:
           }
 
           $dist = New-Item -Path "dist" -ItemType Directory -Force
-          $out = Join-Path $dist "multicorn-v${{ steps.get-multicorn-version.outputs.multicorn-version }}-pg${{ matrix.postgres-major-version }}-windows-${{ matrix.platform }}.zip"
-          Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath $out
+          $filename = "multicorn-v${{ steps.get-multicorn-version.outputs.multicorn-version }}-pg${{ matrix.postgres-major-version }}-windows-${{ matrix.platform }}.zip"
+          Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath (Join-Path $dist $filename)
+          Write-Output "::set-output name=artifact-name::${filename}"
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
           name: Build artifacts pg${{ matrix.postgres-major-version }}-${{ matrix.platform }}
           path: dist
+
+      - name: Upload Python
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: dist/${{ steps.build-python.outputs.artifact-name }}
+          asset_name: ${{ steps.build-python.outputs.artifact-name }}
+          asset_content_type: application/zip
+
+      - name: Upload Postgres Extension
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: dist/${{ steps.build-postgres-extension.outputs.artifact-name }}
+          asset_name: ${{ steps.build-postgres-extension.outputs.artifact-name }}
+          asset_content_type: application/zip
