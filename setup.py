@@ -55,8 +55,14 @@ def find_version():
             return match.group(1)
     return '__VERSION__'
 
+NAME = 'multicorn'
+
+pgversion = os.getenv('PGVERSION')
+if pgversion:
+    NAME += '-pg' + pgversion
+
 setup(
- name='multicorn',
+ name=NAME,
  version=find_version(),
  author='Kozea',
  license='Postgresql',

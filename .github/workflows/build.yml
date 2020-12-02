@@ -146,6 +146,7 @@ jobs:
       - name: Build Python module
         id: build-python
         run: |
+          $Env:PGVERSION="${{ matrix.postgres-major-version }}"
           python setup.py bdist_wheel
           $filename = (Get-ChildItem -Path dist -Filter *.whl).Name
           Write-Output "::set-output name=artifact-name::${filename}"
@@ -168,7 +169,7 @@ jobs:
           }
 
           $dist = New-Item -Path "dist" -ItemType Directory -Force
-          $filename = "multicorn-v${{ steps.get-multicorn-version.outputs.multicorn-version }}-pg${{ matrix.postgres-major-version }}-windows-${{ matrix.platform }}.zip"
+          $filename = "multicorn-pg${{ matrix.postgres-major-version }}-${{ steps.get-multicorn-version.outputs.multicorn-version }}-windows-${{ matrix.platform }}.zip"
           Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath (Join-Path $dist $filename)
           Write-Output "::set-output name=artifact-name::${filename}"
 
