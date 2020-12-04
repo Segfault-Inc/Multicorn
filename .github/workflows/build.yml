@@ -302,6 +302,7 @@ jobs:
 
       - name: Rollback Release on failure
         if: failure() && needs.create_release.outputs.id != ''
+        continue-on-error: true
         uses: author/action-rollback@stable
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
