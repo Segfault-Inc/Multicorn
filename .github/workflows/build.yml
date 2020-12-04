@@ -18,6 +18,7 @@ jobs:
     steps:
       - name: Draft release
         id: draft_release
+        if: github.ref == 'refs/heads/master'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
