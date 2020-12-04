@@ -254,6 +254,12 @@ jobs:
           Write-Output "::set-output name=artifact-name::${filename}"
           Write-Output "::set-output name=artifact-path::${path}"
 
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
+          path: dist
+
       - name: Test
         id: test
         run: |
@@ -271,12 +277,6 @@ jobs:
         with:
           name: test-results-windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
           path: results
-
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
-          path: dist
 
       - name: Upload Python
         if: needs.create_release.outputs.id != ''
