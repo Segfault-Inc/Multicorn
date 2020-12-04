@@ -129,6 +129,10 @@ jobs:
         exclude:
           - postgres-major-version: 11
             platform: x86
+ 
+    env:
+      PGUSER: postgres
+      PGPASSWORD: s3cret88!
 
     steps:
       - name: Checkout
@@ -178,7 +182,7 @@ jobs:
 
       - name: Install Postgres
         run: |
-          Start-Process -Wait -FilePath postgresql.exe -ArgumentList '--mode unattended --unattendedmodeui none --superpassword postgres --install_runtimes no'
+          Start-Process -Wait -FilePath postgresql.exe -ArgumentList "--mode unattended --unattendedmodeui none --superaccount $Env:PGUSER --superpassword $Env:PGPASSWORD --install_runtimes no"
           $program_files = if ('${{ matrix.platform }}' -eq 'x64') {
             $Env:ProgramFiles
           } else {
@@ -189,6 +193,13 @@ jobs:
             Write-Error 'Postgres was not installed'
             exit 1
           }
+
+          # trust local connections
+          $pg_hba = Join-Path $PGROOT "data/pg_hba.conf"
+          (Get-Content $pg_hba) `
+            -replace '(?<!^#.*)md5$', 'trust' |
+            Out-File $pg_hba
+
           Write-Output "PGROOT=${PGROOT}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
           Write-Output "${PGROOT}\bin" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
           
@@ -226,8 +237,12 @@ jobs:
         run: |
           $Env:PGVERSION="${{ matrix.postgres-major-version }}"
           python setup.py bdist_wheel
+
           $filename = (Get-ChildItem -Path dist -Filter *.whl).Name
+          $path = Join-Path "dist" $filename
+
           Write-Output "::set-output name=artifact-name::${filename}"
+          Write-Output "::set-output name=artifact-path::${path}"
 
       - name: Build Postgres extension
         id: build-postgres-extension
@@ -248,8 +263,29 @@ jobs:
 
           $dist = New-Item -Path "dist" -ItemType Directory -Force
           $filename = "multicorn-pg${{ matrix.postgres-major-version }}-${{ steps.get-multicorn-version.outputs.multicorn-version }}-windows-${{ matrix.platform }}.zip"
-          Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath (Join-Path $dist $filename)
+          $path = Join-Path $dist $filename
+          Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath $path
+
           Write-Output "::set-output name=artifact-name::${filename}"
+          Write-Output "::set-output name=artifact-path::${path}"
+
+      - name: Test
+        id: test
+        run: |
+          # install postgres extension
+          Expand-Archive -Path '${{ steps.build-postgres-extension.outputs.artifact-path }}' -DestinationPath $Env:PGROOT
+
+          # install python extension and dependencies
+          pip install '${{ steps.build-python.outputs.artifact-path }}' sqlalchemy psycopg2
+          
+          pg_regress "--bindir=${Env:PGROOT}\bin" --inputdir=test-2.7 --schedule=test-2.7/windows
+
+      - name: Upload test results on failure
+        if: failure() && steps.test.outcome == 'failure'
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results-windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
+          path: results
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
@@ -264,7 +300,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: dist/${{ steps.build-python.outputs.artifact-name }}
+          asset_path: ${{ steps.build-python.outputs.artifact-path }}
           asset_name: ${{ steps.build-python.outputs.artifact-name }}
           asset_content_type: application/zip
 
@@ -275,7 +311,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: dist/${{ steps.build-postgres-extension.outputs.artifact-name }}
+          asset_path: ${{ steps.build-postgres-extension.outputs.artifact-path }}
           asset_name: ${{ steps.build-postgres-extension.outputs.artifact-name }}
           asset_content_type: application/zip
 

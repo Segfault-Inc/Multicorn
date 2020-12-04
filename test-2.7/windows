@@ -1,0 +1,20 @@
+test: import_sqlalchemy
+test: import_test
+test: multicorn_alchemy_test
+test: multicorn_cache_invalidation
+test: multicorn_column_options_test
+test: multicorn_error_test
+test: multicorn_logger_test
+test: multicorn_planner_test
+test: multicorn_regression_test
+test: multicorn_sequence_test
+test: multicorn_test_date
+test: multicorn_test_dict
+test: multicorn_test_list
+test: multicorn_test_sort
+test: write_savepoints
+test: write_sqlalchemy
+test: write_test
+
+# FilesystemFdw is not supported on Windows due to usage of fcntl
+# test: write_filesystem
