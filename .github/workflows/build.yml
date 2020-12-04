@@ -12,12 +12,12 @@ jobs:
     name: Create release
     runs-on: ubuntu-latest
     outputs:
-      id: ${{ steps.draft_release.outputs.id }}
-      html_url: ${{ steps.draft_release.outputs.html_url }}
-      upload_url: ${{ steps.draft_release.outputs.upload_url }}
+      id: ${{ steps.draft-release.outputs.id }}
+      html_url: ${{ steps.draft-release.outputs.html_url }}
+      upload_url: ${{ steps.draft-release.outputs.upload_url }}
     steps:
       - name: Draft release
-        id: draft_release
+        id: draft-release
         if: github.ref == 'refs/heads/master'
         uses: actions/create-release@v1
         env:
@@ -29,14 +29,14 @@ jobs:
           prerelease: false
 
   build_unix:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-20.04
     needs: create_release
     strategy:
       matrix:
-        os: [ ubuntu-20.04 ]
-        platform: [ x64 ]
-        postgres-major-version: [ 11 ]
+        postgres-major-version: [ 12, 11, 10, 9.6 ]
         python-version: [ 3.7 ]
+        include:
+          - platform: x64
       
     steps:
       - name: Checkout
@@ -86,6 +86,7 @@ jobs:
           make && sudo make install
 
       - name: Test
+        id: test
         run: |
           export PYTHON_OVERRIDE=$(which python)
           sudo ldconfig ${LD_LIBRARY_PATH}
@@ -93,43 +94,30 @@ jobs:
           make installcheck
 
       - name: Upload test results on failure
-        if: failure()
+        if: failure() && steps.test.outcome == 'failure'
         uses: actions/upload-artifact@v2
         with:
-          name: test-results-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.platform }}
+          name: test-results-unix-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
           path: results
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: build-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.platform }}
+          name: unix-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
           path: dist
 
   build_windows:
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-2019
     needs: create_release
     strategy:
-      matrix:
-        os: [ windows-2019 ]
-        platform: [ x64, x86 ]
-        postgres-major-version: [ 11, 9.6 ]
+      matrix: 
+        postgres-major-version: [ 12, 11, 10, 9.6 ]
+        python-version: [ 3.7 ]
         include:
-          - postgres-major-version: 11
+          - platform: x64
             windows-platform-toolset: v142
-            python-version: 3.7
-            cmake-version: 3.18.x
             configuration: Release
 
-          - postgres-major-version: 9.6
-            windows-platform-toolset: v142
-            python-version: 3.7
-            cmake-version: 3.18.x
-            configuration: Release
-
-        exclude:
-          - postgres-major-version: 11
-            platform: x86
- 
     env:
       PGUSER: postgres
       PGPASSWORD: s3cret88!
@@ -176,11 +164,8 @@ jobs:
           $url = "https://get.enterprisedb.com/postgresql/postgresql-${version}-${platform}.exe"
           Invoke-WebRequest -Uri $url -OutFile postgresql.exe
 
-      - name: Install Visual Studio 2013 build tools (platform toolset v120)
-        if: matrix.windows-platform-toolset == 'v120'
-        run: choco install microsoft-build-tools --yes --no-progress --version=12.0.21005.1
-
       - name: Install Postgres
+        id: install-postgres
         run: |
           Start-Process -Wait -FilePath postgresql.exe -ArgumentList "--mode unattended --unattendedmodeui none --superaccount $Env:PGUSER --superpassword $Env:PGPASSWORD --install_runtimes no"
           $program_files = if ('${{ matrix.platform }}' -eq 'x64') {
@@ -204,10 +189,10 @@ jobs:
           Write-Output "${PGROOT}\bin" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
           
       - name: Upload Postgres install logs on failure
-        if: failure()
+        if: failure() && steps.install-postgres.outcome == 'failure'
         uses: actions/upload-artifact@v2
         with:
-          name: Postgres install logs pg${{ matrix.postgres-major-version }}-${{ matrix.platform }}
+          name: install-log-windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
           path: ${{ env.TEMP }}/*.log
 
       - name: Set up Python
@@ -218,13 +203,13 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip3 install --upgrade pip
-          pip3 install setuptools wheel twine
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
 
       - name: Set up cmake
         uses: jwlawson/actions-setup-cmake@v1.4
         with:
-          cmake-version: ${{ matrix.cmake-version }}
+          cmake-version: 3.19.x
 
       - name: Build cmake
         run: |
@@ -290,7 +275,7 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: Build artifacts pg${{ matrix.postgres-major-version }}-${{ matrix.platform }}
+          name: windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
           path: dist
 
       - name: Upload Python
