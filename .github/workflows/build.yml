@@ -247,7 +247,7 @@ jobs:
           }
 
           $dist = New-Item -Path "dist" -ItemType Directory -Force
-          $filename = "multicorn-pg${{ matrix.postgres-major-version }}-${{ steps.get-multicorn-version.outputs.multicorn-version }}-windows-${{ matrix.platform }}.zip"
+          $filename = "multicorn-pg${{ matrix.postgres-major-version }}-${{ steps.get-multicorn-version.outputs.multicorn-version }}-py${{ matrix.python-version }}-windows-${{ matrix.platform }}.zip"
           $path = Join-Path $dist $filename
           Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath $path
 
