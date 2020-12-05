@@ -106,6 +106,15 @@ jobs:
           name: unix-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
           path: dist
 
+      - name: Rollback Release on failure
+        if: failure() && needs.create_release.outputs.id != ''
+        continue-on-error: true
+        uses: author/action-rollback@stable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ needs.create_release.outputs.id }}
+
   build_windows:
     runs-on: windows-2019
     needs: create_release
