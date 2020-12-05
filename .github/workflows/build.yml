@@ -10,7 +10,7 @@ on:
 jobs:
   create_release:
     name: Create release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       id: ${{ steps.draft-release.outputs.id }}
       html_url: ${{ steps.draft-release.outputs.html_url }}
