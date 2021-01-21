@@ -1,8 +1,7 @@
 #!/bin/bash
 
 PG_CONFIG=$(which pg_config)
-PY_VERSION=$(python --version 2>&1 | awk '{ print substr($2,1,3)}')
-PY27_VERSION=$(python2.7 --version 2>&1 | awk '{ print substr($2,1,3)}')
+PY_VERSION=$(python3 -V 2>&1 | sed 's/.* \([0-9]\).\([0-9]\).*/\1\2/')
 
 if [ -z "${PG_CONFIG}" ]; then
   echo "No pg_config found in your path."
@@ -16,9 +15,13 @@ if [ ! -x "${PG_CONFIG}" ]; then
   exit 1
 fi
 
-if [ ${PY_VERSION} != "2.7" ] && [ ${PY_VERSION} != "2.6" ]; then
-  if [ ${PY27_VERSION} != "2.7" ]; then
-    echo "Found Python $PY_VERSION, but 2.6 is required."
+if ! hash python3; then
+    echo "python3 is not installed"
     exit 2
-  fi
+fi
+
+ver=$(python -V 2>&1 | sed 's/.* \([0-9]\).\([0-9]\).*/\1\2/')
+if [ "$PY_VERSION" -lt "34" ]; then
+    echo "This script requires python 3.4 or greater"
+    exit 1
 fi
