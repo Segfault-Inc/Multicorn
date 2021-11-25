@@ -524,22 +524,37 @@ compareColumns(List *columns1, List *columns2)
 		{
 			return false;
 		}
+#if PG_VERSION_NUM >= 130000
+		cell1 = lnext(coldef1, cell1);
+		cell2 = lnext(coldef2, cell2);
+#else
 		cell1 = lnext(cell1);
 		cell2 = lnext(cell2);
+#endif
 		/* Compare typoid */
 		if (((Const *) (lfirst(cell1)))->constvalue != ((Const *) lfirst(cell2))->constvalue)
 		{
 			return false;
 		}
+#if PG_VERSION_NUM >= 130000
+		cell1 = lnext(coldef1, cell1);
+		cell2 = lnext(coldef2, cell2);
+#else
 		cell1 = lnext(cell1);
 		cell2 = lnext(cell2);
+#endif
 		/* Compare typmod */
 		if (((Const *) (lfirst(cell1)))->constvalue != ((Const *) lfirst(cell2))->constvalue)
 		{
 			return false;
 		}
+#if PG_VERSION_NUM >= 130000
+		cell1 = lnext(coldef1, cell1);
+		cell2 = lnext(coldef2, cell2);
+#else
 		cell1 = lnext(cell1);
 		cell2 = lnext(cell2);
+#endif
 		/* Compare column options */
 		if (!compareOptions(lfirst(cell1), lfirst(cell2)))
 		{

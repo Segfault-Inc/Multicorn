@@ -132,6 +132,6 @@ ifeq (${SUPPORTS_IMPORT}, 1)
 endif
 
 REGRESS      = $(patsubst test-$(PYTHON_TEST_VERSION)/sql/%.sql,%,$(TESTS))
-REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION) --load-language=plpgsql
+REGRESS_OPTS = --inputdir=test-$(PYTHON_TEST_VERSION)
 
 $(info Python version is $(python_version))

@@ -21,7 +21,8 @@
 #define get_attname(x, y) get_attname(x, y, true)
 #endif
 
-void extractClauseFromOpExpr(Relids base_relids,
+void extractClauseFromOpExpr(PlannerInfo *root,
+						Relids base_relids,
 						OpExpr *node,
 						List **quals);
 
@@ -29,7 +30,8 @@ void extractClauseFromNullTest(Relids base_relids,
 						  NullTest *node,
 						  List **quals);
 
-void extractClauseFromScalarArrayOpExpr(Relids base_relids,
+void extractClauseFromScalarArrayOpExpr(PlannerInfo *root,
+								   Relids base_relids,
 								   ScalarArrayOpExpr *node,
 								   List **quals);
 
@@ -305,14 +307,15 @@ canonicalScalarArrayOpExpr(ScalarArrayOpExpr *opExpr,
  *
  */
 void
-extractRestrictions(Relids base_relids,
+extractRestrictions(PlannerInfo *root,
+					Relids base_relids,
 					Expr *node,
 					List **quals)
 {
 	switch (nodeTag(node))
 	{
 		case T_OpExpr:
-			extractClauseFromOpExpr(base_relids,
+			extractClauseFromOpExpr(root, base_relids,
 									(OpExpr *) node, quals);
 			break;
 		case T_NullTest:
@@ -320,7 +323,7 @@ extractRestrictions(Relids base_relids,
 									  (NullTest *) node, quals);
 			break;
 		case T_ScalarArrayOpExpr:
-			extractClauseFromScalarArrayOpExpr(base_relids,
+			extractClauseFromScalarArrayOpExpr(root, base_relids,
 											   (ScalarArrayOpExpr *) node,
 											   quals);
 			break;
@@ -346,7 +349,8 @@ extractRestrictions(Relids base_relids,
  *	- Var or Const value: the value.
  */
 void
-extractClauseFromOpExpr(Relids base_relids,
+extractClauseFromOpExpr(PlannerInfo *root,
+						Relids base_relids,
 						OpExpr *op,
 						List **quals)
 {
@@ -363,7 +367,11 @@ extractClauseFromOpExpr(Relids base_relids,
 		/* Do not add it if it either contains a mutable function, or makes */
 		/* self references in the right hand side. */
 		if (!(contain_volatile_functions((Node *) right) ||
-			  bms_is_subset(base_relids, pull_varnos((Node *) right))))
+			  bms_is_subset(base_relids, pull_varnos(
+#if PG_VERSION_NUM >= 140000
+					  root,
+#endif
+					  (Node *) right))))
 		{
 			*quals = lappend(*quals, makeQual(left->varattno,
 											  getOperatorString(op->opno),
@@ -373,7 +381,8 @@ extractClauseFromOpExpr(Relids base_relids,
 }
 
 void
-extractClauseFromScalarArrayOpExpr(Relids base_relids,
+extractClauseFromScalarArrayOpExpr(PlannerInfo *root,
+								   Relids base_relids,
 								   ScalarArrayOpExpr *op,
 								   List **quals)
 {
@@ -386,7 +395,11 @@ extractClauseFromScalarArrayOpExpr(Relids base_relids,
 		left = list_nth(op->args, 0);
 		right = list_nth(op->args, 1);
 		if (!(contain_volatile_functions((Node *) right) ||
-			  bms_is_subset(base_relids, pull_varnos((Node *) right))))
+			  bms_is_subset(base_relids, pull_varnos(
+#if PG_VERSION_NUM >= 140000
+					  root,
+#endif
+					  (Node *) right))))
 		{
 			*quals = lappend(*quals, makeQual(left->varattno,
 											  getOperatorString(op->opno),
@@ -837,26 +850,49 @@ deserializeDeparsedSortGroup(List *items)
 		ListCell *lc;
 		MulticornDeparsedSortGroup *key =
 			palloc0(sizeof(MulticornDeparsedSortGroup));
+#if PG_VERSION_NUM >= 130000
+		List *list = lfirst(k);
+#endif
 
 		lc = list_head(lfirst(k));
 		key->attname = (Name) strdup(strVal(lfirst(lc)));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->attnum = (int) intVal(lfirst(lc));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->reversed = (bool) intVal(lfirst(lc));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->nulls_first = (bool) intVal(lfirst(lc));
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		if(lfirst(lc) != NULL)
 			key->collate = (Name) strdup(strVal(lfirst(lc)));
 		else
 			key->collate = NULL;
 
+#if PG_VERSION_NUM >= 130000
+		lc = lnext(list, lc);
+#else
 		lc = lnext(lc);
+#endif
 		key->key = (PathKey *) lfirst(lc);
 
 		result = lappend(result, key);

@@ -1,6 +1,6 @@
 -- Setup the test
 CREATE EXTENSION multicorn;
-CREATE language plpython3u;
+CREATE EXTENSION plpython3u;
 \i test-common/disable_jit.include
 
 CREATE OR REPLACE FUNCTION create_table() RETURNS VOID AS $$
@@ -65,4 +65,4 @@ DROP FUNCTION cleanup_dir();
 DROP TABLE temp_dir;
 DROP FUNCTION create_table();
 DROP EXTENSION multicorn cascade;
-DROP LANGUAGE plpython3u;
+DROP EXTENSION plpython3u;
