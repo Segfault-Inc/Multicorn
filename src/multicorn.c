@@ -73,7 +73,13 @@ static void multicornReScanForeignScan(ForeignScanState *node);
 static void multicornEndForeignScan(ForeignScanState *node);
 
 #if PG_VERSION_NUM >= 90300
-static void multicornAddForeignUpdateTargets(Query *parsetree,
+static void multicornAddForeignUpdateTargets(
+#if PG_VERSION_NUM >= 140000
+								 PlannerInfo *root,
+								 Index rtindex,
+#else
+								 Query *parsetree,
+#endif
 								 RangeTblEntry *target_rte,
 								 Relation target_relation);
 
@@ -314,7 +320,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	/* Extract the restrictions from the plan. */
 	foreach(lc, baserel->baserestrictinfo)
 	{
-		extractRestrictions(baserel->relids, ((RestrictInfo *) lfirst(lc))->clause,
+		extractRestrictions(root, baserel->relids, ((RestrictInfo *) lfirst(lc))->clause,
 							&planstate->qual_list);
 
 	}
@@ -447,7 +453,7 @@ multicornGetForeignPlan(PlannerInfo *root,
 
 		foreach(lc, scan_clauses)
 		{
-			extractRestrictions(baserel->relids, (Expr *) lfirst(lc),
+			extractRestrictions(root, baserel->relids, (Expr *) lfirst(lc),
 								&planstate->qual_list);
 		}
 	}
@@ -506,12 +512,15 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	execstate->values = palloc(sizeof(Datum) * tupdesc->natts);
 	execstate->nulls = palloc(sizeof(bool) * tupdesc->natts);
 	execstate->qual_list = NULL;
+#if PG_VERSION_NUM < 140000
 	foreach(lc, fscan->fdw_exprs)
 	{
-		extractRestrictions(bms_make_singleton(fscan->scan.scanrelid),
+		extractRestrictions(NULL, /* FIXME: set this properly. Parameter is used on PG14+ only, we can use NULL on older versions */
+							bms_make_singleton(fscan->scan.scanrelid),
 							((Expr *) lfirst(lc)),
 							&execstate->qual_list);
 	}
+#endif
 	initConversioninfo(execstate->cinfos, TupleDescGetAttInMetadata(tupdesc));
 	node->fdw_state = execstate;
 }
@@ -601,7 +610,13 @@ multicornEndForeignScan(ForeignScanState *node)
  *		Add resjunk columns needed for update/delete.
  */
 static void
-multicornAddForeignUpdateTargets(Query *parsetree,
+multicornAddForeignUpdateTargets(
+#if PG_VERSION_NUM >= 140000
+								 PlannerInfo *root,
+								 Index rtindex,
+#else
+								 Query *parsetree,
+#endif
 								 RangeTblEntry *target_rte,
 								 Relation target_relation)
 {
@@ -613,6 +628,9 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 	TupleDesc	desc = target_relation->rd_att;
 	int			i;
 	ListCell   *cell;
+#if PG_VERSION_NUM >= 140000
+	Query *parsetree = root->parse;
+#endif
 
 	foreach(cell, parsetree->returningList)
 	{
@@ -684,7 +702,12 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	MulticornModifyState *modstate = palloc0(sizeof(MulticornModifyState));
 	Relation	rel = resultRelInfo->ri_RelationDesc;
 	TupleDesc	desc = RelationGetDescr(rel);
-	PlanState  *ps = mtstate->mt_plans[subplan_index];
+	PlanState  *ps = 
+#if PG_VERSION_NUM >= 140000
+		outerPlanState(mtstate);
+#else
+		mtstate->mt_plans[subplan_index];
+#endif
 	Plan	   *subplan = ps->plan;
 	MemoryContext oldcontext;
 	int			i;

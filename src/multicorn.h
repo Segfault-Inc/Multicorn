@@ -187,7 +187,8 @@ extern PGDLLIMPORT HTAB *InstancesHash;
 
 
 /* query.c */
-void extractRestrictions(Relids base_relids,
+void extractRestrictions(PlannerInfo *root,
+					Relids base_relids,
 					Expr *node,
 					List **quals);
 List	   *extractColumns(List *reltargetlist, List *restrictinfolist);
