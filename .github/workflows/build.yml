@@ -1,0 +1,319 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  create_release:
+    name: Create release
+    runs-on: ubuntu-20.04
+    outputs:
+      id: ${{ steps.draft-release.outputs.id }}
+      html_url: ${{ steps.draft-release.outputs.html_url }}
+      upload_url: ${{ steps.draft-release.outputs.upload_url }}
+    steps:
+      - name: Draft release
+        id: draft-release
+        if: github.ref == 'refs/heads/master'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+
+  build_unix:
+    runs-on: ubuntu-20.04
+    needs: create_release
+    strategy:
+      matrix:
+        postgres-major-version: [ 12, 11, 10, 9.6 ]
+        python-version: [ 3.7 ]
+        include:
+          - platform: x64
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.platform }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel 
+
+      - name: Install Postgres
+        run: |
+          # uninstall any existing postgres packages
+          dpkg-query --show --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg --purge postgresql libpq-dev
+          
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          echo "deb https://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main ${{ matrix.postgres-major-version }}" | sudo tee -a /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          
+          sudo apt-get install -qq postgresql-common
+          sudo tee -a /etc/postgresql-common/createcluster.conf <<EOF
+          initdb_options = '--auth-local=trust --username=$(whoami)'
+          unix_socket_directories = '/tmp/'
+          EOF
+          
+          sudo apt-get install -qq \
+            postgresql-${{ matrix.postgres-major-version }} \
+            postgresql-server-dev-${{ matrix.postgres-major-version }} \
+            postgresql-contrib-${{ matrix.postgres-major-version }} \
+            postgresql-plpython3-${{ matrix.postgres-major-version }}
+          
+          PGROOT=/usr/lib/postgresql/${{ matrix.postgres-major-version }}
+          echo "PGROOT=${PGROOT}" >> $GITHUB_ENV
+          echo "PGHOST=/tmp/" >> $GITHUB_ENV
+          echo "${PGROOT}/bin" >> $GITHUB_PATH
+
+      - name: Build
+        run: |
+          export PYTHON_OVERRIDE=$(which python)
+          export LIBRARY_PATH="${LD_LIBRARY_PATH}"
+          make && sudo make install
+
+      - name: Test
+        id: test
+        run: |
+          export PYTHON_OVERRIDE=$(which python)
+          sudo ldconfig ${LD_LIBRARY_PATH}
+          pip install .
+          make installcheck
+
+      - name: Upload test results on failure
+        if: failure() && steps.test.outcome == 'failure'
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results-unix-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
+          path: results
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: unix-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
+          path: dist
+
+      - name: Rollback Release on failure
+        if: failure() && needs.create_release.outputs.id != ''
+        continue-on-error: true
+        uses: author/action-rollback@stable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ needs.create_release.outputs.id }}
+
+  build_windows:
+    runs-on: windows-2019
+    needs: create_release
+    strategy:
+      matrix: 
+        postgres-major-version: [ 12, 11, 10, 9.6 ]
+        python-version: [ 3.7 ]
+        include:
+          - platform: x64
+            windows-platform-toolset: v142
+            configuration: Release
+
+    env:
+      PGUSER: postgres
+      PGPASSWORD: s3cret88!
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get Multicorn Version
+        id: get-multicorn-version
+        run: |
+          $match = Select-String -Path multicorn.control -Pattern "default_version\s*=\s*'([^']+)'"
+          $version = $match.Matches[0].Groups[1].Value
+          Write-Output "::set-output name=multicorn-version::${version}"
+
+      - name: Get temporary directory
+        run: Write-Output "TEMP=${Env:TEMP}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Get Postgres version
+        id: get-postgres-version
+        run: |
+          $id = 'postgresql_${{ matrix.postgres-major-version }}'.Replace('.', '')
+          $platform = if ('${{ matrix.platform }}' -eq 'x64') { 'windows-x64' } else { 'windows' }
+          $version = Invoke-WebRequest -URI https://www.postgresql.org/applications-v2.xml |
+            Select-Object -ExpandProperty Content |
+            Select-Xml -XPath "/applications/application[id='${id}' and platform='${platform}']/version/text()" |
+            Select-Object -First 1 -ExpandProperty Node |
+            Select-Object -ExpandProperty Value
+
+          Write-Output "::set-output name=postgres-version::${version}"
+
+      - name: Cache Postgres download
+        id: cache-postgres
+        uses: actions/cache@v2
+        with:
+          path: postgresql.exe
+          key: postgres-${{ steps.get-postgres-version.outputs.postgres-version }}-${{ matrix.platform }}
+
+      - name: Download Postgres
+        if: steps.cache-postgres.outputs.cache-hit != 'true'
+        run: |
+          $version = '${{ steps.get-postgres-version.outputs.postgres-version }}'
+          $platform = if ('${{ matrix.platform }}' -eq 'x64') { 'windows-x64' } else { 'windows' }
+          $url = "https://get.enterprisedb.com/postgresql/postgresql-${version}-${platform}.exe"
+          Invoke-WebRequest -Uri $url -OutFile postgresql.exe
+
+      - name: Install Postgres
+        id: install-postgres
+        run: |
+          Start-Process -Wait -FilePath postgresql.exe -ArgumentList "--mode unattended --unattendedmodeui none --superaccount $Env:PGUSER --superpassword $Env:PGPASSWORD --install_runtimes no"
+          $program_files = if ('${{ matrix.platform }}' -eq 'x64') {
+            $Env:ProgramFiles
+          } else {
+            ${Env:ProgramFiles(x86)}
+          }
+          $PGROOT = Join-Path $program_files 'PostgreSQL\${{ matrix.postgres-major-version }}'
+          if (-not (Test-Path $PGROOT)) {
+            Write-Error 'Postgres was not installed'
+            exit 1
+          }
+
+          # trust local connections
+          $pg_hba = Join-Path $PGROOT "data/pg_hba.conf"
+          (Get-Content $pg_hba) `
+            -replace '(?<!^#.*)md5$', 'trust' |
+            Out-File $pg_hba
+
+          Write-Output "PGROOT=${PGROOT}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Output "${PGROOT}\bin" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
+          
+      - name: Upload Postgres install logs on failure
+        if: failure() && steps.install-postgres.outcome == 'failure'
+        uses: actions/upload-artifact@v2
+        with:
+          name: install-log-windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
+          path: ${{ env.TEMP }}/*.log
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.platform }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
+
+      - name: Set up cmake
+        uses: jwlawson/actions-setup-cmake@v1.4
+        with:
+          cmake-version: 3.19.x
+
+      - name: Build cmake
+        run: |
+          $platform = if ('${{ matrix.platform }}' -eq 'x64') { 'x64' } else { 'Win32' }
+          cmake . -A $platform -T ${{ matrix.windows-platform-toolset }}
+          cmake --build . --config ${{ matrix.configuration }}
+
+      - name: Build Python module
+        id: build-python
+        run: |
+          $Env:PGVERSION="${{ matrix.postgres-major-version }}"
+          python setup.py bdist_wheel
+
+          $filename = (Get-ChildItem -Path dist -Filter *.whl).Name
+          $path = Join-Path "dist" $filename
+
+          Write-Output "::set-output name=artifact-name::${filename}"
+          Write-Output "::set-output name=artifact-path::${path}"
+
+      - name: Build Postgres extension
+        id: build-postgres-extension
+        run: |
+          $tmp = New-Item -Path "build\tmp" -ItemType Directory -Force
+
+          $lib = New-Item -Path (Join-Path $tmp "lib") -ItemType Directory -Force
+          Copy-Item -Path (Join-Path -Path "${{ matrix.configuration }}" -ChildPath "*.dll") -Destination $lib
+
+          $ext = New-Item -Path (Join-Path $tmp "share\extension") -ItemType Directory -Force
+          Copy-Item -Path "multicorn.control" -Destination $ext
+          Copy-Item -Path "sql\multicorn.sql" -Destination (Join-Path $ext "multicorn--${{ steps.get-multicorn-version.outputs.multicorn-version }}.sql")
+
+          if ("${{ matrix.configuration }}" -eq "Debug") {
+            $debug = New-Item -Path (Join-Path $tmp "debug_symbols") -ItemType Directory -Force
+            Copy-Item -Path (Join-Path -Path "${{ matrix.configuration }}" -ChildPath "*.pdb") -Destination $debug
+          }
+
+          $dist = New-Item -Path "dist" -ItemType Directory -Force
+          $filename = "multicorn-pg${{ matrix.postgres-major-version }}-${{ steps.get-multicorn-version.outputs.multicorn-version }}-py${{ matrix.python-version }}-windows-${{ matrix.platform }}.zip"
+          $path = Join-Path $dist $filename
+          Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath $path
+
+          Write-Output "::set-output name=artifact-name::${filename}"
+          Write-Output "::set-output name=artifact-path::${path}"
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
+          path: dist
+
+      - name: Test
+        id: test
+        run: |
+          # install postgres extension
+          Expand-Archive -Path '${{ steps.build-postgres-extension.outputs.artifact-path }}' -DestinationPath $Env:PGROOT
+
+          # install python extension and dependencies
+          pip install '${{ steps.build-python.outputs.artifact-path }}' sqlalchemy psycopg2
+          
+          pg_regress "--bindir=${Env:PGROOT}\bin" --inputdir=test-2.7 --schedule=test-2.7/windows
+
+      - name: Upload test results on failure
+        if: failure() && steps.test.outcome == 'failure'
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results-windows-${{ matrix.platform }}-pg${{ matrix.postgres-major-version }}-py${{ matrix.python-version }}
+          path: results
+
+      - name: Upload Python
+        if: needs.create_release.outputs.id != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.build-python.outputs.artifact-path }}
+          asset_name: ${{ steps.build-python.outputs.artifact-name }}
+          asset_content_type: application/zip
+
+      - name: Upload Postgres Extension
+        if: needs.create_release.outputs.id != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.build-postgres-extension.outputs.artifact-path }}
+          asset_name: ${{ steps.build-postgres-extension.outputs.artifact-name }}
+          asset_content_type: application/zip
+
+      - name: Rollback Release on failure
+        if: failure() && needs.create_release.outputs.id != ''
+        continue-on-error: true
+        uses: author/action-rollback@stable
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ needs.create_release.outputs.id }}

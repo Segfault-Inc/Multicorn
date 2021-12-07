@@ -1,0 +1,6 @@
+import_test:out:.*-win.*=import_test-windows.out
+multicorn_regression_test:out:.*-win.*=multicorn_regression_test-windows.out
+multicorn_sequence_test:out:.*-win.*=multicorn_sequence_test-windows.out
+multicorn_test_sort:out:.*-win.*=multicorn_test_sort-windows.out
+write_savepoints:out:.*-win.*=write_savepoints-windows.out
+write_test:out:.*-win.*=write_test-windows.out
