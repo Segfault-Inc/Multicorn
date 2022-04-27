@@ -213,6 +213,9 @@ PGDLLEXPORT PyObject   *datumToPython(Datum node, Oid typeoid, ConversionInfo * 
 PGDLLEXPORT List	*serializeDeparsedSortGroup(List *pathkeys);
 PGDLLEXPORT List	*deserializeDeparsedSortGroup(List *items);
 
+void multicorn_call_plpython(const char *python_script);
+void multicorn_init(void);
+
 #endif   /* PG_MULTICORN_H */
 
 PGDLLEXPORT char	   *PyUnicode_AsPgString(PyObject *p_unicode);

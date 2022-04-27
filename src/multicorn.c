@@ -113,31 +113,76 @@ PGDLLEXPORT MulticornExecState *initializeExecState(void *internal_plan_state);
 /* Hash table mapping oid to fdw instances */
 PGDLLEXPORT HTAB	   *InstancesHash;
 
+PGFunction multicorn_plpython_inline_handler = NULL;
+
+void
+multicorn_init()
+{
+	static bool inited = false;
+#if PY_MAJOR_VERSION >= 3
+	static char *plpython_module = "plpython3";
+	static char *inline_function_name = "plpython3_inline_handler";
+#else
+	static char *plpython_module = "plpython2";
+	static char *inline_function_name = "plpython_inline_handler";
+#endif
+	if (inited == true)
+	{
+		return;
+	}
+
+	inited = true;
+
+	/* Try to load plpython and let it do the init. */
+	PG_TRY();
+	{
+	multicorn_plpython_inline_handler  = load_external_function(plpython_module,
+								    inline_function_name,
+								   true, NULL);
+	/* Do nothing, but let plpython init everything */
+	multicorn_call_plpython("pass");
+	}
+	PG_CATCH();
+	{
+		ereport(INFO, (errmsg("%s", "Unable to find plpython."), errhint("Install plpython if you wish to use plpy functions from multicorn")));
+		Py_Initialize();
+	}
+	PG_END_TRY();
+}
+
+
+void
+multicorn_call_plpython(const char *python_script)
+{
+	InlineCodeBlock *codeblock = makeNode(InlineCodeBlock);
+	if (multicorn_plpython_inline_handler == NULL)
+	{
+		ereport(ERROR, (errmsg("%s", "No plpython_inline_handler avaiable"), errhint("%s", "Install plpython")));
+	}
+
+	/* We need a copy of the python script, so it's not
+	 * const. 
+	 */
+	codeblock->source_text = pstrdup(python_script);
+	/* XXXXX FIXME, look this up at init time. */
+	codeblock->langIsTrusted = false;
+	codeblock->langOid = InvalidOid;
+	DirectFunctionCall1(multicorn_plpython_inline_handler,
+			    PointerGetDatum(codeblock));
+}
+
 
 void
 _PG_init()
 {
 	HASHCTL		ctl;
 	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
-	bool need_import_plpy = false;
 
-#if PY_MAJOR_VERSION >= 3
-	/* Try to load plpython3 with its own module */
-	PG_TRY();
-	{
-	void * PyInit_plpy = load_external_function("plpython3", "PyInit_plpy", true, NULL);
-	PyImport_AppendInittab("plpy", PyInit_plpy);
-	need_import_plpy = true;
-	}
-	PG_CATCH();
-	{
-		need_import_plpy = false;
-	}
-	PG_END_TRY();
-#endif
-	Py_Initialize();
-	if (need_import_plpy)
-		PyImport_ImportModule("plpy");
+	/*
+	 * Save multicorn init for later so we can
+	 * just call plpython if it's available.
+	 */
+	
 	RegisterXactCallback(multicorn_xact_callback, NULL);
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
@@ -205,6 +250,8 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	char	   *className = NULL;
 	ListCell   *cell;
 	PyObject   *p_class;
+
+	multicorn_init();
 
 	foreach(cell, options_list)
 	{

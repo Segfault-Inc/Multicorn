@@ -588,6 +588,9 @@ getCacheEntry(Oid foreigntableid)
 	TupleDesc	desc = rel->rd_att;
 	bool		needInitialization = false;
 
+	/* Make sure we have been inited. */
+	multicorn_init();
+
 	entry = hash_search(InstancesHash, &foreigntableid, HASH_ENTER,
 						&found);
 
