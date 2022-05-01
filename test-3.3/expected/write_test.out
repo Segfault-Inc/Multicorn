@@ -18,6 +18,7 @@ NOTICE:  BEGIN
 NOTICE:  ROLLBACK
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
+CONTEXT:  PL/Python anonymous code block
 update testmulticorn set test1 = 'test';
 NOTICE:  BEGIN
 NOTICE:  []
@@ -25,6 +26,7 @@ NOTICE:  ['test1', 'test2']
 NOTICE:  ROLLBACK
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
+CONTEXT:  PL/Python anonymous code block
 delete from testmulticorn where test2 = 'test2 2 0';
 NOTICE:  BEGIN
 NOTICE:  [test2 = test2 2 0]
@@ -32,6 +34,7 @@ NOTICE:  ['test1', 'test2']
 NOTICE:  ROLLBACK
 ERROR:  Error in python: NotImplementedError
 DETAIL:  This FDW does not support the writable API
+CONTEXT:  PL/Python anonymous code block
 CREATE foreign table testmulticorn_write (
     test1 character varying,
     test2 character varying
@@ -182,6 +185,7 @@ delete from testmulticorn_write;
 NOTICE:  [('option1', 'option1'), ('row_id_column', 'teststuff'), ('test_type', 'date'), ('usermapping', 'test')]
 NOTICE:  [('test1', 'date'), ('test2', 'timestamp without time zone')]
 ERROR:  The rowid attribute does not exist
+CONTEXT:  PL/Python anonymous code block
 DROP USER MAPPING FOR current_user SERVER multicorn_srv;
 DROP EXTENSION multicorn cascade;
 NOTICE:  drop cascades to 3 other objects

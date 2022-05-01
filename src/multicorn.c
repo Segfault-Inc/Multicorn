@@ -31,6 +31,10 @@
 #include "common/hashfn.h" /* oid_hash */
 #endif
 
+#if PG_VERSION_NUM < 100000
+#include "executor/spi.h"
+#endif
+
 
 PG_MODULE_MAGIC;
 
@@ -113,31 +117,242 @@ PGDLLEXPORT MulticornExecState *initializeExecState(void *internal_plan_state);
 /* Hash table mapping oid to fdw instances */
 PGDLLEXPORT HTAB	   *InstancesHash;
 
+PGFunction multicorn_plpython_inline_handler = NULL;
+
+void
+multicorn_init()
+{
+	static bool inited = false;
+#if PY_MAJOR_VERSION >= 3
+	static char *plpython_module = "plpython3";
+	static char *inline_function_name = "plpython3_inline_handler";
+#else
+	static char *plpython_module = "plpython2";
+	static char *inline_function_name = "plpython_inline_handler";
+#endif
+	if (inited == true)
+	{
+		return;
+	}
+
+	inited = true;
+
+	/* Try to load plpython and let it do the init. */
+	PG_TRY();
+	{
+	multicorn_plpython_inline_handler  = load_external_function(plpython_module,
+								    inline_function_name,
+								    true, NULL);
+	/* Do nothing, but let plpython init everything */
+	multicorn_call_plpython("pass");
+	}
+	PG_CATCH();
+	{
+		ereport(INFO, (errmsg("%s", "Unable to find plpython."), errhint("Install plpython if you wish to use plpy functions from multicorn")));
+		Py_Initialize();
+	}
+	PG_END_TRY();
+}
+
+
+void
+multicorn_call_plpython(const char *python_script)
+{
+	InlineCodeBlock *codeblock = makeNode(InlineCodeBlock);
+	multicorn_init();
+	if (multicorn_plpython_inline_handler == NULL)
+	{
+		ereport(ERROR, (errmsg("%s", "No plpython_inline_handler avaiable"), errhint("%s", "Install plpython")));
+	}
+
+	/* We need a copy of the python script, so it's not
+	 * const, and so plpython is free to free it or not. 
+	 */
+	codeblock->source_text = pstrdup(python_script);
+	/* XXXXX FIXME, look this up at init time. */
+	codeblock->langIsTrusted = false;
+	codeblock->langOid = InvalidOid;
+#if PG_VERSION_NUM >= 110000
+	codeblock->atomic = true;
+#endif
+
+	/* Version 9.6 and earlier we need to
+	 * do an SPI_push/pop so we can do an
+	 * SPI_connect.
+	 */
+#if PG_VERSION_NUM < 100000
+	{
+		bool spi_pushed = SPI_push_conditional();
+#endif
+
+		DirectFunctionCall1(multicorn_plpython_inline_handler,
+				    PointerGetDatum(codeblock));
+#if PG_VERSION_NUM < 100000
+		SPI_pop_conditional(spi_pushed);
+	}
+#endif
+}
+
+TrampolineData *multicorn_trampoline_data = NULL;
+
+void
+multicornCallTrampoline(TrampolineData *td)
+{
+	Assert(multicorn_trampoline_data == NULL);
+	/* We could be really carefull with MemoryContexts,
+	 * or we could be lazy and just switch back
+	 * and forth.
+	 */
+	td->target_context = CurrentMemoryContext;
+	multicorn_trampoline_data = td;
+	multicorn_call_plpython("from multicorn.utils import trampoline; trampoline()");
+}
+
+/* Call an instance by oid
+ * without any arguments or
+ * return values.
+ *
+ * Useful to bypass 
+ * the trampoline.
+ * Could use it with arguments
+ * so lon as we can convert them 
+ * back and forth to strings easily.
+ *
+ * entry is used if available
+ * and we are not going through
+ * plpython.  Set it to NULL
+ * if it's not readily
+ * available and we will look
+ * it up.
+ *
+ */
+#if PY_MAJOR_VERSION >= 3 
+#define PY_LONG_CHAR ' '
+#else
+#define PY_LONG_CHAR 'L'
+#endif
+
+static void
+multicornCallInstanceByOid(Oid ftable_oid, CacheEntry *entry, char *method)
+{	
+	char *buff;
+	size_t buff_len;
+	PyObject *result=NULL;
+
+	multicorn_init();
+	if (multicorn_plpython_inline_handler == NULL)
+	{
+		/* call directly. */
+		if (entry == NULL)
+		{
+			bool found = false;
+			entry = hash_search(InstancesHash,
+					    &ftable_oid,
+					    HASH_FIND,
+					    &found);
+			if (!found || entry == NULL || entry->value == NULL)
+			{
+				ereport(ERROR, (errmsg("%s", "Multicorn Table OID not found")));
+				
+			}
+		}
+		result = PyObject_CallMethod(entry->value, method, "()");
+		if (result != NULL)
+		{
+			Py_DECREF(result);
+		}
+		return;
+	}
+
+	/* Macros are the easiest way to make this constant and easy to change. */
+#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%u%c).%s()"
+#define PYTHON_TEMPLATE_LEN sizeof(PYTHON_TEMPLATE)
+
+	/* +14 allows for the oid and a little bit of extra. */
+	buff_len = strlen(method) + PYTHON_TEMPLATE_LEN + 14;
+	buff = (char *)alloca(buff_len); /* it's on the stack. no need to free.*/
+	
+	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, PY_LONG_CHAR, method);
+#undef PYTHON_TEMPLATE
+#undef PYTHON_TEMPLAET_LENGTH
+
+	multicorn_call_plpython(buff);
+
+	return;
+}
+
+/*
+ * Process 1 integer argument
+ * through to a python method.
+ * We could build a generic one,
+ " but we would have to
+ * be able to turn everything
+ * into a string, and the fallback
+ * method would be difficult to code
+ * without abusing the C calling
+ * convention and risking
+ * some portability issues.
+ */
+static void
+multicornCallInstanceByOidInt(Oid ftable_oid, CacheEntry *entry, char *method,  int arg)
+{
+	char *buff;
+	size_t buff_len;
+	PyObject *result=NULL;
+	
+	multicorn_init();
+	if (multicorn_plpython_inline_handler == NULL)
+	{
+		/* call directly. */
+		if (entry == NULL)
+		{
+			bool found = false;
+			entry = hash_search(InstancesHash,
+					    &ftable_oid,
+					    HASH_FIND,
+					    &found);
+			if (!found || entry == NULL || entry->value == NULL)
+			{
+				ereport(ERROR, (errmsg("%s", "Multicorn Table OID not found")));
+				
+			}
+		}
+		result = PyObject_CallMethod(entry->value, method, "(i)", arg);
+		if (result != NULL)
+		{
+			Py_DecRef(result);
+		}
+		return;
+	}
+
+/* Macros are the easiest way to make this constant and easy to change. */
+#define PYTHON_TEMPLATE  "from multicorn.utils import getInstanceByOid as gio; gio(%u%c).%s(%d)"
+#define PYTHON_TEMPLATE_LEN sizeof(PYTHON_TEMPLATE)
+
+	/* +28 allows for the oid, the integer and a little bit of extra. */
+	buff_len = strlen(method) + PYTHON_TEMPLATE_LEN + 28;
+	buff = (char *)alloca(buff_len); /* it's on the stack. no need to free.*/
+	
+	snprintf (buff, buff_len, PYTHON_TEMPLATE, ftable_oid, PY_LONG_CHAR, method, arg);
+#undef PYTHON_TEMPLATE
+#undef PYTHON_TEMPLAET_LENGTH
+
+	multicorn_call_plpython(buff);
+
+	return;
+}
 
 void
 _PG_init()
 {
 	HASHCTL		ctl;
 	MemoryContext oldctx = MemoryContextSwitchTo(CacheMemoryContext);
-	bool need_import_plpy = false;
 
-#if PY_MAJOR_VERSION >= 3
-	/* Try to load plpython3 with its own module */
-	PG_TRY();
-	{
-	void * PyInit_plpy = load_external_function("plpython3", "PyInit_plpy", true, NULL);
-	PyImport_AppendInittab("plpy", PyInit_plpy);
-	need_import_plpy = true;
-	}
-	PG_CATCH();
-	{
-		need_import_plpy = false;
-	}
-	PG_END_TRY();
-#endif
-	Py_Initialize();
-	if (need_import_plpy)
-		PyImport_ImportModule("plpy");
+	/*
+	 * Save multicorn init for later so we can
+	 * just call plpython if it's available.
+	 */
+	
 	RegisterXactCallback(multicorn_xact_callback, NULL);
 #if PG_VERSION_NUM >= 90300
 	RegisterSubXactCallback(multicorn_subxact_callback, NULL);
@@ -197,8 +412,8 @@ multicorn_handler(PG_FUNCTION_ARGS)
 	PG_RETURN_POINTER(fdw_routine);
 }
 
-Datum
-multicorn_validator(PG_FUNCTION_ARGS)
+static Datum
+multicorn_validator_real(PG_FUNCTION_ARGS)
 {
 	List	   *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
 	Oid			catalog = PG_GETARG_OID(1);
@@ -239,6 +454,25 @@ multicorn_validator(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
+/* A wrapper that might use the trampoline */
+Datum
+multicorn_validator(PG_FUNCTION_ARGS)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicorn_validator_real;
+		td.return_data = NULL;
+		td.args[0] = (void *)fcinfo;
+		td.args[1] = NULL;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return (Datum)td.return_data;
+	}
+	return multicorn_validator_real(fcinfo);
+}
 
 /*
  * multicornGetForeignRelSize
@@ -246,7 +480,7 @@ multicorn_validator(PG_FUNCTION_ARGS)
  *		This is done by calling the
  */
 static void
-multicornGetForeignRelSize(PlannerInfo *root,
+multicornGetForeignRelSizeReal(PlannerInfo *root,
 						   RelOptInfo *baserel,
 						   Oid foreigntableid)
 {
@@ -326,6 +560,26 @@ multicornGetForeignRelSize(PlannerInfo *root,
 	getRelSize(planstate, root, &baserel->rows, &baserel->width);
 #endif
 }
+/* Trampoline Version */
+static void
+multicornGetForeignRelSize(PlannerInfo *root, RelOptInfo *baserel,  Oid foreigntableid)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornGetForeignRelSizeReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)root;
+		td.args[1] = (void *)baserel;
+		td.args[2] = (void *)(unsigned long)foreigntableid;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornGetForeignRelSizeReal(root, baserel, foreigntableid);
+	return;
+}
 
 /*
  * multicornGetForeignPaths
@@ -335,7 +589,7 @@ multicornGetForeignRelSize(PlannerInfo *root,
  *		equivalence classes found in the plan.
  */
 static void
-multicornGetForeignPaths(PlannerInfo *root,
+multicornGetForeignPathsReal(PlannerInfo *root,
 						 RelOptInfo *baserel,
 						 Oid foreigntableid)
 {
@@ -417,10 +671,34 @@ multicornGetForeignPaths(PlannerInfo *root,
 	}
 	errorCheck();
 }
+static void
+multicornGetForeignPaths(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornGetForeignPathsReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)root;
+		td.args[1] = (void *)baserel;
+		td.args[2] = (void *)(unsigned long)foreigntableid;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornGetForeignPathsReal(root, baserel, foreigntableid);
+	return;
+  
+}
 
 /*
  * multicornGetForeignPlan
  *		Create a ForeignScan plan node for scanning the foreign table
+ */
+/* XXXXX FIXME: This one would be a pain to wrap
+ * and I don't see an execution path that hits python.
+ * So long as that's the case, no need to wrap it.
  */
 static ForeignScan *
 multicornGetForeignPlan(PlannerInfo *root,
@@ -472,7 +750,7 @@ multicornGetForeignPlan(PlannerInfo *root,
  *		as information that was taken into account for the choice of a path.
  */
 static void
-multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
+multicornExplainForeignScanReal(ForeignScanState *node, ExplainState *es)
 {
 	PyObject *p_iterable = execute(node, es),
 			 *p_item,
@@ -488,6 +766,29 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
 }
 
 /*
+ * Check if we should use trampoline
+ */
+void
+multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornExplainForeignScanReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)node;
+		td.args[1] = (void *)es;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornExplainForeignScanReal(node, es);
+	return;
+}
+
+/*
  *	multicornBeginForeignScan
  *		Initialize the foreign scan.
  *		This (primarily) involves :
@@ -495,7 +796,7 @@ multicornExplainForeignScan(ForeignScanState *node, ExplainState *es)
  *			- initializing various buffers
  */
 static void
-multicornBeginForeignScan(ForeignScanState *node, int eflags)
+multicornBeginForeignScanReal(ForeignScanState *node, int eflags)
 {
 	ForeignScan *fscan = (ForeignScan *) node->ss.ps.plan;
 	MulticornExecState *execstate;
@@ -516,6 +817,28 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
 	node->fdw_state = execstate;
 }
 
+/*
+ * Check if we should use trampoline
+ */
+static void
+multicornBeginForeignScan(ForeignScanState *node, int eflags)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornBeginForeignScanReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)node;
+		td.args[1] = (void *)(unsigned long)eflags;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornBeginForeignScanReal(node, eflags);
+	return;
+}
 
 /*
  * multicornIterateForeignScan
@@ -526,7 +849,7 @@ multicornBeginForeignScan(ForeignScanState *node, int eflags)
  *		method.
  */
 static TupleTableSlot *
-multicornIterateForeignScan(ForeignScanState *node)
+multicornIterateForeignScanReal(ForeignScanState *node)
 {
 	TupleTableSlot *slot = node->ss.ss_ScanTupleSlot;
 	MulticornExecState *execstate = node->fdw_state;
@@ -561,8 +884,36 @@ multicornIterateForeignScan(ForeignScanState *node)
 }
 
 /*
+ * Check if we should use trampoline
+ */
+static TupleTableSlot *
+multicornIterateForeignScan(ForeignScanState *node)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornIterateForeignScanReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)node;
+		td.args[1] = NULL;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return (TupleTableSlot *)td.return_data;
+	}
+	return multicornIterateForeignScanReal(node);
+}
+
+/*
  * multicornReScanForeignScan
  *		Restart the scan
+ */
+/*
+ * XXXXX FIXME: Should this be wrapped.
+ * Py_DECREF could theoretically enter
+ * python to execute destructors.
+ * But that seems unlikely.
  */
 static void
 multicornReScanForeignScan(ForeignScanState *node)
@@ -580,14 +931,19 @@ multicornReScanForeignScan(ForeignScanState *node)
  *	multicornEndForeignScan
  *		Finish scanning foreign table and dispose objects used for this scan.
  */
+/* No need to wrap this one.
+ * It's simple enough that we
+ * can just call directly.
+ */
 static void
 multicornEndForeignScan(ForeignScanState *node)
 {
 	MulticornExecState *state = node->fdw_state;
-	PyObject   *result = PyObject_CallMethod(state->fdw_instance, "end_scan", "()");
+	multicornCallInstanceByOid(state->ftable_oid,
+				   NULL,
+				   "end_modify");
 
 	errorCheck();
-	Py_DECREF(result);
 	Py_DECREF(state->fdw_instance);
 	Py_XDECREF(state->p_iterator);
 	state->p_iterator = NULL;
@@ -601,7 +957,7 @@ multicornEndForeignScan(ForeignScanState *node)
  *		Add resjunk columns needed for update/delete.
  */
 static void
-multicornAddForeignUpdateTargets(Query *parsetree,
+multicornAddForeignUpdateTargetsReal(Query *parsetree,
 								 RangeTblEntry *target_rte,
 								 Relation target_relation)
 {
@@ -653,6 +1009,28 @@ multicornAddForeignUpdateTargets(Query *parsetree,
 	Py_DECREF(instance);
 }
 
+/* Use the trampoline */
+static void
+multicornAddForeignUpdateTargets(Query *parsetree,
+				 RangeTblEntry *target_rte,
+				 Relation target_relation)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornAddForeignUpdateTargetsReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)parsetree;
+		td.args[1] = (void *)target_rte;
+		td.args[2] = (void *)target_relation;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornAddForeignUpdateTargetsReal(parsetree, target_rte, target_relation);
+	return;
+}
 
 /*
  * multicornPlanForeignModify
@@ -675,7 +1053,7 @@ multicornPlanForeignModify(PlannerInfo *root,
  *		Initialize a foreign write operation.
  */
 static void
-multicornBeginForeignModify(ModifyTableState *mtstate,
+multicornBeginForeignModifyReal(ModifyTableState *mtstate,
 							ResultRelInfo *resultRelInfo,
 							List *fdw_private,
 							int subplan_index,
@@ -692,6 +1070,7 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	modstate->cinfos = palloc0(sizeof(ConversionInfo *) *
 							   desc->natts);
 	modstate->buffer = makeStringInfo();
+	modstate->ftable_oid = rel->rd_id;
 	modstate->fdw_instance = getInstance(rel->rd_id);
 	modstate->rowidAttrName = getRowIdColumn(modstate->fdw_instance);
 	initConversioninfo(modstate->cinfos, TupleDescGetAttInMetadata(desc));
@@ -722,14 +1101,69 @@ multicornBeginForeignModify(ModifyTableState *mtstate,
 	resultRelInfo->ri_FdwState = modstate;
 }
 
+static void
+multicornBeginForeignModify(ModifyTableState *mtstate,
+			    ResultRelInfo *resultRelInfo,
+			    List *fdw_private,
+			    int subplan_index,
+			    int eflags)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornBeginForeignModifyReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)mtstate;
+		td.args[1] = (void *)resultRelInfo;
+		td.args[2] = (void *)fdw_private;
+		td.args[3] = (void *)(unsigned long)subplan_index;
+		td.args[4] = (void *)(unsigned long)eflags;
+		multicornCallTrampoline(&td);
+		return;
+	}
+	multicornBeginForeignModifyReal(mtstate, resultRelInfo, fdw_private, subplan_index,
+					eflags);
+	return;
+}
+
+/* The 3 mod functions are similiar enough to make a macro for
+ * the trampoline function.
+ */
+
+#define MODTRAMPOLINE(funcname)						\
+static TupleTableSlot *							\
+funcname(EState *estate, ResultRelInfo *resultRelInfo,			\
+	 TupleTableSlot *slot, TupleTableSlot *planSlot)		\
+{									\
+	multicorn_init();						\
+	if (multicorn_plpython_inline_handler != NULL)			\
+	{								\
+		TrampolineData td;					\
+		td.func = (TrampolineFunc)funcname##Real;		\
+		td.return_data = NULL;					\
+		td.args[0] = (void *)estate;				\
+		td.args[1] = (void *)resultRelInfo;			\
+		td.args[2] = (void *)slot;				\
+		td.args[3] = (void *)planSlot;				\
+		td.args[4] = NULL;					\
+		multicornCallTrampoline(&td);				\
+		return (TupleTableSlot *)td.return_data;		\
+	}								\
+	return funcname##Real(estate, resultRelInfo,			\
+			      slot, planSlot);				\
+}
+
+
 /*
  * multicornExecForeignInsert
  *		Execute a foreign insert operation
  *		This is done by calling the python "insert" method.
  */
+
+/* The actual function */
 static TupleTableSlot *
-multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
-						   TupleTableSlot *slot, TupleTableSlot *planSlot)
+multicornExecForeignInsertReal(EState *estate, ResultRelInfo *resultRelInfo,
+			       TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
 	PyObject   *fdw_instance = modstate->fdw_instance;
@@ -749,6 +1183,8 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
 	return slot;
 }
 
+MODTRAMPOLINE(multicornExecForeignInsert)
+
 /*
  * multicornExecForeignDelete
  *		Execute a foreign delete operation
@@ -756,7 +1192,7 @@ multicornExecForeignInsert(EState *estate, ResultRelInfo *resultRelInfo,
  *		rowid that was supplied.
  */
 static TupleTableSlot *
-multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
+multicornExecForeignDeleteReal(EState *estate, ResultRelInfo *resultRelInfo,
 						   TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
@@ -783,6 +1219,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
 	errorCheck();
 	return slot;
 }
+MODTRAMPOLINE(multicornExecForeignDelete)
 
 /*
  * multicornExecForeignUpdate
@@ -791,7 +1228,7 @@ multicornExecForeignDelete(EState *estate, ResultRelInfo *resultRelInfo,
  *		rowid that was supplied.
  */
 static TupleTableSlot *
-multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
+multicornExecForeignUpdateReal(EState *estate, ResultRelInfo *resultRelInfo,
 						   TupleTableSlot *slot, TupleTableSlot *planSlot)
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
@@ -819,6 +1256,9 @@ multicornExecForeignUpdate(EState *estate, ResultRelInfo *resultRelInfo,
 	return slot;
 }
 
+MODTRAMPOLINE(multicornExecForeignUpdate)
+
+#undef MODTRAMPOLINE
 /*
  * multicornEndForeignModify
  *		Clean internal state after a modify operation.
@@ -828,11 +1268,11 @@ multicornEndForeignModify(EState *estate, ResultRelInfo *resultRelInfo)
 
 {
 	MulticornModifyState *modstate = resultRelInfo->ri_FdwState;
-	PyObject   *result = PyObject_CallMethod(modstate->fdw_instance, "end_modify", "()");
-
+	multicornCallInstanceByOid(modstate->ftable_oid,
+				   NULL,
+				   "end_modify");
 	errorCheck();
 	Py_DECREF(modstate->fdw_instance);
-	Py_DECREF(result);
 }
 
 /*
@@ -842,7 +1282,6 @@ static void
 multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 						   SubTransactionId parentSubid, void *arg)
 {
-	PyObject   *instance;
 	int			curlevel;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
@@ -860,14 +1299,20 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 		if (entry->xact_depth < curlevel)
 			continue;
 
-		instance = entry->value;
 		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
 		{
-			PyObject_CallMethod(instance, "sub_commit", "(i)", curlevel);
+
+			multicornCallInstanceByOidInt(entry->hashkey,
+						      entry,
+						      "sub_commit",
+						      curlevel);
 		}
 		else
 		{
-			PyObject_CallMethod(instance, "sub_rollback", "(i)", curlevel);
+			multicornCallInstanceByOidInt(entry->hashkey,
+						      entry,
+						      "sub_rollback",
+						      curlevel);
 		}
 		errorCheck();
 		entry->xact_depth--;
@@ -881,14 +1326,12 @@ multicorn_subxact_callback(SubXactEvent event, SubTransactionId mySubid,
 static void
 multicorn_xact_callback(XactEvent event, void *arg)
 {
-	PyObject   *instance;
 	HASH_SEQ_STATUS status;
 	CacheEntry *entry;
 
 	hash_seq_init(&status, InstancesHash);
 	while ((entry = (CacheEntry *) hash_seq_search(&status)) != NULL)
 	{
-		instance = entry->value;
 		if (entry->xact_depth == 0)
 			continue;
 
@@ -896,15 +1339,25 @@ multicorn_xact_callback(XactEvent event, void *arg)
 		{
 #if PG_VERSION_NUM >= 90300
 			case XACT_EVENT_PRE_COMMIT:
-				PyObject_CallMethod(instance, "pre_commit", "()");
+				multicornCallInstanceByOid(entry->hashkey,
+							   entry,
+							   "pre_commit");
 				break;
 #endif
 			case XACT_EVENT_COMMIT:
-				PyObject_CallMethod(instance, "commit", "()");
+				multicornCallInstanceByOid(entry->hashkey,
+							   entry,
+							   "commit");
 				entry->xact_depth = 0;
 				break;
 			case XACT_EVENT_ABORT:
-				PyObject_CallMethod(instance, "rollback", "()");
+				/* XXXXX FIXME: An exception here is really bad.
+				   The process will crash.  However, that may
+				   be the best we can do.
+				*/
+				multicornCallInstanceByOid(entry->hashkey,
+							   entry,
+							   "rollback");
 				entry->xact_depth = 0;
 				break;
 			default:
@@ -916,7 +1369,7 @@ multicorn_xact_callback(XactEvent event, void *arg)
 
 #if PG_VERSION_NUM >= 90500
 static List *
-multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
+multicornImportForeignSchemaReal(ImportForeignSchemaStmt * stmt,
 							 Oid serverOid)
 {
 	List	   *cmds = NULL;
@@ -1017,6 +1470,27 @@ multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
 	Py_DECREF(p_tables);
 	return cmds;
 }
+/* The version that might do the trampoline. */
+static List *
+multicornImportForeignSchema(ImportForeignSchemaStmt * stmt,
+			     Oid serverOid)
+{
+	multicorn_init();
+	if (multicorn_plpython_inline_handler != NULL) {
+		TrampolineData td;
+		td.func = (TrampolineFunc)multicornImportForeignSchemaReal;
+		td.return_data = NULL;
+		td.args[0] = (void *)stmt;
+		td.args[1] = (void *)(unsigned long)serverOid;
+		td.args[2] = NULL;
+		td.args[3] = NULL;
+		td.args[4] = NULL;
+		multicornCallTrampoline(&td);
+		return (List *)(td.return_data);
+	}
+	return multicornImportForeignSchemaReal(stmt, serverOid);
+}
+
 #endif
 
 
@@ -1063,5 +1537,6 @@ initializeExecState(void *internalstate)
 	execstate->cinfos = palloc0(sizeof(ConversionInfo *) * attnum);
 	execstate->values = palloc(attnum * sizeof(Datum));
 	execstate->nulls = palloc(attnum * sizeof(bool));
+	execstate->ftable_oid = foreigntableid;
 	return execstate;
 }
