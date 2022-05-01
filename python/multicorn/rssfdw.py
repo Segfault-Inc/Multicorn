@@ -83,13 +83,13 @@ from . import ForeignDataWrapper
 from datetime import datetime, timedelta
 from lxml import etree
 try:
-    from urllib.request import urlopen
+    from urllib.request import urlopen, Request
 except ImportError:
-    from urllib import urlopen
+    from urllib import urlopen, Request
 from logging import ERROR, WARNING
 from multicorn.utils import log_to_postgres
 import json
-
+import ssl
 
 def element_to_dict(element):
     """
@@ -140,7 +140,7 @@ class RssFdw(ForeignDataWrapper):
         self.columns = columns
         self.default_namespace_prefix = options.pop(
             'default_namespace_prefix', None)
-        self.item_root = options.pop('item_root', 'item')
+        self.item_root = options.pop('item_root', 'entry')
 
     def get_namespaces(self, xml):
         ns = dict(xml.nsmap)
@@ -175,7 +175,14 @@ class RssFdw(ForeignDataWrapper):
                 if (datetime.now() - date) < self.cache_duration:
                     return values
         try:
-            xml = etree.fromstring(urlopen(self.url).read())
+            ssl._create_default_https_context = ssl._create_unverified_context
+            req = Request(
+                    url = self.url, 
+                    data=None, 
+                    headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'}
+                    )
+            s = urlopen(req).read()
+            xml = etree.fromstring(s)
             items = [self.make_item_from_xml(elem)
                      for elem in xml.xpath(
                          '//%s' % self.item_root,
