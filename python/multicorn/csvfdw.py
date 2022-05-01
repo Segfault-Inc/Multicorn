@@ -98,20 +98,22 @@ class CsvFdw(ForeignDataWrapper):
 
     def execute(self, quals, columns):
         with open(self.filename) as stream:
-            reader = csv.reader(stream, delimiter=self.delimiter)
-            count = 0
-            checked = False
-            for line in reader:
-                if count >= self.skip_header:
-                    if not checked:
-                        # On first iteration, check if the lines are of the
-                        # appropriate length
-                        checked = True
-                        if len(line) > len(self.columns):
-                            log_to_postgres("There are more columns than "
-                                            "defined in the table", WARNING)
-                        if len(line) < len(self.columns):
-                            log_to_postgres("There are less columns than "
-                                            "defined in the table", WARNING)
+            reader = csv.reader(stream, delimiter=self.delimiter, quotechar=self.quotechar)
+            try:
+                # Skipp the first line if it is a header
+                if self.skip_header:
+                    next(reader)
+                # first check lenght of the first line
+                line = next(reader)
+                if len(line) > len(self.columns):
+                    log_to_postgres("There are more columns than "
+                                    "defined in the table", WARNING)
+                if len(line) < len(self.columns):
+                    log_to_postgres("There are less columns than "
+                                    "defined in the table", WARNING)
+                while True:
                     yield line[:len(self.columns)]
-                count += 1
+                    line = next(reader)
+            except StopIteration:
+                pass
+
