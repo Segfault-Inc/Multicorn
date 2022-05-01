@@ -20,14 +20,17 @@ The goal of this tutorial is to be able to execute this:
 
 .. code-block:: sql
 
+    CREATE SERVER multicorn_srv 
+        FOREIGN DATA WRAPPER multicorn OPTIONS (
+            wrapper 'myfdw.ConstantForeignDataWrapper'
+        );
+
     CREATE FOREIGN TABLE constanttable (
         test character varying,
         test2 character varying
-    ) server multicorn_srv options (
-        wrapper 'myfdw.ConstantForeignDataWrapper'
-    )
+    ) SERVER multicorn_srv;
 
-    SELECT * from constanttable;
+    SELECT * FROM constanttable;
 
 And obtain this as a result:
 
