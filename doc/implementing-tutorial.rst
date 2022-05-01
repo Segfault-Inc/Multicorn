@@ -7,7 +7,8 @@ Tutorial: Writing an FDW
 Multicorn provides a simple interface for writing foreign data wrappers: the
 ``multicorn.ForeignDataWrapper`` interface.
 
-Implementing a foreign data wrapper is as simple as inheriting from ``multicorn.ForeignDataWrapper`` and implemening the ``execute`` method.
+Implementing a foreign data wrapper is as simple as inheriting from
+``multicorn.ForeignDataWrapper`` and implemening the ``execute`` method.
 
 What are we trying to achieve ?
 ===============================
@@ -33,7 +34,7 @@ And obtain this as a result:
 
 .. code-block:: bash
 
-      test   |  test2   
+      test   |  test2
     ---------+----------
      test 0  | test2 0
      test 1  | test2 1
@@ -105,7 +106,7 @@ You should have the following directory structure:
 .. code-block:: bash
 
   .
-  |-- myfdw/ 
+  |-- myfdw/
   |   `-- __init__.py
   `-- setup.py
 
@@ -129,12 +130,12 @@ via duck-typing), is to import the base class and subclass it:
 The init method must accept two arguments
 
 ``options``
-    A dictionary of options given in the ``OPTIONS`` clause of the 
+    A dictionary of options given in the ``OPTIONS`` clause of the
     ``CREATE FOREIGN TABLE`` statement, minus the wrapper option.
 
 ``columns``
     A mapping of the columns names given during the table creation, associated
-    to their types. 
+    to their types.
     Ex: {'test': 'character varying'}
 
 
@@ -142,19 +143,19 @@ Our access point do not need any options, thus we will only need to keep a
 reference to the columns:
 
 .. code-block:: python
-   
+
     def __init__(self, options, columns):
         super(ConstantForeignDataWrapper, self).__init__(options, columns)
         self.columns = columns
 
 
 The execute method is the core of the API.
-It is called with a list of ``Qual`` objects, and a list column names, which we will ignore 
-for now but more on that `later <#optimizations>`_.
+It is called with a list of ``Qual`` objects, and a list column names, which we
+will ignore for now but more on that `later <#optimizations>`_.
 
 This method must return an iterable of the resulting lines.
 Each line can be either a list containing an item by column,
-or a dictonary mappning the column names to their value.
+or a dictionary mapping the column names to their value.
 
 For this example, we chose to build a dictionary.
 Each column contains the concatenation of the column name and
@@ -178,7 +179,8 @@ Write API
 
 Since PostgreSQL 9.3, foreign data wrappers can implement a write API.
 
-In multicorn, this involves defining which column will be used as a primary key (mandatory) and implementing the following methods at your
+In multicorn, this involves defining which column will be used as a primary key
+(mandatory) and implementing the following methods at your
 discretion:
 
 .. code-block:: python
@@ -233,10 +235,10 @@ will be called whenever the local transaction is rollbacked.
 Optimizations
 =============
 
-As was noted in the code commentaries, the execute methods accept a ``quals`` argument.
-This argument is a list of quals object, which are defined in `multicorn/__init__.py`_.
-A Qual object defines a simple condition wich can be used by the foreign data
-wrapper to restrict the number of the results.
+As was noted in the code commentaries, the execute methods accept a ``quals``
+argument. This argument is a list of quals object, which are defined in
+`multicorn/__init__.py`_. A Qual object defines a simple condition which can be
+used by the foreign data wrapper to restrict the number of the results.
 The Qual class defines three instance's attributes:
 
 - field_name: the name of the column concerned by the condition.
@@ -251,14 +253,14 @@ Let's suppose we write the following query:
 
 The method execute would be called with the following quals:
 
-.. code-block:: python 
-    
+.. code-block:: python
+
     [Qual('test', '=', 'test 2'), Qual('test', '~~', '3')]
 
 Now you can use this information to reduce the set of results to return to the
 postgresql server.
 
-.. note:: 
+.. note::
 
     You don't HAVE to enforce those quals, Postgresql will check them anyway.
     It's nonetheless useful to reduce the amount of results you fetch over the
@@ -351,9 +353,9 @@ It accepts three arguments:
         ``logging.ERROR``
             Maps to a postgresql ERROR message. An ERROR message is passed to the
             client, as well as in the server logs.
-            
-            .. important:: 
-                
+
+            .. important::
+
                 An ERROR message results in the current transaction being aborted.
                 Think about the consequences when you use it !
 
@@ -361,14 +363,14 @@ It accepts three arguments:
             Maps to a postgresql FATAL message. Causes the current server process
             to abort.
 
-            .. important:: 
-                
+            .. important::
+
                 A CRITICAL message results in the current server process to be aborted
                 Think about the consequences when you use it !
 
 ``hint`` (optional)
-    An hint given to the user to resolve the cause of the message (ex:``Try
-    adding the missing option in the table creation statement``) 
+    A hint given to the user to resolve the cause of the message (ex:``Try
+    adding the missing option in the table creation statement``)
 
 
 Foreign Data Wrapper lifecycle
