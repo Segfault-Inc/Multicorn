@@ -3,14 +3,16 @@
 Handle nicely a set of files in a structured directory.
 
 """
-import os
-import sys
-import io
-import re
-import errno
-import string
 import collections
+import datetime
+import errno
 import fcntl
+import io
+import os
+import re
+import stat
+import string
+import sys
 from multicorn.compat import unicode_, basestring_
 
 vformat = string.Formatter().vformat
@@ -93,7 +95,7 @@ def _tokenize_pattern(pattern):
     yield 'path separator', '/'
 
 
-def _parse_pattern(pattern):
+def _parse_pattern(pattern, escape_pattern=True, ignore_case=False):
     r"""
     Parse a string pattern and return (path_parts_re, path_parts_properties)
 
@@ -125,7 +127,9 @@ def _parse_pattern(pattern):
             if not next_re:
                 raise ValueError('A slash-separated part is empty in %r' %
                                  pattern)
-            path_parts_re.append(re.compile('^%s$' % next_re))
+            path_parts_re.append(
+                re.compile('^%s$' % next_re,
+                           re.IGNORECASE if ignore_case else 0))
             next_re = ''
             path_parts_properties.append(tuple(properties))
             properties = []
@@ -140,7 +144,9 @@ def _parse_pattern(pattern):
             properties.append(token)
             next_re += '(?P<%s>.*)' % token
         elif token_type == 'literal':
-            next_re += re.escape(token)
+            if escape_pattern:
+                token = re.escape(token)
+            next_re += token
         else:
             assert False, 'Unexpected token type: ' + token_type
 
@@ -171,7 +177,13 @@ class Item(collections.Mapping):
     Note that at a given point in time, the actual file for an Item may or
     may not exist in the filesystem.
     """
-    def __init__(self, directory, properties, content=b''):
+    def __init__(self,
+                 directory,
+                 properties,
+                 content=b'',
+                 actual_filename=None,
+                 mtime=None,
+                 ctime=None):
         properties = dict(properties)
         keys = set(properties)
         missing = directory.properties - keys
@@ -183,6 +195,8 @@ class Item(collections.Mapping):
         self.directory = directory
         self._properties = {}
         self.content = content
+        self.actual_filename = actual_filename
+        self.set_timestamps(mtime, ctime)
         # TODO: check for ambiguities.
         # eg. with pattern = '{a}_{b}', values {'a': '1_2', 'b': '3'} and
         # {'a': '1', 'b': '2_3'} both give the same filename.
@@ -198,7 +212,10 @@ class Item(collections.Mapping):
         Return the normalized (slash-separated) filename for the item,
         relative to the root.
         """
-        return vformat(self.directory.pattern, [], self)
+        if self.actual_filename:
+            return self.actual_filename
+        else:
+            return vformat(self.directory.pattern, [], self)
 
     @property
     def full_filename(self):
@@ -283,6 +300,10 @@ class Item(collections.Mapping):
     def remove(self):
         os.unlink(self.full_filename)
 
+    def set_timestamps(self, mtime, ctime):
+        self.mtime = datetime.datetime.fromtimestamp(mtime) if mtime else None
+        self.ctime = datetime.datetime.fromtimestamp(ctime) if ctime else None
+
     # collections.Mapping interface:
 
     def __len__(self):
@@ -304,12 +325,19 @@ class StructuredDirectory(object):
     :param pattern: Pattern for files in this directory,
                     eg. '{category}/{number}_{name}.txt'
     """
-    def __init__(self, root_dir, pattern, file_mode=0o700):
+    def __init__(self,
+                 root_dir,
+                 pattern,
+                 file_mode=0o700,
+                 escape_pattern=True,
+                 ignore_case=False):
         self.root_dir = unicode_(root_dir)
         self.pattern = unicode_(pattern)
         # Cache for file descriptors.
         self.cache = {}
-        parts_re, parts_properties = _parse_pattern(self.pattern)
+        parts_re, parts_properties = _parse_pattern(self.pattern,
+                                                    escape_pattern,
+                                                    ignore_case)
         self.file_mode = file_mode
         self._path_parts_re = parts_re
         self._path_parts_properties = parts_properties
@@ -349,7 +377,7 @@ class StructuredDirectory(object):
             if match is None:
                 return None
             values.update(match.groupdict())
-        return Item(self, values)
+        return Item(self, values, actual_filename=filename)
 
     def get_items(self, **fixed_values):
         """
@@ -410,7 +438,12 @@ class StructuredDirectory(object):
             filename = self._join(path_parts)
             if is_leaf:
                 if os.path.isfile(filename):
-                    yield Item(self, values)
+                    st = os.stat(filename)
+                    yield Item(self,
+                               values,
+                               actual_filename=name,
+                               mtime=st[stat.ST_MTIME],
+                               ctime=st[stat.ST_CTIME])
             # Do not check if filename is a directory or even exists,
             # let listdir() raise later.
             else:
